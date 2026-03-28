@@ -25,6 +25,7 @@ interface SideDrawerProps {
 }
 
 type SelectedHost = { type: "local" } | { type: "ssh"; preset: SshHostPreset };
+type LaunchMode = "direct" | "tmux";
 
 const kindPriority: Record<string, number> = {
   copilot: 0,
@@ -46,6 +47,76 @@ function sortScanResults(results: ScanResult[]): ScanResult[] {
     // then alphabetically
     return a.displayName.localeCompare(b.displayName);
   });
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function formatWorkingDirectory(workingDirectory: string): string {
+  if (workingDirectory === "~" || workingDirectory === "~/") {
+    return "~";
+  }
+
+  if (workingDirectory.startsWith("~/")) {
+    const suffix = workingDirectory
+      .slice(2)
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => shellQuote(segment))
+      .join("/");
+
+    return suffix ? `~/${suffix}` : "~";
+  }
+
+  return shellQuote(workingDirectory);
+}
+
+function buildAgentInvocation(agentKind: string, displayName: string): string {
+  if (agentKind === "claude") {
+    return `claude -n ${shellQuote(displayName)}`;
+  }
+
+  return agentKind;
+}
+
+function buildDirectLaunchCommand(
+  agentKind: string,
+  workingDirectory: string,
+  displayName: string,
+): string {
+  return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildAgentInvocation(agentKind, displayName)}`;
+}
+
+function buildTmuxLaunchCommand(
+  agentKind: string,
+  workingDirectory: string,
+  displayName: string,
+  tmuxSessionName: string,
+): string {
+  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${shellQuote(buildDirectLaunchCommand(agentKind, workingDirectory, displayName))}`;
+}
+
+function wrapRemoteInteractiveCommand(command: string): string {
+  return `zsh -i -c ${JSON.stringify(command)}`;
+}
+
+function buildDefaultSessionName(agentKind: string, launchMode: LaunchMode): string {
+  if (launchMode !== "tmux") {
+    return `${agentKind} 新会话`;
+  }
+
+  const now = new Date();
+  const timestamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0"),
+  ].join("");
+
+  return `${agentKind} 新会话 ${timestamp}`;
 }
 
 function findExistingSession(
@@ -101,6 +172,7 @@ export function SideDrawer({
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState("copilot");
   const [newDir, setNewDir] = useState("");
+  const [launchMode, setLaunchMode] = useState<LaunchMode>("direct");
 
   // Status
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -173,11 +245,15 @@ export function SideDrawer({
         } else {
           let inner: string;
           if (result.sessionId) {
-            inner = `cd '${result.workingDirectory}' && ${result.agentKind} --resume=${result.sessionId}`;
+            inner = `cd ${formatWorkingDirectory(result.workingDirectory)} && ${result.agentKind} --resume=${result.sessionId}`;
           } else {
-            inner = `cd '${result.workingDirectory}' && ${result.agentKind}`;
+            inner = buildDirectLaunchCommand(
+              result.agentKind,
+              result.workingDirectory,
+              result.displayName,
+            );
           }
-          remoteCommand = `zsh -i -c ${JSON.stringify(inner)}`;
+          remoteCommand = wrapRemoteInteractiveCommand(inner);
         }
 
         await launchSshPtyAgent({
@@ -198,7 +274,7 @@ export function SideDrawer({
         });
       } else if (result.sessionId) {
         const cmd = result.workingDirectory
-          ? `cd '${result.workingDirectory}' && ${result.agentKind} --resume=${result.sessionId}`
+          ? `cd ${formatWorkingDirectory(result.workingDirectory)} && ${result.agentKind} --resume=${result.sessionId}`
           : `${result.agentKind} --resume=${result.sessionId}`;
         await launchPtyAgent({
           workspaceId: "default",
@@ -212,7 +288,11 @@ export function SideDrawer({
           workspaceId: "default",
           displayName: result.displayName,
           agentKind: result.agentKind,
-          command: `cd '${result.workingDirectory}' && ${result.agentKind}`,
+          command: buildDirectLaunchCommand(
+            result.agentKind,
+            result.workingDirectory,
+            result.displayName,
+          ),
           workingDirectory: result.workingDirectory,
         });
       }
@@ -227,14 +307,18 @@ export function SideDrawer({
   async function handleNewSession() {
     if (!newName && !newKind) return;
 
-    const name = newName || `${newKind} 新会话`;
+    const name = newName || buildDefaultSessionName(newKind, launchMode);
     const dir = newDir || "~/";
+    const tmuxSessionName = launchMode === "tmux" ? name : undefined;
+    const command =
+      launchMode === "tmux"
+        ? buildTmuxLaunchCommand(newKind, dir, name, name)
+        : buildDirectLaunchCommand(newKind, dir, name);
 
     try {
       if (selectedHost.type === "ssh") {
         const target = currentSshTarget()!;
-        const inner = `cd '${dir}' && ${newKind}`;
-        const remoteCommand = `zsh -i -c ${JSON.stringify(inner)}`;
+        const remoteCommand = wrapRemoteInteractiveCommand(command);
 
         await launchSshPtyAgent({
           workspaceId: "default",
@@ -243,14 +327,16 @@ export function SideDrawer({
           sshTarget: target,
           remoteCommand,
           workingDirectory: dir,
+          tmuxSessionName,
         });
       } else {
         const input: LaunchLocalAgentInput = {
           workspaceId: "default",
           displayName: name,
           agentKind: newKind,
-          command: `cd '${dir}' && ${newKind}`,
+          command,
           workingDirectory: dir,
+          tmuxSessionName,
         };
         await launchPtyAgent(input);
       }
@@ -397,6 +483,7 @@ export function SideDrawer({
       <div className="drawer-collapsible">
         <button
           className="drawer-collapsible-header"
+          data-testid="new-session-toggle"
           onClick={() => setNewSessionOpen(!newSessionOpen)}
         >
           <span>{newSessionOpen ? "▼" : "▶"} 新建会话</span>
@@ -405,12 +492,14 @@ export function SideDrawer({
           <div className="drawer-collapsible-body">
             <input
               className="drawer-input"
+              data-testid="new-session-name"
               placeholder="显示名称 (可选)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
             <select
               className="drawer-input"
+              data-testid="new-session-kind"
               value={newKind}
               onChange={(e) => setNewKind(e.target.value)}
             >
@@ -419,19 +508,38 @@ export function SideDrawer({
               <option value="claude">claude</option>
               <option value="shell">shell</option>
             </select>
+            <select
+              className="drawer-input"
+              data-testid="new-session-mode"
+              value={launchMode}
+              onChange={(e) => setLaunchMode(e.target.value as LaunchMode)}
+            >
+              <option value="direct">直接创建</option>
+              <option value="tmux">从 tmux 创建</option>
+            </select>
             <input
               className="drawer-input"
+              data-testid="new-session-dir"
               placeholder="工作目录 (默认 ~/)"
               value={newDir}
               onChange={(e) => setNewDir(e.target.value)}
             />
+            {launchMode === "tmux" && (
+              <p className="drawer-message" data-testid="new-session-tmux-note">
+                tmux session 名将使用当前显示名称；未填写时会自动生成唯一名称
+              </p>
+            )}
             <p className="drawer-message">
               目标主机:{" "}
               {selectedHost.type === "local"
                 ? "本地"
                 : selectedHost.preset.name}
             </p>
-            <button className="drawer-btn primary" onClick={handleNewSession}>
+            <button
+              className="drawer-btn primary"
+              data-testid="create-session"
+              onClick={handleNewSession}
+            >
               创建会话
             </button>
           </div>

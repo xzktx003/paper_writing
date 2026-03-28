@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.13.1",
   "scripts": {
     "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter web dev\"",
+    "dev:restart": "./scripts/restart-dev.sh",
     "build": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter web build",
     "check": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter web build",
     "e2e": "playwright test",

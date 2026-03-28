@@ -49,6 +49,7 @@ export class PtyRuntimeManager {
       controlMode: "control",
       transportRef: {
         processId: ptyProcess.pid,
+        tmuxSession: input.tmuxSessionName,
         runtimeId: `pty:${ptyProcess.pid}`,
       },
     });
@@ -63,6 +64,10 @@ export class PtyRuntimeManager {
     this.handles.set(agentSession.id, handle);
 
     ptyProcess.onData((data: string) => {
+      if (!this.registry.has(agentSession.id)) {
+        return;
+      }
+
       this.appendScrollback(handle, data);
 
       for (const listener of handle.dataListeners) {
@@ -74,6 +79,11 @@ export class PtyRuntimeManager {
 
     ptyProcess.onExit(({ exitCode }) => {
       this.handles.delete(agentSession.id);
+
+      if (!this.registry.has(agentSession.id)) {
+        return;
+      }
+
       this.registry.markExited(agentSession.id, exitCode, null);
     });
 
@@ -123,6 +133,7 @@ export class PtyRuntimeManager {
       controlMode: "control",
       transportRef: {
         processId: ptyProcess.pid,
+        tmuxSession: input.tmuxSessionName,
         runtimeId: `ssh-pty:${ptyProcess.pid}`,
         sshHost: input.sshTarget.host,
         sshPort: input.sshTarget.port,
@@ -143,6 +154,10 @@ export class PtyRuntimeManager {
     this.handles.set(agentSession.id, handle);
 
     ptyProcess.onData((data: string) => {
+      if (!this.registry.has(agentSession.id)) {
+        return;
+      }
+
       this.appendScrollback(handle, data);
 
       for (const listener of handle.dataListeners) {
@@ -154,6 +169,11 @@ export class PtyRuntimeManager {
 
     ptyProcess.onExit(({ exitCode }) => {
       this.handles.delete(agentSession.id);
+
+      if (!this.registry.has(agentSession.id)) {
+        return;
+      }
+
       this.registry.markExited(agentSession.id, exitCode, null);
     });
 
@@ -167,6 +187,7 @@ export class PtyRuntimeManager {
       throw new Error(`没有找到 PTY 运行时: ${agentSessionId}`);
     }
 
+    this.registry.noteUserInput(agentSessionId, data);
     handle.ptyProcess.write(data);
   }
 
@@ -253,6 +274,7 @@ export class PtyRuntimeManager {
       outputPreview: `重新连接中: SSH → ${userHost}`,
       transportRef: {
         processId: ptyProcess.pid,
+        tmuxSession: input.tmuxSessionName,
         runtimeId: `ssh-pty:${ptyProcess.pid}`,
         sshHost: input.sshTarget.host,
         sshPort: input.sshTarget.port,
@@ -261,6 +283,10 @@ export class PtyRuntimeManager {
     });
 
     ptyProcess.onData((data: string) => {
+      if (!this.registry.has(agentSessionId)) {
+        return;
+      }
+
       this.appendScrollback(handle, data);
       for (const listener of handle.dataListeners) {
         listener(data);
@@ -270,6 +296,11 @@ export class PtyRuntimeManager {
 
     ptyProcess.onExit(({ exitCode }) => {
       this.handles.delete(agentSessionId);
+
+      if (!this.registry.has(agentSessionId)) {
+        return;
+      }
+
       this.registry.markExited(agentSessionId, exitCode, null);
     });
 
@@ -306,11 +337,16 @@ export class PtyRuntimeManager {
       outputPreview: `重新连接中: ${input.command}`,
       transportRef: {
         processId: ptyProcess.pid,
+        tmuxSession: input.tmuxSessionName,
         runtimeId: `pty:${ptyProcess.pid}`,
       },
     });
 
     ptyProcess.onData((data: string) => {
+      if (!this.registry.has(agentSessionId)) {
+        return;
+      }
+
       this.appendScrollback(handle, data);
       for (const listener of handle.dataListeners) {
         listener(data);
@@ -320,6 +356,11 @@ export class PtyRuntimeManager {
 
     ptyProcess.onExit(({ exitCode }) => {
       this.handles.delete(agentSessionId);
+
+      if (!this.registry.has(agentSessionId)) {
+        return;
+      }
+
       this.registry.markExited(agentSessionId, exitCode, null);
     });
 

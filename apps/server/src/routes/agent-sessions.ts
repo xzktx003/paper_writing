@@ -18,6 +18,58 @@ import { LocalTmuxAdapter } from "../services/local-tmux-adapter.js";
 import { PtyRuntimeManager } from "../services/pty-runtime-manager.js";
 import { SshRuntimeManager } from "../services/ssh-runtime-manager.js";
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function formatWorkingDirectory(workingDirectory: string): string {
+  if (workingDirectory === "~" || workingDirectory === "~/") {
+    return "~";
+  }
+
+  if (workingDirectory.startsWith("~/")) {
+    const suffix = workingDirectory
+      .slice(2)
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => shellQuote(segment))
+      .join("/");
+
+    return suffix ? `~/${suffix}` : "~";
+  }
+
+  return shellQuote(workingDirectory);
+}
+
+function buildAgentInvocation(agentKind: string, displayName: string): string {
+  if (agentKind === "claude") {
+    return `claude -n ${shellQuote(displayName)}`;
+  }
+
+  return agentKind;
+}
+
+function buildDirectLaunchCommand(
+  agentKind: string,
+  workingDirectory: string,
+  displayName: string,
+): string {
+  return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildAgentInvocation(agentKind, displayName)}`;
+}
+
+function buildTmuxLaunchCommand(
+  agentKind: string,
+  workingDirectory: string,
+  displayName: string,
+  tmuxSessionName: string,
+): string {
+  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${shellQuote(buildDirectLaunchCommand(agentKind, workingDirectory, displayName))}`;
+}
+
+function buildTmuxAttachCommand(tmuxSessionName: string): string {
+  return `tmux attach -t ${shellQuote(tmuxSessionName)}`;
+}
+
 interface AgentSessionRoutesOptions {
   registry: AgentSessionRegistry;
   processRuntimeManager: LocalProcessRuntimeManager;
@@ -185,6 +237,20 @@ export async function registerAgentSessionRoutes(
     "/api/agent-sessions/:id/reconnect",
     async (request) => {
       const session = registry.get(request.params.id);
+      if (session.sshTarget && session.transportRef?.tmuxSession) {
+        return ptyRuntimeManager.reconnectRemote(request.params.id, {
+          workspaceId: session.workspaceId,
+          displayName: session.displayName,
+          agentKind: session.agentKind,
+          sshTarget: session.sshTarget,
+          remoteCommand: wrapRemoteReconnectCommand(
+            buildTmuxAttachCommand(session.transportRef.tmuxSession),
+          ),
+          workingDirectory: session.workingDirectory,
+          tmuxSessionName: session.transportRef.tmuxSession,
+        });
+      }
+
       if (session.sshTarget && session.remoteCommand) {
         return ptyRuntimeManager.reconnectRemote(request.params.id, {
           workspaceId: session.workspaceId,
@@ -193,18 +259,30 @@ export async function registerAgentSessionRoutes(
           sshTarget: session.sshTarget,
           remoteCommand: session.remoteCommand,
           workingDirectory: session.workingDirectory,
+          tmuxSessionName: session.transportRef?.tmuxSession,
         });
       }
-      const cmd = session.agentSessionId
-        ? `cd '${session.workingDirectory ?? "~"}' && ${session.agentKind} --resume=${session.agentSessionId}`
-        : `cd '${session.workingDirectory ?? "~"}' && ${session.agentKind}`;
+      const cmd = session.transportRef?.tmuxSession
+        ? buildTmuxAttachCommand(session.transportRef.tmuxSession)
+        : session.agentSessionId
+          ? `cd ${formatWorkingDirectory(session.workingDirectory ?? "~")} && ${session.agentKind} --resume=${session.agentSessionId}`
+          : buildDirectLaunchCommand(
+              session.agentKind,
+              session.workingDirectory ?? "~",
+              session.displayName,
+            );
       return ptyRuntimeManager.reconnectLocal(request.params.id, {
         workspaceId: session.workspaceId,
         displayName: session.displayName,
         agentKind: session.agentKind,
         command: cmd,
         workingDirectory: session.workingDirectory,
+        tmuxSessionName: session.transportRef?.tmuxSession,
       });
     },
   );
+}
+
+function wrapRemoteReconnectCommand(command: string): string {
+  return `zsh -i -c ${JSON.stringify(command)}`;
 }

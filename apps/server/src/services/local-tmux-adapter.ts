@@ -161,16 +161,15 @@ export class LocalTmuxAdapter {
     agentSession: AgentSessionRecord,
   ): Promise<AgentSessionDetailResponse> {
     const detail = await this.getDetail(agentSession);
-    const currentAgentSession = this.registry.updateSession(agentSession.id, {
+    this.registry.updateSession(agentSession.id, {
       controlMode: "control",
-      interactionState: /awaiting input|ready for your next instruction/i.test(
-        detail.outputEntries.map(({ text }) => text).join("\n"),
-      )
-        ? "awaiting_input"
-        : "idle",
       stateConfidence: "medium",
       lastRefreshedAt: new Date().toISOString(),
     });
+    const currentAgentSession = this.registry.syncCapturedScreen(
+      agentSession.id,
+      detail.outputEntries.map(({ text }) => text).join("\n"),
+    );
 
     return {
       agentSession: currentAgentSession,
@@ -208,19 +207,16 @@ export class LocalTmuxAdapter {
     const currentAgentSession = this.registry.updateSession(agentSession.id, {
       outputPreview,
       lastRefreshedAt: new Date().toISOString(),
-      interactionState:
-        agentSession.controlMode === "control"
-          ? /awaiting input|ready for your next instruction/i.test(
-              combinedOutput,
-            )
-            ? "awaiting_input"
-            : "idle"
-          : "detached",
       stateConfidence: "medium",
     });
 
+    const syncedAgentSession = this.registry.syncCapturedScreen(
+      currentAgentSession.id,
+      combinedOutput,
+    );
+
     return {
-      agentSession: currentAgentSession,
+      agentSession: syncedAgentSession,
       outputEntries: detail.outputEntries,
     };
   }

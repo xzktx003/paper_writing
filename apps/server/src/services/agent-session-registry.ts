@@ -15,6 +15,11 @@ import {
 type SnapshotListener = (snapshot: ListAgentSessionsResponse) => void;
 
 const MAX_OUTPUT_ENTRIES = 200;
+const DEFAULT_AWAITING_INPUT_IDLE_MS = 10_000;
+const MAX_INFERENCE_WINDOW_CHARS = 4096;
+
+const ANSI_ESCAPE_PATTERN =
+  /\u001B\][^\u0007]*(?:\u0007|\u001B\\)|\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 
 function pickOutputPreview(text: string): string | undefined {
   const lines = text
@@ -25,25 +30,28 @@ function pickOutputPreview(text: string): string | undefined {
   return lines.at(-1)?.slice(0, 160);
 }
 
-function inferInteractionState(text: string): {
-  interactionState: AgentSessionRecord["interactionState"];
-  stateConfidence: AgentSessionRecord["stateConfidence"];
-} {
-  if (
-    /(awaiting input|ready for your next instruction|waiting for input|enter your instruction|prompt:|type a command)/i.test(
-      text,
-    )
-  ) {
-    return {
-      interactionState: "awaiting_input",
-      stateConfidence: "high",
-    };
+function normalizeTerminalText(text: string): string {
+  return text
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(/\u0007/g, "")
+    .replace(/\r/g, "\n")
+    .replace(/[\t\f\v ]+/g, " ")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
+
+function mergeScreenWindow(previous: string, incoming: string): string {
+  const normalizedIncoming = normalizeTerminalText(incoming);
+
+  if (!normalizedIncoming) {
+    return previous;
   }
 
-  return {
-    interactionState: "running",
-    stateConfidence: "medium",
-  };
+  const merged = previous
+    ? `${previous}\n${normalizedIncoming}`
+    : normalizedIncoming;
+
+  return merged.slice(-MAX_INFERENCE_WINDOW_CHARS);
 }
 
 function byInteractionState(
@@ -66,8 +74,15 @@ function byInteractionState(
 export class AgentSessionRegistry {
   private readonly sessions = new Map<string, AgentSessionRecord>();
   private readonly outputEntries = new Map<string, AgentOutputEntry[]>();
+  private readonly screenWindows = new Map<string, string>();
+  private readonly lastScreenChangedAt = new Map<string, number>();
+  private readonly awaitingInputTimers = new Map<string, NodeJS.Timeout>();
   private readonly listeners = new Set<SnapshotListener>();
   private activeAgentSessionId: string | null = null;
+
+  constructor(
+    private readonly awaitingInputIdleMs = DEFAULT_AWAITING_INPUT_IDLE_MS,
+  ) {}
 
   list(): ListAgentSessionsResponse {
     return {
@@ -94,6 +109,10 @@ export class AgentSessionRegistry {
     }
 
     return agentSession;
+  }
+
+  has(agentSessionId: string): boolean {
+    return this.sessions.has(agentSessionId);
   }
 
   getDetail(agentSessionId: string): AgentSessionDetailResponse {
@@ -129,6 +148,12 @@ export class AgentSessionRegistry {
 
     this.sessions.set(agentSession.id, agentSession);
     this.outputEntries.set(agentSession.id, []);
+    this.screenWindows.set(agentSession.id, "");
+    this.lastScreenChangedAt.set(agentSession.id, Date.now());
+
+    if (this.shouldUseTimedAwaitingInput(agentSession)) {
+      this.refreshAwaitingInputTimer(agentSession.id);
+    }
 
     if (!this.activeAgentSessionId) {
       this.activeAgentSessionId = agentSession.id;
@@ -184,6 +209,8 @@ export class AgentSessionRegistry {
     agentSessionId: string,
     input: StdinAgentSessionInput,
   ): AgentSessionRecord {
+    this.noteUserInput(agentSessionId, input.input);
+
     const agentSession = this.get(agentSessionId);
 
     const now = new Date().toISOString();
@@ -219,7 +246,19 @@ export class AgentSessionRegistry {
     const agentSession = this.get(agentSessionId);
     const now = new Date().toISOString();
     const outputPreview = pickOutputPreview(text) ?? agentSession.outputPreview;
-    const inferredState = inferInteractionState(text);
+    const nextScreenWindow = mergeScreenWindow(
+      this.screenWindows.get(agentSessionId) ?? "",
+      text,
+    );
+    const screenChanged =
+      stream !== "system" &&
+      nextScreenWindow !== (this.screenWindows.get(agentSessionId) ?? "");
+
+    if (screenChanged) {
+      this.screenWindows.set(agentSessionId, nextScreenWindow);
+      this.lastScreenChangedAt.set(agentSessionId, Date.now());
+      this.refreshAwaitingInputTimer(agentSessionId);
+    }
 
     const nextSession: AgentSessionRecord = {
       ...agentSession,
@@ -229,11 +268,15 @@ export class AgentSessionRegistry {
       interactionState:
         stream === "system"
           ? agentSession.interactionState
-          : inferredState.interactionState,
+          : this.shouldUseTimedAwaitingInput(agentSession)
+            ? "running"
+            : agentSession.interactionState,
       stateConfidence:
         stream === "system"
           ? agentSession.stateConfidence
-          : inferredState.stateConfidence,
+          : this.shouldUseTimedAwaitingInput(agentSession)
+            ? "medium"
+            : agentSession.stateConfidence,
       lastRefreshedAt: now,
     };
 
@@ -258,6 +301,43 @@ export class AgentSessionRegistry {
     this.emitSnapshot();
 
     return this.getDetail(agentSessionId);
+  }
+
+  syncCapturedScreen(
+    agentSessionId: string,
+    screenText: string,
+  ): AgentSessionRecord {
+    const agentSession = this.get(agentSessionId);
+    const normalizedScreen = normalizeTerminalText(screenText).slice(
+      -MAX_INFERENCE_WINDOW_CHARS,
+    );
+    const previousScreen = this.screenWindows.get(agentSessionId) ?? "";
+    const nowMs = Date.now();
+
+    if (normalizedScreen !== previousScreen) {
+      this.screenWindows.set(agentSessionId, normalizedScreen);
+      this.lastScreenChangedAt.set(agentSessionId, nowMs);
+    }
+
+    const lastChangedAt = this.lastScreenChangedAt.get(agentSessionId) ?? nowMs;
+    const isObserveOnly = agentSession.controlMode === "observe";
+    const hasBeenStableLongEnough =
+      nowMs - lastChangedAt >= this.awaitingInputIdleMs;
+
+    return this.updateSession(agentSessionId, {
+      interactionState: isObserveOnly
+        ? "detached"
+        : hasBeenStableLongEnough
+          ? "awaiting_input"
+          : "running",
+      stateConfidence: isObserveOnly
+        ? "high"
+        : hasBeenStableLongEnough
+          ? "medium"
+          : "medium",
+      lastHeartbeatAt: new Date(nowMs).toISOString(),
+      lastRefreshedAt: new Date(nowMs).toISOString(),
+    });
   }
 
   updateSession(
@@ -308,6 +388,7 @@ export class AgentSessionRegistry {
       text: exitSummary,
     });
     this.emitSnapshot();
+    this.clearAwaitingInputTimer(agentSessionId);
 
     return nextSession;
   }
@@ -315,6 +396,9 @@ export class AgentSessionRegistry {
   remove(agentSessionId: string): void {
     this.sessions.delete(agentSessionId);
     this.outputEntries.delete(agentSessionId);
+    this.screenWindows.delete(agentSessionId);
+    this.lastScreenChangedAt.delete(agentSessionId);
+    this.clearAwaitingInputTimer(agentSessionId);
     if (this.activeAgentSessionId === agentSessionId) {
       this.activeAgentSessionId = null;
     }
@@ -338,6 +422,70 @@ export class AgentSessionRegistry {
 
     for (const listener of this.listeners) {
       listener(snapshot);
+    }
+  }
+
+  noteUserInput(agentSessionId: string, input: string): AgentSessionRecord {
+    const agentSession = this.get(agentSessionId);
+    this.lastScreenChangedAt.set(agentSessionId, Date.now());
+
+    if (this.shouldUseTimedAwaitingInput(agentSession)) {
+      this.refreshAwaitingInputTimer(agentSessionId);
+    }
+
+    if (agentSession.interactionState === "exited") {
+      return agentSession;
+    }
+
+    return this.updateSession(agentSessionId, {
+      interactionState: "running",
+      stateConfidence: "medium",
+      lastHeartbeatAt: new Date().toISOString(),
+    });
+  }
+
+  private shouldUseTimedAwaitingInput(
+    agentSession: AgentSessionRecord,
+  ): boolean {
+    return (
+      agentSession.connectionState === "online" &&
+      agentSession.sourceType !== "remote-tmux-discovered"
+    );
+  }
+
+  private refreshAwaitingInputTimer(agentSessionId: string): void {
+    this.clearAwaitingInputTimer(agentSessionId);
+
+    const timeout = setTimeout(() => {
+      const agentSession = this.sessions.get(agentSessionId);
+      if (!agentSession || !this.shouldUseTimedAwaitingInput(agentSession)) {
+        return;
+      }
+
+      const lastChangedAt = this.lastScreenChangedAt.get(agentSessionId) ?? 0;
+      if (Date.now() - lastChangedAt < this.awaitingInputIdleMs) {
+        return;
+      }
+
+      if (agentSession.interactionState === "awaiting_input") {
+        return;
+      }
+
+      this.updateSession(agentSessionId, {
+        interactionState: "awaiting_input",
+        stateConfidence: "medium",
+        lastHeartbeatAt: new Date().toISOString(),
+      });
+    }, this.awaitingInputIdleMs);
+
+    this.awaitingInputTimers.set(agentSessionId, timeout);
+  }
+
+  private clearAwaitingInputTimer(agentSessionId: string): void {
+    const timeout = this.awaitingInputTimers.get(agentSessionId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.awaitingInputTimers.delete(agentSessionId);
     }
   }
 }

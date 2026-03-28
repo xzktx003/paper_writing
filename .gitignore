@@ -5,6 +5,7 @@ dist
 .env.*
 coverage
 *.log
+.dev-runtime
 apps/server/.turbo
 apps/web/.turbo
 vibe-kanban
