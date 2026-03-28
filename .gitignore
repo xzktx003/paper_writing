@@ -7,3 +7,5 @@ coverage
 *.log
 apps/server/.turbo
 apps/web/.turbo
+vibe-kanban
+.playwright
