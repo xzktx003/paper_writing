@@ -71,6 +71,15 @@ export function buildServer(): {
         });
 
         socket.on("message", (message: Buffer | string) => {
+          const writeToRuntime = (payload: string) => {
+            try {
+              ptyRuntimeManager.write(id, payload);
+            } catch {
+              // The browser can still flush a final input frame after the
+              // PTY has exited or the session has been deleted.
+            }
+          };
+
           const text =
             typeof message === "string" ? message : message.toString("utf8");
 
@@ -90,7 +99,25 @@ export function buildServer(): {
             return;
           }
 
-          ptyRuntimeManager.write(id, text);
+          if (text.startsWith('{"type":"binary"')) {
+            try {
+              const parsed = JSON.parse(text) as {
+                type: string;
+                data: string;
+              };
+
+              const payload = Buffer.from(parsed.data, "base64").toString(
+                "latin1",
+              );
+              writeToRuntime(payload);
+            } catch {
+              /* ignore malformed binary frame */
+            }
+
+            return;
+          }
+
+          writeToRuntime(text);
         });
 
         socket.on("close", () => {

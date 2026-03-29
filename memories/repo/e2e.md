@@ -1,0 +1,3 @@
+- Playwright E2E must manage frontend (3000) and backend (4000) separately; checking only Vite can reuse a broken environment where `/api` proxies return 500.
+- The agent dashboard E2E suite shares backend session state; run Playwright with a single worker for stability.
+- For ssh -> tmux sessions, `node-pty.resize()` alone is not enough on macOS; explicitly sending `SIGWINCH` to the PTY child is required so ssh forwards the new size to remote tmux clients.

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type {
   AgentSessionRecord,
   LaunchLocalAgentInput,
+  LaunchSshPtyInput,
   ScanDirectoryInput,
   ScanResult,
   SshHostPreset,
@@ -72,7 +73,15 @@ function formatWorkingDirectory(workingDirectory: string): string {
   return shellQuote(workingDirectory);
 }
 
-function buildAgentInvocation(agentKind: string, displayName: string): string {
+function buildAgentInvocation(
+  agentKind: string,
+  displayName: string,
+  sessionId?: string,
+): string {
+  if (sessionId) {
+    return `${agentKind} --resume=${sessionId}`;
+  }
+
   if (agentKind === "claude") {
     return `claude -n ${shellQuote(displayName)}`;
   }
@@ -84,8 +93,9 @@ function buildDirectLaunchCommand(
   agentKind: string,
   workingDirectory: string,
   displayName: string,
+  sessionId?: string,
 ): string {
-  return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildAgentInvocation(agentKind, displayName)}`;
+  return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildAgentInvocation(agentKind, displayName, sessionId)}`;
 }
 
 function buildTmuxLaunchCommand(
@@ -93,8 +103,20 @@ function buildTmuxLaunchCommand(
   workingDirectory: string,
   displayName: string,
   tmuxSessionName: string,
+  sessionId?: string,
 ): string {
-  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${shellQuote(buildDirectLaunchCommand(agentKind, workingDirectory, displayName))}`;
+  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${shellQuote(buildDirectLaunchCommand(agentKind, workingDirectory, displayName, sessionId))}`;
+}
+
+function buildTmuxAttachCommand(
+  tmuxSessionName: string,
+  tmuxPaneId?: string,
+): string {
+  if (tmuxPaneId) {
+    return `tmux select-pane -t ${shellQuote(tmuxPaneId)} && tmux attach -t ${shellQuote(tmuxSessionName)}`;
+  }
+
+  return `tmux attach -t ${shellQuote(tmuxSessionName)}`;
 }
 
 function wrapRemoteInteractiveCommand(command: string): string {
@@ -236,16 +258,52 @@ export function SideDrawer({
     }
   }
 
-  async function handleAddScanResult(result: ScanResult) {
+  async function handleAddScanResult(
+    result: ScanResult,
+    mode: LaunchMode = "direct",
+  ) {
     try {
+      const shouldResumeInTmux = mode === "tmux" && Boolean(result.sessionId);
+      const tmuxSessionName = result.tmuxSession
+        ? result.tmuxSession
+        : result.sessionName || result.displayName;
+      const localTmuxAttachInput: LaunchLocalAgentInput & {
+        tmuxPaneId?: string;
+      } = {
+        workspaceId: "default",
+        displayName: result.displayName,
+        agentKind: result.agentKind,
+        command: buildTmuxAttachCommand(
+          result.tmuxSession ?? tmuxSessionName,
+          result.tmuxPane,
+        ),
+        tmuxSessionName: result.tmuxSession,
+        tmuxPaneId: result.tmuxPane,
+      };
+
       if (result.sshTarget) {
         let remoteCommand: string;
         if (result.tmuxSession) {
-          remoteCommand = `tmux attach -t '${result.tmuxSession}'`;
+          remoteCommand = wrapRemoteInteractiveCommand(
+            buildTmuxAttachCommand(result.tmuxSession, result.tmuxPane),
+          );
         } else {
           let inner: string;
           if (result.sessionId) {
-            inner = `cd ${formatWorkingDirectory(result.workingDirectory)} && ${result.agentKind} --resume=${result.sessionId}`;
+            inner = shouldResumeInTmux
+              ? buildTmuxLaunchCommand(
+                  result.agentKind,
+                  result.workingDirectory,
+                  result.displayName,
+                  tmuxSessionName,
+                  result.sessionId,
+                )
+              : buildDirectLaunchCommand(
+                  result.agentKind,
+                  result.workingDirectory,
+                  result.displayName,
+                  result.sessionId,
+                );
           } else {
             inner = buildDirectLaunchCommand(
               result.agentKind,
@@ -256,7 +314,7 @@ export function SideDrawer({
           remoteCommand = wrapRemoteInteractiveCommand(inner);
         }
 
-        await launchSshPtyAgent({
+        const sshLaunchInput: LaunchSshPtyInput & { tmuxPaneId?: string } = {
           workspaceId: "default",
           displayName: result.displayName,
           agentKind: result.agentKind,
@@ -264,24 +322,40 @@ export function SideDrawer({
           remoteCommand,
           workingDirectory: result.workingDirectory,
           agentSessionId: result.sessionId,
-        });
+          tmuxSessionName:
+            result.tmuxSession || shouldResumeInTmux
+              ? tmuxSessionName
+              : undefined,
+          tmuxPaneId: result.tmuxPane,
+        };
+
+        await launchSshPtyAgent(sshLaunchInput);
       } else if (result.tmuxSession) {
-        await launchPtyAgent({
-          workspaceId: "default",
-          displayName: result.displayName,
-          agentKind: result.agentKind,
-          command: `tmux attach -t '${result.tmuxSession}'`,
-        });
+        await launchPtyAgent(localTmuxAttachInput);
       } else if (result.sessionId) {
-        const cmd = result.workingDirectory
-          ? `cd ${formatWorkingDirectory(result.workingDirectory)} && ${result.agentKind} --resume=${result.sessionId}`
-          : `${result.agentKind} --resume=${result.sessionId}`;
+        const cmd = shouldResumeInTmux
+          ? buildTmuxLaunchCommand(
+              result.agentKind,
+              result.workingDirectory,
+              result.displayName,
+              tmuxSessionName,
+              result.sessionId,
+            )
+          : result.workingDirectory
+            ? buildDirectLaunchCommand(
+                result.agentKind,
+                result.workingDirectory,
+                result.displayName,
+                result.sessionId,
+              )
+            : `${result.agentKind} --resume=${result.sessionId}`;
         await launchPtyAgent({
           workspaceId: "default",
           displayName: result.displayName,
           agentKind: result.agentKind,
           command: cmd,
           workingDirectory: result.workingDirectory,
+          tmuxSessionName: shouldResumeInTmux ? tmuxSessionName : undefined,
         });
       } else {
         await launchPtyAgent({
@@ -364,49 +438,53 @@ export function SideDrawer({
         </button>
         {hostsOpen && (
           <div className="drawer-collapsible-body">
-            <label
-              className={`host-item ${selectedHost.type === "local" ? "selected" : ""}`}
-            >
-              <input
-                type="radio"
-                name="host"
-                checked={selectedHost.type === "local"}
-                onChange={() => setSelectedHost({ type: "local" })}
-              />
-              <span className="host-name">🖥 本地</span>
-            </label>
-            {sshHosts.map((h) => (
+            <div className="host-list" data-testid="host-list">
               <label
-                key={h.name}
-                className={`host-item ${selectedHost.type === "ssh" && selectedHost.preset.name === h.name ? "selected" : ""}`}
+                className={`host-item ${selectedHost.type === "local" ? "selected" : ""}`}
               >
                 <input
                   type="radio"
                   name="host"
-                  checked={
-                    selectedHost.type === "ssh" &&
-                    selectedHost.preset.name === h.name
-                  }
-                  onChange={() => setSelectedHost({ type: "ssh", preset: h })}
+                  checked={selectedHost.type === "local"}
+                  onChange={() => setSelectedHost({ type: "local" })}
                 />
-                <span className="host-name">🌐 {h.name}</span>
-                <span className="host-detail">
-                  {h.username ? `${h.username}@` : ""}
-                  {h.host}
-                  {h.port !== 22 ? `:${h.port}` : ""}
-                </span>
+                <span className="host-name">🖥 本地</span>
               </label>
-            ))}
+              {sshHosts.map((h) => (
+                <label
+                  key={h.name}
+                  className={`host-item ${selectedHost.type === "ssh" && selectedHost.preset.name === h.name ? "selected" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="host"
+                    checked={
+                      selectedHost.type === "ssh" &&
+                      selectedHost.preset.name === h.name
+                    }
+                    onChange={() => setSelectedHost({ type: "ssh", preset: h })}
+                  />
+                  <span className="host-name">🌐 {h.name}</span>
+                  <span className="host-detail">
+                    {h.username ? `${h.username}@` : ""}
+                    {h.host}
+                    {h.port !== 22 ? `:${h.port}` : ""}
+                  </span>
+                </label>
+              ))}
+            </div>
 
             <div className="host-scan-row">
               <input
                 className="drawer-input"
+                data-testid="scan-path-input"
                 placeholder="扫描路径 (默认 ~/)"
                 value={scanPath}
                 onChange={(e) => setScanPath(e.target.value)}
               />
               <button
                 className="drawer-btn primary"
+                data-testid="scan-button"
                 onClick={handleScan}
                 disabled={scanning}
               >
@@ -437,44 +515,69 @@ export function SideDrawer({
             {scanResults.length === 0 && !scanMessage && (
               <p className="drawer-message">选择主机后点击「扫描」</p>
             )}
-            {scanResults.map((result, index) => {
-              const existing = findExistingSession(result, sessions);
-              return (
-                <div key={index} className="scan-result-item">
-                  <div className="scan-result-info">
-                    <span className="scan-result-name">
-                      {result.displayName}
+            <div className="scan-results-list" data-testid="scan-results-list">
+              {scanResults.map((result, index) => {
+                const existing = findExistingSession(result, sessions);
+                const canResumeInTmux =
+                  result.status === "stopped" && Boolean(result.sessionId);
+
+                return (
+                  <div key={index} className="scan-result-item">
+                    <div className="scan-result-info">
+                      <span className="scan-result-name">
+                        {result.displayName}
+                      </span>
+                      <span
+                        className={`scan-result-status status-${result.status}`}
+                      >
+                        {result.status === "running" ? "运行中" : "已停止"}
+                      </span>
+                    </div>
+                    <span className="scan-result-kind">
+                      {result.agentKind}
+                      {result.tmuxSession ? " · tmux" : ""}
+                      {result.workingDirectory
+                        ? ` · ${result.workingDirectory}`
+                        : ""}
                     </span>
-                    <span
-                      className={`scan-result-status status-${result.status}`}
-                    >
-                      {result.status === "running" ? "运行中" : "已停止"}
-                    </span>
+                    {existing ? (
+                      <button
+                        className="drawer-btn small btn-focus"
+                        onClick={() => onFocusSession(existing.id)}
+                      >
+                        已在宫格 → 聚焦
+                      </button>
+                    ) : canResumeInTmux ? (
+                      <div className="scan-result-actions">
+                        <button
+                          className="drawer-btn small"
+                          onClick={() => handleAddScanResult(result, "direct")}
+                        >
+                          恢复
+                        </button>
+                        <button
+                          className="drawer-btn small"
+                          onClick={() => handleAddScanResult(result, "tmux")}
+                        >
+                          tmux 恢复
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="drawer-btn small"
+                        onClick={() => handleAddScanResult(result)}
+                      >
+                        {result.tmuxSession
+                          ? "连接 tmux"
+                          : result.status === "running"
+                            ? "接入"
+                            : "恢复"}
+                      </button>
+                    )}
                   </div>
-                  <span className="scan-result-kind">
-                    {result.agentKind}
-                    {result.workingDirectory
-                      ? ` · ${result.workingDirectory}`
-                      : ""}
-                  </span>
-                  {existing ? (
-                    <button
-                      className="drawer-btn small btn-focus"
-                      onClick={() => onFocusSession(existing.id)}
-                    >
-                      已在宫格 → 聚焦
-                    </button>
-                  ) : (
-                    <button
-                      className="drawer-btn small"
-                      onClick={() => handleAddScanResult(result)}
-                    >
-                      {result.status === "running" ? "接入" : "恢复"}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

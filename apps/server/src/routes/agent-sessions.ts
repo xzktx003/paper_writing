@@ -41,7 +41,15 @@ function formatWorkingDirectory(workingDirectory: string): string {
   return shellQuote(workingDirectory);
 }
 
-function buildAgentInvocation(agentKind: string, displayName: string): string {
+function buildAgentInvocation(
+  agentKind: string,
+  displayName: string,
+  sessionId?: string,
+): string {
+  if (sessionId) {
+    return `${agentKind} --resume=${sessionId}`;
+  }
+
   if (agentKind === "claude") {
     return `claude -n ${shellQuote(displayName)}`;
   }
@@ -53,8 +61,9 @@ function buildDirectLaunchCommand(
   agentKind: string,
   workingDirectory: string,
   displayName: string,
+  sessionId?: string,
 ): string {
-  return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildAgentInvocation(agentKind, displayName)}`;
+  return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildAgentInvocation(agentKind, displayName, sessionId)}`;
 }
 
 function buildTmuxLaunchCommand(
@@ -62,11 +71,19 @@ function buildTmuxLaunchCommand(
   workingDirectory: string,
   displayName: string,
   tmuxSessionName: string,
+  sessionId?: string,
 ): string {
-  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${shellQuote(buildDirectLaunchCommand(agentKind, workingDirectory, displayName))}`;
+  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${shellQuote(buildDirectLaunchCommand(agentKind, workingDirectory, displayName, sessionId))}`;
 }
 
-function buildTmuxAttachCommand(tmuxSessionName: string): string {
+function buildTmuxAttachCommand(
+  tmuxSessionName: string,
+  tmuxPaneId?: string,
+): string {
+  if (tmuxPaneId) {
+    return `tmux select-pane -t ${shellQuote(tmuxPaneId)} && tmux attach -t ${shellQuote(tmuxSessionName)}`;
+  }
+
   return `tmux attach -t ${shellQuote(tmuxSessionName)}`;
 }
 
@@ -244,10 +261,14 @@ export async function registerAgentSessionRoutes(
           agentKind: session.agentKind,
           sshTarget: session.sshTarget,
           remoteCommand: wrapRemoteReconnectCommand(
-            buildTmuxAttachCommand(session.transportRef.tmuxSession),
+            buildTmuxAttachCommand(
+              session.transportRef.tmuxSession,
+              session.transportRef.tmuxPane,
+            ),
           ),
           workingDirectory: session.workingDirectory,
           tmuxSessionName: session.transportRef.tmuxSession,
+          tmuxPaneId: session.transportRef.tmuxPane,
         });
       }
 
@@ -260,12 +281,21 @@ export async function registerAgentSessionRoutes(
           remoteCommand: session.remoteCommand,
           workingDirectory: session.workingDirectory,
           tmuxSessionName: session.transportRef?.tmuxSession,
+          tmuxPaneId: session.transportRef?.tmuxPane,
         });
       }
       const cmd = session.transportRef?.tmuxSession
-        ? buildTmuxAttachCommand(session.transportRef.tmuxSession)
+        ? buildTmuxAttachCommand(
+            session.transportRef.tmuxSession,
+            session.transportRef.tmuxPane,
+          )
         : session.agentSessionId
-          ? `cd ${formatWorkingDirectory(session.workingDirectory ?? "~")} && ${session.agentKind} --resume=${session.agentSessionId}`
+          ? buildDirectLaunchCommand(
+              session.agentKind,
+              session.workingDirectory ?? "~",
+              session.displayName,
+              session.agentSessionId,
+            )
           : buildDirectLaunchCommand(
               session.agentKind,
               session.workingDirectory ?? "~",
@@ -278,6 +308,7 @@ export async function registerAgentSessionRoutes(
         command: cmd,
         workingDirectory: session.workingDirectory,
         tmuxSessionName: session.transportRef?.tmuxSession,
+        tmuxPaneId: session.transportRef?.tmuxPane,
       });
     },
   );

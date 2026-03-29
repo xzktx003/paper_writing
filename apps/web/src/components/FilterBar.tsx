@@ -3,6 +3,7 @@ import type { AgentSessionRecord } from "@agent-orchestrator/shared";
 export interface FilterState {
   host: string | null;
   kind: string | null;
+  transport: string | null;
   dirQuery: string;
 }
 
@@ -19,7 +20,11 @@ export function FilterBar({
 }: FilterBarProps) {
   const hosts = Array.from(new Set(sessions.map((s) => s.hostId ?? "local")));
   const kinds = Array.from(new Set(sessions.map((s) => s.agentKind)));
-  const hasFilters = filters.host || filters.kind || filters.dirQuery;
+  const transports = sessions.some((s) => s.transportRef?.tmuxSession)
+    ? ["tmux"]
+    : [];
+  const hasFilters =
+    filters.host || filters.kind || filters.transport || filters.dirQuery;
 
   return (
     <div className="filter-bar">
@@ -60,6 +65,24 @@ export function FilterBar({
       </label>
 
       <label className="filter-item">
+        <span className="filter-label">类别</span>
+        <select
+          className="filter-select"
+          value={filters.transport ?? ""}
+          onChange={(e) =>
+            onFiltersChange({ ...filters, transport: e.target.value || null })
+          }
+        >
+          <option value="">全部</option>
+          {transports.map((transport) => (
+            <option key={transport} value={transport}>
+              {transport}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="filter-item">
         <span className="filter-label">目录</span>
         <input
           className="filter-input"
@@ -75,7 +98,12 @@ export function FilterBar({
         <button
           className="filter-reset"
           onClick={() =>
-            onFiltersChange({ host: null, kind: null, dirQuery: "" })
+            onFiltersChange({
+              host: null,
+              kind: null,
+              transport: null,
+              dirQuery: "",
+            })
           }
         >
           重置筛选

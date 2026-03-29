@@ -494,6 +494,75 @@ function scanRemoteTmux(
   return results;
 }
 
+function normalizePathForMatch(value?: string): string {
+  if (!value) return "";
+  return value.replace(/\/+$|\s+/g, "").toLowerCase();
+}
+
+function isSameSshTarget(left?: SshTarget, right?: SshTarget): boolean {
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+
+  return (
+    left.host === right.host &&
+    (left.port ?? 22) === (right.port ?? 22) &&
+    (left.username ?? "") === (right.username ?? "")
+  );
+}
+
+function matchesTmuxResult(result: ScanResult, tmuxResult: ScanResult): boolean {
+  if (!tmuxResult.tmuxSession || result.status !== "running") {
+    return false;
+  }
+
+  if (!isSameSshTarget(result.sshTarget, tmuxResult.sshTarget)) {
+    return false;
+  }
+
+  const resultPath = normalizePathForMatch(result.workingDirectory);
+  const tmuxPath = normalizePathForMatch(tmuxResult.workingDirectory);
+  const pathMatches =
+    Boolean(resultPath) &&
+    Boolean(tmuxPath) &&
+    (resultPath.includes(tmuxPath) || tmuxPath.includes(resultPath));
+
+  const agentMatches =
+    result.agentKind === tmuxResult.agentKind ||
+    tmuxResult.agentKind === 'shell' ||
+    tmuxResult.displayName.toLowerCase().includes(result.agentKind.toLowerCase());
+
+  const sessionNameMatches =
+    Boolean(result.sessionName) &&
+    tmuxResult.displayName
+      .toLowerCase()
+      .includes(result.sessionName!.toLowerCase());
+
+  return (pathMatches && agentMatches) || sessionNameMatches;
+}
+
+function mergeTmuxResults(results: ScanResult[], tmuxResults: ScanResult[]): ScanResult[] {
+  const remainingTmux = [...tmuxResults];
+  const merged = results.map((result) => {
+    const matchedIndex = remainingTmux.findIndex((tmuxResult) =>
+      matchesTmuxResult(result, tmuxResult),
+    );
+
+    if (matchedIndex === -1) {
+      return result;
+    }
+
+    const matched = remainingTmux.splice(matchedIndex, 1)[0];
+    return {
+      ...result,
+      tmuxSession: matched.tmuxSession,
+      tmuxPane: matched.tmuxPane,
+      displayName: result.displayName,
+    };
+  });
+
+  return [...merged, ...remainingTmux];
+}
+
 export function scanAgentDirectory(
   input: ScanDirectoryInput,
 ): ScanDirectoryResponse {
@@ -514,7 +583,7 @@ export function scanAgentDirectory(
     const filtered = [...processResults, ...historyResults].filter(
       (r) => !copilotIds.has(r.agentKind + ":" + r.workingDirectory),
     );
-    results = [...copilotSessions, ...filtered, ...tmuxResults];
+    results = mergeTmuxResults([...copilotSessions, ...filtered], tmuxResults);
   } else {
     const resolvedPath = dirPath.startsWith("~")
       ? dirPath.replace("~", process.env.HOME ?? "/root")
@@ -530,7 +599,7 @@ export function scanAgentDirectory(
     const filtered = [...processResults, ...historyResults].filter(
       (r) => !copilotIds.has(r.agentKind + ":" + r.workingDirectory),
     );
-    results = [...copilotSessions, ...filtered, ...tmuxResults];
+    results = mergeTmuxResults([...copilotSessions, ...filtered], tmuxResults);
   }
 
   // Deduplicate: sessions with sessionId are unique; others dedup by kind+cwd+status

@@ -121,6 +121,7 @@ export interface LaunchLocalAgentInput {
   hostId?: string;
   command: string;
   tmuxSessionName?: string;
+  tmuxPaneId?: string;
 }
 
 export interface LaunchRemoteAgentInput {
@@ -183,6 +184,7 @@ export interface LaunchSshPtyInput {
   workingDirectory?: string;
   agentSessionId?: string;
   tmuxSessionName?: string;
+  tmuxPaneId?: string;
 }
 
 export interface ScanDirectoryResponse {

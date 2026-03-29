@@ -32,6 +32,7 @@ export default function App() {
   const [filters, setFilters] = useState<FilterState>({
     host: null,
     kind: null,
+    transport: null,
     dirQuery: "",
   });
 
@@ -56,6 +57,9 @@ export default function App() {
   const filteredSessions = sessions.filter((s) => {
     if (filters.host && (s.hostId ?? "local") !== filters.host) return false;
     if (filters.kind && s.agentKind !== filters.kind) return false;
+    if (filters.transport === "tmux" && !s.transportRef?.tmuxSession) {
+      return false;
+    }
     if (
       filters.dirQuery &&
       !(s.workingDirectory ?? "")

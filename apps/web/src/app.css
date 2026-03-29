@@ -141,6 +141,23 @@ input {
   gap: 8px;
 }
 
+.host-list,
+.scan-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.host-list {
+  max-height: 280px;
+}
+
+.scan-results-list {
+  max-height: 320px;
+}
+
 /* ===== Host List ===== */
 .host-item {
   display: flex;
@@ -267,6 +284,12 @@ input {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.scan-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .scan-result-item {
@@ -513,6 +536,15 @@ input {
   gap: 8px;
 }
 
+.grid-card-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(100, 149, 237, 0.14);
+  color: #93b4f5;
+  font-size: 11px;
+  text-transform: lowercase;
+}
+
 .grid-card-dir {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -723,6 +755,14 @@ input {
 /* ===== Terminal View ===== */
 .terminal-view {
   background: #0e1217;
+  height: 100%;
+  overscroll-behavior: contain;
+}
+
+.terminal-view .xterm,
+.terminal-view .xterm-screen,
+.terminal-view .xterm-viewport {
+  height: 100%;
 }
 
 @media (max-width: 900px) {

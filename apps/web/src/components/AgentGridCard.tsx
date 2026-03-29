@@ -53,6 +53,7 @@ export function AgentGridCard({
   const stateLabel =
     stateLabels[session.interactionState] ?? session.interactionState;
   const isTmux = session.sourceType === "remote-tmux-discovered";
+  const isTmuxManaged = Boolean(session.transportRef?.tmuxSession);
   const isExited = session.interactionState === "exited";
   const canReconnect = isExited && !isTmux;
   const canDelete = !isTmux;
@@ -100,6 +101,7 @@ export function AgentGridCard({
       </div>
       <div className="grid-card-footer">
         <span className="grid-card-kind">{session.agentKind}</span>
+        {isTmuxManaged && <span className="grid-card-tag">tmux</span>}
         <span className="grid-card-dir">
           {shortenPath(session.workingDirectory)}
         </span>

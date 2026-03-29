@@ -50,6 +50,7 @@ export class PtyRuntimeManager {
       transportRef: {
         processId: ptyProcess.pid,
         tmuxSession: input.tmuxSessionName,
+        tmuxPane: input.tmuxPaneId,
         runtimeId: `pty:${ptyProcess.pid}`,
       },
     });
@@ -134,6 +135,7 @@ export class PtyRuntimeManager {
       transportRef: {
         processId: ptyProcess.pid,
         tmuxSession: input.tmuxSessionName,
+        tmuxPane: input.tmuxPaneId,
         runtimeId: `ssh-pty:${ptyProcess.pid}`,
         sshHost: input.sshTarget.host,
         sshPort: input.sshTarget.port,
@@ -199,6 +201,14 @@ export class PtyRuntimeManager {
     }
 
     handle.ptyProcess.resize(cols, rows);
+
+    try {
+      // Some interactive programs, especially ssh -> tmux, only propagate the
+      // new window size after the foreground process receives SIGWINCH.
+      process.kill(handle.ptyProcess.pid, 'SIGWINCH');
+    } catch {
+      /* ignore processes that have already exited */
+    }
   }
 
   subscribe(agentSessionId: string, listener: PtyDataListener): () => void {
@@ -275,6 +285,7 @@ export class PtyRuntimeManager {
       transportRef: {
         processId: ptyProcess.pid,
         tmuxSession: input.tmuxSessionName,
+        tmuxPane: input.tmuxPaneId,
         runtimeId: `ssh-pty:${ptyProcess.pid}`,
         sshHost: input.sshTarget.host,
         sshPort: input.sshTarget.port,
@@ -338,6 +349,7 @@ export class PtyRuntimeManager {
       transportRef: {
         processId: ptyProcess.pid,
         tmuxSession: input.tmuxSessionName,
+        tmuxPane: input.tmuxPaneId,
         runtimeId: `pty:${ptyProcess.pid}`,
       },
     });

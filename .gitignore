@@ -9,4 +9,5 @@ coverage
 apps/server/.turbo
 apps/web/.turbo
 vibe-kanban
+./vibe-kanban
 .playwright
