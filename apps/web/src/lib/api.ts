@@ -2,18 +2,22 @@ import type {
   AgentSessionDetailResponse,
   AgentSessionSnapshotEvent,
   AgentSessionRecord,
+  CreateWindowCaptureSessionInput,
+  CreateWindowCaptureSessionResponse,
   DiscoverTmuxSessionsResponse,
   FocusAgentSessionInput,
   LaunchLocalAgentInput,
   LaunchRemoteAgentInput,
   LaunchSshPtyInput,
   ListAgentSessionsResponse,
+  ObserveStateInput,
   RegisterAgentSessionInput,
   ScanDirectoryInput,
   ScanDirectoryResponse,
   SshHostsResponse,
   StdinAgentSessionInput,
   TmuxControlActionResponse,
+  UpdateAgentSessionInput,
 } from "@agent-orchestrator/shared";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -249,6 +253,16 @@ export function deleteAgentSession(agentSessionId: string): Promise<void> {
   });
 }
 
+export function updateAgentSession(
+  agentSessionId: string,
+  input: UpdateAgentSessionInput,
+): Promise<AgentSessionRecord> {
+  return request<AgentSessionRecord>(`/api/agent-sessions/${agentSessionId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export function reconnectAgentSession(
   agentSessionId: string,
 ): Promise<AgentSessionRecord> {
@@ -256,4 +270,48 @@ export function reconnectAgentSession(
     `/api/agent-sessions/${agentSessionId}/reconnect`,
     { method: "POST" },
   );
+}
+
+export function createWindowCaptureSession(
+  input: CreateWindowCaptureSessionInput = {},
+): Promise<CreateWindowCaptureSessionResponse> {
+  return request<CreateWindowCaptureSessionResponse>(
+    "/api/agent-sessions/window-capture",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function sendObserveState(
+  agentSessionId: string,
+  input: ObserveStateInput,
+): Promise<AgentSessionRecord> {
+  return request<AgentSessionRecord>(
+    `/api/agent-sessions/${agentSessionId}/observe-state`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function focusAgentWindow(
+  agentSessionId: string,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/agent-sessions/${agentSessionId}/focus-window`,
+    { method: "POST" },
+  );
+}
+
+export async function deleteAgentSessionSafe(
+  agentSessionId: string,
+): Promise<{ ok: boolean; status: number }> {
+  const res = await fetch(
+    `${apiBaseUrl}/api/agent-sessions/${agentSessionId}`,
+    { method: "DELETE" },
+  );
+  return { ok: res.ok, status: res.status };
 }

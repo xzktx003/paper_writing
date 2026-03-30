@@ -69,3 +69,23 @@ test("tmux observe-only sessions stay detached even when screen is unchanged", a
   assert.equal(updated.interactionState, "detached");
   assert.equal(updated.stateConfidence, "high");
 });
+
+test("local-window-capture sessions never enter awaiting_input", async () => {
+  const registry = new AgentSessionRegistry(20);
+  const session = registry.register({
+    workspaceId: "local-vscode-window-observe",
+    hostId: "local",
+    sourceType: "local-window-capture",
+    agentKind: "vscode",
+    displayName: "VS Code 窗口 1",
+    controlMode: "observe",
+    interactionState: "running",
+  });
+
+  assert.equal(session.interactionState, "running");
+
+  // Even after idle time exceeds the threshold, should remain running
+  await wait(35);
+  assert.equal(registry.get(session.id).interactionState, "running");
+  assert.notEqual(registry.get(session.id).interactionState, "awaiting_input");
+});

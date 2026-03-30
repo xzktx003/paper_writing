@@ -1,3 +1,9 @@
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { platform } from "node:os";
+import { join } from "node:path";
+
 import type { FastifyInstance } from "fastify";
 
 import type {
@@ -9,12 +15,20 @@ import type {
   RegisterAgentSessionInput,
   ScanDirectoryInput,
   StdinAgentSessionInput,
+  CreateWindowCaptureSessionInput,
+  ObserveStateInput,
+  UpdateAgentSessionInput,
 } from "@agent-orchestrator/shared";
 
 import { scanAgentDirectory } from "../services/agent-scanner.js";
 import { AgentSessionRegistry } from "../services/agent-session-registry.js";
 import { LocalProcessRuntimeManager } from "../services/local-process-runtime-manager.js";
 import { LocalTmuxAdapter } from "../services/local-tmux-adapter.js";
+import {
+  ObserveSessionManager,
+  TokenMismatchError,
+  InvalidTransitionError,
+} from "../services/observe-session-manager.js";
 import { PtyRuntimeManager } from "../services/pty-runtime-manager.js";
 import {
   buildInteractiveShellCommand,
@@ -111,6 +125,7 @@ interface AgentSessionRoutesOptions {
   tmuxAdapter: LocalTmuxAdapter;
   sshRuntimeManager: SshRuntimeManager;
   ptyRuntimeManager: PtyRuntimeManager;
+  observeSessionManager: ObserveSessionManager;
 }
 
 export async function registerAgentSessionRoutes(
@@ -123,6 +138,7 @@ export async function registerAgentSessionRoutes(
     tmuxAdapter,
     sshRuntimeManager,
     ptyRuntimeManager,
+    observeSessionManager,
   } = options;
 
   fastify.get("/api/health", async () => ({ status: "ok" }));
@@ -154,6 +170,20 @@ export async function registerAgentSessionRoutes(
   fastify.post<{ Body: FocusAgentSessionInput }>(
     "/api/agent-sessions/focus",
     async (request) => registry.focus(request.body),
+  );
+
+  fastify.patch<{ Params: { id: string }; Body: UpdateAgentSessionInput }>(
+    "/api/agent-sessions/:id",
+    async (request, reply) => {
+      const displayName = request.body?.displayName?.trim();
+
+      if (!displayName) {
+        reply.code(400);
+        return { error: "displayName is required" };
+      }
+
+      return registry.updateSession(request.params.id, { displayName });
+    },
   );
 
   fastify.post<{ Body: LaunchLocalAgentInput }>(
@@ -263,10 +293,161 @@ export async function registerAgentSessionRoutes(
     async (request) => scanAgentDirectory(request.body),
   );
 
+  fastify.post<{ Body: CreateWindowCaptureSessionInput }>(
+    "/api/agent-sessions/window-capture",
+    async (request, reply) => {
+      const result = observeSessionManager.createSession(request.body ?? {});
+      reply.code(201);
+      return result;
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: ObserveStateInput }>(
+    "/api/agent-sessions/:id/observe-state",
+    async (request, reply) => {
+      try {
+        const updated = observeSessionManager.processObserveState(
+          request.params.id,
+          request.body,
+        );
+        return updated;
+      } catch (err) {
+        if (err instanceof TokenMismatchError) {
+          reply.code(403);
+          return { error: err.message };
+        }
+        if (err instanceof InvalidTransitionError) {
+          reply.code(400);
+          return { error: err.message };
+        }
+        throw err;
+      }
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/api/agent-sessions/:id/focus-window",
+    async (request, reply) => {
+      const session = registry.get(request.params.id);
+      if (session.sourceType !== "local-window-capture") {
+        reply.code(400);
+        return { error: "Only window-capture sessions support focus" };
+      }
+
+      if (platform() !== "darwin") {
+        reply.code(501);
+        return { error: "Window focus is only supported on macOS" };
+      }
+
+      const windowTitle =
+        session.windowCaptureMeta?.rawLabel?.trim() || session.displayName;
+      const safeTitle = windowTitle.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+      // Strategy 1: AppleScript with Accessibility — most precise.
+      // Finds the exact window by title, raises it, moves mouse to center.
+      const accessibilityScript = `
+tell application "System Events"
+  set allProcs to every process whose name is "Code" or name is "Electron" or name contains "Visual Studio Code"
+  repeat with proc in allProcs
+    try
+      set allWins to every window of proc
+      repeat with win in allWins
+        try
+          if title of win contains "${safeTitle}" then
+            perform action "AXRaise" of win
+            set frontmost of proc to true
+            set winPos to position of win
+            set winSize to size of win
+            set cx to (item 1 of winPos) + ((item 1 of winSize) / 2)
+            set cy to (item 2 of winPos) + ((item 2 of winSize) / 2)
+            set cxInt to cx as integer
+            set cyInt to cy as integer
+            do shell script "python3 -c 'import Quartz; Quartz.CGEventPost(Quartz.kCGHIDEventTap, Quartz.CGEventCreateMouseEvent(None, Quartz.kCGEventMouseMoved, (" & cxInt & ", " & cyInt & "), Quartz.kCGMouseButtonLeft))'"
+            return "focused"
+          end if
+        end try
+      end repeat
+    end try
+  end repeat
+end tell
+return "not_found"
+`;
+
+      const axResult = await new Promise<string>((resolve) => {
+        execFile(
+          "osascript",
+          ["-e", accessibilityScript],
+          { timeout: 8000 },
+          (_err, stdout) => resolve(stdout?.trim() ?? "error"),
+        );
+      });
+
+      if (axResult === "focused") {
+        return { ok: true, method: "focused" };
+      }
+
+      // Strategy 2: Use `code` CLI to open the folder by name.
+      // Window title from getDisplayMedia is typically
+      // "folder_name — Visual Studio Code" or just "folder_name".
+      const folderName = windowTitle
+        .replace(/\s*[—–-]\s*Visual Studio Code.*$/i, "")
+        .replace(/\s*\[.*?\]\s*$/, "")
+        .trim();
+
+      const home = homedir();
+      const candidates = [
+        join(home, folderName),
+        join(home, "Documents", folderName),
+        join(home, "Projects", folderName),
+        join(home, "Documents", "Codes", folderName),
+        join(home, "Documents", "Codes", "VibeCoding", folderName),
+        join(home, "Desktop", folderName),
+        join(home, "code", folderName),
+        join(home, "src", folderName),
+        join(home, "dev", folderName),
+      ];
+
+      const codePath =
+        "/Applications/Visual Studio Code.app" +
+        "/Contents/Resources/app/bin/code";
+
+      for (const candidate of candidates) {
+        if (existsSync(candidate)) {
+          await new Promise<void>((resolve) => {
+            execFile(codePath, ["-r", candidate], { timeout: 5000 }, () =>
+              resolve(),
+            );
+          });
+          return { ok: true, method: "code-cli", path: candidate };
+        }
+      }
+
+      // Strategy 3: Simple fallback — just activate VS Code
+      await new Promise<void>((resolve) => {
+        execFile(
+          "osascript",
+          ["-e", 'tell application "Code" to activate'],
+          { timeout: 5000 },
+          () => resolve(),
+        );
+      });
+
+      return { ok: true, method: "activated" };
+    },
+  );
+
   fastify.delete<{ Params: { id: string } }>(
     "/api/agent-sessions/:id",
     async (request, reply) => {
       const { id } = request.params;
+
+      if (observeSessionManager.isRunningCapture(id)) {
+        reply.code(409);
+        return {
+          error: "运行中的观察会话不能直接删除，请先停止观察",
+        };
+      }
+
       ptyRuntimeManager.kill(id);
       registry.remove(id);
       reply.code(204);

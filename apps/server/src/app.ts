@@ -9,6 +9,7 @@ import { registerSshHostsRoutes } from "./routes/ssh-hosts.js";
 import { AgentSessionRegistry } from "./services/agent-session-registry.js";
 import { LocalProcessRuntimeManager } from "./services/local-process-runtime-manager.js";
 import { LocalTmuxAdapter } from "./services/local-tmux-adapter.js";
+import { ObserveSessionManager } from "./services/observe-session-manager.js";
 import { PtyRuntimeManager } from "./services/pty-runtime-manager.js";
 import { SshRuntimeManager } from "./services/ssh-runtime-manager.js";
 
@@ -22,6 +23,7 @@ export function buildServer(): {
   const tmuxAdapter = new LocalTmuxAdapter(registry);
   const sshRuntimeManager = new SshRuntimeManager(registry);
   const ptyRuntimeManager = new PtyRuntimeManager(registry);
+  const observeSessionManager = new ObserveSessionManager(registry);
 
   app.register(cors, {
     origin: true,
@@ -36,6 +38,7 @@ export function buildServer(): {
       tmuxAdapter,
       sshRuntimeManager,
       ptyRuntimeManager,
+      observeSessionManager,
     });
 
     await registerSshHostsRoutes(instance);
@@ -125,6 +128,15 @@ export function buildServer(): {
         });
       },
     );
+  });
+
+  // Sweep expired window-capture sessions every 5 seconds
+  const sweepInterval = setInterval(() => {
+    observeSessionManager.sweepExpiredSessions();
+  }, 5_000);
+
+  app.addHook("onClose", () => {
+    clearInterval(sweepInterval);
   });
 
   return { app, registry };

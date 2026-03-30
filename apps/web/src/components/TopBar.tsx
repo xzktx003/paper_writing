@@ -7,6 +7,7 @@ interface TopBarProps {
   drawerOpen: boolean;
   onToggleDrawer: () => void;
   onOpenQuickTmuxConnect: () => void;
+  onAddWindowCapture: () => void;
 }
 
 export function TopBar({
@@ -14,6 +15,7 @@ export function TopBar({
   drawerOpen,
   onToggleDrawer,
   onOpenQuickTmuxConnect,
+  onAddWindowCapture,
 }: TopBarProps) {
   const quickTmuxShortcutLabel = getQuickTmuxShortcutLabel();
   const runningCount = sessions.filter(
@@ -37,6 +39,9 @@ export function TopBar({
         <h1 className="top-bar-title">Agent 控制台</h1>
       </div>
       <div className="top-bar-stats">
+        <button className="top-bar-action" onClick={onAddWindowCapture}>
+          添加 VS Code 窗口
+        </button>
         <button className="top-bar-action" onClick={onOpenQuickTmuxConnect}>
           快速连接 tmux
           <span className="top-bar-shortcut">{quickTmuxShortcutLabel}</span>

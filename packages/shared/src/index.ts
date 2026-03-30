@@ -1,7 +1,8 @@
 export type AgentSourceType =
   | "local"
   | "remote-connect"
-  | "remote-tmux-discovered";
+  | "remote-tmux-discovered"
+  | "local-window-capture";
 
 export type ConnectionState = "online" | "degraded" | "offline";
 
@@ -67,6 +68,7 @@ export interface AgentSessionRecord {
   agentSessionId?: string;
   sshTarget?: SshTarget;
   remoteCommand?: string;
+  windowCaptureMeta?: WindowCaptureMeta;
 }
 
 export interface AgentOutputEntry {
@@ -103,10 +105,15 @@ export interface RegisterAgentSessionInput {
   agentSessionId?: string;
   sshTarget?: SshTarget;
   remoteCommand?: string;
+  windowCaptureMeta?: WindowCaptureMeta;
 }
 
 export interface FocusAgentSessionInput {
   agentSessionId: string;
+}
+
+export interface UpdateAgentSessionInput {
+  displayName: string;
 }
 
 export interface StdinAgentSessionInput {
@@ -200,3 +207,38 @@ export const interactionStateOrder: InteractionState[] = [
   "detached",
   "exited",
 ];
+
+// --- Window Capture DTOs ---
+
+export interface WindowCaptureMeta {
+  rawLabel: string;
+}
+
+export interface CreateWindowCaptureSessionInput {
+  suggestedDisplayName?: string;
+  windowCaptureMeta?: WindowCaptureMeta;
+}
+
+export interface CreateWindowCaptureSessionResponse {
+  agentSession: AgentSessionRecord;
+  observeToken: string;
+}
+
+export interface ObserveStateHeartbeatInput {
+  kind: "heartbeat";
+  observeToken: string;
+  outputPreview?: string;
+}
+
+export interface ObserveStateTransitionInput {
+  kind: "transition";
+  observeToken: string;
+  connectionState: ConnectionState;
+  interactionState: InteractionState;
+  stateConfidence: StateConfidence;
+  outputPreview?: string;
+}
+
+export type ObserveStateInput =
+  | ObserveStateHeartbeatInput
+  | ObserveStateTransitionInput;

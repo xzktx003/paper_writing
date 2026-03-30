@@ -11,6 +11,10 @@ interface AgentGridProps {
   onFocusSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onReconnectSession: (id: string) => void;
+  onRenameSession?: (id: string) => void;
+  getCaptureStream?: (id: string) => MediaStream | null;
+  onStopCapture?: (id: string) => void;
+  onFocusWindow?: (id: string) => void;
 }
 
 export function AgentGrid({
@@ -21,6 +25,10 @@ export function AgentGrid({
   onFocusSession,
   onDeleteSession,
   onReconnectSession,
+  onRenameSession,
+  getCaptureStream,
+  onStopCapture,
+  onFocusWindow,
 }: AgentGridProps) {
   return (
     <div className="agent-grid-container">
@@ -47,6 +55,10 @@ export function AgentGrid({
               onDoubleClick={onFocusSession}
               onDelete={onDeleteSession}
               onReconnect={onReconnectSession}
+              onRename={onRenameSession}
+              captureStream={getCaptureStream?.(session.id)}
+              onStopCapture={onStopCapture}
+              onFocusWindow={onFocusWindow}
             />
           ))}
         </div>

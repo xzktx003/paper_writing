@@ -144,6 +144,7 @@ export class AgentSessionRegistry {
       agentSessionId: input.agentSessionId,
       sshTarget: input.sshTarget,
       remoteCommand: input.remoteCommand,
+      windowCaptureMeta: input.windowCaptureMeta,
     };
 
     this.sessions.set(agentSession.id, agentSession);
@@ -449,7 +450,8 @@ export class AgentSessionRegistry {
   ): boolean {
     return (
       agentSession.connectionState === "online" &&
-      agentSession.sourceType !== "remote-tmux-discovered"
+      agentSession.sourceType !== "remote-tmux-discovered" &&
+      agentSession.sourceType !== "local-window-capture"
     );
   }
 
