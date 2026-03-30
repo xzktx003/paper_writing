@@ -179,6 +179,28 @@ Host hm24
 WEB_PORT=3100 ./scripts/restart-dev.sh
 ```
 
+默认通过 HTTPS 启动（`scripts/restart-dev.sh` 内 `WEB_HTTPS` 默认值为 `1`），以满足跨机器访问时浏览器安全上下文要求。
+
+如果你想临时关闭 HTTPS（例如仅本机调试），可以这样启动：
+
+```bash
+WEB_HTTPS=0 ./scripts/restart-dev.sh
+```
+
+如果你要从另一台机器访问并使用浏览器窗口共享能力（需要安全上下文），请保持 HTTPS 开启：
+
+```bash
+WEB_HTTPS=1 ./scripts/restart-dev.sh
+```
+
+脚本会在 `.dev-runtime/certs/` 下自动生成自签证书。首次访问时浏览器会提示证书不受信任，需要手动继续。
+
+如果你希望证书包含你的局域网 IP，可以覆盖 SAN：
+
+```bash
+WEB_HTTPS=1 WEB_HTTPS_SAN='DNS:localhost,IP:127.0.0.1,IP:10.30.0.15' ./scripts/restart-dev.sh
+```
+
 ### 备用：分别启动
 
 ```bash

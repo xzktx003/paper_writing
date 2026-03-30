@@ -14,7 +14,6 @@ interface AgentGridProps {
   onRenameSession?: (id: string) => void;
   getCaptureStream?: (id: string) => MediaStream | null;
   onStopCapture?: (id: string) => void;
-  onFocusWindow?: (id: string) => void;
 }
 
 export function AgentGrid({
@@ -28,7 +27,6 @@ export function AgentGrid({
   onRenameSession,
   getCaptureStream,
   onStopCapture,
-  onFocusWindow,
 }: AgentGridProps) {
   return (
     <div className="agent-grid-container">
@@ -58,7 +56,6 @@ export function AgentGrid({
               onRename={onRenameSession}
               captureStream={getCaptureStream?.(session.id)}
               onStopCapture={onStopCapture}
-              onFocusWindow={onFocusWindow}
             />
           ))}
         </div>

@@ -15,14 +15,17 @@ import { TopBar } from "./components/TopBar";
 import {
   createWindowCaptureSession,
   deleteAgentSession,
-  focusAgentWindow,
   listAgentSessions,
   reconnectAgentSession,
   sendObserveState,
   subscribeAgentSessions,
   updateAgentSession,
 } from "./lib/api";
-import { requestWindowCapture, stopCapture } from "./lib/window-capture";
+import {
+  getWindowCaptureAvailability,
+  requestWindowCapture,
+  stopCapture,
+} from "./lib/window-capture";
 import "./app.css";
 
 type ViewMode = "grid" | "focus";
@@ -59,12 +62,18 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [quickTmuxOpen, setQuickTmuxOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [windowCaptureNotice, setWindowCaptureNotice] = useState<string | null>(
+    null,
+  );
   const [filters, setFilters] = useState<FilterState>({
     host: null,
     kind: null,
     transport: null,
     dirQuery: "",
   });
+  const [windowCaptureAvailability] = useState(() =>
+    getWindowCaptureAvailability(),
+  );
 
   // Window capture local store
   const captureStoreRef = useRef<Map<string, CaptureEntry>>(new Map());
@@ -96,6 +105,14 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!windowCaptureAvailability.supported) {
+      setWindowCaptureNotice(
+        windowCaptureAvailability.reason ?? "当前浏览器环境不支持窗口共享。",
+      );
+    }
+  }, [windowCaptureAvailability]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -151,6 +168,14 @@ export default function App() {
   }, []);
 
   const handleAddWindowCapture = useCallback(async () => {
+    if (!windowCaptureAvailability.supported) {
+      setWindowCaptureNotice(
+        windowCaptureAvailability.reason ?? "当前浏览器环境不支持窗口共享。",
+      );
+      return;
+    }
+
+    setWindowCaptureNotice(null);
     const result = await requestWindowCapture();
     if (!result) return;
 
@@ -191,8 +216,9 @@ export default function App() {
         .catch(() => {});
     } catch {
       stopCapture(result.stream);
+      setWindowCaptureNotice("VS Code 窗口观察启动失败，请重试。");
     }
-  }, []);
+  }, [windowCaptureAvailability]);
 
   const handleStopCapture = useCallback(async (sessionId: string) => {
     const store = getCaptureStore();
@@ -322,10 +348,6 @@ export default function App() {
     [sessions],
   );
 
-  const handleFocusWindow = useCallback(async (sessionId: string) => {
-    await focusAgentWindow(sessionId).catch(() => {});
-  }, []);
-
   const focusedSession: AgentSessionRecord | undefined = focusedId
     ? sessions.find((s) => s.id === focusedId)
     : undefined;
@@ -346,7 +368,15 @@ export default function App() {
         onToggleDrawer={() => setDrawerOpen(!drawerOpen)}
         onOpenQuickTmuxConnect={() => setQuickTmuxOpen(true)}
         onAddWindowCapture={handleAddWindowCapture}
+        windowCaptureSupported={windowCaptureAvailability.supported}
+        windowCaptureReason={windowCaptureAvailability.reason}
       />
+
+      {windowCaptureNotice && (
+        <div className="app-notice app-notice-warning" role="status">
+          {windowCaptureNotice}
+        </div>
+      )}
 
       <div className="main-layout">
         <SideDrawer
@@ -371,7 +401,6 @@ export default function App() {
               onRename={handleRenameSession}
               captureStream={getCaptureStreamForSession(focusedSession.id)}
               onStopCapture={handleStopCapture}
-              onFocusWindow={handleFocusWindow}
               getCaptureStream={getCaptureStreamForSession}
             />
           ) : (
@@ -386,7 +415,6 @@ export default function App() {
               onRenameSession={handleRenameSession}
               getCaptureStream={getCaptureStreamForSession}
               onStopCapture={handleStopCapture}
-              onFocusWindow={handleFocusWindow}
             />
           )}
         </div>

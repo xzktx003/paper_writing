@@ -12,7 +12,6 @@ interface AgentGridCardProps {
   onRename?: (id: string) => void;
   captureStream?: MediaStream | null;
   onStopCapture?: (id: string) => void;
-  onFocusWindow?: (id: string) => void;
 }
 
 const stateLabels: Record<string, string> = {
@@ -57,7 +56,6 @@ export function AgentGridCard({
   onRename,
   captureStream,
   onStopCapture,
-  onFocusWindow,
 }: AgentGridCardProps) {
   const stateClass = stateColors[session.interactionState] ?? "";
   const stateLabel =
@@ -71,7 +69,6 @@ export function AgentGridCard({
   const canDelete = !isTmux && (!isWindowCapture || isExited || isDetached);
   const canStopCapture =
     isWindowCapture && !isExited && !isDetached && Boolean(captureStream);
-  const canFocusWindow = isWindowCapture && !isExited && !isDetached;
 
   const captureDisplay = isWindowCapture
     ? getWindowCaptureDisplay(
@@ -147,17 +144,6 @@ export function AgentGridCard({
         {canReconnect && (
           <button className="grid-card-reconnect" onClick={handleReconnect}>
             🔄 重新连接
-          </button>
-        )}
-        {canFocusWindow && (
-          <button
-            className="grid-card-focus-window"
-            onClick={(e) => {
-              e.stopPropagation();
-              onFocusWindow?.(session.id);
-            }}
-          >
-            ↗ 跳转窗口
           </button>
         )}
         {canStopCapture && (

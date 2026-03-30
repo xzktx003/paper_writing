@@ -8,6 +8,8 @@ interface TopBarProps {
   onToggleDrawer: () => void;
   onOpenQuickTmuxConnect: () => void;
   onAddWindowCapture: () => void;
+  windowCaptureSupported: boolean;
+  windowCaptureReason?: string | null;
 }
 
 export function TopBar({
@@ -16,6 +18,8 @@ export function TopBar({
   onToggleDrawer,
   onOpenQuickTmuxConnect,
   onAddWindowCapture,
+  windowCaptureSupported,
+  windowCaptureReason,
 }: TopBarProps) {
   const quickTmuxShortcutLabel = getQuickTmuxShortcutLabel();
   const runningCount = sessions.filter(
@@ -39,8 +43,20 @@ export function TopBar({
         <h1 className="top-bar-title">Agent 控制台</h1>
       </div>
       <div className="top-bar-stats">
-        <button className="top-bar-action" onClick={onAddWindowCapture}>
+        <button
+          className="top-bar-action"
+          onClick={onAddWindowCapture}
+          disabled={!windowCaptureSupported}
+          title={
+            windowCaptureSupported
+              ? "选择一个要观察的 VS Code 窗口"
+              : (windowCaptureReason ?? "当前浏览器环境不支持窗口共享")
+          }
+        >
           添加 VS Code 窗口
+          {!windowCaptureSupported && (
+            <span className="top-bar-shortcut">当前不可用</span>
+          )}
         </button>
         <button className="top-bar-action" onClick={onOpenQuickTmuxConnect}>
           快速连接 tmux

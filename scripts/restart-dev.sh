@@ -11,6 +11,10 @@ SERVER_PORT="${SERVER_PORT:-4000}"
 
 WEB_HOST="${WEB_HOST:-0.0.0.0}"
 WEB_PORT="${WEB_PORT:-3000}"
+WEB_HTTPS="${WEB_HTTPS:-1}"
+WEB_HTTPS_CERT="${WEB_HTTPS_CERT:-${RUNTIME_DIR}/certs/dev-cert.pem}"
+WEB_HTTPS_KEY="${WEB_HTTPS_KEY:-${RUNTIME_DIR}/certs/dev-key.pem}"
+WEB_HTTPS_SAN="${WEB_HTTPS_SAN:-DNS:localhost,IP:127.0.0.1}"
 
 SERVER_LOG="${RUNTIME_DIR}/server.log"
 WEB_LOG="${RUNTIME_DIR}/web.log"
@@ -70,9 +74,14 @@ wait_for_http() {
   local name="$1"
   local url="$2"
   local attempts="${3:-30}"
+  local curl_args=(-fsS)
+
+  if [[ "$url" == https://* ]]; then
+    curl_args=(-k -fsS)
+  fi
 
   for ((i = 1; i <= attempts; i += 1)); do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+    if curl "${curl_args[@]}" "$url" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
@@ -86,7 +95,7 @@ extract_frontend_url() {
   local label="$1"
   local file="$2"
 
-  sed -nE "s/.*${label}:[[:space:]]+(http:\/\/[^[:space:]]+).*/\1/p" "$file" \
+  sed -nE "s/.*${label}:[[:space:]]+(https?:\/\/[^[:space:]]+).*/\1/p" "$file" \
     | tail -n 1 \
     | tr -d '\r' \
     | sed 's:/$::'
@@ -130,7 +139,41 @@ show_log_tail() {
   fi
 }
 
+ensure_https_certificate() {
+  if [[ "$WEB_HTTPS" != "1" ]]; then
+    return 0
+  fi
+
+  if ! command -v openssl >/dev/null 2>&1; then
+    log 'WEB_HTTPS=1 requires openssl, but openssl is not installed'
+    return 1
+  fi
+
+  if [[ -f "$WEB_HTTPS_CERT" && -f "$WEB_HTTPS_KEY" ]]; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$WEB_HTTPS_CERT")"
+  mkdir -p "$(dirname "$WEB_HTTPS_KEY")"
+
+  log "Generating self-signed certificate: ${WEB_HTTPS_CERT}"
+  openssl req \
+    -x509 \
+    -newkey rsa:2048 \
+    -sha256 \
+    -nodes \
+    -days 365 \
+    -keyout "$WEB_HTTPS_KEY" \
+    -out "$WEB_HTTPS_CERT" \
+    -subj '/CN=localhost' \
+    -addext "subjectAltName=${WEB_HTTPS_SAN}" >/dev/null 2>&1
+}
+
 mkdir -p "$RUNTIME_DIR"
+
+if ! ensure_https_certificate; then
+  exit 1
+fi
 
 kill_from_pid_file backend "$SERVER_PID_FILE"
 kill_from_pid_file frontend "$WEB_PID_FILE"
@@ -148,8 +191,15 @@ nohup env HOST="$SERVER_BIND_HOST" PORT="$SERVER_PORT" \
 echo $! >"$SERVER_PID_FILE"
 
 log "Starting frontend on ${WEB_HOST}:${WEB_PORT}"
-nohup pnpm --filter web exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
-  >"$WEB_LOG" 2>&1 &
+if [[ "$WEB_HTTPS" == "1" ]]; then
+  log "Frontend HTTPS enabled"
+  nohup env VITE_DEV_HTTPS=1 VITE_DEV_HTTPS_CERT="$WEB_HTTPS_CERT" VITE_DEV_HTTPS_KEY="$WEB_HTTPS_KEY" \
+    pnpm --filter web exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
+    >"$WEB_LOG" 2>&1 &
+else
+  nohup pnpm --filter web exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
+    >"$WEB_LOG" 2>&1 &
+fi
 echo $! >"$WEB_PID_FILE"
 
 SERVER_URL="http://${SERVER_PUBLIC_HOST}:${SERVER_PORT}"

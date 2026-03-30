@@ -15,7 +15,6 @@ interface AgentFocusViewProps {
   onRename?: (id: string) => void;
   captureStream?: MediaStream | null;
   onStopCapture?: (id: string) => void;
-  onFocusWindow?: (id: string) => void;
   getCaptureStream?: (id: string) => MediaStream | null;
 }
 
@@ -36,7 +35,6 @@ export function AgentFocusView({
   onRename,
   captureStream,
   onStopCapture,
-  onFocusWindow,
   getCaptureStream,
 }: AgentFocusViewProps) {
   useEffect(() => {
@@ -102,14 +100,6 @@ export function AgentFocusView({
           <button className="focus-exit-btn" onClick={onExit}>
             返回宫格
           </button>
-          {isWindowCapture && !isExited && !isDetached && (
-            <button
-              className="focus-focus-window-btn"
-              onClick={() => onFocusWindow?.(focusedSession.id)}
-            >
-              ↗ 跳转窗口
-            </button>
-          )}
           {canStopCapture && (
             <button
               className="focus-reconnect-btn"
@@ -150,6 +140,12 @@ export function AgentFocusView({
             <span className="focus-capture-meta-value">
               {focusedSession.windowCaptureMeta.rawLabel}
             </span>
+          </div>
+        )}
+        {isWindowCapture && (
+          <div className="focus-capture-note">
+            这是浏览器侧的窗口共享预览。网页无法直接激活你本机的 VS Code
+            原生窗口，请手动切换。
           </div>
         )}
       </div>
