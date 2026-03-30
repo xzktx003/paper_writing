@@ -25,6 +25,101 @@ function killTmuxSession(sessionName: string): void {
   }
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function getTmuxClientSize(
+  sessionName: string,
+): { cols: number; rows: number } | null {
+  const output = runTmux([
+    'list-clients',
+    '-t',
+    sessionName,
+    '-F',
+    '#{client_width}x#{client_height}',
+  ]);
+  const firstLine = output.split('\n').find(Boolean);
+
+  if (!firstLine) {
+    return null;
+  }
+
+  const match = firstLine.match(/^(\d+)x(\d+)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    cols: Number(match[1]),
+    rows: Number(match[2]),
+  };
+}
+
+function runSshCommand(
+  host: {
+    host: string;
+    port: number;
+    username?: string;
+    identityFile?: string;
+  },
+  remoteCommand: string,
+): string {
+  const args = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5'];
+
+  if (host.port) {
+    args.push('-p', String(host.port));
+  }
+
+  if (host.identityFile) {
+    args.push('-i', host.identityFile);
+  }
+
+  const userHost = host.username ? `${host.username}@${host.host}` : host.host;
+  args.push(userHost, remoteCommand);
+
+  return execFileSync('ssh', args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim();
+}
+
+function killRemoteTmuxSession(
+  host: {
+    host: string;
+    port: number;
+    username?: string;
+    identityFile?: string;
+  },
+  sessionName: string,
+): void {
+  try {
+    runSshCommand(
+      host,
+      `tmux kill-session -t ${shellQuote(sessionName)} 2>/dev/null || true`,
+    );
+  } catch {
+    // ignore cleanup failures
+  }
+}
+
+async function getSshHosts(request: APIRequestContext): Promise<
+  Array<{
+    name: string;
+    host: string;
+    port: number;
+    username?: string;
+    identityFile?: string;
+    defaultPath: string;
+  }>
+> {
+  const response = await request.get('/api/ssh-hosts');
+  expect(response.ok()).toBeTruthy();
+
+  const payload = await response.json();
+  return payload.hosts;
+}
+
 function createCopilotSessionState(options: {
   sessionId: string;
   sessionName: string;
@@ -300,6 +395,78 @@ test('browser: 调整窗口大小会把新的终端尺寸同步到 PTY', async (
   }
 });
 
+test('browser: tmux 缩略图不会把真实终端缩回小尺寸', async ({
+  page,
+  request,
+}) => {
+  const sessionName = `e2e-thumbnail-${Date.now()}`;
+  const displayName = `E2E Thumbnail Tmux ${Date.now()}`;
+
+  let launchedSessionId: string | undefined;
+
+  killTmuxSession(sessionName);
+
+  try {
+    runTmux([
+      'new-session',
+      '-d',
+      '-s',
+      sessionName,
+      '-c',
+      process.cwd(),
+      'bash',
+    ]);
+
+    const launchResponse = await request.post('/api/agent-launch/pty', {
+      data: {
+        workspaceId: 'default',
+        displayName,
+        agentKind: 'copilot',
+        command: `tmux attach -t '${sessionName}'`,
+        workingDirectory: process.cwd(),
+        tmuxSessionName: sessionName,
+      },
+    });
+
+    expect(launchResponse.ok()).toBeTruthy();
+    launchedSessionId = (await launchResponse.json()).id;
+
+    await page.setViewportSize({ width: 1600, height: 1200 });
+    await page.goto('/');
+
+    const card = page.locator('.grid-card', {
+      has: page.locator('.grid-card-name', { hasText: displayName }),
+    });
+    await expect(card).toBeVisible({ timeout: 15000 });
+
+    await card.dblclick();
+
+    await expect
+      .poll(() => getTmuxClientSize(sessionName), {
+        timeout: 15000,
+      })
+      .not.toBeNull();
+
+    await page.waitForTimeout(1200);
+
+    const focusedSize = getTmuxClientSize(sessionName);
+    expect(focusedSize).not.toBeNull();
+
+    await page.getByRole('button', { name: '返回宫格' }).click();
+    await expect(card).toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(1200);
+
+    const gridSize = getTmuxClientSize(sessionName);
+    expect(gridSize).not.toBeNull();
+    expect(gridSize).toEqual(focusedSize);
+  } finally {
+    if (launchedSessionId) {
+      await request.delete(`/api/agent-sessions/${launchedSessionId}`);
+    }
+    killTmuxSession(sessionName);
+  }
+});
+
 test('browser: tmux 终端会转发鼠标二进制事件', async ({ page, request }) => {
   const sessionName = `e2e-mouse-${Date.now()}`;
   const displayName = `E2E Mouse Tmux ${Date.now()}`;
@@ -394,10 +561,89 @@ test('browser: tmux 终端会转发鼠标二进制事件', async ({ page, reques
   }
 });
 
+test('browser: Meta+E 可以快速连接远端 tmux 并自动聚焦', async ({
+  page,
+  request,
+}) => {
+  const sshHosts = await getSshHosts(request);
+  const hm24 = sshHosts.find((host) => host.name === 'hm24');
+
+  test.skip(!hm24, 'requires hm24 ssh preset');
+
+  const sessionName = `quick-e2e-${Date.now()}`;
+  const workingDirectory = '~/';
+  let launchedSessionId: string | undefined;
+
+  killRemoteTmuxSession(hm24!, sessionName);
+
+  try {
+    await page.goto('/');
+    await expect(
+      page.getByRole('button', { name: /快速连接 tmux/ }),
+    ).toBeVisible();
+
+    await page.evaluate(() => {
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'e',
+          metaKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+
+    await expect(page.getByTestId('quick-tmux-connect-dialog')).toBeVisible();
+
+    const hostSearch = page.getByTestId('quick-tmux-host-search');
+    await hostSearch.fill('hm24');
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('quick-tmux-session-name')).toBeVisible();
+    await page.getByTestId('quick-tmux-session-name').fill(sessionName);
+    await page.getByTestId('quick-tmux-working-directory').fill(workingDirectory);
+    await page.getByRole('button', { name: '打开 tmux' }).click();
+
+    await expect(page.locator('.focus-main-name')).toHaveText(sessionName, {
+      timeout: 15000,
+    });
+
+    await expect
+      .poll(async () => findSessionByDisplayName(request, sessionName), {
+        timeout: 15000,
+      })
+      .toMatchObject({
+        displayName: sessionName,
+        transportRef: {
+          tmuxSession: sessionName,
+        },
+      });
+
+    launchedSessionId = (await findSessionByDisplayName(request, sessionName))?.id;
+
+    await page.getByRole('button', { name: '返回宫格' }).click();
+
+    const card = page.locator('.grid-card', {
+      has: page.locator('.grid-card-name', { hasText: sessionName }),
+    });
+    await expect(card).toBeVisible({ timeout: 15000 });
+    await expect(card.locator('.grid-card-tag')).toHaveText('tmux');
+  } finally {
+    if (launchedSessionId) {
+      await request.delete(`/api/agent-sessions/${launchedSessionId}`);
+    }
+
+    if (hm24) {
+      killRemoteTmuxSession(hm24, sessionName);
+    }
+  }
+});
+
 test('browser: 扫描结果会合并 tmux 运行态并支持 tmux 恢复', async ({
   page,
   request,
 }) => {
+  test.setTimeout(60_000);
+
   const runningSessionId = `e2e-running-${Date.now()}`;
   const runningSessionName = `e2e-running-tmux-${Date.now()}`;
   const stoppedSessionId = `e2e-stopped-${Date.now()}`;

@@ -123,7 +123,10 @@ function wrapRemoteInteractiveCommand(command: string): string {
   return `zsh -i -c ${JSON.stringify(command)}`;
 }
 
-function buildDefaultSessionName(agentKind: string, launchMode: LaunchMode): string {
+function buildDefaultSessionName(
+  agentKind: string,
+  launchMode: LaunchMode,
+): string {
   if (launchMode !== "tmux") {
     return `${agentKind} 新会话`;
   }

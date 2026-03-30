@@ -67,8 +67,27 @@ input {
 
 .top-bar-stats {
   display: flex;
+  align-items: center;
   gap: 16px;
   font-size: 13px;
+}
+
+.top-bar-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid rgba(246, 178, 107, 0.28);
+  border-radius: 999px;
+  background: rgba(246, 178, 107, 0.12);
+  color: #ffd1a1;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.top-bar-shortcut {
+  color: rgba(244, 241, 234, 0.55);
+  font-size: 11px;
 }
 
 .stat-item {
@@ -757,12 +776,166 @@ input {
   background: #0e1217;
   height: 100%;
   overscroll-behavior: contain;
+  position: relative;
+  overflow: hidden;
 }
 
 .terminal-view .xterm,
 .terminal-view .xterm-screen,
 .terminal-view .xterm-viewport {
   height: 100%;
+}
+
+.terminal-view-preview .terminal-view-stage {
+  position: absolute;
+  pointer-events: none;
+}
+
+.quick-tmux-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 8, 11, 0.68);
+  backdrop-filter: blur(12px);
+}
+
+.quick-tmux-dialog {
+  width: min(560px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(255, 143, 31, 0.18),
+      transparent 38%
+    ),
+    rgba(14, 18, 23, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.quick-tmux-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-tmux-kicker {
+  margin: 0 0 4px;
+  color: rgba(244, 241, 234, 0.45);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quick-tmux-title {
+  margin: 0;
+  font-size: 22px;
+  color: #f9dcc0;
+}
+
+.quick-tmux-close,
+.quick-tmux-back {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  cursor: pointer;
+}
+
+.quick-tmux-close {
+  padding: 8px 14px;
+}
+
+.quick-tmux-back {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.quick-tmux-step,
+.quick-tmux-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-tmux-label {
+  font-size: 12px;
+  color: rgba(244, 241, 234, 0.65);
+}
+
+.quick-tmux-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+}
+
+.quick-tmux-host-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.quick-tmux-host-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.quick-tmux-host-name {
+  font-weight: 600;
+}
+
+.quick-tmux-host-detail,
+.quick-tmux-message {
+  color: rgba(244, 241, 234, 0.58);
+  font-size: 12px;
+}
+
+.quick-tmux-host-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(246, 178, 107, 0.2);
+  border-radius: 12px;
+  background: rgba(246, 178, 107, 0.08);
+  color: #ffd1a1;
+}
+
+.quick-tmux-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.quick-tmux-error {
+  margin: 0;
+  color: #ff9b8a;
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {
@@ -776,5 +949,30 @@ input {
 
   .side-drawer {
     width: 240px;
+  }
+
+  .top-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .top-bar-stats {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .quick-tmux-dialog {
+    padding: 16px;
+  }
+
+  .quick-tmux-host-item,
+  .quick-tmux-host-pill {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .quick-tmux-actions {
+    flex-direction: column-reverse;
   }
 }

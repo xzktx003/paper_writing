@@ -205,7 +205,7 @@ export class PtyRuntimeManager {
     try {
       // Some interactive programs, especially ssh -> tmux, only propagate the
       // new window size after the foreground process receives SIGWINCH.
-      process.kill(handle.ptyProcess.pid, 'SIGWINCH');
+      process.kill(handle.ptyProcess.pid, "SIGWINCH");
     } catch {
       /* ignore processes that have already exited */
     }

@@ -4,9 +4,15 @@ interface TopBarProps {
   sessions: AgentSessionRecord[];
   drawerOpen: boolean;
   onToggleDrawer: () => void;
+  onOpenQuickTmuxConnect: () => void;
 }
 
-export function TopBar({ sessions, drawerOpen, onToggleDrawer }: TopBarProps) {
+export function TopBar({
+  sessions,
+  drawerOpen,
+  onToggleDrawer,
+  onOpenQuickTmuxConnect,
+}: TopBarProps) {
   const runningCount = sessions.filter(
     (s) => s.interactionState === "running",
   ).length;
@@ -28,6 +34,10 @@ export function TopBar({ sessions, drawerOpen, onToggleDrawer }: TopBarProps) {
         <h1 className="top-bar-title">Agent 控制台</h1>
       </div>
       <div className="top-bar-stats">
+        <button className="top-bar-action" onClick={onOpenQuickTmuxConnect}>
+          快速连接 tmux
+          <span className="top-bar-shortcut">⌘/Ctrl+E</span>
+        </button>
         <span className="stat-item">
           共 <strong>{totalCount}</strong> 个会话
         </span>

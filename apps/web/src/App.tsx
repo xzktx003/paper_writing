@@ -9,6 +9,7 @@ import { AgentFocusView } from "./components/AgentFocusView";
 import { AgentGrid } from "./components/AgentGrid";
 import { BottomBar } from "./components/BottomBar";
 import type { FilterState } from "./components/FilterBar";
+import { QuickTmuxConnect } from "./components/QuickTmuxConnect";
 import { SideDrawer } from "./components/SideDrawer";
 import { TopBar } from "./components/TopBar";
 import {
@@ -21,6 +22,23 @@ import "./app.css";
 
 type ViewMode = "grid" | "focus";
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  if (!element) {
+    return false;
+  }
+
+  if (element.classList.contains("xterm-helper-textarea")) {
+    return true;
+  }
+
+  return Boolean(
+    element.closest(
+      'input, textarea, select, [contenteditable="true"], [contenteditable=""]',
+    ),
+  );
+}
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<ListAgentSessionsResponse | null>(
     null,
@@ -28,6 +46,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [quickTmuxOpen, setQuickTmuxOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     host: null,
@@ -52,6 +71,28 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+
+      if (event.key.toLowerCase() !== "e") {
+        return;
+      }
+
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      setQuickTmuxOpen(true);
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const sessions = snapshot?.items ?? [];
 
   const filteredSessions = sessions.filter((s) => {
@@ -74,6 +115,27 @@ export default function App() {
     setFocusedId(id);
     setViewMode("focus");
   }
+
+  const handleQuickTmuxConnected = useCallback(
+    (session: AgentSessionRecord) => {
+      setSnapshot((current) => {
+        const items = current?.items ?? [];
+        return {
+          items: [session, ...items.filter((item) => item.id !== session.id)],
+          activeAgentSessionId: session.id,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      setFocusedId(session.id);
+      setViewMode("focus");
+      setQuickTmuxOpen(false);
+
+      listAgentSessions()
+        .then(setSnapshot)
+        .catch(() => {});
+    },
+    [],
+  );
 
   const handleExitFocus = useCallback(() => {
     setViewMode("grid");
@@ -114,6 +176,7 @@ export default function App() {
         sessions={sessions}
         drawerOpen={drawerOpen}
         onToggleDrawer={() => setDrawerOpen(!drawerOpen)}
+        onOpenQuickTmuxConnect={() => setQuickTmuxOpen(true)}
       />
 
       <div className="main-layout">
@@ -152,6 +215,12 @@ export default function App() {
       </div>
 
       <BottomBar />
+
+      <QuickTmuxConnect
+        open={quickTmuxOpen}
+        onClose={() => setQuickTmuxOpen(false)}
+        onConnected={handleQuickTmuxConnected}
+      />
     </main>
   );
 }

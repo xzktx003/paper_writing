@@ -510,7 +510,10 @@ function isSameSshTarget(left?: SshTarget, right?: SshTarget): boolean {
   );
 }
 
-function matchesTmuxResult(result: ScanResult, tmuxResult: ScanResult): boolean {
+function matchesTmuxResult(
+  result: ScanResult,
+  tmuxResult: ScanResult,
+): boolean {
   if (!tmuxResult.tmuxSession || result.status !== "running") {
     return false;
   }
@@ -528,8 +531,10 @@ function matchesTmuxResult(result: ScanResult, tmuxResult: ScanResult): boolean 
 
   const agentMatches =
     result.agentKind === tmuxResult.agentKind ||
-    tmuxResult.agentKind === 'shell' ||
-    tmuxResult.displayName.toLowerCase().includes(result.agentKind.toLowerCase());
+    tmuxResult.agentKind === "shell" ||
+    tmuxResult.displayName
+      .toLowerCase()
+      .includes(result.agentKind.toLowerCase());
 
   const sessionNameMatches =
     Boolean(result.sessionName) &&
@@ -540,7 +545,10 @@ function matchesTmuxResult(result: ScanResult, tmuxResult: ScanResult): boolean 
   return (pathMatches && agentMatches) || sessionNameMatches;
 }
 
-function mergeTmuxResults(results: ScanResult[], tmuxResults: ScanResult[]): ScanResult[] {
+function mergeTmuxResults(
+  results: ScanResult[],
+  tmuxResults: ScanResult[],
+): ScanResult[] {
   const remainingTmux = [...tmuxResults];
   const merged = results.map((result) => {
     const matchedIndex = remainingTmux.findIndex((tmuxResult) =>
