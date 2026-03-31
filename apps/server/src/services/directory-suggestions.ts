@@ -1,4 +1,9 @@
-import { execSync, type ExecSyncOptions } from "node:child_process";
+import {
+  execFileSync,
+  execSync,
+  type ExecFileSyncOptions,
+  type ExecSyncOptions,
+} from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -10,6 +15,7 @@ import type {
 } from "@agent-orchestrator/shared";
 
 import { quoteForPosixShell } from "./runtime-compat.js";
+import { buildSshArgs } from "./ssh-command.js";
 
 const DIRECTORY_SUGGESTIONS_READY = "__DIRECTORY_SUGGESTIONS_READY__";
 const MAX_DIRECTORY_SUGGESTIONS = 20;
@@ -28,17 +34,23 @@ function execLocal(command: string, options?: ExecSyncOptions): string {
 }
 
 function execRemote(sshTarget: SshTarget, command: string): string {
-  const portArg = sshTarget.port ? `-p ${sshTarget.port}` : "";
-  const userHost = sshTarget.username
-    ? `${sshTarget.username}@${sshTarget.host}`
-    : sshTarget.host;
-  const identityArg = sshTarget.identityFile
-    ? `-i ${sshTarget.identityFile}`
-    : "";
-
-  return execLocal(
-    `ssh -o BatchMode=yes -o ConnectTimeout=3 ${portArg} ${identityArg} ${userHost} '${command.replace(/'/g, "'\\''")}'`,
-  );
+  try {
+    const output = execFileSync(
+      "ssh",
+      buildSshArgs(sshTarget, {
+        batchMode: true,
+        connectTimeoutSeconds: 3,
+        remoteCommand: command,
+      }),
+      {
+        encoding: "utf8",
+        timeout: 5_000,
+      } satisfies ExecFileSyncOptions,
+    );
+    return typeof output === "string" ? output.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 function resolveLocalPrefix(prefix: string): string {

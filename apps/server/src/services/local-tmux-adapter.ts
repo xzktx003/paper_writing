@@ -12,6 +12,7 @@ import type {
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
 import { quoteForPosixShell, resolveTmuxBinary } from "./runtime-compat.js";
+import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 
 const TMUX_BINARY = resolveTmuxBinary();
 
@@ -424,17 +425,11 @@ export class LocalTmuxAdapter {
     command: string,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const args: string[] = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5"];
-      if (sshTarget.port) {
-        args.push("-p", String(sshTarget.port));
-      }
-      if (sshTarget.identityFile) {
-        args.push("-i", sshTarget.identityFile);
-      }
-      const userHost = sshTarget.username
-        ? `${sshTarget.username}@${sshTarget.host}`
-        : sshTarget.host;
-      args.push(userHost, command);
+      const args = buildSshArgs(sshTarget, {
+        batchMode: true,
+        connectTimeoutSeconds: 5,
+        remoteCommand: command,
+      });
 
       const childProcess = spawn("ssh", args, {
         stdio: ["ignore", "pipe", "pipe"],
@@ -453,7 +448,14 @@ export class LocalTmuxAdapter {
       childProcess.on("error", reject);
       childProcess.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(stderr || `ssh exited with code ${code}`));
+          reject(
+            new Error(
+              stderr ||
+                `ssh exited with code ${code}: ${formatSshDestination(
+                  sshTarget,
+                )}`,
+            ),
+          );
           return;
         }
         resolve(stdout.trim());

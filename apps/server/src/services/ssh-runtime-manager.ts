@@ -7,19 +7,10 @@ import type {
 } from "@agent-orchestrator/shared";
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
+import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 
 function quoteForPosixShell(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-function assertSafeSshField(name: string, value: string | undefined): void {
-  if (!value) {
-    return;
-  }
-
-  if (/\r|\n|\0/.test(value)) {
-    throw new Error(`Invalid ${name}`);
-  }
 }
 
 function buildRemoteCommand(input: LaunchRemoteAgentInput): string {
@@ -42,26 +33,11 @@ export class SshRuntimeManager {
   constructor(private readonly registry: AgentSessionRegistry) {}
 
   launch(input: LaunchRemoteAgentInput): AgentSessionRecord {
-    assertSafeSshField("host", input.sshTarget.host);
-    assertSafeSshField("username", input.sshTarget.username);
-    assertSafeSshField("identity file", input.sshTarget.identityFile);
-    assertSafeSshField("working directory", input.workingDirectory);
-
-    const sshArgs = ["-o", "BatchMode=yes"];
-
-    if (input.sshTarget.port) {
-      sshArgs.push("-p", String(input.sshTarget.port));
-    }
-
-    if (input.sshTarget.identityFile) {
-      sshArgs.push("-i", input.sshTarget.identityFile);
-    }
-
-    const sshTarget = input.sshTarget.username
-      ? `${input.sshTarget.username}@${input.sshTarget.host}`
-      : input.sshTarget.host;
-
-    sshArgs.push(sshTarget, buildRemoteCommand(input));
+    const sshTarget = formatSshDestination(input.sshTarget);
+    const sshArgs = buildSshArgs(input.sshTarget, {
+      batchMode: true,
+      remoteCommand: buildRemoteCommand(input),
+    });
 
     const childProcess = spawn("ssh", sshArgs, {
       env: process.env,

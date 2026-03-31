@@ -1,4 +1,9 @@
-import { execSync, type ExecSyncOptions } from "child_process";
+import {
+  execFileSync,
+  execSync,
+  type ExecFileSyncOptions,
+  type ExecSyncOptions,
+} from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -14,6 +19,7 @@ import {
   quoteForPosixShell,
   resolveTmuxBinary,
 } from "./runtime-compat.js";
+import { buildSshArgs } from "./ssh-command.js";
 
 const AGENT_INDICATORS: Record<string, { dirs: string[]; files: string[] }> = {
   claude: {
@@ -244,17 +250,23 @@ function execLocal(command: string, options?: ExecSyncOptions): string {
 }
 
 function execRemote(sshTarget: SshTarget, command: string): string {
-  const portArg = sshTarget.port ? `-p ${sshTarget.port}` : "";
-  const userHost = sshTarget.username
-    ? `${sshTarget.username}@${sshTarget.host}`
-    : sshTarget.host;
-  const identityArg = sshTarget.identityFile
-    ? `-i ${sshTarget.identityFile}`
-    : "";
-
-  const sshCommand = `ssh -o BatchMode=yes -o ConnectTimeout=5 ${portArg} ${identityArg} ${userHost} '${command.replace(/'/g, "'\\''")}'`;
-
-  return execLocal(sshCommand);
+  try {
+    const output = execFileSync(
+      "ssh",
+      buildSshArgs(sshTarget, {
+        batchMode: true,
+        connectTimeoutSeconds: 5,
+        remoteCommand: command,
+      }),
+      {
+        encoding: "utf8",
+        timeout: 10000,
+      } satisfies ExecFileSyncOptions,
+    );
+    return typeof output === "string" ? output.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 function scanLocalHistory(dirPath: string): ScanResult[] {

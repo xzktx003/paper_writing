@@ -10,6 +10,7 @@ import type {
 import { AgentSessionRegistry } from "./agent-session-registry.js";
 import { resolveLocalWorkingDirectory } from "./resolve-local-working-directory.js";
 import { resolvePreferredShell } from "./runtime-compat.js";
+import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 import { sanitizeReplayForTerminal } from "./terminal-control-filter.js";
 
 type PtyDataListener = (data: string) => void;
@@ -178,20 +179,11 @@ export class PtyRuntimeManager {
   }
 
   launchRemote(input: LaunchSshPtyInput): AgentSessionRecord {
-    const args = ["-t"];
-
-    if (input.sshTarget.port) {
-      args.push("-p", String(input.sshTarget.port));
-    }
-
-    if (input.sshTarget.identityFile) {
-      args.push("-i", input.sshTarget.identityFile);
-    }
-
-    const userHost = input.sshTarget.username
-      ? `${input.sshTarget.username}@${input.sshTarget.host}`
-      : input.sshTarget.host;
-    args.push(userHost, input.remoteCommand);
+    const args = buildSshArgs(input.sshTarget, {
+      requestTty: true,
+      remoteCommand: input.remoteCommand,
+    });
+    const userHost = formatSshDestination(input.sshTarget);
 
     const ptyProcess = pty.spawn("ssh", args, {
       name: "xterm-256color",
@@ -346,17 +338,11 @@ export class PtyRuntimeManager {
   ): AgentSessionRecord {
     this.kill(agentSessionId);
 
-    const args = ["-t"];
-    if (input.sshTarget.port) {
-      args.push("-p", String(input.sshTarget.port));
-    }
-    if (input.sshTarget.identityFile) {
-      args.push("-i", input.sshTarget.identityFile);
-    }
-    const userHost = input.sshTarget.username
-      ? `${input.sshTarget.username}@${input.sshTarget.host}`
-      : input.sshTarget.host;
-    args.push(userHost, input.remoteCommand);
+    const args = buildSshArgs(input.sshTarget, {
+      requestTty: true,
+      remoteCommand: input.remoteCommand,
+    });
+    const userHost = formatSshDestination(input.sshTarget);
 
     const ptyProcess = pty.spawn("ssh", args, {
       name: "xterm-256color",
