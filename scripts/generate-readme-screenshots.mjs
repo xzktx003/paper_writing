@@ -203,7 +203,7 @@ async function main() {
     await page.getByRole('button', { name: /本机/ }).click();
     await page.waitForSelector('[data-testid="new-session-dialog"]');
     await page.getByTestId('new-session-name').fill('README Shell Session');
-    await page.getByTestId('new-session-kind').selectOption('shell');
+    await page.getByTestId('new-session-kind-shell').click();
     await page.getByTestId('new-session-dir').fill(process.cwd());
     await page.screenshot({
       path: path.join(outputDir, 'new-session-dialog.png'),

@@ -67,7 +67,7 @@ test('browser: shell session launches an interactive shell instead of running a 
 
     await openNewSessionForHost(page, '本机');
     await page.getByTestId('new-session-name').fill(displayName);
-    await page.getByTestId('new-session-kind').selectOption('shell');
+    await page.getByTestId('new-session-kind-shell').click();
     await page.getByTestId('new-session-mode-direct').click();
     await page.getByTestId('new-session-dir').fill(process.cwd());
     await page.getByTestId('create-session').click();

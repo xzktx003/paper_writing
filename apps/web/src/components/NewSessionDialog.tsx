@@ -316,20 +316,31 @@ export function NewSessionDialog({
             />
           </label>
 
-          <label className="new-session-field">
-            <span className="new-session-label">Agent</span>
-            <select
-              className="drawer-input"
-              data-testid="new-session-kind"
-              onChange={(event) => setNewKind(event.target.value)}
-              value={newKind}
-            >
-              <option value="copilot">copilot</option>
-              <option value="codex">codex</option>
-              <option value="claude">claude</option>
-              <option value="shell">shell</option>
-            </select>
-          </label>
+          <fieldset
+            className="new-session-field new-session-agent-field"
+            data-testid="new-session-kind"
+          >
+            <legend className="new-session-label">Agent</legend>
+            <div className="new-session-mode-toggle new-session-agent-toggle">
+              {['copilot', 'codex', 'claude', 'shell'].map((kind) => (
+                <label
+                  key={kind}
+                  className={`new-session-mode-btn new-session-agent-btn${newKind === kind ? ' is-active' : ''}`}
+                  data-testid={`new-session-kind-${kind}`}
+                >
+                  <input
+                    checked={newKind === kind}
+                    className="new-session-agent-input"
+                    name="new-session-agent"
+                    onChange={() => setNewKind(kind)}
+                    type="radio"
+                    value={kind}
+                  />
+                  <span>{kind}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div className="new-session-field">
             <span className="new-session-label">启动方式</span>
