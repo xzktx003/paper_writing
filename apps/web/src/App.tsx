@@ -653,6 +653,7 @@ export default function App() {
       <NewSessionDialog
         open={Boolean(newSessionHost)}
         host={newSessionHost}
+        sessions={sessions}
         onClose={() => setNewSessionHost(null)}
         onLaunched={handleLaunched}
       />

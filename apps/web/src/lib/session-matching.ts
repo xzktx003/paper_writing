@@ -131,25 +131,55 @@ export function wrapRemoteInteractiveCommand(command: string): string {
   return buildRemoteInteractiveShellCommand(command);
 }
 
-export function buildDefaultSessionName(
-  agentKind: string,
-  launchMode: LaunchMode,
+export interface BuildDefaultSessionNameInput {
+  hostLabel: string;
+  agentKind: string;
+  launchMode: LaunchMode;
+  existingNames?: string[];
+}
+
+function normalizeSessionNameSegment(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s/:@\\]+/g, "_")
+    .replace(/[^a-z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function buildUniqueSessionName(
+  baseName: string,
+  existingNames: string[],
 ): string {
-  if (launchMode !== "tmux") {
-    return `${agentKind} 新会话`;
+  if (!existingNames.includes(baseName)) {
+    return baseName;
   }
 
-  const now = new Date();
-  const timestamp = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-    String(now.getHours()).padStart(2, "0"),
-    String(now.getMinutes()).padStart(2, "0"),
-    String(now.getSeconds()).padStart(2, "0"),
-  ].join("");
+  let suffix = 2;
+  let candidate = `${baseName}_${suffix}`;
+  while (existingNames.includes(candidate)) {
+    suffix += 1;
+    candidate = `${baseName}_${suffix}`;
+  }
 
-  return `${agentKind} 新会话 ${timestamp}`;
+  return candidate;
+}
+
+export function buildDefaultSessionName({
+  hostLabel,
+  agentKind,
+  launchMode,
+  existingNames = [],
+}: BuildDefaultSessionNameInput): string {
+  const normalizedHost = normalizeSessionNameSegment(hostLabel) || "host";
+  const normalizedKind = normalizeSessionNameSegment(agentKind) || "shell";
+  const transportLabel = launchMode === "tmux" ? "tmux" : "shell";
+
+  return buildUniqueSessionName(
+    `${normalizedHost}_${normalizedKind}_${transportLabel}`,
+    existingNames,
+  );
 }
 
 export function findExistingSession(

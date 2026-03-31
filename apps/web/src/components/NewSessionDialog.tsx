@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type {
+  AgentSessionRecord,
   LaunchLocalAgentInput,
   SshTarget,
 } from "@agent-orchestrator/shared";
@@ -23,6 +24,7 @@ import type { SelectedHost } from "./HostDropdown";
 interface NewSessionDialogProps {
   open: boolean;
   host: SelectedHost | null;
+  sessions: AgentSessionRecord[];
   onClose: () => void;
   onLaunched: () => void;
 }
@@ -30,6 +32,7 @@ interface NewSessionDialogProps {
 export function NewSessionDialog({
   open,
   host,
+  sessions,
   onClose,
   onLaunched,
 }: NewSessionDialogProps) {
@@ -145,6 +148,16 @@ export function NewSessionDialog({
   }
 
   const selectedHost = host;
+  const defaultHostLabel =
+    selectedHost.type === "local"
+      ? "local"
+      : selectedHost.preset.host || selectedHost.preset.name;
+  const defaultSessionName = buildDefaultSessionName({
+    hostLabel: defaultHostLabel,
+    agentKind: newKind,
+    launchMode,
+    existingNames: sessions.map((session) => session.displayName),
+  });
 
   function currentSshTarget(): SshTarget | undefined {
     if (selectedHost.type !== "ssh") {
@@ -171,7 +184,7 @@ export function NewSessionDialog({
     }
 
     const rawDir = newDir.trim();
-    const name = newName.trim() || buildDefaultSessionName(newKind, launchMode);
+    const name = newName.trim() || defaultSessionName;
     const hasExplicitLocalDir =
       selectedHost.type === "local" && rawDir.length > 0;
     const localWorkingDirectory = hasExplicitLocalDir ? rawDir : undefined;
@@ -298,7 +311,7 @@ export function NewSessionDialog({
               className="drawer-input"
               data-testid="new-session-name"
               onChange={(event) => setNewName(event.target.value)}
-              placeholder="显示名称 (可选)"
+              placeholder={`默认: ${defaultSessionName}`}
               value={newName}
             />
           </label>

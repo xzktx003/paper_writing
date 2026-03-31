@@ -101,10 +101,21 @@ export function SideDrawer({
     return undefined;
   }
 
-  async function handleNewSession() {
-    if (!newName && !newKind) return;
+  const defaultHostLabel =
+    selectedHost.type === "local"
+      ? "local"
+      : selectedHost.preset.host || selectedHost.preset.name;
+  const defaultSessionName = buildDefaultSessionName({
+    hostLabel: defaultHostLabel,
+    agentKind: newKind,
+    launchMode,
+    existingNames: sessions.map((session) => session.displayName),
+  });
 
-    const name = newName || buildDefaultSessionName(newKind, launchMode);
+  async function handleNewSession() {
+    if (!newKind) return;
+
+    const name = newName.trim() || defaultSessionName;
     const dir = newDir || "~/";
     const tmuxSessionName = launchMode === "tmux" ? name : undefined;
     const command =
@@ -219,7 +230,7 @@ export function SideDrawer({
             <input
               className="drawer-input"
               data-testid="new-session-name"
-              placeholder="显示名称 (可选)"
+              placeholder={`默认: ${defaultSessionName}`}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />

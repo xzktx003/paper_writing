@@ -133,15 +133,32 @@ describe("buildTmuxAttachCommand", () => {
 });
 
 describe("buildDefaultSessionName", () => {
-  it("uses simple name for direct mode", () => {
-    const name = buildDefaultSessionName("claude", "direct");
-    assert.equal(name, "claude 新会话");
+  it("includes host, agent kind, and shell transport for direct mode", () => {
+    const name = buildDefaultSessionName({
+      hostLabel: "10.30.0.21",
+      agentKind: "claude",
+      launchMode: "direct",
+    });
+    assert.equal(name, "10.30.0.21_claude_shell");
   });
 
-  it("includes timestamp for tmux mode", () => {
-    const name = buildDefaultSessionName("claude", "tmux");
-    assert.ok(name.startsWith("claude 新会话 "));
-    assert.ok(name.length > "claude 新会话 ".length);
+  it("uses tmux transport label for tmux mode", () => {
+    const name = buildDefaultSessionName({
+      hostLabel: "10.30.0.21",
+      agentKind: "claude",
+      launchMode: "tmux",
+    });
+    assert.equal(name, "10.30.0.21_claude_tmux");
+  });
+
+  it("appends a numeric suffix when the base name already exists", () => {
+    const name = buildDefaultSessionName({
+      hostLabel: "10.30.0.21",
+      agentKind: "codex",
+      launchMode: "tmux",
+      existingNames: ["10.30.0.21_codex_tmux", "10.30.0.21_codex_tmux_2"],
+    });
+    assert.equal(name, "10.30.0.21_codex_tmux_3");
   });
 });
 
