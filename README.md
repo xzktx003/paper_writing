@@ -6,7 +6,6 @@
 
 ## TODO
 
-- [ ] 未测试非 mac 机器上的运行
 - [ ] 重启后支持恢复历史对话
 - [ ] 打包为 electron 应用
 - [ ] ...
@@ -17,13 +16,41 @@
 
 ![宫格总览](docs/readme-assets/board-overview.png)
 
+- 顶栏集中放置新建会话、扫描 tmux、扫描会话、添加 VS Code 窗口和快速连接 tmux。
+- 宫格卡片展示状态、主机、目录和终端缩略图。
+- 卡片右上角提供重命名、隐藏、终止 tmux、关闭/脱离等常用动作。
+
+### 新建会话
+
+![新建会话](docs/readme-assets/new-session-dialog.png)
+
+- 同一套弹窗支持本地和 SSH 目标。
+- 可以切换“直接创建”和“从 tmux 创建”。
+- 显示名称留空时会自动生成唯一默认名。
+
+### 隐藏与恢复会话
+
+![隐藏与恢复会话](docs/readme-assets/hidden-sessions-drawer.png)
+
+- 点击卡片上的 👁 可以临时隐藏会话，不会打断底层进程。
+- 顶部会显示“已隐藏 (n)”入口，方便集中管理暂时不用的会话。
+- 抽屉里可以恢复，也可以直接关闭；运行中的普通会话会二次确认。
+
 ### 聚焦终端
 
 ![聚焦终端](docs/readme-assets/focus-view.png)
 
+- 双击卡片进入聚焦态，在主终端直接输入。
+- 侧栏保留其他会话上下文，方便来回切换。
+- `Esc` 可以快速返回宫格。
+
 ### 快速连接 tmux
 
 ![快速连接 tmux](docs/readme-assets/quick-tmux-connect.png)
+
+- 适合快速接入远端开发机上的 tmux 会话。
+- 输入主机、会话名和目录后，可以直接拉起并进入聚焦态。
+- mac 浏览器提示 `⌘+E`，Windows / Linux 浏览器提示 `Ctrl+E`。
 
 ## 它能做什么
 
@@ -45,6 +72,12 @@
 - 支持把 tmux 会话直接接入到看板。
 - 支持把已退出但可恢复的会话重新在 tmux 中拉起。
 - 支持 Meta/Ctrl+E 打开“快速连接 tmux”弹窗，先选 SSH 主机，再填会话名和目录，直接进入聚焦视图。
+
+### 观察本地 VS Code 窗口
+
+- 支持把本地 VS Code 窗口作为“观察会话”加入看板。
+- 观察卡片会显示窗口预览，并根据活动心跳在“运行中 / 等待输入”之间切换。
+- 可以随时停止观察，停止后仍保留记录，方便稍后清理。
 
 ### 扫描并接管已有 Agent 工作目录
 
@@ -71,6 +104,7 @@
 - 按 Agent 类型筛选。
 - 按 tmux 传输类别筛选。
 - 按目录关键字筛选。
+- 支持隐藏卡片，已隐藏会话可以在抽屉里统一恢复或关闭。
 - 已退出但仍可重连的普通会话支持一键重连。
 
 ## 项目结构
@@ -112,6 +146,23 @@
 
 ```bash
 brew install tmux
+```
+
+### Linux 额外说明
+
+如果你在 Linux 上本地运行，通常还需要准备 tmux、OpenSSH 客户端和 openssl。
+
+Debian / Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y tmux openssh-client openssl
+```
+
+Fedora / RHEL:
+
+```bash
+sudo dnf install -y tmux openssh-clients openssl
 ```
 
 ## 兼容性约定
@@ -159,10 +210,10 @@ Host hm24
 
 这个脚本会：
 
-- 清理占用中的 3000/4000 端口
+- 清理占用中的 3000/4000 端口，并在同一个端口重新启动服务
 - 启动后端服务
 - 启动前端服务，默认绑定 `0.0.0.0`，方便局域网访问
-- 如果目标前端端口被其他进程占用，会自动切到下一个可用端口
+- 默认启用 HTTPS，并自动生成或复用自签证书
 - 输出前端实际 Local/Network 地址、后端健康检查地址和日志路径
 
 启动成功后，脚本会打印：
@@ -171,12 +222,12 @@ Host hm24
 - 前端局域网地址（Network，当前环境可用时）
 - 后端健康检查：http://127.0.0.1:4000/api/health
 
-默认会优先尝试前端 3000 端口；如果被占用，Vite 会自动切到下一个可用端口，并由脚本打印最终端口。
+默认前端使用 3000 端口，后端使用 4000 端口。脚本会优先释放这两个端口上的旧进程，然后仍然在这两个端口上重新启动。
 
-如果你想显式指定一个起始端口，也可以这样启动：
+如果你想显式指定端口，可以这样启动：
 
 ```bash
-WEB_PORT=3100 ./scripts/restart-dev.sh
+WEB_PORT=3100 SERVER_PORT=4100 ./scripts/restart-dev.sh
 ```
 
 默认通过 HTTPS 启动（`scripts/restart-dev.sh` 内 `WEB_HTTPS` 默认值为 `1`），以满足跨机器访问时浏览器安全上下文要求。
@@ -200,6 +251,13 @@ WEB_HTTPS=1 ./scripts/restart-dev.sh
 ```bash
 WEB_HTTPS=1 WEB_HTTPS_SAN='DNS:localhost,IP:127.0.0.1,IP:10.30.0.15' ./scripts/restart-dev.sh
 ```
+
+### Linux 和 macOS 的启动差异
+
+- 启动命令本身相同，都是 `./scripts/restart-dev.sh`。
+- Linux 上脚本通常会把 `hostname -I` 解析到的局域网 IP 自动加入证书 SAN，更适合局域网里的其他设备直接访问 HTTPS 页面。
+- macOS 上默认更稳的是 `localhost`、`127.0.0.1` 和主机名；如果你要从其他设备访问 HTTPS 页面，通常需要手动传 `WEB_HTTPS_SAN`。
+- tmux 安装路径在 macOS 上常见于 Homebrew 目录，在 Linux 上通常直接来自系统包管理器并位于 `PATH`。
 
 ### 备用：分别启动
 
@@ -246,6 +304,19 @@ pnpm dev
 3. `Esc` 返回宫格。
 4. 侧栏会展示其他会话的终端缩略图，方便切换上下文。
 
+### 隐藏暂时不用的会话
+
+1. 点击卡片右上角的 👁。
+2. 顶部工具栏会出现“已隐藏 (n)”。
+3. 点击后可在抽屉里恢复，或直接关闭不再需要的会话。
+
+### 观察一个本地 VS Code 窗口
+
+1. 点击顶部“添加 VS Code 窗口”。
+2. 选择要观察的 VS Code 窗口。
+3. 宫格会新增一个观察卡片，支持双击进入焦点态。
+4. 不再需要时可点击“停止观察”。
+
 ## 开发命令
 
 ```bash
@@ -273,7 +344,28 @@ node ./scripts/generate-readme-screenshots.mjs
 - 生成 README 用到的 PNG 截图
 - 输出到 `docs/readme-assets/`
 
-运行前请先保证前端和后端都已经启动。
+当前会生成这些文件：
+
+- `board-overview.png`
+- `new-session-dialog.png`
+- `hidden-sessions-drawer.png`
+- `focus-view.png`
+- `quick-tmux-connect.png`
+
+运行前请先保证前端和后端都已经启动。默认假设：
+
+- 前端地址是 `https://localhost:3000`
+- 后端地址是 `http://127.0.0.1:4000`
+
+建议把截图脚本指向一套刚启动、没有历史会话的前后端实例。否则 README 截图里可能会混入你当前正在使用的真实会话。
+
+如果你本地关闭了 HTTPS，或者用了其他端口，可以覆盖：
+
+```bash
+README_BASE_URL=http://127.0.0.1:3000 README_API_URL=http://127.0.0.1:4000 node ./scripts/generate-readme-screenshots.mjs
+```
+
+这个脚本会忽略本地自签证书错误，因此和 `./scripts/restart-dev.sh` 的默认 HTTPS 配置可以直接配合使用。
 
 ## 当前实现更适合哪些场景
 
@@ -286,11 +378,13 @@ node ./scripts/generate-readme-screenshots.mjs
 
 当前仓库已经有覆盖以下关键行为的 E2E：
 
-- 直接创建和 tmux 创建
+- 直接创建、tmux 创建和默认命名
+- 筛选、隐藏、恢复、关闭会话
+- VS Code 窗口观察、停止观察和焦点态预览
 - 等待输入状态识别
 - tmux 鼠标事件透传
 - tmux 缩略图不回写 resize
-- tmux 扫描、合并与恢复
+- tmux 扫描、合并、恢复与终止
 - Meta/Ctrl+E 快速连接远端 tmux
 
 ## 故障排查

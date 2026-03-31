@@ -86,7 +86,7 @@ test('browser: 默认本机 copilot 直接创建不会带出 npm 环境污染警
 
     await openNewSessionForHost(page, '本机');
     await page.getByTestId('new-session-name').fill(directName);
-    await page.getByTestId('new-session-kind').selectOption('copilot');
+    await page.getByTestId('new-session-kind-copilot').click();
     await page.getByTestId('new-session-mode-direct').click();
     await page.getByTestId('new-session-dir').fill('');
     await page.getByTestId('create-session').click();
@@ -145,7 +145,7 @@ test('browser: direct and tmux creation both work from the new session form', as
     await openNewSessionForHost(page, '本机');
 
     await page.getByTestId('new-session-name').fill(directName);
-    await page.getByTestId('new-session-kind').selectOption('copilot');
+    await page.getByTestId('new-session-kind-copilot').click();
     await page.getByTestId('new-session-mode-direct').click();
     await page.getByTestId('new-session-dir').fill(workingDirectory);
     await page.getByTestId('create-session').click();
@@ -172,7 +172,7 @@ test('browser: direct and tmux creation both work from the new session form', as
 
     await openNewSessionForHost(page, '本机');
     await page.getByTestId('new-session-name').fill(tmuxName);
-    await page.getByTestId('new-session-kind').selectOption('copilot');
+    await page.getByTestId('new-session-kind-copilot').click();
     await page.getByTestId('new-session-mode-tmux').click();
     await page.getByTestId('new-session-dir').fill('');
 

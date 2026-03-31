@@ -295,6 +295,50 @@ input {
   font-size: 13px;
 }
 
+.drawer-agent-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.drawer-agent-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: rgba(244, 241, 234, 0.65);
+}
+
+.drawer-agent-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.drawer-agent-btn {
+  flex: 1 1 calc(50% - 3px);
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(244, 241, 234, 0.82);
+  cursor: pointer;
+  text-align: center;
+  text-transform: lowercase;
+}
+
+.drawer-agent-btn.is-active {
+  border-color: rgba(255, 143, 31, 0.44);
+  background: rgba(255, 143, 31, 0.16);
+  color: #ffe2be;
+}
+
+.drawer-agent-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .drawer-btn {
   padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -1196,6 +1240,13 @@ input {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+}
+
+.new-session-agent-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .new-session-field--wide {
@@ -1205,6 +1256,25 @@ input {
 .new-session-label {
   font-size: 12px;
   color: rgba(244, 241, 234, 0.65);
+}
+
+.new-session-agent-toggle {
+  flex-wrap: wrap;
+}
+
+.new-session-agent-btn {
+  flex: 1 1 calc(50% - 4px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-transform: lowercase;
+}
+
+.new-session-agent-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .new-session-target-row {

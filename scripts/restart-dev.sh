@@ -29,11 +29,8 @@ log() {
 }
 
 build_runtime_path() {
-  if [[ -d "$PLAYWRIGHT_BIN_DIR" ]]; then
-    printf '%s\n' "${PLAYWRIGHT_BIN_DIR}:${PATH}"
-    return
-  fi
-
+  # .playwright-bin is only for E2E tests (playwright.config.ts adds it).
+  # Do NOT prepend it here; it shadows real binaries like copilot.
   printf '%s\n' "$PATH"
 }
 

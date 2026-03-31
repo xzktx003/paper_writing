@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { chromium } from '@playwright/test';
 
-const baseUrl = process.env.README_BASE_URL ?? 'http://127.0.0.1:3000';
+const baseUrl = process.env.README_BASE_URL ?? 'https://localhost:3000';
 const apiBaseUrl = process.env.README_API_URL ?? 'http://127.0.0.1:4000';
 const outputDir = path.resolve(process.cwd(), 'docs/readme-assets');
 
@@ -112,6 +112,20 @@ async function deleteSessionByDisplayName(displayName) {
   });
 }
 
+async function setSessionHiddenByDisplayName(displayName, hidden) {
+  const sessions = await listSessions();
+  const target = sessions.find((session) => session.displayName === displayName);
+
+  if (!target) {
+    return;
+  }
+
+  await requestJson(`/api/agent-sessions/${target.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ hidden }),
+  });
+}
+
 async function ensureDemoSessions() {
   for (const session of demoSessions) {
     await deleteSessionByDisplayName(session.displayName);
@@ -169,15 +183,38 @@ async function main() {
 
   try {
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } });
+    const context = await browser.newContext({
+      viewport: { width: 1600, height: 1100 },
+      ignoreHTTPSErrors: true,
+    });
+    const page = await context.newPage();
 
-    await page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.grid-card');
-    await page.waitForTimeout(12_000);
+    await page.waitForTimeout(6_000);
 
     await page.screenshot({
       path: path.join(outputDir, 'board-overview.png'),
       fullPage: true,
+    });
+
+    const topBar = page.locator('.top-bar');
+    await topBar.getByTestId('new-session-toggle').click();
+    await page.getByRole('button', { name: /本机/ }).click();
+    await page.waitForSelector('[data-testid="new-session-dialog"]');
+    await page.getByTestId('new-session-name').fill('README Shell Session');
+    await page.getByTestId('new-session-kind-shell').click();
+    await page.getByTestId('new-session-dir').fill(process.cwd());
+    await page.screenshot({
+      path: path.join(outputDir, 'new-session-dialog.png'),
+      fullPage: true,
+    });
+    await page
+      .locator('[data-testid="new-session-dialog"]')
+      .getByRole('button', { name: '关闭' })
+      .click();
+    await page.waitForSelector('[data-testid="new-session-dialog"]', {
+      state: 'hidden',
     });
 
     const copilotCard = page.locator('.grid-card', {
@@ -210,6 +247,21 @@ async function main() {
 
     await page.screenshot({
       path: path.join(outputDir, 'quick-tmux-connect.png'),
+      fullPage: true,
+    });
+
+    await page.getByRole('button', { name: '关闭' }).click();
+    await page.waitForSelector('[data-testid="quick-tmux-connect-dialog"]', {
+      state: 'hidden',
+    });
+
+    await setSessionHiddenByDisplayName('README Awaiting Demo', true);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.grid-card');
+    await page.locator('.hidden-sessions-btn').click();
+    await page.waitForSelector('.hidden-drawer');
+    await page.screenshot({
+      path: path.join(outputDir, 'hidden-sessions-drawer.png'),
       fullPage: true,
     });
   } finally {

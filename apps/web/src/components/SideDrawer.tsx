@@ -234,17 +234,28 @@ export function SideDrawer({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
-            <select
-              className="drawer-input"
-              data-testid="new-session-kind"
-              value={newKind}
-              onChange={(e) => setNewKind(e.target.value)}
-            >
-              <option value="copilot">copilot</option>
-              <option value="codex">codex</option>
-              <option value="claude">claude</option>
-              <option value="shell">shell</option>
-            </select>
+            <fieldset className="drawer-agent-field" data-testid="new-session-kind">
+              <legend className="drawer-agent-label">Agent</legend>
+              <div className="drawer-agent-toggle">
+                {['copilot', 'codex', 'claude', 'shell'].map((kind) => (
+                  <label
+                    key={kind}
+                    className={`drawer-agent-btn${newKind === kind ? ' is-active' : ''}`}
+                    data-testid={`new-session-kind-${kind}`}
+                  >
+                    <input
+                      checked={newKind === kind}
+                      className="drawer-agent-input"
+                      name="drawer-new-session-agent"
+                      onChange={() => setNewKind(kind)}
+                      type="radio"
+                      value={kind}
+                    />
+                    <span>{kind}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <select
               className="drawer-input"
               data-testid="new-session-mode"

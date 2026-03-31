@@ -100,6 +100,13 @@ test('new session: 点击后先打开 host 下拉，选中后直接进入会话�
   await expect(page.getByTestId('new-session-details-step')).toBeVisible();
   await expect(page.getByTestId('new-session-name')).toBeVisible();
   await expect(page.getByTestId('new-session-kind')).toBeVisible();
+  await expect(page.getByTestId('new-session-kind-copilot')).toHaveClass(
+    /is-active/,
+  );
+  await page.getByTestId('new-session-kind-shell').click();
+  await expect(page.getByTestId('new-session-kind-shell')).toHaveClass(
+    /is-active/,
+  );
 });
 
 test('new session: 启动方式使用二选一按钮而不是下拉框', async ({ page }) => {
