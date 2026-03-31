@@ -3,6 +3,10 @@ export interface CaptureResult {
   label: string;
 }
 
+export interface CaptureActivityProbe {
+  readScreenSignature(): string | undefined;
+  dispose(): void;
+}
 export interface WindowCaptureEnvironment {
   isSecureContext: boolean;
   protocol: string;
@@ -72,6 +76,63 @@ export async function requestWindowCapture(): Promise<CaptureResult | null> {
     // User cancelled or permission denied
     return null;
   }
+}
+
+export function buildCaptureFrameSignature(pixels: ArrayLike<number>): string {
+  let signature = "";
+
+  for (let index = 0; index < pixels.length; index += 4) {
+    const red = Number(pixels[index] ?? 0);
+    const green = Number(pixels[index + 1] ?? 0);
+    const blue = Number(pixels[index + 2] ?? 0);
+    const gray = Math.round((red * 3 + green * 4 + blue) / 8);
+    signature += Math.round(gray / 17)
+      .toString(16)
+      .padStart(1, "0");
+  }
+
+  return signature;
+}
+
+export function createWindowCaptureActivityProbe(
+  stream: MediaStream,
+): CaptureActivityProbe {
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.srcObject = stream;
+  void video.play().catch(() => {});
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 8;
+  canvas.height = 8;
+  const context = canvas.getContext("2d");
+
+  return {
+    readScreenSignature(): string | undefined {
+      if (!context) {
+        return undefined;
+      }
+
+      if (
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        video.videoWidth <= 0 ||
+        video.videoHeight <= 0
+      ) {
+        return undefined;
+      }
+
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+      return buildCaptureFrameSignature(frame.data);
+    },
+    dispose(): void {
+      video.pause();
+      video.srcObject = null;
+      canvas.width = canvas.width;
+    },
+  };
 }
 
 export function stopCapture(stream: MediaStream): void {

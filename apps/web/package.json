@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
-    "test": "echo 'No tests yet for web'",
+    "test": "tsx --test src/**/*.test.ts",
     "format": "prettier --write 'src/**/*.{ts,tsx,css}'"
   },
   "dependencies": {

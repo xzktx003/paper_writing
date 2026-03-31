@@ -39,6 +39,196 @@ const AGENT_INDICATORS: Record<string, { dirs: string[]; files: string[] }> = {
 };
 
 const AGENT_PROCESS_NAMES = ["claude", "copilot", "codex", "aider", "cursor"];
+const SCAN_PRUNE_DIRS = [
+  ".git",
+  "node_modules",
+  ".next",
+  "dist",
+  "build",
+  ".turbo",
+  ".cache",
+];
+const INDICATOR_DIR_NAMES = [
+  ...new Set(Object.values(AGENT_INDICATORS).flatMap((v) => v.dirs)),
+];
+const INDICATOR_FILE_NAMES = [
+  ...new Set(Object.values(AGENT_INDICATORS).flatMap((v) => v.files)),
+];
+const INDICATOR_TO_AGENT_KIND = new Map(
+  Object.entries(AGENT_INDICATORS).flatMap(([agentKind, indicators]) =>
+    [...indicators.dirs, ...indicators.files].map((indicator) => [
+      indicator,
+      agentKind,
+    ]),
+  ),
+);
+
+interface IndicatorHit {
+  agentKind: string;
+  workingDirectory: string;
+  indicatorPath: string;
+}
+
+function trimTrailingSeparator(
+  value: string,
+  separator: string,
+  root: string,
+): string {
+  let result = value;
+  while (result.length > root.length && result.endsWith(separator)) {
+    result = result.slice(0, -separator.length);
+  }
+  return result;
+}
+
+function normalizeExistingLocalPath(value: string): string {
+  const normalized = trimTrailingSeparator(
+    path.normalize(value),
+    path.sep,
+    path.parse(value).root || path.parse(path.normalize(value)).root,
+  );
+
+  try {
+    const realPath = fs.realpathSync.native(normalized);
+    return trimTrailingSeparator(
+      path.normalize(realPath),
+      path.sep,
+      path.parse(realPath).root,
+    );
+  } catch {
+    return normalized;
+  }
+}
+
+function normalizeLocalPath(value?: string): string {
+  if (!value) return "";
+  return normalizeExistingLocalPath(value);
+}
+
+function normalizeRemotePath(value?: string): string {
+  if (!value) return "";
+  const normalized = path.posix.normalize(value);
+  return trimTrailingSeparator(
+    normalized,
+    path.posix.sep,
+    path.posix.parse(normalized).root,
+  );
+}
+
+function isLocalPathWithinScope(candidate?: string, scope?: string): boolean {
+  const normalizedCandidate = normalizeLocalPath(candidate);
+  const normalizedScope = normalizeLocalPath(scope);
+  if (!normalizedCandidate || !normalizedScope) {
+    return false;
+  }
+  if (normalizedCandidate === normalizedScope) {
+    return true;
+  }
+  return normalizedCandidate.startsWith(`${normalizedScope}${path.sep}`);
+}
+
+function isRemotePathWithinScope(candidate?: string, scope?: string): boolean {
+  const normalizedCandidate = normalizeRemotePath(candidate);
+  const normalizedScope = normalizeRemotePath(scope);
+  if (!normalizedCandidate || !normalizedScope) {
+    return false;
+  }
+  if (normalizedCandidate === normalizedScope) {
+    return true;
+  }
+  return normalizedCandidate.startsWith(`${normalizedScope}${path.posix.sep}`);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function commandLineMatchesScope(
+  cmdline: string,
+  scope: string,
+  remote: boolean,
+): boolean {
+  const normalizedScope = remote
+    ? normalizeRemotePath(scope)
+    : normalizeLocalPath(scope).replace(/\\/g, "/");
+  if (!normalizedScope) {
+    return false;
+  }
+
+  const escapedScope = escapeRegExp(normalizedScope);
+  const pattern = new RegExp(
+    `(?:^|[\\s'\"=])${escapedScope}(?:/[^\\s'\"=]*)?(?=$|[\\s'\"=])`,
+  );
+
+  return pattern.test(cmdline.replace(/\\/g, "/"));
+}
+
+function buildFindIndicatorCommand(rootPath: string): string {
+  const pruneExpression = SCAN_PRUNE_DIRS.map(
+    (name) => `-name ${quoteForPosixShell(name)}`,
+  ).join(" -o ");
+  const dirExpression = INDICATOR_DIR_NAMES.map(
+    (name) => `-name ${quoteForPosixShell(name)}`,
+  ).join(" -o ");
+  const fileExpression = INDICATOR_FILE_NAMES.map(
+    (name) => `-name ${quoteForPosixShell(name)}`,
+  ).join(" -o ");
+
+  return [
+    "find",
+    quoteForPosixShell(rootPath),
+    "\\(",
+    "-type d",
+    "\\(",
+    pruneExpression,
+    "\\)",
+    "-prune",
+    "\\)",
+    "-o",
+    "\\(",
+    "-type d",
+    "\\(",
+    dirExpression,
+    "\\)",
+    "-o",
+    "-type f",
+    "\\(",
+    fileExpression,
+    "\\)",
+    "\\)",
+    "-print",
+    "2>/dev/null || true",
+  ].join(" ");
+}
+
+function parseIndicatorHits(output: string, remote: boolean): IndicatorHit[] {
+  const pathApi = remote ? path.posix : path;
+  const hits: IndicatorHit[] = [];
+  const seen = new Set<string>();
+
+  for (const rawLine of output.split("\n")) {
+    const indicatorPath = rawLine.trim();
+    if (!indicatorPath) continue;
+
+    const agentKind = INDICATOR_TO_AGENT_KIND.get(
+      pathApi.basename(indicatorPath),
+    );
+    if (!agentKind) continue;
+
+    const workingDirectory = pathApi.dirname(indicatorPath);
+    const key = `${agentKind}:${workingDirectory}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    hits.push({
+      agentKind,
+      workingDirectory,
+      indicatorPath,
+    });
+  }
+
+  return hits;
+}
 
 function execLocal(command: string, options?: ExecSyncOptions): string {
   try {
@@ -68,60 +258,26 @@ function execRemote(sshTarget: SshTarget, command: string): string {
 }
 
 function scanLocalHistory(dirPath: string): ScanResult[] {
-  const results: ScanResult[] = [];
+  const output = execLocal(buildFindIndicatorCommand(dirPath));
+  const hits = parseIndicatorHits(output, false);
 
-  for (const [agentKind, indicators] of Object.entries(AGENT_INDICATORS)) {
-    for (const dir of indicators.dirs) {
-      const fullPath = path.join(dirPath, dir);
-      if (fs.existsSync(fullPath)) {
-        let lastActivity: string | undefined;
-        try {
-          const stat = fs.statSync(fullPath);
-          lastActivity = stat.mtime.toISOString();
-        } catch {
-          /* ignore */
-        }
-
-        results.push({
-          agentKind,
-          status: "stopped",
-          displayName: `${agentKind} (${path.basename(dirPath)})`,
-          workingDirectory: dirPath,
-          lastActivity,
-          historyPath: fullPath,
-        });
-      }
+  return hits.map(({ agentKind, workingDirectory, indicatorPath }) => {
+    let lastActivity: string | undefined;
+    try {
+      lastActivity = fs.statSync(indicatorPath).mtime.toISOString();
+    } catch {
+      /* ignore */
     }
 
-    for (const file of indicators.files) {
-      const fullPath = path.join(dirPath, file);
-      if (
-        fs.existsSync(fullPath) &&
-        !results.some(
-          (r) => r.agentKind === agentKind && r.workingDirectory === dirPath,
-        )
-      ) {
-        let lastActivity: string | undefined;
-        try {
-          const stat = fs.statSync(fullPath);
-          lastActivity = stat.mtime.toISOString();
-        } catch {
-          /* ignore */
-        }
-
-        results.push({
-          agentKind,
-          status: "stopped",
-          displayName: `${agentKind} (${path.basename(dirPath)})`,
-          workingDirectory: dirPath,
-          lastActivity,
-          historyPath: fullPath,
-        });
-      }
-    }
-  }
-
-  return results;
+    return {
+      agentKind,
+      status: "stopped",
+      displayName: `${agentKind} (${path.basename(workingDirectory)})`,
+      workingDirectory,
+      lastActivity,
+      historyPath: indicatorPath,
+    } satisfies ScanResult;
+  });
 }
 
 function scanLocalProcesses(dirPath: string): ScanResult[] {
@@ -139,10 +295,7 @@ function scanLocalProcesses(dirPath: string): ScanResult[] {
       if (isNaN(pid)) continue;
 
       const cmdline = parts.slice(1).join(" ");
-      if (
-        cmdline.includes(dirPath) ||
-        cmdline.includes(path.basename(dirPath))
-      ) {
+      if (commandLineMatchesScope(cmdline, dirPath, false)) {
         results.push({
           agentKind: procName,
           status: "running",
@@ -174,22 +327,22 @@ function scanLocalTmux(dirPath: string): ScanResult[] {
     if (parts.length < 4) continue;
 
     const [session, paneId, panePath, command] = parts;
-    if (panePath?.includes(dirPath) || dirPath.includes(panePath ?? "")) {
-      const isAgent = AGENT_PROCESS_NAMES.some(
-        (name) =>
-          command?.toLowerCase().includes(name) ||
-          session?.toLowerCase().includes(name),
-      );
+    if (!isLocalPathWithinScope(panePath, dirPath)) continue;
 
-      results.push({
-        agentKind: isAgent ? (command ?? "shell") : "shell",
-        status: "running",
-        displayName: `tmux:${session} (${command})`,
-        workingDirectory: panePath ?? dirPath,
-        tmuxSession: session,
-        tmuxPane: paneId,
-      });
-    }
+    const isAgent = AGENT_PROCESS_NAMES.some(
+      (name) =>
+        command?.toLowerCase().includes(name) ||
+        session?.toLowerCase().includes(name),
+    );
+
+    results.push({
+      agentKind: isAgent ? (command ?? "shell") : "shell",
+      status: "running",
+      displayName: `tmux:${session} (${command})`,
+      workingDirectory: panePath ?? dirPath,
+      tmuxSession: session,
+      tmuxPane: paneId,
+    });
   }
 
   return results;
@@ -266,12 +419,7 @@ function scanCopilotSessionsRemote(
     if (!meta.id || !meta.cwd) continue;
 
     // Only include sessions whose cwd matches the scanned path
-    if (
-      meta.cwd !== remotePath &&
-      !remotePath.includes(meta.cwd) &&
-      !meta.cwd.includes(remotePath)
-    )
-      continue;
+    if (!isRemotePathWithinScope(meta.cwd, remotePath)) continue;
 
     // Determine running state from lock file
     let isRunning = false;
@@ -326,12 +474,7 @@ function scanCopilotSessionsLocal(dirPath: string): ScanResult[] {
       const meta = parseSimpleYaml(yamlText);
 
       if (!meta.id || !meta.cwd) continue;
-      if (
-        meta.cwd !== dirPath &&
-        !dirPath.includes(meta.cwd) &&
-        !meta.cwd.includes(dirPath)
-      )
-        continue;
+      if (!isLocalPathWithinScope(meta.cwd, dirPath)) continue;
 
       // Check lock files
       let isRunning = false;
@@ -376,50 +519,29 @@ function scanRemoteHistory(
   sshTarget: SshTarget,
   remotePath: string,
 ): ScanResult[] {
-  const results: ScanResult[] = [];
+  const output = execRemote(sshTarget, buildFindIndicatorCommand(remotePath));
+  const hits = parseIndicatorHits(output, true);
 
-  const checkDirs = Object.entries(AGENT_INDICATORS)
-    .flatMap(([kind, ind]) => ind.dirs.map((d) => `${kind}:${d}`))
-    .concat(
-      Object.entries(AGENT_INDICATORS).flatMap(([kind, ind]) =>
-        ind.files.map((f) => `${kind}:${f}`),
-      ),
-    );
-
-  for (const entry of checkDirs) {
-    const [agentKind, indicator] = entry.split(":");
-    const fullPath = path.posix.join(remotePath, indicator);
-    const quotedFullPath = quoteForPosixShell(fullPath);
-    const output = execRemote(
+  return hits.map(({ agentKind, workingDirectory, indicatorPath }) => {
+    const timestampOutput = execRemote(
       sshTarget,
-      `test -e ${quotedFullPath} && stat -c %Y ${quotedFullPath} 2>/dev/null || stat -f %m ${quotedFullPath} 2>/dev/null || echo ''`,
+      `stat -c %Y ${quoteForPosixShell(indicatorPath)} 2>/dev/null || stat -f %m ${quoteForPosixShell(indicatorPath)} 2>/dev/null || echo ''`,
     );
+    const timestamp = parseInt(timestampOutput.trim(), 10);
+    const lastActivity = isNaN(timestamp)
+      ? undefined
+      : new Date(timestamp * 1000).toISOString();
 
-    if (output && output !== "") {
-      const timestamp = parseInt(output.trim(), 10);
-      const lastActivity = isNaN(timestamp)
-        ? undefined
-        : new Date(timestamp * 1000).toISOString();
-
-      if (
-        !results.some(
-          (r) => r.agentKind === agentKind && r.workingDirectory === remotePath,
-        )
-      ) {
-        results.push({
-          agentKind: agentKind!,
-          status: "stopped",
-          displayName: `${agentKind} (远程: ${path.basename(remotePath)})`,
-          workingDirectory: remotePath,
-          lastActivity,
-          historyPath: fullPath,
-          sshTarget,
-        });
-      }
-    }
-  }
-
-  return results;
+    return {
+      agentKind,
+      status: "stopped",
+      displayName: `${agentKind} (远程: ${path.posix.basename(workingDirectory)})`,
+      workingDirectory,
+      lastActivity,
+      historyPath: indicatorPath,
+      sshTarget,
+    } satisfies ScanResult;
+  });
 }
 
 function scanRemoteProcesses(
@@ -443,10 +565,7 @@ function scanRemoteProcesses(
       if (isNaN(pid)) continue;
 
       const cmdline = parts.slice(1).join(" ");
-      if (
-        cmdline.includes(remotePath) ||
-        cmdline.includes(path.basename(remotePath))
-      ) {
+      if (commandLineMatchesScope(cmdline, remotePath, true)) {
         results.push({
           agentKind: procName,
           status: "running",
@@ -482,9 +601,9 @@ function scanRemoteTmux(
 
     const [session, paneId, panePath, command] = parts;
 
-    // Check if pane is in the scanned path
-    const pathMatch =
-      panePath?.includes(remotePath) || remotePath.includes(panePath ?? "");
+    if (!isRemotePathWithinScope(panePath, remotePath)) {
+      continue;
+    }
 
     // Also check if this pane runs a known agent process
     const isAgent = AGENT_PROCESS_NAMES.some(
@@ -493,17 +612,15 @@ function scanRemoteTmux(
         session?.toLowerCase().includes(name),
     );
 
-    if (pathMatch || isAgent) {
-      results.push({
-        agentKind: isAgent ? (command ?? "shell") : "shell",
-        status: "running",
-        displayName: `tmux:${session}/${command} (远程: ${panePath ? path.basename(panePath) : remotePath})`,
-        workingDirectory: panePath ?? remotePath,
-        tmuxSession: session,
-        tmuxPane: paneId,
-        sshTarget,
-      });
-    }
+    results.push({
+      agentKind: isAgent ? (command ?? "shell") : "shell",
+      status: "running",
+      displayName: `tmux:${session}/${command} (远程: ${panePath ? path.posix.basename(panePath) : remotePath})`,
+      workingDirectory: panePath ?? remotePath,
+      tmuxSession: session,
+      tmuxPane: paneId,
+      sshTarget,
+    });
   }
 
   return results;
@@ -545,12 +662,15 @@ function matchesTmuxResult(
     );
   }
 
-  const resultPath = normalizePathForMatch(result.workingDirectory);
-  const tmuxPath = normalizePathForMatch(tmuxResult.workingDirectory);
-  const pathMatches =
-    Boolean(resultPath) &&
-    Boolean(tmuxPath) &&
-    (resultPath.includes(tmuxPath) || tmuxPath.includes(resultPath));
+  const pathMatches = tmuxResult.sshTarget
+    ? isRemotePathWithinScope(
+        tmuxResult.workingDirectory,
+        result.workingDirectory,
+      )
+    : isLocalPathWithinScope(
+        tmuxResult.workingDirectory,
+        result.workingDirectory,
+      );
 
   const agentMatches =
     result.agentKind === tmuxResult.agentKind ||

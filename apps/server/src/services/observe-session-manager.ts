@@ -83,6 +83,26 @@ export class ObserveSessionManager {
     if (input.kind === "heartbeat") {
       entry.lastHeartbeatAt = Date.now();
 
+      const activityKey = input.screenSignature ?? input.outputPreview;
+      if (activityKey !== undefined) {
+        const updated = this.registry.syncCapturedScreen(
+          sessionId,
+          activityKey,
+        );
+
+        if (input.outputPreview === undefined) {
+          return updated;
+        }
+
+        return this.registry.updateSession(sessionId, {
+          outputPreview: input.outputPreview,
+          interactionState: updated.interactionState,
+          stateConfidence: updated.stateConfidence,
+          lastHeartbeatAt: updated.lastHeartbeatAt,
+          lastRefreshedAt: updated.lastRefreshedAt,
+        });
+      }
+
       return this.registry.updateSession(sessionId, {
         lastHeartbeatAt: new Date().toISOString(),
         ...(input.outputPreview !== undefined

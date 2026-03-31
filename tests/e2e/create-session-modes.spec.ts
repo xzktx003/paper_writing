@@ -50,6 +50,73 @@ async function findSessionByDisplayName(
     | undefined;
 }
 
+async function getSessionOutputText(
+  request: APIRequestContext,
+  sessionId: string,
+) {
+  const response = await request.get(`/api/agent-sessions/${sessionId}`);
+  expect(response.ok()).toBeTruthy();
+
+  const payload = await response.json();
+  return (payload.outputEntries as Array<{ text: string }>)
+    .map((entry) => entry.text)
+    .join('\n');
+}
+
+test('browser: 默认本机 copilot 直接创建不会带出 npm 环境污染警告', async ({
+  page,
+  request,
+}) => {
+  const directName = `E2E Default Local ${Date.now()}`;
+  let sessionId: string | undefined;
+
+  try {
+    await page.goto('/');
+
+    await page.getByTestId('new-session-toggle').click();
+    await page.getByTestId('new-session-host-option-local').click();
+    await page.getByTestId('new-session-name').fill(directName);
+    await page.getByTestId('new-session-kind').selectOption('copilot');
+    await page.getByTestId('new-session-mode-direct').click();
+    await page.getByTestId('new-session-dir').fill('');
+    await page.getByTestId('create-session').click();
+
+    await expect(page.getByTestId('new-session-dialog')).toHaveCount(0);
+
+    const directCard = page.locator('.grid-card', {
+      has: page.locator('.grid-card-name', { hasText: directName }),
+    });
+
+    await expect(directCard).toBeVisible({ timeout: 15000 });
+    await expect(directCard).not.toContainText('已退出', { timeout: 15000 });
+
+    await expect
+      .poll(async () => findSessionByDisplayName(request, directName), {
+        timeout: 15000,
+      })
+      .toMatchObject({
+        displayName: directName,
+        connectionState: 'online',
+      });
+
+    const directSession = await findSessionByDisplayName(request, directName);
+    sessionId = directSession?.id;
+    expect(directSession?.interactionState).not.toBe('exited');
+    expect(directSession?.workingDirectory).not.toBe('~/');
+    expect(sessionId).toBeTruthy();
+
+    await expect
+      .poll(async () => getSessionOutputText(request, sessionId!), {
+        timeout: 15000,
+      })
+      .not.toContain('Unknown env config');
+  } finally {
+    if (sessionId) {
+      await request.delete(`/api/agent-sessions/${sessionId}`);
+    }
+  }
+});
+
 test('browser: direct and tmux creation both work from the new session form', async ({
   page,
   request,
@@ -66,12 +133,15 @@ test('browser: direct and tmux creation both work from the new session form', as
     await page.goto('/');
 
     await page.getByTestId('new-session-toggle').click();
+    await page.getByTestId('new-session-host-option-local').click();
 
     await page.getByTestId('new-session-name').fill(directName);
     await page.getByTestId('new-session-kind').selectOption('copilot');
-    await page.getByTestId('new-session-mode').selectOption('direct');
+    await page.getByTestId('new-session-mode-direct').click();
     await page.getByTestId('new-session-dir').fill(workingDirectory);
     await page.getByTestId('create-session').click();
+
+    await expect(page.getByTestId('new-session-dialog')).toHaveCount(0);
 
     const directCard = page.locator('.grid-card', {
       has: page.locator('.grid-card-name', { hasText: directName }),
@@ -91,9 +161,11 @@ test('browser: direct and tmux creation both work from the new session form', as
     directSessionId = directSession?.id;
     expect(directSession?.transportRef?.tmuxSession).toBeFalsy();
 
+    await page.getByTestId('new-session-toggle').click();
+  await page.getByTestId('new-session-host-option-local').click();
     await page.getByTestId('new-session-name').fill(tmuxName);
     await page.getByTestId('new-session-kind').selectOption('copilot');
-    await page.getByTestId('new-session-mode').selectOption('tmux');
+  await page.getByTestId('new-session-mode-tmux').click();
     await page.getByTestId('new-session-dir').fill('');
 
     await expect(page.getByTestId('new-session-tmux-note')).toContainText(
@@ -101,6 +173,7 @@ test('browser: direct and tmux creation both work from the new session form', as
     );
 
     await page.getByTestId('create-session').click();
+    await expect(page.getByTestId('new-session-dialog')).toHaveCount(0);
 
     const tmuxCard = page.locator('.grid-card', {
       has: page.locator('.grid-card-name', { hasText: tmuxName }),

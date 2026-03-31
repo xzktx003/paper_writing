@@ -22,7 +22,15 @@ async function cleanupCaptureSessions(request: APIRequestContext) {
           },
         })
         .catch(() => {});
-      await request.delete(`/api/agent-sessions/${s.id}`).catch(() => {});
+      const deleteRes = await request
+        .delete(`/api/agent-sessions/${s.id}`)
+        .catch(() => null);
+
+      if (!deleteRes || deleteRes.status() !== 204) {
+        await request
+          .post(`/api/agent-sessions/${s.id}/remove-from-grid`)
+          .catch(() => {});
+      }
     }
   }
 }
@@ -95,6 +103,39 @@ test('window capture: 点击添加后创建 capture session', async ({
     await expect(captureCard.locator('.grid-card-kind')).toContainText(
       'vscode',
     );
+  } finally {
+    await cleanupCaptureSessions(request);
+  }
+});
+
+test('window capture: 静止画面会从运行中切换为等待输入', async ({
+  page,
+  request,
+}) => {
+  await cleanupCaptureSessions(request);
+  const uniqueName = `VSCode-Stable-${Date.now()}`;
+
+  try {
+    await mockGetDisplayMedia(page, uniqueName);
+    await page.goto('/');
+    await expect(page.locator('.top-bar')).toBeVisible();
+
+    await page
+      .locator('.top-bar-action', { hasText: '添加 VS Code 窗口' })
+      .click();
+
+    const captureCard = page.locator('.grid-card', {
+      has: page.locator('.grid-card-name', { hasText: uniqueName }),
+    });
+    await expect(captureCard).toBeVisible({ timeout: 10000 });
+    await expect(captureCard.locator('.grid-card-badge')).toHaveText('运行中');
+
+    await page.waitForTimeout(12_000);
+
+    await expect(captureCard.locator('.grid-card-badge')).toHaveText(
+      '等待输入',
+    );
+    await expect(captureCard).toHaveClass(/card-awaiting/);
   } finally {
     await cleanupCaptureSessions(request);
   }
@@ -273,9 +314,12 @@ test('window capture: 可以手动重命名宫格且保留原始标签', async (
     const sessions = await request.get('/api/agent-sessions');
     const data = await sessions.json();
     const renamedSession = data.items.find(
-      (s: any) => s.sourceType === 'local-window-capture',
+      (s: any) =>
+        s.sourceType === 'local-window-capture' &&
+        s.windowCaptureMeta?.rawLabel === 'window:57802:0',
     );
 
+    expect(renamedSession).toBeTruthy();
     expect(renamedSession.displayName).toBe('我的 VS Code 窗口');
     expect(renamedSession.windowCaptureMeta.rawLabel).toBe('window:57802:0');
   } finally {

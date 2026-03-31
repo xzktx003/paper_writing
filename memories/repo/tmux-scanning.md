@@ -1,0 +1,1 @@
+- macOS tmux pane_current_path may resolve tmp and var paths to /private aliases; local scan matching must normalize with realpath before scope checks and tmux/result merging.

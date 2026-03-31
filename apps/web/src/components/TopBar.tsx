@@ -1,11 +1,20 @@
-import type { AgentSessionRecord } from "@agent-orchestrator/shared";
+import type {
+  AgentSessionRecord,
+  SshHostPreset,
+} from "@agent-orchestrator/shared";
 
 import { getQuickTmuxShortcutLabel } from "../lib/platform-compat";
 
+import { HostDropdown, type SelectedHost } from "./HostDropdown";
+
 interface TopBarProps {
   sessions: AgentSessionRecord[];
-  drawerOpen: boolean;
-  onToggleDrawer: () => void;
+  collapsed: boolean;
+  sshHosts: SshHostPreset[];
+  onToggleCollapsed: () => void;
+  onOpenNewSession: () => void;
+  onScanTmux: (host: SelectedHost) => void;
+  onScanApps: (host: SelectedHost) => void;
   onOpenQuickTmuxConnect: () => void;
   onAddWindowCapture: () => void;
   windowCaptureSupported: boolean;
@@ -14,8 +23,12 @@ interface TopBarProps {
 
 export function TopBar({
   sessions,
-  drawerOpen,
-  onToggleDrawer,
+  collapsed,
+  sshHosts,
+  onToggleCollapsed,
+  onOpenNewSession,
+  onScanTmux,
+  onScanApps,
   onOpenQuickTmuxConnect,
   onAddWindowCapture,
   windowCaptureSupported,
@@ -30,19 +43,43 @@ export function TopBar({
   ).length;
   const totalCount = sessions.length;
 
+  if (collapsed) {
+    return (
+      <header className="top-bar top-bar--collapsed">
+        <button
+          className="top-bar-expand-btn"
+          onClick={onToggleCollapsed}
+          title="展开顶栏"
+        >
+          ▼ 展开
+        </button>
+      </header>
+    );
+  }
+
   return (
     <header className="top-bar">
       <div className="top-bar-left">
-        <button
-          className="drawer-toggle"
-          onClick={onToggleDrawer}
-          title={drawerOpen ? "收起面板" : "展开面板"}
-        >
-          {drawerOpen ? "◀" : "▶"}
-        </button>
-        <h1 className="top-bar-title">Agent 控制台</h1>
+        <h1 className="top-bar-title">Coding Kanban</h1>
       </div>
       <div className="top-bar-stats">
+        <button
+          className="top-bar-action top-bar-action--primary"
+          data-testid="new-session-toggle"
+          onClick={onOpenNewSession}
+        >
+          新建会话
+        </button>
+        <HostDropdown
+          sshHosts={sshHosts}
+          onSelectHost={onScanTmux}
+          triggerLabel="扫描 tmux"
+        />
+        <HostDropdown
+          sshHosts={sshHosts}
+          onSelectHost={onScanApps}
+          triggerLabel="扫描会话"
+        />
         <button
           className="top-bar-action"
           onClick={onAddWindowCapture}
@@ -75,6 +112,13 @@ export function TopBar({
             🟡 {awaitingCount} 等待输入
           </span>
         )}
+        <button
+          className="top-bar-collapse-btn"
+          onClick={onToggleCollapsed}
+          title="折叠顶栏"
+        >
+          ─
+        </button>
       </div>
     </header>
   );

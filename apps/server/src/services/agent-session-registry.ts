@@ -47,6 +47,14 @@ function mergeScreenWindow(previous: string, incoming: string): string {
     return previous;
   }
 
+  if (
+    previous === normalizedIncoming ||
+    previous.endsWith(normalizedIncoming) ||
+    previous.endsWith(`\n${normalizedIncoming}`)
+  ) {
+    return previous;
+  }
+
   const merged = previous
     ? `${previous}\n${normalizedIncoming}`
     : normalizedIncoming;
@@ -163,6 +171,12 @@ export class AgentSessionRegistry {
     this.emitSnapshot();
 
     return agentSession;
+  }
+
+  findByRuntimeId(runtimeId: string): AgentSessionRecord | undefined {
+    return [...this.sessions.values()].find(
+      ({ transportRef }) => transportRef?.runtimeId === runtimeId,
+    );
   }
 
   upsertByTransportRef(
@@ -321,21 +335,23 @@ export class AgentSessionRegistry {
     }
 
     const lastChangedAt = this.lastScreenChangedAt.get(agentSessionId) ?? nowMs;
-    const isObserveOnly = agentSession.controlMode === "observe";
+    const shouldInferFromStableScreen =
+      agentSession.sourceType === "local-window-capture" ||
+      agentSession.controlMode !== "observe";
     const hasBeenStableLongEnough =
       nowMs - lastChangedAt >= this.awaitingInputIdleMs;
 
     return this.updateSession(agentSessionId, {
-      interactionState: isObserveOnly
-        ? "detached"
-        : hasBeenStableLongEnough
+      interactionState: shouldInferFromStableScreen
+        ? hasBeenStableLongEnough
           ? "awaiting_input"
-          : "running",
-      stateConfidence: isObserveOnly
-        ? "high"
-        : hasBeenStableLongEnough
+          : "running"
+        : "detached",
+      stateConfidence: shouldInferFromStableScreen
+        ? hasBeenStableLongEnough
           ? "medium"
-          : "medium",
+          : "medium"
+        : "high",
       lastHeartbeatAt: new Date(nowMs).toISOString(),
       lastRefreshedAt: new Date(nowMs).toISOString(),
     });

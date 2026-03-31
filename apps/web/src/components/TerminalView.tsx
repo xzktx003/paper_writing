@@ -9,11 +9,23 @@ import { buildTerminalWebSocketUrl } from "../lib/api";
 interface TerminalViewProps {
   agentSessionId: string;
   interactive?: boolean;
+  suspended?: boolean;
 }
 
 type TerminalContainer = HTMLDivElement & {
   __xterm?: Terminal;
 };
+
+interface TerminalInputOwner {
+  token: symbol;
+  priority: number;
+}
+
+interface TerminalControlFrame {
+  __agentOrchestrator: "terminal-control";
+  event: "replay" | "replay-complete";
+  data?: string;
+}
 
 interface TerminalGeometry {
   cols: number;
@@ -30,10 +42,12 @@ const DEFAULT_PREVIEW_GEOMETRY: TerminalGeometry = {
 };
 
 const previewGeometryCache = new Map<string, TerminalGeometry>();
+const terminalInputOwners = new Map<string, TerminalInputOwner>();
 
 export function TerminalView({
   agentSessionId,
   interactive = true,
+  suspended = false,
 }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -43,6 +57,10 @@ export function TerminalView({
   const pendingResizeRef = useRef<{ cols: number; rows: number } | null>(null);
 
   useEffect(() => {
+    if (suspended) {
+      return;
+    }
+
     const container = containerRef.current as TerminalContainer | null;
     const stage = interactive
       ? container
@@ -52,9 +70,30 @@ export function TerminalView({
     const timeoutIds: number[] = [];
     const animationFrameIds: number[] = [];
     const isPreview = !interactive;
+    const ownerToken = Symbol(agentSessionId);
+    const ownerPriority = interactive ? 2 : 1;
     let handleMouseDown: (() => void) | null = null;
     let disposed = false;
     let closeAfterOpen = false;
+
+    const ensureInputOwner = () => {
+      const currentOwner = terminalInputOwners.get(agentSessionId);
+      if (
+        !currentOwner ||
+        currentOwner.token === ownerToken ||
+        currentOwner.priority <= ownerPriority
+      ) {
+        terminalInputOwners.set(agentSessionId, {
+          token: ownerToken,
+          priority: ownerPriority,
+        });
+        return true;
+      }
+
+      return false;
+    };
+
+    ensureInputOwner();
 
     const cachePreviewGeometry = (cols: number, rows: number) => {
       if (isPreview) {
@@ -106,7 +145,7 @@ export function TerminalView({
         selectionBackground: "rgba(255, 152, 0, 0.3)",
       },
       scrollback: 5000,
-      disableStdin: !interactive,
+      disableStdin: true,
     });
 
     const fitAddon = new FitAddon();
@@ -121,8 +160,42 @@ export function TerminalView({
     fitRef.current = fitAddon;
 
     const wsUrl = buildTerminalWebSocketUrl(agentSessionId);
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    let ws: WebSocket | null = null;
+    let replayComplete = false;
+    const connectTimeoutId = window.setTimeout(() => {
+      if (disposed) {
+        return;
+      }
+
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        if (typeof event.data === "string") {
+          handleTerminalFrame(event.data);
+        } else if (event.data instanceof Blob) {
+          event.data.text().then((text) => handleTerminalFrame(text));
+        }
+      };
+
+      ws.onopen = () => {
+        if (disposed || closeAfterOpen) {
+          ws?.close();
+          return;
+        }
+
+        flushResize();
+        scheduleFit();
+      };
+
+      ws.onclose = () => {
+        if (disposed) {
+          return;
+        }
+
+        term.write("\r\n\x1b[33m[连接已断开]\x1b[0m\r\n");
+      };
+    }, 0);
 
     const flushResize = () => {
       if (isPreview) {
@@ -130,7 +203,7 @@ export function TerminalView({
       }
 
       const size = pendingResizeRef.current;
-      if (!size || ws.readyState !== WebSocket.OPEN) {
+      if (!size || ws?.readyState !== WebSocket.OPEN) {
         return;
       }
 
@@ -171,31 +244,55 @@ export function TerminalView({
       timeoutIds.push(window.setTimeout(fitTerminal, 96));
     };
 
-    ws.onmessage = (event) => {
-      if (typeof event.data === "string") {
-        term.write(event.data);
-      } else if (event.data instanceof Blob) {
-        event.data.text().then((text) => term.write(text));
-      }
-    };
-
-    ws.onopen = () => {
-      if (disposed || closeAfterOpen) {
-        ws.close();
+    const enableTerminalInput = () => {
+      if (replayComplete) {
         return;
       }
 
-      flushResize();
-      scheduleFit();
+      replayComplete = true;
+      term.options.disableStdin = false;
     };
 
-    ws.onclose = () => {
-      if (disposed) {
+    const handleTerminalFrame = (payload: string) => {
+      try {
+        const parsed = JSON.parse(payload) as TerminalControlFrame;
+        if (parsed.__agentOrchestrator !== "terminal-control") {
+          enableTerminalInput();
+          term.write(payload);
+          return;
+        }
+
+        if (parsed.event === "replay" && typeof parsed.data === "string") {
+          term.write(parsed.data);
+          return;
+        }
+
+        if (parsed.event === "replay-complete") {
+          enableTerminalInput();
+        }
         return;
+      } catch {
+        enableTerminalInput();
+        term.write(payload);
       }
-
-      term.write("\r\n\x1b[33m[连接已断开]\x1b[0m\r\n");
     };
+
+    term.onData((data) => {
+      if (ws?.readyState === WebSocket.OPEN && ensureInputOwner()) {
+        ws.send(data);
+      }
+    });
+
+    term.onBinary((data) => {
+      if (ws?.readyState === WebSocket.OPEN && ensureInputOwner()) {
+        ws.send(
+          JSON.stringify({
+            type: "binary",
+            data: btoa(data),
+          }),
+        );
+      }
+    });
 
     if (interactive) {
       term.attachCustomWheelEventHandler((event) => {
@@ -208,23 +305,6 @@ export function TerminalView({
       };
 
       container.addEventListener("mousedown", handleMouseDown);
-
-      term.onData((data) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(data);
-        }
-      });
-
-      term.onBinary((data) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(
-            JSON.stringify({
-              type: "binary",
-              data: btoa(data),
-            }),
-          );
-        }
-      });
     }
 
     term.onResize(({ cols, rows }) => {
@@ -260,6 +340,7 @@ export function TerminalView({
       if (handleMouseDown) {
         container.removeEventListener("mousedown", handleMouseDown);
       }
+      window.clearTimeout(connectTimeoutId);
       for (const timeoutId of timeoutIds) {
         window.clearTimeout(timeoutId);
       }
@@ -267,9 +348,14 @@ export function TerminalView({
         window.cancelAnimationFrame(animationFrameId);
       }
 
-      if (ws.readyState === WebSocket.CONNECTING) {
+      const currentOwner = terminalInputOwners.get(agentSessionId);
+      if (currentOwner?.token === ownerToken) {
+        terminalInputOwners.delete(agentSessionId);
+      }
+
+      if (ws?.readyState === WebSocket.CONNECTING) {
         closeAfterOpen = true;
-      } else if (ws.readyState === WebSocket.OPEN) {
+      } else if (ws?.readyState === WebSocket.OPEN) {
         ws.close();
       }
 
@@ -280,7 +366,7 @@ export function TerminalView({
       fitRef.current = null;
       pendingResizeRef.current = null;
     };
-  }, [agentSessionId, interactive]);
+  }, [agentSessionId, interactive, suspended]);
 
   return (
     <div
@@ -292,7 +378,9 @@ export function TerminalView({
         overflow: "hidden",
       }}
     >
-      {!interactive && <div ref={stageRef} className="terminal-view-stage" />}
+      {!interactive && !suspended && (
+        <div ref={stageRef} className="terminal-view-stage" />
+      )}
     </div>
   );
 }

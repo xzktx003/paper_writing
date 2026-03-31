@@ -1,7 +1,222 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { setTimeout as sleep } from "node:timers/promises";
 import test from "node:test";
 
-import { sanitizeReplayForTerminal } from "./pty-runtime-manager.js";
+import { AgentSessionRegistry } from "./agent-session-registry.js";
+import {
+  PtyRuntimeManager,
+  sanitizeReplayForTerminal,
+} from "./pty-runtime-manager.js";
+import { resolveTmuxBinary } from "./runtime-compat.js";
+
+const TMUX_BINARY = resolveTmuxBinary();
+
+function killTmuxSession(sessionName: string): void {
+  try {
+    execFileSync(TMUX_BINARY, ["kill-session", "-t", sessionName], {
+      stdio: "ignore",
+    });
+  } catch {
+    // ignore cleanup failures
+  }
+}
+
+async function waitForExit(
+  registry: AgentSessionRegistry,
+  sessionId: string,
+  timeoutMs = 5000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (registry.get(sessionId).interactionState === "exited") {
+      return;
+    }
+
+    await sleep(50);
+  }
+
+  throw new Error(`PTY session did not exit within ${timeoutMs}ms`);
+}
+
+async function waitForOutputMatch(
+  registry: AgentSessionRegistry,
+  sessionId: string,
+  pattern: RegExp,
+  timeoutMs = 5000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const outputText = registry
+      .getDetail(sessionId)
+      .outputEntries.map((entry) => entry.text)
+      .join("\n");
+
+    if (pattern.test(outputText)) {
+      return outputText;
+    }
+
+    await sleep(50);
+  }
+
+  throw new Error(
+    `PTY session did not output ${pattern} within ${timeoutMs}ms`,
+  );
+}
+
+test("launch does not leak npm config env vars into local PTY sessions", async () => {
+  const originalRecursive = process.env.npm_config_recursive;
+  const originalVerifyDeps = process.env.npm_config_verify_deps_before_run;
+  const originalJsrRegistry = process.env.npm_config__jsr_registry;
+
+  process.env.npm_config_recursive = "1";
+  process.env.npm_config_verify_deps_before_run = "true";
+  process.env.npm_config__jsr_registry = "https://registry.example.test";
+
+  const registry = new AgentSessionRegistry();
+  const runtimeManager = new PtyRuntimeManager(registry);
+
+  try {
+    const session = runtimeManager.launch({
+      workspaceId: "default",
+      displayName: "env-leak-test",
+      agentKind: "shell",
+      workingDirectory: process.cwd(),
+      command: "env | grep '^npm_config_' || true; printf '__DONE__\\n'; exit",
+    });
+
+    await waitForExit(registry, session.id);
+
+    const detail = registry.getDetail(session.id);
+    const outputText = detail.outputEntries
+      .map((entry) => entry.text)
+      .join("\n");
+
+    assert.doesNotMatch(outputText, /npm_config_recursive=/);
+    assert.doesNotMatch(outputText, /npm_config_verify_deps_before_run=/);
+    assert.doesNotMatch(outputText, /npm_config__jsr_registry=/);
+    assert.match(outputText, /__DONE__/);
+  } finally {
+    process.env.npm_config_recursive = originalRecursive;
+    process.env.npm_config_verify_deps_before_run = originalVerifyDeps;
+    process.env.npm_config__jsr_registry = originalJsrRegistry;
+  }
+});
+
+test("launch stores the resolved local working directory when input is omitted", async () => {
+  const registry = new AgentSessionRegistry();
+  const runtimeManager = new PtyRuntimeManager(registry);
+
+  const session = runtimeManager.launch({
+    workspaceId: "default",
+    displayName: "default-cwd-test",
+    agentKind: "shell",
+    command: "pwd; printf '__DONE__\\n'; exit",
+  });
+
+  await waitForExit(registry, session.id);
+
+  const detail = registry.getDetail(session.id);
+  const outputText = detail.outputEntries.map((entry) => entry.text).join("\n");
+
+  assert.equal(registry.get(session.id).workingDirectory, process.cwd());
+  assert.match(
+    outputText,
+    new RegExp(process.cwd().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
+});
+
+test("launch does not surface npm config warnings before local Copilot starts", async () => {
+  const registry = new AgentSessionRegistry();
+  const runtimeManager = new PtyRuntimeManager(registry);
+
+  const session = runtimeManager.launch({
+    workspaceId: "default",
+    displayName: "copilot-warning-test",
+    agentKind: "copilot",
+    command: "cd '.' && copilot",
+  });
+
+  try {
+    const outputText = await waitForOutputMatch(
+      registry,
+      session.id,
+      /GitHub Copilot|Unknown env config/,
+      10000,
+    );
+
+    assert.doesNotMatch(outputText, /Unknown env config/);
+    assert.match(outputText, /GitHub Copilot/);
+  } finally {
+    runtimeManager.kill(session.id);
+    registry.remove(session.id);
+  }
+});
+
+test("launch keeps tmux attach sessions alive when the card is labeled as copilot", async () => {
+  const registry = new AgentSessionRegistry();
+  const runtimeManager = new PtyRuntimeManager(registry);
+  const sessionName = `pty-tmux-attach-${Date.now()}`;
+  const marker = `TMUX_ATTACH_OK_${Date.now()}`;
+  const originalRecursive = process.env.npm_config_recursive;
+  const originalVerifyDeps = process.env.npm_config_verify_deps_before_run;
+  const originalJsrRegistry = process.env.npm_config__jsr_registry;
+
+  killTmuxSession(sessionName);
+  process.env.npm_config_recursive = "1";
+  process.env.npm_config_verify_deps_before_run = "true";
+  process.env.npm_config__jsr_registry = "https://registry.example.test";
+  execFileSync(
+    TMUX_BINARY,
+    [
+      "new-session",
+      "-d",
+      "-s",
+      sessionName,
+      "-c",
+      process.cwd(),
+      `sh -lc 'printf "${marker}\\n"; sleep 30'`,
+    ],
+    {
+      stdio: "ignore",
+    },
+  );
+
+  const session = runtimeManager.launch({
+    workspaceId: "default",
+    displayName: sessionName,
+    agentKind: "copilot",
+    command: `tmux attach -t '${sessionName}'`,
+    workingDirectory: process.cwd(),
+    tmuxSessionName: sessionName,
+  });
+
+  try {
+    const outputText = await waitForOutputMatch(
+      registry,
+      session.id,
+      new RegExp(
+        `${marker}|double-loading config|Exit prior to config file resolving|Unknown env config`,
+      ),
+      10000,
+    );
+
+    assert.match(outputText, new RegExp(marker));
+    assert.doesNotMatch(outputText, /double-loading config/);
+    assert.doesNotMatch(outputText, /Exit prior to config file resolving/);
+    assert.doesNotMatch(outputText, /Unknown env config/);
+    assert.notEqual(registry.get(session.id).interactionState, "exited");
+  } finally {
+    runtimeManager.kill(session.id);
+    registry.remove(session.id);
+    killTmuxSession(sessionName);
+    process.env.npm_config_recursive = originalRecursive;
+    process.env.npm_config_verify_deps_before_run = originalVerifyDeps;
+    process.env.npm_config__jsr_registry = originalJsrRegistry;
+  }
+});
 
 test("strip replayed device attribute and status queries", () => {
   const replay = "prompt> \u001b[>cprompt redraw\u001b[6n\u001b[18tstill here";

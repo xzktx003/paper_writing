@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME_DIR="${ROOT_DIR}/.dev-runtime"
+PLAYWRIGHT_BIN_DIR="${ROOT_DIR}/.playwright-bin"
 
 SERVER_BIND_HOST="${SERVER_BIND_HOST:-0.0.0.0}"
 SERVER_PUBLIC_HOST="${SERVER_PUBLIC_HOST:-127.0.0.1}"
@@ -23,6 +24,15 @@ WEB_PID_FILE="${RUNTIME_DIR}/web.pid"
 
 log() {
   printf '[dev-restart] %s\n' "$*"
+}
+
+build_runtime_path() {
+  if [[ -d "$PLAYWRIGHT_BIN_DIR" ]]; then
+    printf '%s\n' "${PLAYWRIGHT_BIN_DIR}:${PATH}"
+    return
+  fi
+
+  printf '%s\n' "$PATH"
 }
 
 kill_from_pid_file() {
@@ -189,7 +199,6 @@ certificate_matches_requested_san() {
 if [[ -z "$WEB_HTTPS_SAN" ]]; then
   WEB_HTTPS_SAN="$(build_default_https_san)"
 fi
-
 ensure_https_certificate() {
   if [[ "$WEB_HTTPS" != "1" ]]; then
     return 0
@@ -241,19 +250,21 @@ kill_listeners_on_port frontend "$WEB_PORT"
 
 cd "$ROOT_DIR"
 
+RUNTIME_PATH="$(build_runtime_path)"
+
 log "Starting backend on ${SERVER_BIND_HOST}:${SERVER_PORT}"
-nohup env HOST="$SERVER_BIND_HOST" PORT="$SERVER_PORT" \
+nohup env PATH="$RUNTIME_PATH" HOST="$SERVER_BIND_HOST" PORT="$SERVER_PORT" \
   pnpm --filter server dev >"$SERVER_LOG" 2>&1 &
 echo $! >"$SERVER_PID_FILE"
 
 log "Starting frontend on ${WEB_HOST}:${WEB_PORT}"
 if [[ "$WEB_HTTPS" == "1" ]]; then
   log "Frontend HTTPS enabled"
-  nohup env VITE_DEV_HTTPS=1 VITE_DEV_HTTPS_CERT="$WEB_HTTPS_CERT" VITE_DEV_HTTPS_KEY="$WEB_HTTPS_KEY" \
+  nohup env PATH="$RUNTIME_PATH" VITE_DEV_HTTPS=1 VITE_DEV_HTTPS_CERT="$WEB_HTTPS_CERT" VITE_DEV_HTTPS_KEY="$WEB_HTTPS_KEY" \
     pnpm --filter web exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
     >"$WEB_LOG" 2>&1 &
 else
-  nohup pnpm --filter web exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
+  nohup env PATH="$RUNTIME_PATH" pnpm --filter web exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
     >"$WEB_LOG" 2>&1 &
 fi
 echo $! >"$WEB_PID_FILE"

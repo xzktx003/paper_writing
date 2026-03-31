@@ -3,28 +3,52 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AgentSessionRecord,
   ListAgentSessionsResponse,
+  SshHostPreset,
 } from "@agent-orchestrator/shared";
 
 import { AgentFocusView } from "./components/AgentFocusView";
 import { AgentGrid } from "./components/AgentGrid";
 import { BottomBar } from "./components/BottomBar";
+import type { DiscoveryMode } from "./components/DiscoveryDialog";
+import { DiscoveryDialog } from "./components/DiscoveryDialog";
+import type { AddToGridItem } from "./components/DiscoveryDialog";
 import type { FilterState } from "./components/FilterBar";
+import type { SelectedHost } from "./components/HostDropdown";
+import { NewSessionDialog } from "./components/NewSessionDialog";
 import { QuickTmuxConnect } from "./components/QuickTmuxConnect";
-import { SideDrawer } from "./components/SideDrawer";
 import { TopBar } from "./components/TopBar";
 import {
+  addDiscoveredTmux,
   createWindowCaptureSession,
   deleteAgentSession,
+  getSshHosts,
+  killTmuxSession,
+  launchPtyAgent,
+  launchSshPtyAgent,
   listAgentSessions,
   reconnectAgentSession,
+  removeFromGrid,
   sendObserveState,
   subscribeAgentSessions,
   updateAgentSession,
 } from "./lib/api";
 import {
+  deriveLayoutMode,
+  loadLayoutState,
+  saveLayoutState,
+  type LayoutState,
+} from "./lib/layout-store";
+import {
+  buildDirectLaunchCommand,
+  buildRemoteDirectLaunchCommand,
+  wrapRemoteInteractiveCommand,
+} from "./lib/session-matching";
+import {
+  createWindowCaptureActivityProbe,
   getWindowCaptureAvailability,
   requestWindowCapture,
   stopCapture,
+  type CaptureActivityProbe,
 } from "./lib/window-capture";
 import "./app.css";
 
@@ -34,6 +58,7 @@ interface CaptureEntry {
   stream: MediaStream;
   observeToken: string;
   label: string;
+  activityProbe: CaptureActivityProbe;
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -59,8 +84,15 @@ export default function App() {
   );
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [quickTmuxOpen, setQuickTmuxOpen] = useState(false);
+  const [layoutState, setLayoutState] = useState<LayoutState>(loadLayoutState);
+  const [sshHosts, setSshHosts] = useState<SshHostPreset[]>([]);
+  const [discoveryState, setDiscoveryState] = useState<{
+    open: boolean;
+    mode: DiscoveryMode;
+    host: SelectedHost;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [windowCaptureNotice, setWindowCaptureNotice] = useState<string | null>(
     null,
@@ -81,6 +113,7 @@ export default function App() {
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  const captureHeartbeatPrimeTimersRef = useRef<Map<string, number>>(new Map());
 
   function getCaptureStore(): Map<string, CaptureEntry> {
     return captureStoreRef.current;
@@ -90,6 +123,59 @@ export default function App() {
     setCaptureStoreVersion((v) => v + 1);
   }
 
+  const sendCaptureHeartbeat = useCallback(
+    (sessionId: string, entry: CaptureEntry) => {
+      const screenSignature = entry.activityProbe.readScreenSignature();
+
+      return sendObserveState(sessionId, {
+        kind: "heartbeat",
+        observeToken: entry.observeToken,
+        ...(screenSignature ? { screenSignature } : {}),
+      });
+    },
+    [],
+  );
+
+  function clearCaptureHeartbeatPrime(sessionId: string) {
+    const timeoutId = captureHeartbeatPrimeTimersRef.current.get(sessionId);
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+      captureHeartbeatPrimeTimersRef.current.delete(sessionId);
+    }
+  }
+
+  const primeCaptureHeartbeat = useCallback(
+    (sessionId: string, remainingAttempts = 20) => {
+      clearCaptureHeartbeatPrime(sessionId);
+
+      const entry = getCaptureStore().get(sessionId);
+      if (!entry) {
+        return;
+      }
+
+      const screenSignature = entry.activityProbe.readScreenSignature();
+      if (screenSignature) {
+        sendObserveState(sessionId, {
+          kind: "heartbeat",
+          observeToken: entry.observeToken,
+          screenSignature,
+        }).catch(() => {});
+        return;
+      }
+
+      if (remainingAttempts <= 0) {
+        sendCaptureHeartbeat(sessionId, entry).catch(() => {});
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        primeCaptureHeartbeat(sessionId, remainingAttempts - 1);
+      }, 500);
+      captureHeartbeatPrimeTimersRef.current.set(sessionId, timeoutId);
+    },
+    [sendCaptureHeartbeat],
+  );
+
   useEffect(() => {
     listAgentSessions()
       .then((data) => {
@@ -97,6 +183,10 @@ export default function App() {
         setIsLoading(false);
       })
       .catch(() => setIsLoading(false));
+
+    getSshHosts()
+      .then((res) => setSshHosts(res.hosts))
+      .catch(() => {});
 
     const unsubscribe = subscribeAgentSessions((data) => {
       setSnapshot(data);
@@ -120,11 +210,21 @@ export default function App() {
         return;
       }
 
-      if (event.key.toLowerCase() !== "e") {
+      if (isEditableTarget(event.target)) {
         return;
       }
 
-      if (isEditableTarget(event.target)) {
+      if (event.shiftKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        setDiscoveryState({
+          open: true,
+          mode: "tmux",
+          host: { type: "local" },
+        });
+        return;
+      }
+
+      if (event.key.toLowerCase() !== "e") {
         return;
       }
 
@@ -143,25 +243,27 @@ export default function App() {
     heartbeatIntervalRef.current = setInterval(() => {
       const store = getCaptureStore();
       for (const [sessionId, entry] of store) {
-        sendObserveState(sessionId, {
-          kind: "heartbeat",
-          observeToken: entry.observeToken,
-        }).catch(() => {});
+        sendCaptureHeartbeat(sessionId, entry).catch(() => {});
       }
-    }, 10_000);
+    }, 3_000);
 
     return () => {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
     };
-  }, []);
+  }, [sendCaptureHeartbeat]);
 
   // Cleanup captures on unmount
   useEffect(() => {
     return () => {
       const store = getCaptureStore();
+      for (const timeoutId of captureHeartbeatPrimeTimersRef.current.values()) {
+        window.clearTimeout(timeoutId);
+      }
+      captureHeartbeatPrimeTimersRef.current.clear();
       for (const [, entry] of store) {
+        entry.activityProbe.dispose();
         stopCapture(entry.stream);
       }
     };
@@ -185,19 +287,25 @@ export default function App() {
         windowCaptureMeta: { rawLabel: result.label },
       });
 
+      const activityProbe = createWindowCaptureActivityProbe(result.stream);
+
       const entry: CaptureEntry = {
         stream: result.stream,
         observeToken,
         label: result.label,
+        activityProbe,
       };
 
       getCaptureStore().set(agentSession.id, entry);
       bumpCaptureVersion();
+      primeCaptureHeartbeat(agentSession.id);
 
       // Listen for track ended
       const track = result.stream.getVideoTracks()[0];
       if (track) {
         track.onended = () => {
+          clearCaptureHeartbeatPrime(agentSession.id);
+          entry.activityProbe.dispose();
           sendObserveState(agentSession.id, {
             kind: "transition",
             observeToken,
@@ -224,6 +332,8 @@ export default function App() {
     const store = getCaptureStore();
     const entry = store.get(sessionId);
     if (entry) {
+      clearCaptureHeartbeatPrime(sessionId);
+      entry.activityProbe.dispose();
       stopCapture(entry.stream);
       await sendObserveState(sessionId, {
         kind: "transition",
@@ -305,6 +415,28 @@ export default function App() {
       .catch(() => {});
   }
 
+  async function handleRemoveFromGrid(id: string) {
+    await removeFromGrid(id);
+    listAgentSessions()
+      .then(setSnapshot)
+      .catch(() => {});
+  }
+
+  async function handleKillTmux(id: string) {
+    await killTmuxSession(id);
+    listAgentSessions()
+      .then(setSnapshot)
+      .catch(() => {});
+  }
+
+  function handleCopyConnectCommand(id: string) {
+    const session = sessions.find((s) => s.id === id);
+    if (session?.transportRef?.tmuxSession) {
+      const cmd = `tmux attach -t ${session.transportRef.tmuxSession}`;
+      navigator.clipboard.writeText(cmd).catch(() => {});
+    }
+  }
+
   async function handleReconnectSession(id: string) {
     await reconnectAgentSession(id);
     listAgentSessions()
@@ -360,12 +492,110 @@ export default function App() {
     [captureStoreVersion],
   );
 
+  const layoutMode = deriveLayoutMode({
+    ...layoutState,
+    sidebarCollapsed: false,
+  });
+
+  function updateLayout(partial: Partial<LayoutState>) {
+    setLayoutState((prev) => {
+      const next = { ...prev, ...partial };
+      saveLayoutState(next);
+      return next;
+    });
+  }
+
+  function handleScanTmux(host: SelectedHost) {
+    setDiscoveryState({ open: true, mode: "tmux", host });
+  }
+
+  function handleScanApps(host: SelectedHost) {
+    setDiscoveryState({ open: true, mode: "apps", host });
+  }
+
+  function handleDiscoveryClose() {
+    setDiscoveryState(null);
+  }
+
+  async function handleAddToGrid(items: AddToGridItem[]) {
+    for (const item of items) {
+      try {
+        const sr = item.scanResult;
+        const workingDirectory = sr.workingDirectory || "~";
+        const connectMode =
+          item.connectMode ?? (sr.tmuxSession ? "tmux" : "direct");
+
+        if (connectMode === "tmux" && sr.tmuxSession) {
+          await addDiscoveredTmux({
+            tmuxSession: sr.tmuxSession,
+            tmuxPane: sr.tmuxPane,
+            displayName: sr.displayName,
+            workingDirectory,
+            agentKind: sr.agentKind ?? "shell",
+            interactionState: sr.status === "running" ? "running" : "detached",
+            outputPreview:
+              sr.status === "running"
+                ? `${sr.displayName} · 连接中`
+                : `${sr.displayName} · detached`,
+            sshTarget: sr.sshTarget,
+          });
+          continue;
+        }
+
+        if (sr.sshTarget) {
+          await launchSshPtyAgent({
+            workspaceId: "default",
+            displayName: sr.displayName,
+            agentKind: sr.agentKind,
+            sshTarget: sr.sshTarget,
+            remoteCommand: wrapRemoteInteractiveCommand(
+              buildRemoteDirectLaunchCommand(
+                sr.agentKind,
+                workingDirectory,
+                sr.displayName,
+                sr.sessionId,
+              ),
+            ),
+            workingDirectory,
+            ...(sr.sessionId ? { agentSessionId: sr.sessionId } : {}),
+          });
+          continue;
+        }
+
+        await launchPtyAgent({
+          workspaceId: "default",
+          displayName: sr.displayName,
+          agentKind: sr.agentKind,
+          command: buildDirectLaunchCommand(
+            sr.agentKind,
+            workingDirectory,
+            sr.displayName,
+            sr.sessionId,
+          ),
+          workingDirectory,
+          ...(sr.sessionId ? { agentSessionId: sr.sessionId } : {}),
+        });
+      } catch {
+        // ignore individual failures
+      }
+    }
+    listAgentSessions()
+      .then(setSnapshot)
+      .catch(() => {});
+  }
+
   return (
-    <main className="app-shell-v2">
+    <main className={`app-shell-v2 layout-${layoutMode}`}>
       <TopBar
         sessions={sessions}
-        drawerOpen={drawerOpen}
-        onToggleDrawer={() => setDrawerOpen(!drawerOpen)}
+        collapsed={layoutState.topbarCollapsed}
+        sshHosts={sshHosts}
+        onToggleCollapsed={() =>
+          updateLayout({ topbarCollapsed: !layoutState.topbarCollapsed })
+        }
+        onOpenNewSession={() => setNewSessionOpen(true)}
+        onScanTmux={handleScanTmux}
+        onScanApps={handleScanApps}
         onOpenQuickTmuxConnect={() => setQuickTmuxOpen(true)}
         onAddWindowCapture={handleAddWindowCapture}
         windowCaptureSupported={windowCaptureAvailability.supported}
@@ -379,13 +609,6 @@ export default function App() {
       )}
 
       <div className="main-layout">
-        <SideDrawer
-          open={drawerOpen}
-          sessions={sessions}
-          onLaunched={handleLaunched}
-          onFocusSession={handleFocusSession}
-        />
-
         <div className="main-content">
           {isLoading ? (
             <div className="grid-empty">
@@ -413,6 +636,9 @@ export default function App() {
               onDeleteSession={handleDeleteSession}
               onReconnectSession={handleReconnectSession}
               onRenameSession={handleRenameSession}
+              onRemoveFromGrid={handleRemoveFromGrid}
+              onCopyConnectCommand={handleCopyConnectCommand}
+              onKillTmux={handleKillTmux}
               getCaptureStream={getCaptureStreamForSession}
               onStopCapture={handleStopCapture}
             />
@@ -422,11 +648,30 @@ export default function App() {
 
       <BottomBar />
 
+      <NewSessionDialog
+        open={newSessionOpen}
+        sshHosts={sshHosts}
+        onClose={() => setNewSessionOpen(false)}
+        onLaunched={handleLaunched}
+      />
+
       <QuickTmuxConnect
         open={quickTmuxOpen}
         onClose={() => setQuickTmuxOpen(false)}
         onConnected={handleQuickTmuxConnected}
       />
+
+      {discoveryState && (
+        <DiscoveryDialog
+          open={discoveryState.open}
+          mode={discoveryState.mode}
+          host={discoveryState.host}
+          sessions={sessions}
+          onClose={handleDiscoveryClose}
+          onAddToGrid={handleAddToGrid}
+          onFocusSession={handleFocusSession}
+        />
+      )}
     </main>
   );
 }

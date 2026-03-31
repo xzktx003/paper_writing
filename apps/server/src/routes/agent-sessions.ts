@@ -18,6 +18,8 @@ import type {
   CreateWindowCaptureSessionInput,
   ObserveStateInput,
   UpdateAgentSessionInput,
+  DiscoverTmuxInput,
+  AddDiscoveredTmuxInput,
 } from "@agent-orchestrator/shared";
 
 import { scanAgentDirectory } from "../services/agent-scanner.js";
@@ -31,6 +33,7 @@ import {
 } from "../services/observe-session-manager.js";
 import { PtyRuntimeManager } from "../services/pty-runtime-manager.js";
 import {
+  buildInteractiveShellCommand,
   buildTmuxCommand,
   quoteForPosixShell,
 } from "../services/runtime-compat.js";
@@ -235,8 +238,129 @@ export async function registerAgentSessionRoutes(
     },
   );
 
-  fastify.post("/api/agent-discovery/tmux/scan", async () =>
-    tmuxAdapter.discover(),
+  fastify.post<{ Body: DiscoverTmuxInput }>(
+    "/api/agent-discovery/tmux/scan",
+    async (request) => {
+      const { sshTarget } = request.body ?? {};
+      if (sshTarget) {
+        return tmuxAdapter.discoverRemote(sshTarget);
+      }
+      return tmuxAdapter.discover();
+    },
+  );
+
+  fastify.post<{ Body: AddDiscoveredTmuxInput }>(
+    "/api/agent-discovery/tmux/add",
+    async (request, reply) => {
+      const {
+        tmuxSession,
+        tmuxPane,
+        displayName,
+        workingDirectory,
+        agentKind,
+        interactionState,
+        outputPreview,
+        sshTarget,
+      } = request.body;
+
+      const hostId = sshTarget?.host ?? "local";
+      const runtimeId = sshTarget
+        ? `tmux:${hostId}:${tmuxSession}`
+        : `tmux:${tmuxSession}`;
+
+      if (interactionState === "running") {
+        const existingSession = registry.findByRuntimeId(runtimeId);
+
+        if (existingSession && ptyRuntimeManager.has(existingSession.id)) {
+          reply.code(201);
+          return existingSession;
+        }
+
+        if (existingSession) {
+          registry.remove(existingSession.id);
+        }
+
+        const attachedSession = sshTarget
+          ? ptyRuntimeManager.launchRemote({
+              workspaceId: tmuxSession,
+              displayName,
+              agentKind,
+              sshTarget,
+              remoteCommand: buildInteractiveShellCommand(
+                buildTmuxAttachCommand(tmuxSession, tmuxPane),
+              ),
+              workingDirectory,
+              tmuxSessionName: tmuxSession,
+              tmuxPaneId: tmuxPane,
+            })
+          : ptyRuntimeManager.launch({
+              workspaceId: tmuxSession,
+              hostId,
+              displayName,
+              agentKind,
+              command: buildTmuxAttachCommand(tmuxSession, tmuxPane),
+              workingDirectory,
+              tmuxSessionName: tmuxSession,
+              tmuxPaneId: tmuxPane,
+            });
+
+        reply.code(201);
+        return attachedSession;
+      }
+
+      const agentSession = registry.upsertByTransportRef(runtimeId, {
+        workspaceId: tmuxSession,
+        hostId,
+        sourceType: "remote-tmux-discovered",
+        agentKind,
+        displayName,
+        workingDirectory,
+        connectionState: "online",
+        interactionState: interactionState ?? "detached",
+        stateConfidence: "medium",
+        outputPreview,
+        controlMode: "observe",
+        transportRef: {
+          tmuxSession,
+          ...(tmuxPane ? { tmuxPane } : {}),
+          runtimeId,
+          ...(sshTarget && {
+            sshHost: sshTarget.host,
+            sshPort: sshTarget.port,
+            sshUsername: sshTarget.username,
+          }),
+        },
+        ...(sshTarget && { sshTarget }),
+      });
+
+      reply.code(201);
+      return agentSession;
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/api/agent-sessions/:id/remove-from-grid",
+    async (request, reply) => {
+      const { id } = request.params;
+      registry.remove(id);
+      reply.code(204);
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/api/agent-sessions/:id/tmux/kill",
+    async (request, reply) => {
+      const { id } = request.params;
+      const session = registry.get(id);
+      const tmuxSessionName = session.transportRef?.tmuxSession;
+      if (!tmuxSessionName) {
+        reply.code(400);
+        return { error: "Session has no tmux session reference" };
+      }
+      await tmuxAdapter.killSession(tmuxSessionName, session.sshTarget);
+      registry.remove(id);
+      reply.code(204);
+    },
   );
 
   fastify.post<{ Params: { id: string } }>(

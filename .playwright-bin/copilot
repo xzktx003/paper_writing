@@ -1,5 +1,15 @@
 #!/bin/sh
 
+if [ "$1" = "--resume=cpr-probe" ]; then
+  node -e 'if (process.stdin.isTTY) { process.stdin.setRawMode(true); } process.stdin.resume(); const initialDelayMs = 1000; let timeout; process.stdin.on("data", (chunk) => { if (timeout) { clearTimeout(timeout); } process.stdout.write("cpr-response:" + Buffer.from(chunk).toString("hex") + "\\n"); process.exit(0); }); setTimeout(() => { process.stdout.write("\u001b[6n"); timeout = setTimeout(() => { process.stdout.write("cpr-timeout\\n"); process.exit(0); }, 5000); }, initialDelayMs);'
+  exit $?
+fi
+
+if [ "$1" = "--resume=cpr-burst" ]; then
+  node -e 'if (process.stdin.isTTY) { process.stdin.setRawMode(true); } process.stdin.resume(); const totalQueries = 24; const initialDelayMs = 1000; const queryIntervalMs = 60; const pendingTimeoutMs = 1500; let completedQueries = 0; let awaitingReply = false; let pendingTimer = null; let buffer = ""; const encodeHex = (value) => Buffer.from(value, "latin1").toString("hex"); const isCprPrefix = (value) => /^\x1b?(?:\[(?:\d+(?:;\d*)?)?)?$/.test(value); const finish = (line, exitCode = 0) => { if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; } process.stdout.write(line + "\n"); process.exit(exitCode); }; const scheduleNextQuery = () => { if (completedQueries >= totalQueries) { finish(`cpr-burst-complete:${completedQueries}`); return; } setTimeout(() => { awaitingReply = true; process.stdout.write("\u001b[6n"); pendingTimer = setTimeout(() => finish(`cpr-timeout:${completedQueries + 1}`, 1), pendingTimeoutMs); }, queryIntervalMs); }; const processBuffer = () => { for (;;) { const match = buffer.match(/^\u001b\[(\d+;\d+)R/); if (!match) { if (buffer.length > 0 && !isCprPrefix(buffer)) { finish(`cpr-invalid:${encodeHex(buffer)}`, 1); } return; } if (!awaitingReply) { finish(`cpr-duplicate:${encodeHex(buffer)}`, 1); } buffer = buffer.slice(match[0].length); awaitingReply = false; completedQueries += 1; if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; } process.stdout.write(`cpr-ok:${completedQueries}:${match[1]}\n`); if (buffer.length > 0) { const nextMatch = buffer.match(/^\u001b\[(\d+;\d+)R/); if (nextMatch) { finish(`cpr-duplicate:${encodeHex(buffer)}`, 1); } if (!isCprPrefix(buffer)) { finish(`cpr-invalid:${encodeHex(buffer)}`, 1); } } scheduleNextQuery(); return; } }; process.stdout.write("cpr-burst-start\n"); process.stdin.on("data", (chunk) => { buffer += Buffer.from(chunk).toString("latin1"); processBuffer(); }); setTimeout(scheduleNextQuery, initialDelayMs);'
+  exit $?
+fi
+
 printf '\033[?1000h\033[?1006h'
 printf 'fake-copilot-start %s\n' "$*"
 

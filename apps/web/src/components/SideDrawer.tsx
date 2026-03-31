@@ -3,219 +3,40 @@ import { useEffect, useState } from "react";
 import type {
   AgentSessionRecord,
   LaunchLocalAgentInput,
-  LaunchSshPtyInput,
-  ScanDirectoryInput,
-  ScanResult,
   SshHostPreset,
   SshTarget,
 } from "@agent-orchestrator/shared";
 
+import { getSshHosts, launchPtyAgent, launchSshPtyAgent } from "../lib/api";
+import type { LaunchMode } from "../lib/session-matching";
 import {
-  discoverTmuxSessions,
-  getSshHosts,
-  launchPtyAgent,
-  launchSshPtyAgent,
-  scanDirectory,
-} from "../lib/api";
-import {
-  buildRemoteInteractiveShellCommand,
-  buildRemoteInteractiveShellExecCommand,
-  buildRemoteTmuxCommand,
-} from "../lib/platform-compat";
+  buildDirectLaunchCommand,
+  buildTmuxLaunchCommand,
+  buildRemoteDirectLaunchCommand,
+  wrapRemoteInteractiveCommand,
+  buildDefaultSessionName,
+} from "../lib/session-matching";
+import type { SelectedHost } from "./HostDropdown";
 
 interface SideDrawerProps {
   open: boolean;
+  collapsed: boolean;
   sessions: AgentSessionRecord[];
   onLaunched: () => void;
   onFocusSession: (id: string) => void;
-}
-
-type SelectedHost = { type: "local" } | { type: "ssh"; preset: SshHostPreset };
-type LaunchMode = "direct" | "tmux";
-
-const kindPriority: Record<string, number> = {
-  copilot: 0,
-  codex: 1,
-  claude: 2,
-  shell: 3,
-};
-
-function sortScanResults(results: ScanResult[]): ScanResult[] {
-  return [...results].sort((a, b) => {
-    // running first
-    if (a.status !== b.status) {
-      return a.status === "running" ? -1 : 1;
-    }
-    // then by kind priority
-    const ap = kindPriority[a.agentKind] ?? 99;
-    const bp = kindPriority[b.agentKind] ?? 99;
-    if (ap !== bp) return ap - bp;
-    // then alphabetically
-    return a.displayName.localeCompare(b.displayName);
-  });
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-function formatWorkingDirectory(workingDirectory: string): string {
-  if (workingDirectory === "~" || workingDirectory === "~/") {
-    return "~";
-  }
-
-  if (workingDirectory.startsWith("~/")) {
-    const suffix = workingDirectory
-      .slice(2)
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => shellQuote(segment))
-      .join("/");
-
-    return suffix ? `~/${suffix}` : "~";
-  }
-
-  return shellQuote(workingDirectory);
-}
-
-function buildAgentInvocation(
-  agentKind: string,
-  displayName: string,
-  sessionId?: string,
-): string | undefined {
-  if (agentKind === "shell") {
-    return undefined;
-  }
-
-  if (sessionId) {
-    return `${agentKind} --resume=${sessionId}`;
-  }
-
-  if (agentKind === "claude") {
-    return `claude -n ${shellQuote(displayName)}`;
-  }
-
-  return agentKind;
-}
-
-function buildDirectLaunchCommand(
-  agentKind: string,
-  workingDirectory: string,
-  displayName: string,
-  sessionId?: string,
-): string {
-  const invocation = buildAgentInvocation(agentKind, displayName, sessionId);
-
-  if (!invocation) {
-    return "";
-  }
-
-  return `cd ${formatWorkingDirectory(workingDirectory)} && ${invocation}`;
-}
-
-function buildTmuxLaunchCommand(
-  agentKind: string,
-  workingDirectory: string,
-  displayName: string,
-  tmuxSessionName: string,
-  sessionId?: string,
-): string {
-  if (agentKind === "shell") {
-    return `tmux new-session -s ${shellQuote(tmuxSessionName)} -c ${formatWorkingDirectory(workingDirectory)}`;
-  }
-
-  return `tmux new-session -s ${shellQuote(tmuxSessionName)} ${buildRemoteTmuxCommand(buildDirectLaunchCommand(agentKind, workingDirectory, displayName, sessionId), true)}`;
-}
-
-function buildRemoteDirectLaunchCommand(
-  agentKind: string,
-  workingDirectory: string,
-  displayName: string,
-  sessionId?: string,
-): string {
-  if (agentKind === "shell") {
-    return `cd ${formatWorkingDirectory(workingDirectory)} && ${buildRemoteInteractiveShellExecCommand()}`;
-  }
-
-  return buildDirectLaunchCommand(
-    agentKind,
-    workingDirectory,
-    displayName,
-    sessionId,
-  );
-}
-
-function buildTmuxAttachCommand(
-  tmuxSessionName: string,
-  tmuxPaneId?: string,
-): string {
-  if (tmuxPaneId) {
-    return `tmux select-pane -t ${shellQuote(tmuxPaneId)} && tmux attach -t ${shellQuote(tmuxSessionName)}`;
-  }
-
-  return `tmux attach -t ${shellQuote(tmuxSessionName)}`;
-}
-
-function wrapRemoteInteractiveCommand(command: string): string {
-  return buildRemoteInteractiveShellCommand(command);
-}
-
-function buildDefaultSessionName(
-  agentKind: string,
-  launchMode: LaunchMode,
-): string {
-  if (launchMode !== "tmux") {
-    return `${agentKind} 新会话`;
-  }
-
-  const now = new Date();
-  const timestamp = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-    String(now.getHours()).padStart(2, "0"),
-    String(now.getMinutes()).padStart(2, "0"),
-    String(now.getSeconds()).padStart(2, "0"),
-  ].join("");
-
-  return `${agentKind} 新会话 ${timestamp}`;
-}
-
-function findExistingSession(
-  result: ScanResult,
-  sessions: AgentSessionRecord[],
-): AgentSessionRecord | undefined {
-  // Match by sessionId → agentSessionId
-  if (result.sessionId) {
-    const match = sessions.find((s) => s.agentSessionId === result.sessionId);
-    if (match) return match;
-  }
-  // Match by tmuxSession
-  if (result.tmuxSession) {
-    const match = sessions.find(
-      (s) => s.transportRef?.tmuxSession === result.tmuxSession,
-    );
-    if (match) return match;
-  }
-  // Match by host+cwd+kind combo
-  const hostId = result.sshTarget?.host ?? "local";
-  return sessions.find(
-    (s) =>
-      (s.hostId ?? "local") === hostId &&
-      s.workingDirectory === result.workingDirectory &&
-      s.agentKind === result.agentKind,
-  );
+  onToggleCollapsed: () => void;
 }
 
 export function SideDrawer({
   open,
+  collapsed,
   sessions,
   onLaunched,
   onFocusSession,
+  onToggleCollapsed,
 }: SideDrawerProps) {
   // Panel open state
   const [hostsOpen, setHostsOpen] = useState(true);
-  const [resultsOpen, setResultsOpen] = useState(true);
   const [newSessionOpen, setNewSessionOpen] = useState(false);
 
   // Host selection
@@ -223,12 +44,6 @@ export function SideDrawer({
   const [selectedHost, setSelectedHost] = useState<SelectedHost>({
     type: "local",
   });
-  const [scanPath, setScanPath] = useState("~/");
-
-  // Scan
-  const [scanResults, setScanResults] = useState<ScanResult[]>([]);
-  const [scanning, setScanning] = useState(false);
-  const [scanMessage, setScanMessage] = useState<string | null>(null);
 
   // New session form
   const [newName, setNewName] = useState("");
@@ -247,6 +62,33 @@ export function SideDrawer({
 
   if (!open) return null;
 
+  if (collapsed) {
+    return (
+      <aside className="side-drawer side-drawer--collapsed">
+        <button
+          className="drawer-icon-btn"
+          onClick={onToggleCollapsed}
+          title="展开面板"
+        >
+          ▶
+        </button>
+        <button className="drawer-icon-btn" title="主机">
+          🖥
+        </button>
+        <button
+          className="drawer-icon-btn"
+          onClick={() => {
+            onToggleCollapsed();
+            setNewSessionOpen(true);
+          }}
+          title="新建会话"
+        >
+          ＋
+        </button>
+      </aside>
+    );
+  }
+
   function currentSshTarget(): SshTarget | undefined {
     if (selectedHost.type === "ssh") {
       return {
@@ -257,166 +99,6 @@ export function SideDrawer({
       };
     }
     return undefined;
-  }
-
-  async function handleScan() {
-    setScanning(true);
-    setScanMessage(null);
-
-    try {
-      const sshTarget = currentSshTarget();
-      const input: ScanDirectoryInput = {
-        path: scanPath || "~/",
-        hostId:
-          selectedHost.type === "ssh" ? selectedHost.preset.name : undefined,
-        sshTarget,
-      };
-      const response = await scanDirectory(input);
-      setScanResults(sortScanResults(response.results));
-      setScanMessage(`扫描完成: 发现 ${response.results.length} 个 Agent`);
-      setResultsOpen(true);
-    } catch (error) {
-      setScanMessage(
-        `扫描失败: ${error instanceof Error ? error.message : "未知错误"}`,
-      );
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  async function handleDiscoverTmux() {
-    try {
-      const result = await discoverTmuxSessions();
-      if (result.unavailable) {
-        setStatusMessage("本机 tmux 不可用");
-      } else {
-        setStatusMessage(`发现 ${result.items.length} 个 tmux 会话`);
-        onLaunched();
-      }
-    } catch {
-      setStatusMessage("tmux 扫描失败");
-    }
-  }
-
-  async function handleAddScanResult(
-    result: ScanResult,
-    mode: LaunchMode = "direct",
-  ) {
-    try {
-      const shouldResumeInTmux = mode === "tmux" && Boolean(result.sessionId);
-      const tmuxSessionName = result.tmuxSession
-        ? result.tmuxSession
-        : result.sessionName || result.displayName;
-      const localTmuxAttachInput: LaunchLocalAgentInput & {
-        tmuxPaneId?: string;
-      } = {
-        workspaceId: "default",
-        displayName: result.displayName,
-        agentKind: result.agentKind,
-        command: buildTmuxAttachCommand(
-          result.tmuxSession ?? tmuxSessionName,
-          result.tmuxPane,
-        ),
-        tmuxSessionName: result.tmuxSession,
-        tmuxPaneId: result.tmuxPane,
-      };
-
-      if (result.sshTarget) {
-        let remoteCommand: string;
-        if (result.tmuxSession) {
-          remoteCommand = buildTmuxAttachCommand(
-            result.tmuxSession,
-            result.tmuxPane,
-          );
-        } else {
-          let inner: string;
-          if (result.sessionId) {
-            inner = shouldResumeInTmux
-              ? buildTmuxLaunchCommand(
-                  result.agentKind,
-                  result.workingDirectory,
-                  result.displayName,
-                  tmuxSessionName,
-                  result.sessionId,
-                )
-              : buildRemoteDirectLaunchCommand(
-                  result.agentKind,
-                  result.workingDirectory,
-                  result.displayName,
-                  result.sessionId,
-                );
-          } else {
-            inner = buildRemoteDirectLaunchCommand(
-              result.agentKind,
-              result.workingDirectory,
-              result.displayName,
-            );
-          }
-          remoteCommand = shouldResumeInTmux
-            ? inner
-            : wrapRemoteInteractiveCommand(inner);
-        }
-
-        const sshLaunchInput: LaunchSshPtyInput & { tmuxPaneId?: string } = {
-          workspaceId: "default",
-          displayName: result.displayName,
-          agentKind: result.agentKind,
-          sshTarget: result.sshTarget,
-          remoteCommand,
-          workingDirectory: result.workingDirectory,
-          agentSessionId: result.sessionId,
-          tmuxSessionName:
-            result.tmuxSession || shouldResumeInTmux
-              ? tmuxSessionName
-              : undefined,
-          tmuxPaneId: result.tmuxPane,
-        };
-
-        await launchSshPtyAgent(sshLaunchInput);
-      } else if (result.tmuxSession) {
-        await launchPtyAgent(localTmuxAttachInput);
-      } else if (result.sessionId) {
-        const cmd = shouldResumeInTmux
-          ? buildTmuxLaunchCommand(
-              result.agentKind,
-              result.workingDirectory,
-              result.displayName,
-              tmuxSessionName,
-              result.sessionId,
-            )
-          : buildDirectLaunchCommand(
-              result.agentKind,
-              result.workingDirectory || "~/",
-              result.displayName,
-              result.sessionId,
-            );
-        await launchPtyAgent({
-          workspaceId: "default",
-          displayName: result.displayName,
-          agentKind: result.agentKind,
-          command: cmd,
-          workingDirectory: result.workingDirectory,
-          tmuxSessionName: shouldResumeInTmux ? tmuxSessionName : undefined,
-        });
-      } else {
-        await launchPtyAgent({
-          workspaceId: "default",
-          displayName: result.displayName,
-          agentKind: result.agentKind,
-          command: buildDirectLaunchCommand(
-            result.agentKind,
-            result.workingDirectory,
-            result.displayName,
-          ),
-          workingDirectory: result.workingDirectory,
-        });
-      }
-
-      setStatusMessage(`已接入: ${result.displayName}`);
-      onLaunched();
-    } catch {
-      setStatusMessage(`接入失败: ${result.displayName}`);
-    }
   }
 
   async function handleNewSession() {
@@ -519,116 +201,11 @@ export function SideDrawer({
                 </label>
               ))}
             </div>
-
-            <div className="host-scan-row">
-              <input
-                className="drawer-input"
-                data-testid="scan-path-input"
-                placeholder="扫描路径 (默认 ~/)"
-                value={scanPath}
-                onChange={(e) => setScanPath(e.target.value)}
-              />
-              <button
-                className="drawer-btn primary"
-                data-testid="scan-button"
-                onClick={handleScan}
-                disabled={scanning}
-              >
-                {scanning ? "…" : "扫描"}
-              </button>
-            </div>
-            {selectedHost.type === "local" && (
-              <button className="drawer-btn small" onClick={handleDiscoverTmux}>
-                扫描本地 tmux
-              </button>
-            )}
           </div>
         )}
       </div>
 
-      {/* ── Section 2: Scan Results ── */}
-      <div className="drawer-collapsible">
-        <button
-          className="drawer-collapsible-header"
-          onClick={() => setResultsOpen(!resultsOpen)}
-        >
-          <span>{resultsOpen ? "▼" : "▶"} 扫描结果</span>
-          <span className="drawer-collapsible-count">{scanResults.length}</span>
-        </button>
-        {resultsOpen && (
-          <div className="drawer-collapsible-body">
-            {scanMessage && <p className="drawer-message">{scanMessage}</p>}
-            {scanResults.length === 0 && !scanMessage && (
-              <p className="drawer-message">选择主机后点击「扫描」</p>
-            )}
-            <div className="scan-results-list" data-testid="scan-results-list">
-              {scanResults.map((result, index) => {
-                const existing = findExistingSession(result, sessions);
-                const canResumeInTmux =
-                  result.status === "stopped" && Boolean(result.sessionId);
-
-                return (
-                  <div key={index} className="scan-result-item">
-                    <div className="scan-result-info">
-                      <span className="scan-result-name">
-                        {result.displayName}
-                      </span>
-                      <span
-                        className={`scan-result-status status-${result.status}`}
-                      >
-                        {result.status === "running" ? "运行中" : "已停止"}
-                      </span>
-                    </div>
-                    <span className="scan-result-kind">
-                      {result.agentKind}
-                      {result.tmuxSession ? " · tmux" : ""}
-                      {result.workingDirectory
-                        ? ` · ${result.workingDirectory}`
-                        : ""}
-                    </span>
-                    {existing ? (
-                      <button
-                        className="drawer-btn small btn-focus"
-                        onClick={() => onFocusSession(existing.id)}
-                      >
-                        已在宫格 → 聚焦
-                      </button>
-                    ) : canResumeInTmux ? (
-                      <div className="scan-result-actions">
-                        <button
-                          className="drawer-btn small"
-                          onClick={() => handleAddScanResult(result, "direct")}
-                        >
-                          恢复
-                        </button>
-                        <button
-                          className="drawer-btn small"
-                          onClick={() => handleAddScanResult(result, "tmux")}
-                        >
-                          tmux 恢复
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="drawer-btn small"
-                        onClick={() => handleAddScanResult(result)}
-                      >
-                        {result.tmuxSession
-                          ? "连接 tmux"
-                          : result.status === "running"
-                            ? "接入"
-                            : "恢复"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Section 3: New Session ── */}
+      {/* ── Section 2: New Session ── */}
       <div className="drawer-collapsible">
         <button
           className="drawer-collapsible-header"
@@ -696,6 +273,13 @@ export function SideDrawer({
       </div>
 
       {statusMessage && <p className="drawer-status">{statusMessage}</p>}
+      <button
+        className="drawer-collapse-btn"
+        onClick={onToggleCollapsed}
+        title="折叠面板"
+      >
+        ◀ 折叠
+      </button>
     </aside>
   );
 }

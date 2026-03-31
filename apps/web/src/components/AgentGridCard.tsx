@@ -1,6 +1,7 @@
 import type { AgentSessionRecord } from "@agent-orchestrator/shared";
 
 import { getWindowCaptureDisplay } from "../lib/window-capture-label";
+import { CardMoreMenu } from "./CardMoreMenu";
 import { TerminalView } from "./TerminalView";
 import { WindowCapturePreview } from "./WindowCapturePreview";
 
@@ -10,8 +11,12 @@ interface AgentGridCardProps {
   onDelete: (id: string) => void;
   onReconnect: (id: string) => void;
   onRename?: (id: string) => void;
+  onRemoveFromGrid?: (id: string) => void;
+  onCopyConnectCommand?: (id: string) => void;
+  onKillTmux?: (id: string) => void;
   captureStream?: MediaStream | null;
   onStopCapture?: (id: string) => void;
+  terminalSuspended?: boolean;
 }
 
 const stateLabels: Record<string, string> = {
@@ -54,8 +59,12 @@ export function AgentGridCard({
   onDelete,
   onReconnect,
   onRename,
+  onRemoveFromGrid,
+  onCopyConnectCommand,
+  onKillTmux,
   captureStream,
   onStopCapture,
+  terminalSuspended = false,
 }: AgentGridCardProps) {
   const stateClass = stateColors[session.interactionState] ?? "";
   const stateLabel =
@@ -66,6 +75,7 @@ export function AgentGridCard({
   const isExited = session.interactionState === "exited";
   const isDetached = session.interactionState === "detached";
   const canReconnect = isExited && !isTmux && !isWindowCapture;
+  const canRemoveFromGrid = isTmux || isTmuxManaged;
   const canDelete = !isTmux && (!isWindowCapture || isExited || isDetached);
   const canStopCapture =
     isWindowCapture && !isExited && !isDetached && Boolean(captureStream);
@@ -116,9 +126,31 @@ export function AgentGridCard({
           >
             ✎
           </button>
+          {(isTmux || isTmuxManaged) && (
+            <CardMoreMenu
+              sessionId={session.id}
+              isTmux={isTmux || isTmuxManaged}
+              onRename={(id) => onRename?.(id)}
+              onCopyConnectCommand={(id) => onCopyConnectCommand?.(id)}
+              onKillTmux={(id) => onKillTmux?.(id)}
+            />
+          )}
           <span className={`grid-card-badge badge-${session.interactionState}`}>
             {stateLabel}
           </span>
+          {canRemoveFromGrid && (
+            <button
+              className="grid-card-remove"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveFromGrid?.(session.id);
+              }}
+              title="从宫格移除"
+              type="button"
+            >
+              ⊟
+            </button>
+          )}
           {canDelete && (
             <button
               className="grid-card-delete"
@@ -139,7 +171,11 @@ export function AgentGridCard({
             connectionState={session.connectionState}
           />
         ) : (
-          <TerminalView agentSessionId={session.id} interactive={false} />
+          <TerminalView
+            agentSessionId={session.id}
+            interactive={false}
+            suspended={terminalSuspended}
+          />
         )}
         {canReconnect && (
           <button className="grid-card-reconnect" onClick={handleReconnect}>

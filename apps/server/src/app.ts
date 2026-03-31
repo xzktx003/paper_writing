@@ -64,14 +64,47 @@ export function buildServer(): {
       (socket, request) => {
         const { id } = request.params;
 
+        const buildTerminalControlFrame = (
+          event: "replay" | "replay-complete",
+          data?: string,
+        ) =>
+          JSON.stringify({
+            __agentOrchestrator: "terminal-control",
+            event,
+            data,
+          });
+
         if (!ptyRuntimeManager.has(id)) {
           socket.close(4004, "没有找到 PTY 会话");
           return;
         }
 
-        const unsubscribe = ptyRuntimeManager.subscribe(id, (data) => {
-          socket.send(data);
-        });
+        let replaying = true;
+        const bufferedLiveFrames: string[] = [];
+        const unsubscribe = ptyRuntimeManager.subscribe(
+          id,
+          (data) => {
+            if (replaying) {
+              bufferedLiveFrames.push(data);
+              return;
+            }
+
+            socket.send(data);
+          },
+          { replay: false },
+        );
+
+        const replay = ptyRuntimeManager.getScrollback(id);
+        if (replay) {
+          socket.send(buildTerminalControlFrame("replay", replay));
+        }
+        socket.send(buildTerminalControlFrame("replay-complete"));
+        replaying = false;
+
+        for (const frame of bufferedLiveFrames) {
+          socket.send(frame);
+        }
+        bufferedLiveFrames.length = 0;
 
         socket.on("message", (message: Buffer | string) => {
           const writeToRuntime = (payload: string) => {

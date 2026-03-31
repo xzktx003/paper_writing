@@ -50,6 +50,19 @@ test("user input resets inactivity timer and later returns to awaiting_input", a
   assert.equal(registry.get(session.id).interactionState, "awaiting_input");
 });
 
+test("repeated identical terminal redraws do not keep sessions running", async () => {
+  const registry = new AgentSessionRegistry(60);
+  const session = createSession(registry);
+
+  registry.appendOutput(session.id, "prompt> ", "stdout");
+  await wait(25);
+
+  registry.appendOutput(session.id, "\u001b[2K\rprompt> ", "stdout");
+  await wait(40);
+
+  assert.equal(registry.get(session.id).interactionState, "awaiting_input");
+});
+
 test("tmux observe-only sessions stay detached even when screen is unchanged", async () => {
   const registry = new AgentSessionRegistry(20);
   const session = registry.register({
@@ -70,7 +83,7 @@ test("tmux observe-only sessions stay detached even when screen is unchanged", a
   assert.equal(updated.stateConfidence, "high");
 });
 
-test("local-window-capture sessions never enter awaiting_input", async () => {
+test("local-window-capture sessions enter awaiting_input after the captured screen stays unchanged", async () => {
   const registry = new AgentSessionRegistry(20);
   const session = registry.register({
     workspaceId: "local-vscode-window-observe",
@@ -84,8 +97,10 @@ test("local-window-capture sessions never enter awaiting_input", async () => {
 
   assert.equal(session.interactionState, "running");
 
-  // Even after idle time exceeds the threshold, should remain running
+  registry.syncCapturedScreen(session.id, "stable frame");
   await wait(35);
-  assert.equal(registry.get(session.id).interactionState, "running");
-  assert.notEqual(registry.get(session.id).interactionState, "awaiting_input");
+
+  const updated = registry.syncCapturedScreen(session.id, "stable frame");
+  assert.equal(updated.interactionState, "awaiting_input");
+  assert.equal(updated.stateConfidence, "medium");
 });

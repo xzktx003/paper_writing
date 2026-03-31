@@ -1,9 +1,13 @@
 import type {
+  AddDiscoveredTmuxInput,
   AgentSessionDetailResponse,
   AgentSessionSnapshotEvent,
   AgentSessionRecord,
   CreateWindowCaptureSessionInput,
   CreateWindowCaptureSessionResponse,
+  DirectorySuggestionsInput,
+  DirectorySuggestionsResponse,
+  DiscoverTmuxInput,
   DiscoverTmuxSessionsResponse,
   FocusAgentSessionInput,
   LaunchLocalAgentInput,
@@ -130,11 +134,14 @@ export function launchRemoteAgent(
   });
 }
 
-export function discoverTmuxSessions(): Promise<DiscoverTmuxSessionsResponse> {
+export function discoverTmuxSessions(
+  body?: DiscoverTmuxInput,
+): Promise<DiscoverTmuxSessionsResponse> {
   return request<DiscoverTmuxSessionsResponse>(
     "/api/agent-discovery/tmux/scan",
     {
       method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
     },
   );
 }
@@ -245,6 +252,15 @@ export function getSshHosts(): Promise<SshHostsResponse> {
   return request<SshHostsResponse>("/api/ssh-hosts");
 }
 
+export function getDirectorySuggestions(
+  body: DirectorySuggestionsInput,
+): Promise<DirectorySuggestionsResponse> {
+  return request<DirectorySuggestionsResponse>("/api/directory-suggestions", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export function deleteAgentSession(agentSessionId: string): Promise<void> {
   return fetch(`${apiBaseUrl}/api/agent-sessions/${agentSessionId}`, {
     method: "DELETE",
@@ -314,4 +330,26 @@ export async function deleteAgentSessionSafe(
     { method: "DELETE" },
   );
   return { ok: res.ok, status: res.status };
+}
+
+export function removeFromGrid(agentSessionId: string): Promise<void> {
+  return request<void>(
+    `/api/agent-sessions/${agentSessionId}/remove-from-grid`,
+    { method: "POST" },
+  );
+}
+
+export function killTmuxSession(agentSessionId: string): Promise<void> {
+  return request<void>(`/api/agent-sessions/${agentSessionId}/tmux/kill`, {
+    method: "POST",
+  });
+}
+
+export function addDiscoveredTmux(
+  input: AddDiscoveredTmuxInput,
+): Promise<AgentSessionRecord> {
+  return request<AgentSessionRecord>("/api/agent-discovery/tmux/add", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

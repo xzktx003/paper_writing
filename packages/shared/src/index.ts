@@ -166,6 +166,16 @@ export interface ScanDirectoryInput {
   sshTarget?: SshTarget;
 }
 
+export interface DirectorySuggestionsInput {
+  prefix: string;
+  sshTarget?: SshTarget;
+}
+
+export interface DirectorySuggestionsResponse {
+  enabled: boolean;
+  suggestions: string[];
+}
+
 export interface ScanResult {
   agentKind: string;
   status: "running" | "stopped";
@@ -208,6 +218,34 @@ export const interactionStateOrder: InteractionState[] = [
   "exited",
 ];
 
+// --- Discovery & Grid Control DTOs ---
+
+export interface DiscoverTmuxInput {
+  hostId?: string;
+  sshTarget?: SshTarget;
+}
+
+export interface AddDiscoveredTmuxInput {
+  tmuxSession: string;
+  tmuxPane?: string;
+  displayName: string;
+  workingDirectory: string;
+  agentKind: string;
+  interactionState?: InteractionState;
+  outputPreview?: string;
+  sshTarget?: SshTarget;
+}
+
+export interface KillTmuxSessionInput {
+  tmuxSessionName: string;
+  hostId?: string;
+  sshTarget?: SshTarget;
+}
+
+export interface RemoveFromGridInput {
+  preserveTransport: boolean;
+}
+
 // --- Window Capture DTOs ---
 
 export interface WindowCaptureMeta {
@@ -228,6 +266,7 @@ export interface ObserveStateHeartbeatInput {
   kind: "heartbeat";
   observeToken: string;
   outputPreview?: string;
+  screenSignature?: string;
 }
 
 export interface ObserveStateTransitionInput {

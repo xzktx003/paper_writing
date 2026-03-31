@@ -1,28 +1,29 @@
 import { expect, test } from '@playwright/test';
 
-test('copilot session shows awaiting-input state in yellow', async ({
-  page,
-  request,
-}) => {
+test('terminal session shows awaiting-input state in yellow', async ({ page }) => {
   const displayName = `E2E Awaiting ${Date.now()}`;
-  let agentSessionId: string | undefined;
 
   try {
-    const launchResponse = await request.post('/api/agent-launch/pty', {
-      data: {
-        workspaceId: 'default',
-        displayName,
-        agentKind: 'copilot',
-        command: 'node ./scripts/mock-agent.mjs',
-        workingDirectory: process.cwd(),
-      },
-    });
-
-    expect(launchResponse.ok()).toBeTruthy();
-    const payload = await launchResponse.json();
-    agentSessionId = payload.id;
-
     await page.goto('/');
+    await page.getByRole('combobox', { name: '服务器' }).selectOption({
+      label: '全部',
+    });
+    await page.getByRole('combobox', { name: '类型' }).selectOption({
+      label: '全部',
+    });
+    await page.getByRole('combobox', { name: '类别' }).selectOption({
+      label: '全部',
+    });
+    await page.getByRole('textbox', { name: '目录' }).fill('');
+
+    await page.getByTestId('new-session-toggle').click();
+    await page.getByTestId('new-session-host-option-local').click();
+    await page.getByTestId('new-session-name').fill(displayName);
+    await page.getByTestId('new-session-kind').selectOption('shell');
+    await page.getByTestId('new-session-mode-direct').click();
+    await page.getByTestId('new-session-dir').fill(process.cwd());
+    await page.getByTestId('create-session').click();
+    await expect(page.getByTestId('new-session-dialog')).toHaveCount(0);
 
     const card = page.locator('.grid-card', {
       has: page.locator('.grid-card-name', { hasText: displayName }),
@@ -37,8 +38,23 @@ test('copilot session shows awaiting-input state in yellow', async ({
     await expect(card).toHaveClass(/card-awaiting/);
     await expect(page.locator('.stat-awaiting')).toContainText('等待输入');
   } finally {
-    if (agentSessionId) {
-      await request.delete(`/api/agent-sessions/${agentSessionId}`);
-    }
+    await page
+      .evaluate(async (nextDisplayName) => {
+        const listResponse = await fetch('/api/agent-sessions');
+        const list = await listResponse.json();
+        const session = list.items.find(
+          (item: { id: string; displayName: string }) =>
+            item.displayName === nextDisplayName,
+        );
+
+        if (!session) {
+          return;
+        }
+
+        await fetch(`/api/agent-sessions/${session.id}`, {
+          method: 'DELETE',
+        });
+      }, displayName)
+      .catch(() => {});
   }
 });

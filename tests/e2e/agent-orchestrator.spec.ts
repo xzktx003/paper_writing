@@ -41,7 +41,7 @@ test('v2: 启动 PTY Agent 并在宫格中显示', async ({ page, request }) => 
     sessionId = await launchMockSession(request, displayName);
 
     await page.goto('/');
-    await expect(page.locator('.top-bar-title')).toContainText('Agent 控制台');
+    await expect(page.locator('.top-bar-title')).toContainText('Coding Kanban');
 
     const myCard = page.locator('.grid-card', {
       has: page.locator('.grid-card-name', { hasText: displayName }),
@@ -81,27 +81,35 @@ test('v2: 双击放大终端并可交互', async ({ page, request }) => {
   }
 });
 
-test('v2: 扫描本地目录', async ({ page }) => {
+test('v2: 通过 Discovery Dialog 扫描 tmux', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByTestId('scan-path-input').fill(process.cwd());
-  await page.getByTestId('scan-button').click();
+  // Open tmux discovery via keyboard shortcut
+  await page.keyboard.press('Meta+Shift+KeyS');
 
-  await expect(page.locator('.drawer-message')).toContainText('扫描完成', {
-    timeout: 15000,
-  });
+  // Dialog should appear
+  await expect(page.locator('.discovery-dialog')).toBeVisible();
+
+  // Should have refresh/search controls in tmux panel
+  await expect(
+    page.locator('.discovery-dialog-title'),
+  ).toContainText('发现 tmux 会话');
+
+  // Close with ESC
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.discovery-dialog')).not.toBeVisible();
 });
 
-test('v2: 侧边栏收起和展开', async ({ page }) => {
+test('v2: 顶栏新建会话弹层可以打开和关闭', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.locator('.side-drawer')).toBeVisible();
+  await expect(page.locator('.side-drawer')).toHaveCount(0);
 
-  await page.locator('.drawer-toggle').click();
-  await expect(page.locator('.side-drawer')).not.toBeVisible();
+  await page.getByTestId('new-session-toggle').click();
+  await expect(page.getByTestId('new-session-dialog')).toBeVisible();
 
-  await page.locator('.drawer-toggle').click();
-  await expect(page.locator('.side-drawer')).toBeVisible();
+  await page.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByTestId('new-session-dialog')).toHaveCount(0);
 });
 
 test('v2: 顶栏显示会话统计', async ({ page, request }) => {
@@ -110,9 +118,15 @@ test('v2: 顶栏显示会话统计', async ({ page, request }) => {
 
   try {
     await page.goto('/');
-    await expect(page.locator('.top-bar-title')).toContainText('Agent 控制台');
+    await expect(page.locator('.top-bar-title')).toContainText('Coding Kanban');
 
-    const statsText = await page.locator('.stat-item').first().textContent();
+    // Wait for stat to be populated with a real count
+    const statLocator = page.locator('.stat-item').first();
+    await expect(statLocator).toContainText(/共 \d+ 个会话/, {
+      timeout: 10000,
+    });
+
+    const statsText = await statLocator.textContent();
     const currentCount = parseInt(
       statsText?.match(/共 (\d+) 个会话/)?.[1] ?? '0',
       10,

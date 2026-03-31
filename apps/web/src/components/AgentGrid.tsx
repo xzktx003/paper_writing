@@ -12,8 +12,12 @@ interface AgentGridProps {
   onDeleteSession: (id: string) => void;
   onReconnectSession: (id: string) => void;
   onRenameSession?: (id: string) => void;
+  onRemoveFromGrid?: (id: string) => void;
+  onCopyConnectCommand?: (id: string) => void;
+  onKillTmux?: (id: string) => void;
   getCaptureStream?: (id: string) => MediaStream | null;
   onStopCapture?: (id: string) => void;
+  suspendedSessionId?: string | null;
 }
 
 export function AgentGrid({
@@ -25,8 +29,12 @@ export function AgentGrid({
   onDeleteSession,
   onReconnectSession,
   onRenameSession,
+  onRemoveFromGrid,
+  onCopyConnectCommand,
+  onKillTmux,
   getCaptureStream,
   onStopCapture,
+  suspendedSessionId,
 }: AgentGridProps) {
   return (
     <div className="agent-grid-container">
@@ -54,8 +62,12 @@ export function AgentGrid({
               onDelete={onDeleteSession}
               onReconnect={onReconnectSession}
               onRename={onRenameSession}
+              onRemoveFromGrid={onRemoveFromGrid}
+              onCopyConnectCommand={onCopyConnectCommand}
+              onKillTmux={onKillTmux}
               captureStream={getCaptureStream?.(session.id)}
               onStopCapture={onStopCapture}
+              terminalSuspended={session.id === suspendedSessionId}
             />
           ))}
         </div>

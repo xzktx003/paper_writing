@@ -1,4 +1,5 @@
 import * as pty from "node-pty";
+import { devNull } from "node:os";
 
 import type {
   AgentSessionRecord,
@@ -33,14 +34,72 @@ export function sanitizeReplayForTerminal(data: string): string {
   );
 }
 
-function buildPtyEnv(): Record<string, string> {
+interface LocalPtySpawnPlan {
+  file: string;
+  args: string[];
+  env: Record<string, string>;
+  sendInitialCommand: boolean;
+}
+
+function buildPtyEnv(agentKind?: string): Record<string, string> {
   const env = { ...(process.env as Record<string, string | undefined>) };
 
-  delete env.npm_config_prefix;
+  for (const key of Object.keys(env)) {
+    if (/^npm_config_/i.test(key)) {
+      delete env[key];
+    }
+  }
+
+  if (agentKind === "copilot") {
+    env.NPM_CONFIG_USERCONFIG = devNull;
+    env.NPM_CONFIG_GLOBALCONFIG = devNull;
+    env.npm_config_userconfig = devNull;
+    env.npm_config_globalconfig = devNull;
+  }
 
   return Object.fromEntries(
     Object.entries(env).filter(([, value]) => value !== undefined),
   ) as Record<string, string>;
+}
+
+function parseDirectCopilotArgs(command: string): string[] | null {
+  const match = command
+    .trim()
+    .match(/^(?:cd\s+.+\s+&&\s+)?copilot(?:\s+(--resume=\S+))?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1] ? [match[1]] : [];
+}
+
+function buildLocalSpawnPlan(
+  shell: string,
+  input: LaunchLocalAgentInput,
+): LocalPtySpawnPlan {
+  if (
+    input.agentKind === "copilot" &&
+    !input.tmuxSessionName &&
+    input.command
+  ) {
+    const directArgs = parseDirectCopilotArgs(input.command);
+    if (directArgs) {
+      return {
+        file: "copilot",
+        args: directArgs,
+        env: buildPtyEnv("copilot"),
+        sendInitialCommand: false,
+      };
+    }
+  }
+
+  return {
+    file: shell,
+    args: [],
+    env: buildPtyEnv(),
+    sendInitialCommand: true,
+  };
 }
 
 export class PtyRuntimeManager {
@@ -50,13 +109,17 @@ export class PtyRuntimeManager {
 
   launch(input: LaunchLocalAgentInput): AgentSessionRecord {
     const shell = resolvePreferredShell();
+    const resolvedWorkingDirectory = resolveLocalWorkingDirectory(
+      input.workingDirectory,
+    );
+    const spawnPlan = buildLocalSpawnPlan(shell, input);
 
-    const ptyProcess = pty.spawn(shell, [], {
+    const ptyProcess = pty.spawn(spawnPlan.file, spawnPlan.args, {
       name: "xterm-256color",
       cols: 120,
       rows: 30,
-      cwd: resolveLocalWorkingDirectory(input.workingDirectory),
-      env: buildPtyEnv(),
+      cwd: resolvedWorkingDirectory,
+      env: spawnPlan.env,
     });
 
     const agentSession = this.registry.register({
@@ -65,7 +128,7 @@ export class PtyRuntimeManager {
       sourceType: "local",
       agentKind: input.agentKind,
       displayName: input.displayName,
-      workingDirectory: input.workingDirectory,
+      workingDirectory: resolvedWorkingDirectory,
       connectionState: "online",
       interactionState: "running",
       stateConfidence: "medium",
@@ -113,7 +176,7 @@ export class PtyRuntimeManager {
     });
 
     // Send initial command if provided
-    if (input.command) {
+    if (spawnPlan.sendInitialCommand && input.command) {
       ptyProcess.write(input.command + "\n");
     }
 
@@ -235,7 +298,21 @@ export class PtyRuntimeManager {
     }
   }
 
-  subscribe(agentSessionId: string, listener: PtyDataListener): () => void {
+  getScrollback(agentSessionId: string): string {
+    const handle = this.handles.get(agentSessionId);
+
+    if (!handle) {
+      throw new Error(`没有找到 PTY 运行时: ${agentSessionId}`);
+    }
+
+    return handle.scrollback.join("");
+  }
+
+  subscribe(
+    agentSessionId: string,
+    listener: PtyDataListener,
+    options?: { replay?: boolean },
+  ): () => void {
     const handle = this.handles.get(agentSessionId);
 
     if (!handle) {
@@ -243,7 +320,7 @@ export class PtyRuntimeManager {
     }
 
     // Replay scrollback buffer to the new subscriber
-    if (handle.scrollback.length > 0) {
+    if (options?.replay !== false && handle.scrollback.length > 0) {
       const replay = sanitizeReplayForTerminal(handle.scrollback.join(""));
       if (replay) {
         listener(replay);
@@ -351,12 +428,16 @@ export class PtyRuntimeManager {
     this.kill(agentSessionId);
 
     const shell = resolvePreferredShell();
-    const ptyProcess = pty.spawn(shell, [], {
+    const resolvedWorkingDirectory = resolveLocalWorkingDirectory(
+      input.workingDirectory,
+    );
+    const spawnPlan = buildLocalSpawnPlan(shell, input);
+    const ptyProcess = pty.spawn(spawnPlan.file, spawnPlan.args, {
       name: "xterm-256color",
       cols: 120,
       rows: 30,
-      cwd: resolveLocalWorkingDirectory(input.workingDirectory),
-      env: buildPtyEnv(),
+      cwd: resolvedWorkingDirectory,
+      env: spawnPlan.env,
     });
 
     const handle: PtyHandle = {
@@ -372,6 +453,7 @@ export class PtyRuntimeManager {
       interactionState: "running",
       stateConfidence: "medium",
       outputPreview: `重新连接中: ${input.command}`,
+      workingDirectory: resolvedWorkingDirectory,
       transportRef: {
         processId: ptyProcess.pid,
         tmuxSession: input.tmuxSessionName,
@@ -402,7 +484,7 @@ export class PtyRuntimeManager {
       this.registry.markExited(agentSessionId, exitCode, null);
     });
 
-    if (input.command) {
+    if (spawnPlan.sendInitialCommand && input.command) {
       ptyProcess.write(input.command + "\n");
     }
 

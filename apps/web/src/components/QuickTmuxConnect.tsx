@@ -40,7 +40,7 @@ function buildQuickTmuxCommand(
   tmuxSessionName: string,
   workingDirectory: string,
 ): string {
-  return `tmux has-session -t ${shellQuote(tmuxSessionName)} 2>/dev/null && tmux attach -t ${shellQuote(tmuxSessionName)} || tmux new-session -s ${shellQuote(tmuxSessionName)} -c ${formatWorkingDirectory(workingDirectory)}`;
+  return `exec tmux new-session -A -s ${shellQuote(tmuxSessionName)} -c ${formatWorkingDirectory(workingDirectory)}`;
 }
 
 function buildDefaultQuickTmuxName(hostName: string): string {

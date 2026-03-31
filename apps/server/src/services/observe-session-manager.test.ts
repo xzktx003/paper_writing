@@ -55,6 +55,32 @@ test("heartbeat refreshes lastHeartbeatAt", () => {
   assert.equal(updated.outputPreview, "new preview");
 });
 
+test("heartbeat marks observed captures awaiting_input after the screen stays unchanged", async () => {
+  const registry = new AgentSessionRegistry(20);
+  const manager = new ObserveSessionManager(registry);
+
+  const { agentSession, observeToken } = manager.createSession({});
+
+  manager.processObserveState(agentSession.id, {
+    kind: "heartbeat",
+    observeToken,
+    outputPreview: "capturing...",
+    screenSignature: "frame-stable",
+  } as any);
+
+  await wait(30);
+
+  const updated = manager.processObserveState(agentSession.id, {
+    kind: "heartbeat",
+    observeToken,
+    outputPreview: "capturing...",
+    screenSignature: "frame-stable",
+  } as any);
+
+  assert.equal(updated.interactionState, "awaiting_input");
+  assert.equal(updated.stateConfidence, "medium");
+});
+
 test("wrong token is rejected", () => {
   const registry = new AgentSessionRegistry();
   const manager = new ObserveSessionManager(registry);
