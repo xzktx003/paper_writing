@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 
-test("buildSshArgs clears inherited forwards for interactive ssh sessions", () => {
+test("buildSshArgs leaves ssh config forwards enabled by default", () => {
   const args = buildSshArgs(
     {
       host: "117.89.254.22",
@@ -19,8 +19,6 @@ test("buildSshArgs clears inherited forwards for interactive ssh sessions", () =
 
   assert.deepEqual(args, [
     "-t",
-    "-o",
-    "ClearAllForwardings=yes",
     "-p",
     "10022",
     "-i",
@@ -48,13 +46,37 @@ test("buildSshArgs supports non-interactive helper commands with batch mode", ()
     "-o",
     "BatchMode=yes",
     "-o",
-    "ClearAllForwardings=yes",
-    "-o",
     "ConnectTimeout=5",
     "-p",
     "22",
     "nobody@127.0.0.1",
     "tmux list-panes -a",
+  ]);
+});
+
+test("buildSshArgs can still clear inherited forwards when requested", () => {
+  const args = buildSshArgs(
+    {
+      host: "127.0.0.1",
+      port: 22,
+      username: "nobody",
+    },
+    {
+      batchMode: true,
+      clearAllForwardings: true,
+      remoteCommand: "true",
+    },
+  );
+
+  assert.deepEqual(args, [
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ClearAllForwardings=yes",
+    "-p",
+    "22",
+    "nobody@127.0.0.1",
+    "true",
   ]);
 });
 

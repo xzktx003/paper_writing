@@ -44,7 +44,7 @@ export function buildSshArgs(
     args.push("-o", "BatchMode=yes");
   }
 
-  if (options.clearAllForwardings !== false) {
+  if (options.clearAllForwardings) {
     args.push("-o", "ClearAllForwardings=yes");
   }
 
