@@ -1,5 +1,6 @@
 import * as pty from "node-pty";
 import { devNull } from "node:os";
+import { delimiter, dirname, normalize } from "node:path";
 
 import type {
   AgentSessionRecord,
@@ -51,6 +52,18 @@ function buildPtyEnv(agentKind?: string): Record<string, string> {
     env.NPM_CONFIG_GLOBALCONFIG = devNull;
     env.npm_config_userconfig = devNull;
     env.npm_config_globalconfig = devNull;
+  }
+
+  const preferredCopilot = resolveCopilotBinary(env);
+  if (preferredCopilot) {
+    const preferredDir = dirname(preferredCopilot);
+    const pathEntries = (env.PATH ?? "").split(delimiter).filter(Boolean);
+    const normalizedPreferredDir = normalize(preferredDir);
+    const remainingEntries = pathEntries.filter(
+      (entry) => normalize(entry) !== normalizedPreferredDir,
+    );
+
+    env.PATH = [preferredDir, ...remainingEntries].join(delimiter);
   }
 
   return Object.fromEntries(

@@ -8,6 +8,7 @@ import {
   PtyRuntimeManager,
   sanitizeReplayForTerminal,
 } from "./pty-runtime-manager.js";
+import { resolveCopilotBinary } from "./copilot-binary.js";
 import { resolveTmuxBinary } from "./runtime-compat.js";
 
 const TMUX_BINARY = resolveTmuxBinary();
@@ -126,6 +127,36 @@ test("launch stores the resolved local working directory when input is omitted",
     outputText,
     new RegExp(process.cwd().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
   );
+});
+
+test("launch prefers the resolved copilot binary on PATH for shell sessions", async () => {
+  const preferredCopilotBinary = resolveCopilotBinary();
+  assert.ok(preferredCopilotBinary, "expected a resolvable copilot binary");
+
+  const registry = new AgentSessionRegistry();
+  const runtimeManager = new PtyRuntimeManager(registry);
+
+  const session = runtimeManager.launch({
+    workspaceId: "default",
+    displayName: "copilot-path-preference-test",
+    agentKind: "shell",
+    workingDirectory: process.cwd(),
+    command: "command -v copilot; printf '__DONE__\\n'; exit",
+  });
+
+  await waitForExit(registry, session.id);
+
+  const outputText = registry
+    .getDetail(session.id)
+    .outputEntries.map((entry) => entry.text)
+    .join("\n");
+
+  const escapedBinaryPath = preferredCopilotBinary.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+  assert.match(outputText, new RegExp(escapedBinaryPath));
+  assert.match(outputText, /__DONE__/);
 });
 
 test("launch does not surface npm config warnings before local Copilot starts", async () => {
