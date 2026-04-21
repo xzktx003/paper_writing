@@ -12,6 +12,8 @@ import { HostDropdown, type SelectedHost } from "./HostDropdown";
 
 interface FileBrowserDrawerProps {
   open: boolean;
+  scopeKey: string;
+  defaultPath?: string;
   sshHosts: Array<{
     name: string;
     host: string;
@@ -149,16 +151,24 @@ function isTextPreview(
 
 export function FileBrowserDrawer({
   open,
+  scopeKey,
+  defaultPath,
   sshHosts,
   selectedHost,
   onSelectHost,
 }: FileBrowserDrawerProps) {
+  const TREE_WIDTH_STORAGE_KEY = "file-browser-tree-width";
   const PREVIEW_HEIGHT_STORAGE_KEY = "file-browser-preview-height";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const treeResizeRef = useRef<{
+    startX: number;
+    startWidth: number;
+  } | null>(null);
   const previewResizeRef = useRef<{
     startY: number;
     startHeight: number;
   } | null>(null);
+  const bodyLayoutRef = useRef<HTMLDivElement | null>(null);
   const previewLayoutRef = useRef<HTMLDivElement | null>(null);
   const hostScopeRef = useRef("local");
   const [directoryTree, setDirectoryTree] = useState<TreeState>({});
@@ -169,6 +179,19 @@ export function FileBrowserDrawer({
   const [editorState, setEditorState] = useState<EditorState | null>(null);
   const [chmodState, setChmodState] = useState<ChmodState | null>(null);
   const [dragDepth, setDragDepth] = useState(0);
+  const [treeWidth, setTreeWidth] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TREE_WIDTH_STORAGE_KEY);
+      if (!raw) {
+        return 280;
+      }
+
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : 280;
+    } catch {
+      return 280;
+    }
+  });
   const [previewHeight, setPreviewHeight] = useState(() => {
     try {
       const raw = localStorage.getItem(PREVIEW_HEIGHT_STORAGE_KEY);
@@ -213,7 +236,10 @@ export function FileBrowserDrawer({
     updatePermissions,
     goHome,
     goUp,
-  } = useFileBrowser(selectedHost, open);
+  } = useFileBrowser(selectedHost, open, {
+    scopeKey,
+    defaultPath,
+  });
 
   useEffect(() => {
     hostScopeRef.current =
@@ -247,6 +273,14 @@ export function FileBrowserDrawer({
 
   useEffect(() => {
     try {
+      localStorage.setItem(TREE_WIDTH_STORAGE_KEY, String(treeWidth));
+    } catch {
+      // ignore storage failures
+    }
+  }, [treeWidth]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(PREVIEW_HEIGHT_STORAGE_KEY, String(previewHeight));
     } catch {
       // ignore storage failures
@@ -255,10 +289,12 @@ export function FileBrowserDrawer({
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
+      updateTreeWidth(event.clientX);
       updatePreviewHeight(event.clientY);
     }
 
     function handleMouseUp() {
+      treeResizeRef.current = null;
       previewResizeRef.current = null;
     }
 
@@ -399,6 +435,22 @@ export function FileBrowserDrawer({
     setPreviewHeight(nextHeight);
   }
 
+  function updateTreeWidth(clientX: number) {
+    const resizeState = treeResizeRef.current;
+    const layout = bodyLayoutRef.current;
+    if (!resizeState || !layout) {
+      return;
+    }
+
+    const delta = clientX - resizeState.startX;
+    const maxWidth = Math.max(190, layout.clientWidth - 280);
+    const nextWidth = Math.min(
+      maxWidth,
+      Math.max(190, resizeState.startWidth + delta),
+    );
+    setTreeWidth(nextWidth);
+  }
+
   return (
     <aside
       className={`file-browser-drawer${dragActive ? " is-drag-active" : ""}`}
@@ -523,8 +575,11 @@ export function FileBrowserDrawer({
         ))}
       </div>
 
-      <div className="file-browser-body">
-        <section className="file-browser-tree">
+      <div className="file-browser-body" ref={bodyLayoutRef}>
+        <section
+          className="file-browser-tree"
+          style={{ width: `${treeWidth}px` }}
+        >
           <div className="file-browser-pane-title">目录树</div>
           <div
             className="file-browser-tree-rows"
@@ -541,6 +596,18 @@ export function FileBrowserDrawer({
             {renderTree(currentPath)}
           </div>
         </section>
+        <div
+          className="file-browser-tree-splitter"
+          data-testid="file-browser-tree-splitter"
+          onMouseDown={(event) => {
+            treeResizeRef.current = {
+              startX: event.clientX,
+              startWidth: treeWidth,
+            };
+            event.preventDefault();
+          }}
+          role="separator"
+        />
 
         <section
           className="file-browser-content"

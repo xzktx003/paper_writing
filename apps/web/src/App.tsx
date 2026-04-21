@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -67,8 +68,52 @@ type ViewMode = "grid" | "focus";
 const FILE_BROWSER_UI_STORAGE_KEY = "file-browser-ui-state";
 
 interface FileBrowserUiState {
-  open: boolean;
   width: number;
+}
+
+interface FileBrowserSessionState {
+  open: boolean;
+  selectedHost: SelectedHost;
+}
+
+function buildFileBrowserDefaultHost(
+  session: AgentSessionRecord,
+  sshHosts: SshHostPreset[],
+): SelectedHost {
+  if (!session.sshTarget) {
+    return { type: "local" };
+  }
+
+  const matchingPreset = sshHosts.find(
+    (host) =>
+      host.host === session.sshTarget?.host &&
+      host.port === (session.sshTarget?.port ?? 22) &&
+      (host.username ?? "") === (session.sshTarget?.username ?? "") &&
+      (host.identityFile ?? "") === (session.sshTarget?.identityFile ?? ""),
+  );
+
+  if (matchingPreset) {
+    return {
+      type: "ssh",
+      preset: {
+        ...matchingPreset,
+        defaultPath:
+          session.workingDirectory?.trim() || matchingPreset.defaultPath || "~",
+      },
+    };
+  }
+
+  return {
+    type: "ssh",
+    preset: {
+      name: session.hostId ?? session.sshTarget.host,
+      host: session.sshTarget.host,
+      port: session.sshTarget.port ?? 22,
+      username: session.sshTarget.username,
+      identityFile: session.sshTarget.identityFile,
+      defaultPath: session.workingDirectory?.trim() || "~",
+    },
+  };
 }
 
 function loadFileBrowserUiState(): FileBrowserUiState {
@@ -76,14 +121,12 @@ function loadFileBrowserUiState(): FileBrowserUiState {
     const raw = localStorage.getItem(FILE_BROWSER_UI_STORAGE_KEY);
     if (!raw) {
       return {
-        open: false,
         width: 540,
       };
     }
 
     const parsed = JSON.parse(raw) as Partial<FileBrowserUiState>;
     return {
-      open: Boolean(parsed.open),
       width:
         typeof parsed.width === "number" && Number.isFinite(parsed.width)
           ? parsed.width
@@ -91,7 +134,6 @@ function loadFileBrowserUiState(): FileBrowserUiState {
     };
   } catch {
     return {
-      open: false,
       width: 540,
     };
   }
@@ -141,9 +183,9 @@ export default function App() {
   const [quickTmuxOpen, setQuickTmuxOpen] = useState(false);
   const [fileBrowserUiState, setFileBrowserUiState] =
     useState<FileBrowserUiState>(loadFileBrowserUiState);
-  const [fileBrowserHost, setFileBrowserHost] = useState<SelectedHost>({
-    type: "local",
-  });
+  const [fileBrowserSessionStates, setFileBrowserSessionStates] = useState<
+    Record<string, FileBrowserSessionState>
+  >({});
   const [layoutState, setLayoutState] = useState<LayoutState>(loadLayoutState);
   const [sshHosts, setSshHosts] = useState<SshHostPreset[]>([]);
   const [discoveryState, setDiscoveryState] = useState<{
@@ -307,6 +349,20 @@ export default function App() {
   const visibleSessions = sessions.filter((s) => !s.hidden);
   const hiddenSessions = sessions.filter((s) => s.hidden);
   const [showHiddenDrawer, setShowHiddenDrawer] = useState(false);
+
+  useEffect(() => {
+    const knownIds = new Set(sessions.map((session) => session.id));
+    setFileBrowserSessionStates((current) => {
+      const nextEntries = Object.entries(current).filter(([id]) =>
+        knownIds.has(id),
+      );
+      if (nextEntries.length === Object.keys(current).length) {
+        return current;
+      }
+
+      return Object.fromEntries(nextEntries);
+    });
+  }, [sessions]);
 
   // Heartbeat effect for active captures
   useEffect(() => {
@@ -569,6 +625,21 @@ export default function App() {
   const focusedSession: AgentSessionRecord | undefined = focusedId
     ? sessions.find((s) => s.id === focusedId)
     : undefined;
+  const focusedFileBrowserState = useMemo(() => {
+    if (!focusedSession) {
+      return null;
+    }
+
+    return (
+      fileBrowserSessionStates[focusedSession.id] ?? {
+        open: false,
+        selectedHost: buildFileBrowserDefaultHost(focusedSession, sshHosts),
+      }
+    );
+  }, [fileBrowserSessionStates, focusedSession, sshHosts]);
+  const fileBrowserAvailable = viewMode === "focus" && Boolean(focusedSession);
+  const fileBrowserOpen =
+    fileBrowserAvailable && Boolean(focusedFileBrowserState?.open);
 
   const getCaptureStreamForSession = useCallback(
     (id: string): MediaStream | null => {
@@ -729,16 +800,35 @@ export default function App() {
         sessions={sessions}
         collapsed={layoutState.topbarCollapsed}
         sshHosts={sshHosts}
-        fileBrowserOpen={fileBrowserUiState.open}
+        fileBrowserAvailable={fileBrowserAvailable}
+        fileBrowserOpen={fileBrowserOpen}
         onToggleCollapsed={() =>
           updateLayout({ topbarCollapsed: !layoutState.topbarCollapsed })
         }
-        onToggleFileBrowser={() =>
-          setFileBrowserUiState((current) => ({
-            ...current,
-            open: !current.open,
-          }))
-        }
+        onToggleFileBrowser={() => {
+          if (!focusedSession) {
+            return;
+          }
+
+          setFileBrowserSessionStates((current) => {
+            const existing = current[focusedSession.id] ??
+              focusedFileBrowserState ?? {
+                open: false,
+                selectedHost: buildFileBrowserDefaultHost(
+                  focusedSession,
+                  sshHosts,
+                ),
+              };
+
+            return {
+              ...current,
+              [focusedSession.id]: {
+                ...existing,
+                open: !existing.open,
+              },
+            };
+          });
+        }}
         onOpenNewSession={setNewSessionHost}
         onScanTmux={handleScanTmux}
         onScanApps={handleScanApps}
@@ -755,16 +845,39 @@ export default function App() {
       )}
 
       <div className="main-layout" ref={mainLayoutRef}>
-        {fileBrowserUiState.open && (
+        {fileBrowserOpen && focusedSession && focusedFileBrowserState && (
           <>
             <div
               className="file-browser-shell"
               style={{ width: `${fileBrowserUiState.width}px` }}
             >
               <FileBrowserDrawer
-                open={fileBrowserUiState.open}
-                selectedHost={fileBrowserHost}
-                onSelectHost={setFileBrowserHost}
+                key={focusedSession.id}
+                open={fileBrowserOpen}
+                scopeKey={focusedSession.id}
+                defaultPath={
+                  focusedSession.sshTarget
+                    ? undefined
+                    : focusedSession.workingDirectory
+                }
+                selectedHost={focusedFileBrowserState.selectedHost}
+                onSelectHost={(host) => {
+                  setFileBrowserSessionStates((current) => {
+                    const existing =
+                      current[focusedSession.id] ?? focusedFileBrowserState;
+                    if (!existing) {
+                      return current;
+                    }
+
+                    return {
+                      ...current,
+                      [focusedSession.id]: {
+                        ...existing,
+                        selectedHost: host,
+                      },
+                    };
+                  });
+                }}
                 sshHosts={sshHosts}
               />
             </div>

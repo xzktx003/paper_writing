@@ -1814,13 +1814,29 @@ input {
 }
 
 .file-browser-tree {
-  width: 34%;
   min-width: 190px;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.file-browser-tree-splitter {
+  width: 8px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02),
+    rgba(246, 178, 107, 0.16),
+    rgba(255, 255, 255, 0.02)
+  );
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.file-browser-tree-splitter:hover {
+  background: rgba(246, 178, 107, 0.24);
 }
 
 .file-browser-tree-rows {

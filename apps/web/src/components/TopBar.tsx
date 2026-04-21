@@ -11,6 +11,7 @@ interface TopBarProps {
   sessions: AgentSessionRecord[];
   collapsed: boolean;
   sshHosts: SshHostPreset[];
+  fileBrowserAvailable: boolean;
   fileBrowserOpen: boolean;
   onToggleCollapsed: () => void;
   onToggleFileBrowser: () => void;
@@ -27,6 +28,7 @@ export function TopBar({
   sessions,
   collapsed,
   sshHosts,
+  fileBrowserAvailable,
   fileBrowserOpen,
   onToggleCollapsed,
   onToggleFileBrowser,
@@ -68,7 +70,13 @@ export function TopBar({
         <button
           className={`top-bar-action${fileBrowserOpen ? " top-bar-action--active" : ""}`}
           data-testid="file-browser-toggle"
+          disabled={!fileBrowserAvailable}
           onClick={onToggleFileBrowser}
+          title={
+            fileBrowserAvailable
+              ? "打开当前终端的文件浏览器"
+              : "仅在终端聚焦态可用"
+          }
           type="button"
         >
           📁 文件

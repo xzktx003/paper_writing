@@ -17,6 +17,15 @@ import {
 
 export type SortKey = "name" | "size" | "modifiedAt" | "permissions";
 export type SortDirection = "asc" | "desc";
+const FILE_BROWSER_SCOPE_STATE_PREFIX = "file-browser-scope-state";
+
+interface PersistedBrowserScopeState {
+  currentPath: string;
+  showHidden: boolean;
+  filterQuery: string;
+  sortKey: SortKey;
+  sortDirection: SortDirection;
+}
 
 function getParentPath(inputPath: string): string {
   if (!inputPath || inputPath === "/") {
@@ -65,6 +74,85 @@ function toSshTarget(
   };
 }
 
+function buildHostScopeKey(selectedHost: UseFileBrowserHost): string {
+  if (selectedHost.type === "local") {
+    return "local";
+  }
+
+  const preset = selectedHost.preset;
+  return [
+    "ssh",
+    preset?.host ?? "",
+    String(preset?.port ?? 22),
+    preset?.username ?? "",
+    preset?.identityFile ?? "",
+  ].join(":");
+}
+
+function buildScopeStorageKey(scopeKey: string, hostScopeKey: string): string {
+  return `${FILE_BROWSER_SCOPE_STATE_PREFIX}:${scopeKey}:${hostScopeKey}`;
+}
+
+function loadPersistedBrowserScopeState(
+  scopeKey: string,
+  hostScopeKey: string,
+  defaultPath: string,
+): PersistedBrowserScopeState {
+  const fallback: PersistedBrowserScopeState = {
+    currentPath: defaultPath,
+    showHidden: false,
+    filterQuery: "",
+    sortKey: "name",
+    sortDirection: "asc",
+  };
+
+  try {
+    const raw = localStorage.getItem(
+      buildScopeStorageKey(scopeKey, hostScopeKey),
+    );
+    if (!raw) {
+      return fallback;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedBrowserScopeState>;
+    return {
+      currentPath:
+        typeof parsed.currentPath === "string" && parsed.currentPath.trim()
+          ? parsed.currentPath
+          : fallback.currentPath,
+      showHidden: Boolean(parsed.showHidden),
+      filterQuery:
+        typeof parsed.filterQuery === "string" ? parsed.filterQuery : "",
+      sortKey:
+        parsed.sortKey === "size" ||
+        parsed.sortKey === "modifiedAt" ||
+        parsed.sortKey === "permissions" ||
+        parsed.sortKey === "name"
+          ? parsed.sortKey
+          : "name",
+      sortDirection:
+        parsed.sortDirection === "desc" ? "desc" : fallback.sortDirection,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function savePersistedBrowserScopeState(
+  scopeKey: string,
+  hostScopeKey: string,
+  state: PersistedBrowserScopeState,
+) {
+  try {
+    localStorage.setItem(
+      buildScopeStorageKey(scopeKey, hostScopeKey),
+      JSON.stringify(state),
+    );
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export interface UseFileBrowserHost {
   type: "local" | "ssh";
   preset?: {
@@ -76,10 +164,17 @@ export interface UseFileBrowserHost {
   };
 }
 
+interface UseFileBrowserOptions {
+  scopeKey: string;
+  defaultPath?: string;
+}
+
 export function useFileBrowser(
   selectedHost: UseFileBrowserHost,
   active: boolean,
+  options: UseFileBrowserOptions,
 ) {
+  const { scopeKey, defaultPath } = options;
   const sshTarget = useMemo(
     () =>
       selectedHost.type === "ssh" && selectedHost.preset
@@ -87,33 +182,55 @@ export function useFileBrowser(
         : undefined,
     [selectedHost],
   );
+  const hostScopeKey = useMemo(
+    () => buildHostScopeKey(selectedHost),
+    [selectedHost],
+  );
   const hostDefaultPath =
     selectedHost.type === "ssh" && selectedHost.preset
       ? selectedHost.preset.defaultPath
-      : "~";
-
-  const [currentPath, setCurrentPath] = useState(hostDefaultPath);
+      : defaultPath?.trim() || "~";
+  const initialScopeStateRef = useRef<PersistedBrowserScopeState | null>(null);
+  if (initialScopeStateRef.current === null) {
+    initialScopeStateRef.current = loadPersistedBrowserScopeState(
+      scopeKey,
+      hostScopeKey,
+      hostDefaultPath,
+    );
+  }
+  const [currentPath, setCurrentPath] = useState(
+    initialScopeStateRef.current.currentPath,
+  );
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showHidden, setShowHidden] = useState(false);
-  const [filterQuery, setFilterQuery] = useState("");
+  const [showHidden, setShowHidden] = useState(
+    initialScopeStateRef.current.showHidden,
+  );
+  const [filterQuery, setFilterQuery] = useState(
+    initialScopeStateRef.current.filterQuery,
+  );
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [lastSelectedPath, setLastSelectedPath] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortKey, setSortKey] = useState<SortKey>(
+    initialScopeStateRef.current.sortKey,
+  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    initialScopeStateRef.current.sortDirection,
+  );
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const currentPathRef = useRef(currentPath);
   const listRequestIdRef = useRef(0);
   const previewRequestIdRef = useRef(0);
-  const hostKeyRef = useRef(
-    `${selectedHost.type}:${selectedHost.type === "ssh" ? (selectedHost.preset?.host ?? "") : "local"}`,
-  );
   const hiddenPrefRef = useRef(showHidden);
+  const skipPersistRef = useRef(true);
 
   const runDirectoryLoad = useCallback(
-    async (requestedPath: string) => {
+    async (
+      requestedPath: string,
+      showHiddenOverride = hiddenPrefRef.current,
+    ) => {
       const requestId = ++listRequestIdRef.current;
       setLoading(true);
       setError(null);
@@ -122,7 +239,7 @@ export function useFileBrowser(
         const response = await listFiles({
           path: requestedPath,
           sshTarget,
-          showHidden,
+          showHidden: showHiddenOverride,
         });
 
         if (requestId !== listRequestIdRef.current) {
@@ -148,12 +265,15 @@ export function useFileBrowser(
         }
       }
     },
-    [showHidden, sshTarget],
+    [sshTarget],
   );
 
   const refresh = useCallback(
-    async (pathOverride?: string) => {
-      await runDirectoryLoad(pathOverride ?? currentPathRef.current);
+    async (pathOverride?: string, showHiddenOverride?: boolean) => {
+      await runDirectoryLoad(
+        pathOverride ?? currentPathRef.current,
+        showHiddenOverride,
+      );
     },
     [runDirectoryLoad],
   );
@@ -163,35 +283,60 @@ export function useFileBrowser(
   }, [currentPath]);
 
   useEffect(() => {
+    const nextState = loadPersistedBrowserScopeState(
+      scopeKey,
+      hostScopeKey,
+      hostDefaultPath,
+    );
+
+    skipPersistRef.current = true;
     listRequestIdRef.current += 1;
     previewRequestIdRef.current += 1;
-    currentPathRef.current = hostDefaultPath;
-    setCurrentPath(hostDefaultPath);
+    currentPathRef.current = nextState.currentPath;
+    setCurrentPath(nextState.currentPath);
     setEntries([]);
     setSelectedPaths([]);
+    setLastSelectedPath(null);
     setPreview(null);
     setError(null);
-    hostKeyRef.current = `${selectedHost.type}:${selectedHost.type === "ssh" ? (selectedHost.preset?.host ?? "") : "local"}`;
-    hiddenPrefRef.current = showHidden;
-  }, [hostDefaultPath, selectedHost.type]);
+    setShowHidden(nextState.showHidden);
+    setFilterQuery(nextState.filterQuery);
+    setSortKey(nextState.sortKey);
+    setSortDirection(nextState.sortDirection);
+    hiddenPrefRef.current = nextState.showHidden;
 
-  useEffect(() => {
     if (!active) {
       return;
     }
 
-    void runDirectoryLoad(hostDefaultPath);
-  }, [active, hostDefaultPath, runDirectoryLoad]);
+    void runDirectoryLoad(nextState.currentPath, nextState.showHidden);
+  }, [active, hostDefaultPath, hostScopeKey, runDirectoryLoad, scopeKey]);
 
   useEffect(() => {
-    if (!active) {
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false;
       return;
     }
 
-    const nextHostKey = `${selectedHost.type}:${selectedHost.type === "ssh" ? (selectedHost.preset?.host ?? "") : "local"}`;
-    if (hostKeyRef.current !== nextHostKey) {
-      hostKeyRef.current = nextHostKey;
-      hiddenPrefRef.current = showHidden;
+    savePersistedBrowserScopeState(scopeKey, hostScopeKey, {
+      currentPath,
+      showHidden,
+      filterQuery,
+      sortKey,
+      sortDirection,
+    });
+  }, [
+    currentPath,
+    filterQuery,
+    hostScopeKey,
+    scopeKey,
+    showHidden,
+    sortDirection,
+    sortKey,
+  ]);
+
+  useEffect(() => {
+    if (!active) {
       return;
     }
 
@@ -200,8 +345,8 @@ export function useFileBrowser(
     }
 
     hiddenPrefRef.current = showHidden;
-    void refresh();
-  }, [active, refresh, selectedHost, showHidden]);
+    void refresh(undefined, showHidden);
+  }, [active, refresh, showHidden]);
 
   const filteredEntries = useMemo(() => {
     const normalizedQuery = filterQuery.trim().toLowerCase();

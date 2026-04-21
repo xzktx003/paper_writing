@@ -1,4 +1,9 @@
-import { expect, test } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page,
+} from "@playwright/test";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import {
   copyFileSync,
@@ -25,6 +30,7 @@ function setupFixture() {
 
   mkdirSync(path.join(rootDir, "nested"), { recursive: true });
   writeFileSync(path.join(rootDir, "note.txt"), "hello file browser");
+  writeFileSync(path.join(rootDir, "nested", "inside.txt"), "inside folder");
   writeFileSync(path.join(rootDir, ".secret.txt"), "hidden file");
   writeFileSync(path.join(rootDir, "rename-me.txt"), "rename me");
   writeFileSync(path.join(rootDir, "delete-me.txt"), "delete me");
@@ -60,6 +66,7 @@ function startRemoteSshFixture(): RemoteFixture {
   const rootDir = mkdtempSync(path.join(tmpdir(), "file-browser-remote-"));
   mkdirSync(path.join(rootDir, "nested"), { recursive: true });
   writeFileSync(path.join(rootDir, "note.txt"), "hello remote file browser");
+  writeFileSync(path.join(rootDir, "nested", "inside.txt"), "inside remote");
   writeFileSync(path.join(rootDir, ".secret.txt"), "remote hidden file");
   writeFileSync(path.join(rootDir, "rename-me.txt"), "remote rename me");
   writeFileSync(path.join(rootDir, "delete-me.txt"), "remote delete me");
@@ -162,8 +169,9 @@ function startRemoteSshFixture(): RemoteFixture {
 }
 
 async function openRemoteFixture(
-  page: Parameters<typeof test>[0]["page"],
+  page: Page,
   fixture: RemoteFixture,
+  displayName: string,
 ) {
   const drawer = page.getByTestId("file-browser-drawer");
   await page.route("**/api/ssh-hosts", async (route) => {
@@ -184,9 +192,8 @@ async function openRemoteFixture(
     });
   });
 
-  await page.goto("/");
-  await page.getByTestId("file-browser-toggle").click();
-  await expect(drawer).toBeVisible();
+  await focusSession(page, displayName);
+  await openFileBrowserForFocusedSession(page);
 
   await drawer.getByTestId("file-browser-host-toggle").click();
   await page
@@ -197,29 +204,80 @@ async function openRemoteFixture(
   });
 }
 
-async function openFixtureDirectory(
-  page: Parameters<typeof test>[0]["page"],
-  folderName: string,
+async function launchMockSession(
+  request: APIRequestContext,
+  displayName: string,
+  workingDirectory: string,
 ) {
+  const response = await request.post("/api/agent-launch/pty", {
+    data: {
+      workspaceId: "default",
+      displayName,
+      agentKind: "shell",
+      command: `node ${JSON.stringify(path.join(process.cwd(), "scripts/mock-terminal-agent.mjs"))} scroll`,
+      workingDirectory,
+    },
+  });
+
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()).id as string;
+}
+
+async function deleteSessionIfPresent(
+  request: APIRequestContext,
+  sessionId?: string,
+) {
+  if (!sessionId) {
+    return;
+  }
+
+  await request.delete(`/api/agent-sessions/${sessionId}`);
+}
+
+async function focusSession(page: Page, displayName: string) {
   await page.goto("/");
-  await page.getByTestId("file-browser-toggle").click();
+  const targetCard = page.locator(".grid-card", {
+    has: page.locator(".grid-card-name", { hasText: displayName }),
+  });
+  await expect(targetCard).toBeVisible({ timeout: 15_000 });
+  await targetCard.dblclick();
+  await expect(page.locator(".focus-main-name")).toContainText(displayName);
+}
+
+async function switchFocusedSession(page: Page, displayName: string) {
+  const sidebarCard = page.locator(".focus-sidebar-card", {
+    has: page.locator("span", { hasText: displayName }),
+  });
+  await expect(sidebarCard).toBeVisible();
+  await sidebarCard.dblclick();
+  await expect(page.locator(".focus-main-name")).toContainText(displayName);
+}
+
+async function openFileBrowserForFocusedSession(page: Page) {
+  const toggle = page.getByTestId("file-browser-toggle");
+  await expect(toggle).toBeEnabled();
+  await toggle.click();
   const drawer = page.getByTestId("file-browser-drawer");
   await expect(drawer).toBeVisible();
-
-  await drawer.getByTestId("file-entry-tests").dblclick();
-  await drawer.getByTestId("file-entry-e2e").dblclick();
-  await drawer.getByTestId(`file-entry-${folderName}`).dblclick();
-  await expect(drawer.getByTestId("file-entry-note.txt")).toBeVisible();
+  return drawer;
 }
 
 test("file browser supports real local browsing, edit, upload, download, and delete flows", async ({
   page,
+  request,
 }) => {
   const fixture = setupFixture();
+  const displayName = `file-browser-local-${Date.now()}`;
+  let sessionId: string | undefined;
 
   try {
-    const drawer = page.getByTestId("file-browser-drawer");
-    await openFixtureDirectory(page, fixture.folderName);
+    sessionId = await launchMockSession(request, displayName, fixture.rootDir);
+    await focusSession(page, displayName);
+    const drawer = await openFileBrowserForFocusedSession(page);
+
+    await expect(
+      drawer.locator(".file-browser-breadcrumb").last(),
+    ).toContainText(path.basename(fixture.rootDir));
 
     await expect(drawer.getByTestId("file-entry-.secret.txt")).toHaveCount(0);
     await drawer.getByLabel("显示隐藏文件").check();
@@ -307,86 +365,157 @@ test("file browser supports real local browsing, edit, upload, download, and del
       drawer.getByTestId(`file-entry-${path.basename(fixture.uploadFilePath)}`),
     ).toHaveCount(0);
   } finally {
+    await deleteSessionIfPresent(request, sessionId);
     rmSync(fixture.rootDir, { recursive: true, force: true });
     rmSync(fixture.uploadFilePath, { force: true });
   }
 });
 
-test("file browser uses a top-bar toggle, keeps edit flow, supports both splitters, and resets local root to home semantics", async ({
+test("file browser is scoped per focused session, keeps splitter behavior, and stays unavailable in grid view", async ({
   page,
+  request,
 }) => {
+  const fixtureA = setupFixture();
+  const fixtureB = setupFixture();
+  const sessionAName = `file-browser-focus-a-${Date.now()}`;
+  const sessionBName = `file-browser-focus-b-${Date.now()}`;
+  let sessionAId: string | undefined;
+  let sessionBId: string | undefined;
+
+  writeFileSync(
+    path.join(fixtureA.rootDir, "note.txt"),
+    "hello file browser A",
+  );
+  writeFileSync(
+    path.join(fixtureA.rootDir, "nested", "inside.txt"),
+    "inside A",
+  );
+  writeFileSync(
+    path.join(fixtureB.rootDir, "note.txt"),
+    "hello file browser B",
+  );
+  writeFileSync(
+    path.join(fixtureB.rootDir, "nested", "inside.txt"),
+    "inside B",
+  );
+
   await page.goto("/");
 
   const topBar = page.locator(".top-bar");
   const topToggle = topBar.getByTestId("file-browser-toggle");
   await expect(topToggle).toBeVisible();
-  await topToggle.click();
+  await expect(topToggle).toBeDisabled();
 
-  const drawer = page.getByTestId("file-browser-drawer");
-  await expect(drawer).toBeVisible();
+  try {
+    sessionAId = await launchMockSession(
+      request,
+      sessionAName,
+      fixtureA.rootDir,
+    );
+    sessionBId = await launchMockSession(
+      request,
+      sessionBName,
+      fixtureB.rootDir,
+    );
 
-  await expect(
-    drawer.locator(".file-browser-breadcrumb").first(),
-  ).toContainText("data01");
-  await expect(drawer.locator(".file-browser-breadcrumb").nth(1)).toContainText(
-    "home",
-  );
+    await focusSession(page, sessionAName);
+    const drawer = await openFileBrowserForFocusedSession(page);
+    await expect(drawer.getByTestId("file-entry-note.txt")).toBeVisible();
+    await expect(drawer.locator(".file-browser-preview-text")).toHaveCount(0);
 
-  const mainSplitter = page.getByTestId("file-browser-main-splitter");
-  const drawerBefore = await drawer.boundingBox();
-  await mainSplitter.hover();
-  await page.mouse.down();
-  await page.mouse.move(
-    (drawerBefore?.x ?? 0) + (drawerBefore?.width ?? 0) + 120,
-    300,
-  );
-  await page.mouse.up();
-  const drawerAfter = await drawer.boundingBox();
-  expect((drawerAfter?.width ?? 0) > (drawerBefore?.width ?? 0)).toBeTruthy();
+    await drawer.getByTestId("file-entry-nested").dblclick();
+    await expect(drawer.getByTestId("file-entry-inside.txt")).toBeVisible();
+    await expect(
+      drawer.locator(".file-browser-breadcrumb").last(),
+    ).toContainText("nested");
 
-  const previewSplitter = drawer.getByTestId("file-browser-preview-splitter");
-  const previewBefore = await drawer
-    .locator(".file-browser-preview")
-    .boundingBox();
-  const splitterBox = await previewSplitter.boundingBox();
-  await page.mouse.move(
-    (splitterBox?.x ?? 0) + (splitterBox?.width ?? 0) / 2,
-    (splitterBox?.y ?? 0) + 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(
-    (splitterBox?.x ?? 0) + (splitterBox?.width ?? 0) / 2,
-    (splitterBox?.y ?? 0) - 80,
-  );
-  await page.mouse.up();
-  const previewAfter = await drawer
-    .locator(".file-browser-preview")
-    .boundingBox();
-  expect(
-    (previewAfter?.height ?? 0) > (previewBefore?.height ?? 0),
-  ).toBeTruthy();
+    const mainSplitter = page.getByTestId("file-browser-main-splitter");
+    const drawerBefore = await drawer.boundingBox();
+    await mainSplitter.hover();
+    await page.mouse.down();
+    await page.mouse.move(
+      (drawerBefore?.x ?? 0) + (drawerBefore?.width ?? 0) + 120,
+      300,
+    );
+    await page.mouse.up();
+    const drawerAfter = await drawer.boundingBox();
+    expect((drawerAfter?.width ?? 0) > (drawerBefore?.width ?? 0)).toBeTruthy();
 
-  await drawer.getByTestId("file-entry-docs").dblclick();
-  await drawer.getByTestId("file-entry-readme-assets").dblclick();
-  await drawer
-    .getByTestId("file-entry-board-overview.png")
-    .getByRole("checkbox")
-    .check();
-  await expect(drawer.locator(".file-browser-preview-image")).toBeVisible();
+    const treePane = drawer.locator(".file-browser-tree");
+    const treeBefore = await treePane.boundingBox();
+    const treeSplitter = drawer.getByTestId("file-browser-tree-splitter");
+    const treeSplitterBox = await treeSplitter.boundingBox();
+    await page.mouse.move(
+      (treeSplitterBox?.x ?? 0) + (treeSplitterBox?.width ?? 0) / 2,
+      (treeSplitterBox?.y ?? 0) + (treeSplitterBox?.height ?? 0) / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      (treeSplitterBox?.x ?? 0) + (treeSplitterBox?.width ?? 0) / 2 + 80,
+      (treeSplitterBox?.y ?? 0) + (treeSplitterBox?.height ?? 0) / 2,
+    );
+    await page.mouse.up();
+    const treeAfter = await treePane.boundingBox();
+    expect((treeAfter?.width ?? 0) > (treeBefore?.width ?? 0)).toBeTruthy();
 
-  await drawer.getByTestId("file-entry-board-overview.png").dblclick();
-  await expect(drawer.locator(".file-browser-editor")).toHaveCount(0);
+    await switchFocusedSession(page, sessionBName);
+    await expect(page.getByTestId("file-browser-drawer")).toHaveCount(0);
 
-  await page.reload();
-  await topBar.getByTestId("file-browser-toggle").click();
-  const reloadedDrawer = page.getByTestId("file-browser-drawer");
-  await expect(reloadedDrawer).toBeVisible();
-  await expect(
-    reloadedDrawer.locator(".file-browser-breadcrumb").first(),
-  ).toContainText("data01");
-  await expect(
-    reloadedDrawer.locator(".file-browser-breadcrumb").nth(1),
-  ).toContainText("home");
+    const drawerB = await openFileBrowserForFocusedSession(page);
+    await expect(drawerB.getByTestId("file-entry-note.txt")).toBeVisible();
+    await drawerB
+      .getByTestId("file-entry-note.txt")
+      .getByRole("checkbox")
+      .check();
+    await expect(drawerB.locator(".file-browser-preview-text")).toContainText(
+      "hello file browser B",
+    );
+
+    const previewSplitter = drawerB.getByTestId(
+      "file-browser-preview-splitter",
+    );
+    const previewBefore = await drawerB
+      .locator(".file-browser-preview")
+      .boundingBox();
+    const previewSplitterBox = await previewSplitter.boundingBox();
+    await page.mouse.move(
+      (previewSplitterBox?.x ?? 0) + (previewSplitterBox?.width ?? 0) / 2,
+      (previewSplitterBox?.y ?? 0) + 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      (previewSplitterBox?.x ?? 0) + (previewSplitterBox?.width ?? 0) / 2,
+      (previewSplitterBox?.y ?? 0) - 80,
+    );
+    await page.mouse.up();
+    const previewAfter = await drawerB
+      .locator(".file-browser-preview")
+      .boundingBox();
+    expect(
+      (previewAfter?.height ?? 0) > (previewBefore?.height ?? 0),
+    ).toBeTruthy();
+
+    await switchFocusedSession(page, sessionAName);
+    const restoredDrawer = page.getByTestId("file-browser-drawer");
+    await expect(restoredDrawer).toBeVisible();
+    await expect(
+      restoredDrawer.getByTestId("file-entry-inside.txt"),
+    ).toBeVisible();
+    await expect(
+      restoredDrawer.locator(".file-browser-breadcrumb").last(),
+    ).toContainText("nested");
+
+    await page.getByRole("button", { name: "返回宫格" }).click();
+    await expect(page.getByTestId("file-browser-drawer")).toHaveCount(0);
+    await expect(page.getByTestId("file-browser-toggle")).toBeDisabled();
+  } finally {
+    await deleteSessionIfPresent(request, sessionAId);
+    await deleteSessionIfPresent(request, sessionBId);
+    rmSync(fixtureA.rootDir, { recursive: true, force: true });
+    rmSync(fixtureA.uploadFilePath, { force: true });
+    rmSync(fixtureB.rootDir, { recursive: true, force: true });
+    rmSync(fixtureB.uploadFilePath, { force: true });
+  }
 });
 
 test("file browser supports real SSH/SFTP browsing, edit, chmod, upload, download, and delete flows", async ({
@@ -395,10 +524,13 @@ test("file browser supports real SSH/SFTP browsing, edit, chmod, upload, downloa
 }) => {
   test.setTimeout(90_000);
   const fixture = startRemoteSshFixture();
+  const displayName = `file-browser-remote-anchor-${Date.now()}`;
+  let sessionId: string | undefined;
 
   try {
+    sessionId = await launchMockSession(request, displayName, process.cwd());
     const drawer = page.getByTestId("file-browser-drawer");
-    await openRemoteFixture(page, fixture);
+    await openRemoteFixture(page, fixture, displayName);
 
     await expect(drawer.getByTestId("file-entry-.secret.txt")).toHaveCount(0);
     await drawer.getByLabel("显示隐藏文件").check();
@@ -504,6 +636,7 @@ test("file browser supports real SSH/SFTP browsing, edit, chmod, upload, downloa
       drawer.getByTestId(`file-entry-${path.basename(fixture.uploadFilePath)}`),
     ).toHaveCount(0);
   } finally {
+    await deleteSessionIfPresent(request, sessionId);
     fixture.sshdProcess.kill("SIGKILL");
     await wait(100);
     rmSync(fixture.rootDir, { recursive: true, force: true });
