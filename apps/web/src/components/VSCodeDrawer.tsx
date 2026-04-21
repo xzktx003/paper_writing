@@ -106,24 +106,6 @@ export function VSCodeDrawer({
         >
           ↻
         </button>
-        {editorState && (
-          <div className="vscode-drawer-badges" aria-label="VS Code Web 状态">
-            <span className="vscode-drawer-badge" title="当前嵌入 VS Code Web">
-              VS Code
-            </span>
-            <span
-              className="vscode-drawer-badge"
-              title="VS Code Web 服务提供方"
-            >
-              {editorState.provider}
-            </span>
-            {editorState.reused && (
-              <span className="vscode-drawer-badge" title="复用已启动的服务">
-                复用
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="vscode-drawer-body">

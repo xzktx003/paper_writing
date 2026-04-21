@@ -1859,17 +1859,11 @@ input {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
   position: absolute;
   top: 10px;
   left: 10px;
   right: auto;
   max-width: calc(100% - 20px);
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(11, 15, 26, 0.72);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
   z-index: 2;
   pointer-events: auto;
 }
@@ -1887,24 +1881,6 @@ input {
 
 .vscode-drawer-reload:hover {
   background: rgba(98, 150, 255, 0.24);
-}
-
-.vscode-drawer-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 0;
-}
-
-.vscode-drawer-badge {
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(234, 240, 255, 0.82);
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: nowrap;
 }
 
 .vscode-drawer-body {
