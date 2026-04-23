@@ -173,6 +173,7 @@ export function TerminalView({
       if (!active || active === document.body) return false;
       if (active.classList.contains("xterm-helper-textarea")) return false;
       return (
+        active instanceof HTMLIFrameElement ||
         active instanceof HTMLInputElement ||
         active instanceof HTMLButtonElement ||
         active instanceof HTMLSelectElement ||

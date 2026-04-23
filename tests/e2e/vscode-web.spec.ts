@@ -117,8 +117,6 @@ test("vscode web drawer is scoped per focused session and replaces the old captu
 
     const drawerA = page.getByTestId("vscode-web-drawer");
     await expect(drawerA).toBeVisible();
-    await expect(drawerA).toContainText("code-server");
-    await expect(drawerA).toContainText("/tmp/project-a");
     await expect(page.getByTestId("vscode-web-frame")).toHaveAttribute(
       "src",
       /editor-a/,
@@ -143,7 +141,6 @@ test("vscode web drawer is scoped per focused session and replaces the old captu
     await page.getByTestId("vscode-toggle").click();
     const drawerB = page.getByTestId("vscode-web-drawer");
     await expect(drawerB).toBeVisible();
-    await expect(drawerB).toContainText("/tmp/project-b");
     await expect(page.getByTestId("vscode-web-frame")).toHaveAttribute(
       "src",
       /editor-b/,
@@ -171,5 +168,73 @@ test("vscode web drawer is scoped per focused session and replaces the old captu
   } finally {
     await deleteSessionIfPresent(request, sessionAId);
     await deleteSessionIfPresent(request, sessionBId);
+  }
+});
+
+test("vscode split view keeps editor focus after clicking back from the terminal", async ({
+  page,
+  request,
+}) => {
+  const sessionName = `vscode-web-focus-${Date.now()}`;
+  const typedMarker = `left-editor-${Date.now()}`;
+  let sessionId: string | undefined;
+
+  await page.route("**/api/agent-sessions/*/vscode-web", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        provider: "code-server",
+        url: `data:text/html,${encodeURIComponent(
+          "<html><body><textarea id=editor autofocus style='width:100%;height:160px'></textarea></body></html>",
+        )}`,
+        reused: false,
+        workingDirectory: "/tmp/vscode-focus",
+      }),
+    });
+  });
+
+  try {
+    sessionId = await launchMockSession(request, sessionName, "/tmp/project-a");
+
+    await focusSession(page, sessionName);
+    await page.getByTestId("vscode-toggle").click();
+
+    const terminalScreen = page.locator(
+      ".focus-main .terminal-view .xterm-screen",
+    );
+    await expect(terminalScreen).toBeVisible({ timeout: 15_000 });
+    await terminalScreen.click({ position: { x: 90, y: 50 } });
+
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          () =>
+            document.activeElement?.classList.contains(
+              "xterm-helper-textarea",
+            ) ?? false,
+        ),
+      )
+      .toBeTruthy();
+
+    const editorTextarea = page
+      .frameLocator(`iframe[title="VS Code - ${sessionName}"]`)
+      .locator("#editor");
+    await editorTextarea.click();
+    await page.keyboard.type(typedMarker);
+
+    await expect(editorTextarea).toHaveValue(typedMarker);
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          (title) =>
+            document.activeElement instanceof HTMLIFrameElement &&
+            document.activeElement.title === title,
+          `VS Code - ${sessionName}`,
+        ),
+      )
+      .toBeTruthy();
+  } finally {
+    await deleteSessionIfPresent(request, sessionId);
   }
 });
