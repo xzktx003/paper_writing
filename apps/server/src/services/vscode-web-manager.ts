@@ -920,6 +920,12 @@ export class VsCodeWebManager {
 
       void this.stopGlobalServer();
     }, this.idleTimeoutMs);
+    // unref(): the idle cleanup timer must never keep the Node event loop
+    // alive on its own. The Fastify HTTP server is the only thing that should
+    // prevent exit during dev/prod. In tests (node --test), leaving this
+    // referenced blocks process exit after all cases pass and hangs
+    // `pnpm -r test`. See memories/repo/e2e.md.
+    this.globalServer.idleTimer.unref();
   }
 
   private async ensureGlobalServer(providerCommand: {

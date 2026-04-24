@@ -152,3 +152,32 @@ test("tmux observe-only sessions stay detached even when screen is unchanged", a
   assert.equal(updated.interactionState, "detached");
   assert.equal(updated.stateConfidence, "high");
 });
+
+test("awaiting_input timer is unref-ed so it cannot block Node process exit", () => {
+  const registry = new AgentSessionRegistry(60_000);
+  const session = registry.register({
+    workspaceId: "test",
+    hostId: "local",
+    sourceType: "local",
+    agentKind: "copilot",
+    displayName: "unref-check",
+    interactionState: "running",
+  });
+
+  registry.syncCapturedScreen(session.id, "frame-a");
+
+  const timers = (
+    registry as unknown as {
+      awaitingInputTimers: Map<string, NodeJS.Timeout>;
+    }
+  ).awaitingInputTimers;
+
+  const timer = timers.get(session.id);
+  assert.ok(timer, "expected an awaiting_input timer to be scheduled");
+  assert.equal(
+    timer?.hasRef(),
+    false,
+    "awaiting_input timer must be unref-ed to avoid blocking `node --test` shutdown",
+  );
+});
+

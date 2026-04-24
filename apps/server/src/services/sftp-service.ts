@@ -489,6 +489,11 @@ export class SftpService {
     connection.idleTimer = setTimeout(() => {
       this.disposeConnection(target);
     }, this.idleTimeoutMs);
+    // unref(): the pooled SFTP idle-timeout must not keep the Node event
+    // loop alive independently of the Fastify server. Otherwise a single
+    // pooled connection leaks into `node --test` runs and blocks process
+    // exit after all tests have completed. See memories/repo/e2e.md.
+    connection.idleTimer.unref();
   }
 
   private disposeConnection(target: SshTarget): void {

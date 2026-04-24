@@ -133,6 +133,23 @@
 - tmux 和 shell 命令参数必须做清洗或严格约束，防止命令注入。
 - 中断、重启、接管附着等破坏性操作，必须在 UI 上显式呈现，不得隐式触发。
 
+### 环境变量与端口可配置性纪律
+
+- `HOST`、`PORT`、`WEB_HOST`、`WEB_PORT`、`WEB_BACKEND_HOST`、`WEB_BACKEND_PORT`、`WEB_HTTPS`、`FILE_BROWSER_DEFAULT_LOCAL_PATH`、`VSCODE_WEB_*` 等“用户会选择/机器相关”的配置，**严禁硬编码到源码**。新增此类配置时：
+  1. 在 `apps/server/src/*` 或 `apps/web/vite.config.ts` 中通过 `process.env.XXX ?? 默认值` 读取；
+  2. 在 `.env.example` 里新增一行带注释的模板；
+  3. 在 `scripts/restart-dev.sh` 里如果有对应的 shell 变量，使用 `${VAR:-${ENV_VAR:-默认值}}` 的方式从 env 中 fallback。
+- `.env` 必须保持被 `.gitignore` 忽略（规则：`.env` + `.env.*` + `!.env.example`）。提交前执行 `git check-ignore -v .env .env.example`，确认 `.env` 被忽略且 `.env.example` 可被提交。
+
+### 后台定时器必须 `.unref()` 以避免阻塞测试退出
+
+- 任何仅用于“空闲清理 / 延迟状态迁移”的 `setTimeout` / `setInterval`（如 `VsCodeWebManager.idleTimer`、`SftpService` 连接池的 `idleTimer`、`AgentSessionRegistry` 的 `awaitingInputTimers`），创建后**必须立即调用 `.unref()`**。这类定时器的职责是“在 HTTP 服务仍在跑时做清理”，不应单独 keep Node event loop 活着。
+- 违反此规则会导致 `node --test` 在所有测试通过之后进程仍不退出，使 `pnpm -r test` / CI 整条链路被挂死；历史回归见 `memories/repo/e2e.md`。
+- 对应回归测试必须断言 `timer.hasRef() === false`：
+  1. `apps/server/src/services/vscode-web-manager.test.ts` — “ensureSession registers an unref-ed idle timer so `node --test` can exit after suites finish”
+  2. `apps/server/src/services/agent-session-registry.test.ts` — “awaiting_input timer is unref-ed so it cannot block Node process exit”
+- 新增此类 timer 时，同步补一条 `.hasRef() === false` 的单测，先红后绿。
+
 ## 文档维护要求
 
 - 引入新的适配器、协议事件或编排状态规则时，要在 `docs/` 中记录架构决策。

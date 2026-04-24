@@ -8,9 +8,19 @@ PLAYWRIGHT_BIN_DIR="${ROOT_DIR}/.playwright-bin"
 SERVER_APP_DIR="${ROOT_DIR}/apps/server"
 WEB_APP_DIR="${ROOT_DIR}/apps/web"
 
-SERVER_BIND_HOST="${SERVER_BIND_HOST:-0.0.0.0}"
+# Load repo-root .env (if present) BEFORE computing defaults so users can
+# override HOST/PORT/WEB_PORT/etc. without editing this script. .env is
+# git-ignored — see .env.example for the documented variable list.
+if [[ -f "${ROOT_DIR}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1090,SC1091
+  source "${ROOT_DIR}/.env"
+  set +a
+fi
+
+SERVER_BIND_HOST="${SERVER_BIND_HOST:-${HOST:-0.0.0.0}}"
 SERVER_PUBLIC_HOST="${SERVER_PUBLIC_HOST:-127.0.0.1}"
-SERVER_PORT="${SERVER_PORT:-4000}"
+SERVER_PORT="${SERVER_PORT:-${PORT:-4000}}"
 
 WEB_HOST="${WEB_HOST:-0.0.0.0}"
 WEB_PORT="${WEB_PORT:-3000}"

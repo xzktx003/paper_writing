@@ -468,6 +468,9 @@ export class AgentSessionRegistry {
   private refreshAwaitingInputTimer(agentSessionId: string): void {
     this.clearAwaitingInputTimer(agentSessionId);
 
+    // NOTE: `setTimeout(...).unref()` happens after we store the handle
+    // below. This cleanup timer must not keep the Node event loop alive on
+    // its own; only the real HTTP server should prevent process exit.
     const timeout = setTimeout(() => {
       const agentSession = this.sessions.get(agentSessionId);
       if (!agentSession || !this.shouldUseTimedAwaitingInput(agentSession)) {
@@ -489,6 +492,7 @@ export class AgentSessionRegistry {
         lastHeartbeatAt: new Date().toISOString(),
       });
     }, this.awaitingInputIdleMs);
+    timeout.unref();
 
     this.awaitingInputTimers.set(agentSessionId, timeout);
   }

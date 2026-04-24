@@ -3,6 +3,8 @@ dist
 .DS_Store
 .env
 .env.*
+# Keep the committed template so everyone sees which env vars exist.
+!.env.example
 coverage
 *.log
 .dev-runtime

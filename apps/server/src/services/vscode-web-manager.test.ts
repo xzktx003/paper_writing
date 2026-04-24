@@ -662,3 +662,37 @@ test("ensureSession uses the resolved shell env and strips inherited VS Code IPC
 
   await manager.dispose();
 });
+
+test("ensureSession registers an unref-ed idle timer so `node --test` can exit after suites finish", async () => {
+  const child = new FakeChildProcess();
+  const manager = new VsCodeWebManager({
+    allocatePort: async () => 43555,
+    createDataRoot: async () => TEST_DATA_ROOT,
+    findCommand: async (candidate) =>
+      candidate === "code-server" ? "/usr/bin/code-server" : null,
+    resolveExtensionsDir: resolveTestExtensionsDir,
+    spawnProcess: () => child as never,
+    waitForUrlReady: async () => {},
+    writeFile: async () => {},
+  });
+
+  try {
+    await manager.ensureSession(buildSession("session-idle-timer"));
+
+    const idleTimer = (
+      manager as unknown as {
+        globalServer: { idleTimer: NodeJS.Timeout | null } | null;
+      }
+    ).globalServer?.idleTimer;
+
+    assert.ok(idleTimer, "expected an idle timer to be scheduled");
+    assert.equal(
+      idleTimer?.hasRef(),
+      false,
+      "the idle cleanup timer must be unref-ed so Node can exit cleanly",
+    );
+  } finally {
+    await manager.dispose();
+  }
+});
+

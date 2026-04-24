@@ -23,20 +23,31 @@ function readHttpsConfig() {
   };
 }
 
+// Backend host:port is looked up from .env (WEB_BACKEND_HOST / WEB_BACKEND_PORT)
+// so users can redirect API/WebSocket traffic without editing source code.
+// See .env.example at repo root.
+const BACKEND_HOST = process.env.WEB_BACKEND_HOST?.trim() || 'localhost';
+const BACKEND_PORT = Number(process.env.WEB_BACKEND_PORT ?? 4000);
+const HTTP_BACKEND = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
+const WS_BACKEND = `ws://${BACKEND_HOST}:${BACKEND_PORT}`;
+
+const WEB_HOST = process.env.WEB_HOST?.trim() || '0.0.0.0';
+const WEB_PORT = Number(process.env.WEB_PORT ?? 3000);
+
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0',
-    port: 3000,
+    host: WEB_HOST,
+    port: WEB_PORT,
     https: readHttpsConfig(),
     proxy: {
-      '/api': 'http://localhost:4000',
+      '/api': HTTP_BACKEND,
       '/vscode': {
-        target: 'http://localhost:4000',
+        target: HTTP_BACKEND,
         ws: true,
       },
       '/ws': {
-        target: 'ws://localhost:4000',
+        target: WS_BACKEND,
         ws: true,
       },
     },
