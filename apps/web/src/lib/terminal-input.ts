@@ -21,7 +21,7 @@
 // See tests/e2e/copilot-focus.spec.ts.
 const FOCUS_REPORT_PATTERN = /\u001b\[[IO]/g;
 const OSC_COLOR_REPLY_PATTERN =
-  /\u001b\](?:10|11|4);[^\u0007\u001b]*(?:\u0007|\u001b\\)/g;
+  /\u001b\](?:10|11);rgb:(?:[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}|[0-9a-fA-F]{4}\/[0-9a-fA-F]{4}\/[0-9a-fA-F]{4})(?:\u0007|\u001b\\)|\u001b\]4;\d+;rgb:(?:[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}|[0-9a-fA-F]{4}\/[0-9a-fA-F]{4}\/[0-9a-fA-F]{4})(?:\u0007|\u001b\\)/g;
 
 export function stripTerminalResponsePayload(payload: string): string {
   return payload

@@ -9,8 +9,8 @@ const TERMINAL_REPLAY_PATTERNS = [
 
 const TERMINAL_INPUT_PATTERNS = [
   /\u001b\[>[\d;]*c/g,
-  /\u001b\](?:10|11);rgb:[^\u0007\u001b]*(?:\u0007|\u001b\\)/g,
-  /\u001b\]4;\d+;rgb:[^\u0007\u001b]*(?:\u0007|\u001b\\)/g,
+  /\u001b\](?:10|11);rgb:(?:[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}|[0-9a-fA-F]{4}\/[0-9a-fA-F]{4}\/[0-9a-fA-F]{4})(?:\u0007|\u001b\\)/g,
+  /\u001b\]4;\d+;rgb:(?:[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}\/[0-9a-fA-F]{2}|[0-9a-fA-F]{4}\/[0-9a-fA-F]{4}\/[0-9a-fA-F]{4})(?:\u0007|\u001b\\)/g,
 ];
 
 function stripPatterns(text: string, patterns: RegExp[]): string {

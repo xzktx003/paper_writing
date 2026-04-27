@@ -44,12 +44,26 @@ describe("stripTerminalResponsePayload", () => {
     );
   });
 
+  it("keeps malformed OSC 10 replies intact when the rgb payload is not canonical", () => {
+    assert.equal(
+      stripTerminalResponsePayload("\u001b]10;rgb:not-a-color\u0007"),
+      "\u001b]10;rgb:not-a-color\u0007",
+    );
+  });
+
   it("strips OSC color-query replies terminated by ST so rgb payload noise never reaches the PTY", () => {
     assert.equal(
       stripTerminalResponsePayload(
         "\u001b]4;0;rgb:0000/0000/0000\u001b\\\u001b]4;1;rgb:ffff/ffff/ffff\u001b\\",
       ),
       "",
+    );
+  });
+
+  it("keeps malformed OSC 4 replies intact when the rgb payload is not canonical", () => {
+    assert.equal(
+      stripTerminalResponsePayload("\u001b]4;0;rgb:bad/value\u001b\\"),
+      "\u001b]4;0;rgb:bad/value\u001b\\",
     );
   });
 });

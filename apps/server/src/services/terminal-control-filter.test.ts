@@ -47,12 +47,28 @@ test("strip OSC color-query replies so shell prompts do not echo rgb payload noi
   assert.equal(sanitized, "");
 });
 
+test("keep malformed OSC 10 replies intact when the rgb payload is not canonical", () => {
+  const sanitized = stripTerminalResponsePayload(
+    "\u001b]10;rgb:not-a-color\u0007",
+  );
+
+  assert.equal(sanitized, "\u001b]10;rgb:not-a-color\u0007");
+});
+
 test("strip OSC 4 rgb replies so palette queries do not echo color noise", () => {
   const sanitized = stripTerminalResponsePayload(
     "\u001b]4;0;rgb:1111/2222/3333\u001b\\",
   );
 
   assert.equal(sanitized, "");
+});
+
+test("keep malformed OSC 4 replies intact when the rgb payload is not canonical", () => {
+  const sanitized = stripTerminalResponsePayload(
+    "\u001b]4;0;rgb:bad/value\u001b\\",
+  );
+
+  assert.equal(sanitized, "\u001b]4;0;rgb:bad/value\u001b\\");
 });
 
 test("sanitize replay removes window and cursor report sequences", () => {
