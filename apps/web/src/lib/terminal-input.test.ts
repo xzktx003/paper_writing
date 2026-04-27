@@ -23,6 +23,20 @@ describe("stripTerminalResponsePayload", () => {
     assert.equal(stripTerminalResponsePayload("\u001b[0n"), "\u001b[0n");
   });
 
+  it("strips noisy OSC color-reply messages terminated by BEL", () => {
+    // OSC 4;... BEL
+    assert.equal(stripTerminalResponsePayload("\u001b]4;1;rgb:ff/00/ff\u0007"), "");
+    // Surrounded by keystrokes
+    assert.equal(stripTerminalResponsePayload("a\u001b]4;1;rgb:ff/00/ff\u0007b"), "ab");
+  });
+
+  it("strips noisy OSC color-reply messages terminated by ST", () => {
+    // OSC 4;... ST (ESC \)
+    assert.equal(stripTerminalResponsePayload("\u001b]4;1;rgb:ff/00/ff\u001b\\"), "");
+    // Surrounded by keystrokes
+    assert.equal(stripTerminalResponsePayload("a\u001b]4;1;rgb:ff/00/ff\u001b\\b"), "ab");
+  });
+
   it("strips xterm.js's built-in DECSET 1004 focus-in reports so the manual focus tracker stays the single source of truth", () => {
     assert.equal(stripTerminalResponsePayload("\u001b[I"), "");
   });
