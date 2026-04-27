@@ -17,7 +17,11 @@
 // in TerminalView.syncTerminalFocusReport, so we strip xterm's built-in ones
 // here to keep a single source of truth. See tests/e2e/copilot-focus.spec.ts.
 const FOCUS_REPORT_PATTERN = /\u001b\[[IO]/g;
+const OSC_COLOR_REPLY_PATTERN =
+  /\u001b\](?:10|11|4);[^\u0007\u001b]*(?:\u0007|\u001b\\)/g;
 
 export function stripTerminalResponsePayload(payload: string): string {
-  return payload.replace(FOCUS_REPORT_PATTERN, "");
+  return payload
+    .replace(FOCUS_REPORT_PATTERN, '')
+    .replace(OSC_COLOR_REPLY_PATTERN, '');
 }
