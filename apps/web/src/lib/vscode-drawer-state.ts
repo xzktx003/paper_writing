@@ -13,8 +13,7 @@ function isSameResponse(
   return (
     left.url === right.url &&
     left.provider === right.provider &&
-    left.workingDirectory === right.workingDirectory &&
-    left.reused === right.reused
+    left.workingDirectory === right.workingDirectory
   );
 }
 

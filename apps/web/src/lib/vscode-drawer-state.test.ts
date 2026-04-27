@@ -31,4 +31,24 @@ describe("vscode-drawer-state", () => {
     assert.equal(confirmedEntry.reloadKey, 1);
     assert.deepEqual(confirmedEntry.response, response);
   });
+
+  it("does not reload the iframe when only the reused flag changes", () => {
+    const initialResponse = {
+      ...buildResponse(),
+      reused: false,
+    } satisfies OpenVsCodeWebResponse;
+    const reopenedResponse = {
+      ...initialResponse,
+      reused: true,
+    } satisfies OpenVsCodeWebResponse;
+
+    const openEntry = applyVsCodeWebOpenResponse(null, initialResponse);
+    const refreshedEntry = applyVsCodeWebOpenResponse(
+      openEntry,
+      reopenedResponse,
+    );
+
+    assert.equal(refreshedEntry.reloadKey, 0);
+    assert.equal(refreshedEntry, openEntry);
+  });
 });

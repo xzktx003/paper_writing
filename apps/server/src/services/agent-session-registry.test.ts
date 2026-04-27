@@ -180,4 +180,3 @@ test("awaiting_input timer is unref-ed so it cannot block Node process exit", ()
     "awaiting_input timer must be unref-ed to avoid blocking `node --test` shutdown",
   );
 });
-

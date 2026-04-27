@@ -1,0 +1,38 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="560" rx="32" fill="#FFF9F0"/>
+  <text x="72" y="88" fill="#1E293B" font-size="40" font-family="Arial, sans-serif" font-weight="700">安装与启动流程</text>
+  <text x="72" y="124" fill="#64748B" font-size="20" font-family="Arial, sans-serif">推荐用 restart-dev.sh 统一管理前后端、证书和端口。</text>
+
+  <rect x="70" y="180" width="220" height="220" rx="24" fill="#E7F7EF" stroke="#6CB287" stroke-width="2"/>
+  <text x="102" y="236" fill="#18462B" font-size="28" font-family="Arial, sans-serif" font-weight="700">1. 安装依赖</text>
+  <text x="102" y="286" fill="#18462B" font-size="18" font-family="Arial, sans-serif">Node.js 20+</text>
+  <text x="102" y="318" fill="#18462B" font-size="18" font-family="Arial, sans-serif">pnpm 10.13.1</text>
+  <text x="102" y="350" fill="#18462B" font-size="18" font-family="Arial, sans-serif">tmux / ssh / openssl</text>
+
+  <rect x="345" y="180" width="220" height="220" rx="24" fill="#E8F0FE" stroke="#6992D9" stroke-width="2"/>
+  <text x="377" y="236" fill="#173A71" font-size="28" font-family="Arial, sans-serif" font-weight="700">2. 配置 .env</text>
+  <text x="377" y="286" fill="#173A71" font-size="18" font-family="Arial, sans-serif">HOST / PORT</text>
+  <text x="377" y="318" fill="#173A71" font-size="18" font-family="Arial, sans-serif">WEB_HOST / WEB_PORT</text>
+  <text x="377" y="350" fill="#173A71" font-size="18" font-family="Arial, sans-serif">WEB_HTTPS / VSCODE_WEB_*</text>
+
+  <rect x="620" y="180" width="220" height="220" rx="24" fill="#FDEBD5" stroke="#D7A65C" stroke-width="2"/>
+  <text x="652" y="236" fill="#6B4600" font-size="28" font-family="Arial, sans-serif" font-weight="700">3. 启动服务</text>
+  <text x="652" y="286" fill="#6B4600" font-size="18" font-family="Arial, sans-serif">./scripts/restart-dev.sh</text>
+  <text x="652" y="318" fill="#6B4600" font-size="18" font-family="Arial, sans-serif">自动清端口</text>
+  <text x="652" y="350" fill="#6B4600" font-size="18" font-family="Arial, sans-serif">自动处理 HTTPS 证书</text>
+
+  <rect x="895" y="180" width="240" height="220" rx="24" fill="#F5E5F3" stroke="#B680B1" stroke-width="2"/>
+  <text x="927" y="236" fill="#5E285A" font-size="28" font-family="Arial, sans-serif" font-weight="700">4. 开始使用</text>
+  <text x="927" y="286" fill="#5E285A" font-size="18" font-family="Arial, sans-serif">打开前端地址</text>
+  <text x="927" y="318" fill="#5E285A" font-size="18" font-family="Arial, sans-serif">创建 / 扫描会话</text>
+  <text x="927" y="350" fill="#5E285A" font-size="18" font-family="Arial, sans-serif">聚焦、编辑与接管</text>
+
+  <path d="M292 292H337" stroke="#64748B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M327 282L347 292L327 302" stroke="#64748B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M567 292H612" stroke="#64748B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M602 282L622 292L602 302" stroke="#64748B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M842 292H887" stroke="#64748B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M877 282L897 292L877 302" stroke="#64748B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="72" y="478" fill="#64748B" font-size="18" font-family="Arial, sans-serif">注：如果你要重生成 README 截图，需要 Playwright 浏览器依赖；当前仓库提供脚本，但 Linux 机器上要先补齐图形库。</text>
+</svg>

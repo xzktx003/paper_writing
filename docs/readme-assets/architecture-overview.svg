@@ -1,0 +1,58 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" rx="32" fill="#F5F1E8"/>
+  <rect x="40" y="40" width="1120" height="680" rx="28" fill="#FFFDF8" stroke="#D9D0C3" stroke-width="2"/>
+  <text x="80" y="110" fill="#1F2937" font-size="42" font-family="Arial, sans-serif" font-weight="700">Coding Kanban 架构总览</text>
+  <text x="80" y="148" fill="#6B7280" font-size="20" font-family="Arial, sans-serif">浏览器里的统一看板，后端负责 PTY、SSH、tmux、文件系统与 VS Code Web 编排。</text>
+
+  <rect x="80" y="210" width="250" height="280" rx="24" fill="#D8F0E3" stroke="#6BB38A" stroke-width="2"/>
+  <text x="110" y="260" fill="#12442A" font-size="30" font-family="Arial, sans-serif" font-weight="700">Web 前端</text>
+  <text x="110" y="300" fill="#12442A" font-size="20" font-family="Arial, sans-serif">React 19 + Vite + xterm.js</text>
+  <text x="110" y="344" fill="#12442A" font-size="18" font-family="Arial, sans-serif">• 宫格看板</text>
+  <text x="110" y="378" fill="#12442A" font-size="18" font-family="Arial, sans-serif">• 聚焦终端</text>
+  <text x="110" y="412" fill="#12442A" font-size="18" font-family="Arial, sans-serif">• 文件浏览器</text>
+  <text x="110" y="446" fill="#12442A" font-size="18" font-family="Arial, sans-serif">• VS Code Web 面板</text>
+
+  <rect x="475" y="160" width="280" height="390" rx="24" fill="#FFF1CC" stroke="#D2A93A" stroke-width="2"/>
+  <text x="510" y="215" fill="#6A4A00" font-size="32" font-family="Arial, sans-serif" font-weight="700">Fastify 后端</text>
+  <text x="510" y="255" fill="#6A4A00" font-size="20" font-family="Arial, sans-serif">apps/server</text>
+  <text x="510" y="305" fill="#6A4A00" font-size="18" font-family="Arial, sans-serif">• AgentSessionRegistry</text>
+  <text x="510" y="339" fill="#6A4A00" font-size="18" font-family="Arial, sans-serif">• PtyRuntimeManager</text>
+  <text x="510" y="373" fill="#6A4A00" font-size="18" font-family="Arial, sans-serif">• SshRuntimeManager</text>
+  <text x="510" y="407" fill="#6A4A00" font-size="18" font-family="Arial, sans-serif">• LocalTmuxAdapter</text>
+  <text x="510" y="441" fill="#6A4A00" font-size="18" font-family="Arial, sans-serif">• LocalFsService / SftpService</text>
+  <text x="510" y="475" fill="#6A4A00" font-size="18" font-family="Arial, sans-serif">• VsCodeWebManager</text>
+
+  <rect x="900" y="110" width="220" height="120" rx="20" fill="#DCEBFF" stroke="#6494D8" stroke-width="2"/>
+  <text x="935" y="160" fill="#173C73" font-size="26" font-family="Arial, sans-serif" font-weight="700">本地 PTY</text>
+  <text x="935" y="196" fill="#173C73" font-size="18" font-family="Arial, sans-serif">shell / copilot / codex / claude</text>
+
+  <rect x="900" y="260" width="220" height="120" rx="20" fill="#FDE2E2" stroke="#D37C7C" stroke-width="2"/>
+  <text x="935" y="310" fill="#7D2323" font-size="26" font-family="Arial, sans-serif" font-weight="700">SSH / 远端 PTY</text>
+  <text x="935" y="346" fill="#7D2323" font-size="18" font-family="Arial, sans-serif">远端命令与目录扫描</text>
+
+  <rect x="900" y="410" width="220" height="120" rx="20" fill="#E6DCF8" stroke="#8B73C9" stroke-width="2"/>
+  <text x="935" y="460" fill="#46297A" font-size="26" font-family="Arial, sans-serif" font-weight="700">tmux / VS Code Web</text>
+  <text x="935" y="496" fill="#46297A" font-size="18" font-family="Arial, sans-serif">接管与内嵌编辑器</text>
+
+  <rect x="900" y="560" width="220" height="100" rx="20" fill="#DDF5F1" stroke="#5BACA0" stroke-width="2"/>
+  <text x="935" y="605" fill="#0E5B53" font-size="26" font-family="Arial, sans-serif" font-weight="700">文件系统</text>
+  <text x="935" y="639" fill="#0E5B53" font-size="18" font-family="Arial, sans-serif">本地 FS / SFTP</text>
+
+  <path d="M330 350H455" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M445 340L465 350L445 360" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M755 190H880" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M870 180L890 190L870 200" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M755 320H880" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M870 310L890 320L870 330" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M755 470H880" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M870 460L890 470L870 480" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M755 610H880" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round"/>
+  <path d="M870 600L890 610L870 620" stroke="#5E6C7B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="355" y="335" fill="#6B7280" font-size="18" font-family="Arial, sans-serif">HTTP / WebSocket</text>
+  <text x="790" y="174" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">启动 / 连接</text>
+  <text x="790" y="304" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">SSH / 扫描</text>
+  <text x="790" y="454" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">tmux / editor</text>
+  <text x="790" y="594" fill="#6B7280" font-size="16" font-family="Arial, sans-serif">list / preview / upload</text>
+</svg>

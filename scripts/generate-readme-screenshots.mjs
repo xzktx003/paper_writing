@@ -1,6 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { accessSync, constants } from 'node:fs';
+import {
+  accessSync,
+  constants,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { chromium } from '@playwright/test';
@@ -70,6 +78,60 @@ function killTmuxSession(sessionName) {
   } catch {
     // ignore cleanup failures
   }
+}
+
+function createScanDemoFixture() {
+  const rootDir = mkdtempSync(path.join(tmpdir(), 'readme-agent-scan-'));
+  const copilotDir = path.join(rootDir, 'project-copilot');
+  const claudeDir = path.join(rootDir, 'project-claude');
+  const sessionId = `readme-scan-${Date.now()}`;
+  const homeDir = process.env.HOME ?? process.cwd();
+  const sessionDir = path.join(homeDir, '.copilot', 'session-state', sessionId);
+
+  mkdirSync(copilotDir, { recursive: true });
+  mkdirSync(path.join(claudeDir, '.claude'), { recursive: true });
+  mkdirSync(sessionDir, { recursive: true });
+
+  writeFileSync(
+    path.join(sessionDir, 'workspace.yaml'),
+    [
+      `id: ${sessionId}`,
+      `cwd: ${copilotDir}`,
+      'name: README Scan Copilot',
+      `updated_at: ${new Date().toISOString()}`,
+    ].join('\n'),
+  );
+  writeFileSync(path.join(sessionDir, `inuse.${process.pid}.lock`), '');
+
+  return {
+    rootDir,
+    cleanup() {
+      rmSync(rootDir, { recursive: true, force: true });
+      rmSync(sessionDir, { recursive: true, force: true });
+    },
+  };
+}
+
+async function chooseLocalHost(page, triggerPattern) {
+  await page.getByRole('button', { name: triggerPattern }).click();
+  await page.getByRole('button', { name: /本机/ }).click();
+}
+
+async function waitForVsCodeDrawer(page) {
+  const frame = page.getByTestId('vscode-web-frame');
+  const errorState = page.locator('.vscode-drawer-state--error');
+
+  try {
+    await Promise.race([
+      frame.waitFor({ state: 'visible', timeout: 45_000 }),
+      errorState.waitFor({ state: 'visible', timeout: 45_000 }),
+    ]);
+  } catch {
+    return false;
+  }
+
+  await page.waitForTimeout(1_500);
+  return await frame.isVisible().catch(() => false);
 }
 
 async function requestJson(pathname, init) {
@@ -175,6 +237,7 @@ async function cleanupDemoSessions() {
 async function main() {
   await mkdir(outputDir, { recursive: true });
   await ensureDemoSessions();
+  const scanFixture = createScanDemoFixture();
 
   const sshHostsPayload = await requestJson('/api/ssh-hosts');
   const preferredHost = sshHostsPayload.hosts.find((host) => host.name === 'hm24');
@@ -197,6 +260,30 @@ async function main() {
       path: path.join(outputDir, 'board-overview.png'),
       fullPage: true,
     });
+
+    await chooseLocalHost(page, /扫描会话/);
+    const appDiscoveryDialog = page.locator('.discovery-dialog');
+    await appDiscoveryDialog.waitFor();
+    await appDiscoveryDialog.locator('.discovery-path-input').fill(scanFixture.rootDir);
+    await appDiscoveryDialog.getByRole('button', { name: '扫描' }).click();
+    await page.locator('.discovery-item-name', { hasText: 'README Scan Copilot' }).waitFor();
+    await page.screenshot({
+      path: path.join(outputDir, 'app-discovery-dialog.png'),
+      fullPage: true,
+    });
+    await appDiscoveryDialog.getByRole('button', { name: '关闭' }).click();
+    await appDiscoveryDialog.waitFor({ state: 'hidden' });
+
+    await chooseLocalHost(page, /扫描 tmux/);
+    const tmuxDiscoveryDialog = page.locator('.discovery-dialog');
+    await tmuxDiscoveryDialog.waitFor();
+    await page.locator('.discovery-item-name', { hasText: 'readme-demo' }).waitFor();
+    await page.screenshot({
+      path: path.join(outputDir, 'tmux-discovery-dialog.png'),
+      fullPage: true,
+    });
+    await tmuxDiscoveryDialog.getByRole('button', { name: '关闭' }).click();
+    await tmuxDiscoveryDialog.waitFor({ state: 'hidden' });
 
     const topBar = page.locator('.top-bar');
     await topBar.getByTestId('new-session-toggle').click();
@@ -227,6 +314,23 @@ async function main() {
       path: path.join(outputDir, 'focus-view.png'),
       fullPage: true,
     });
+
+    await page.getByTestId('file-browser-toggle').click();
+    await page.getByTestId('file-browser-drawer').waitFor();
+    await page.getByTestId('file-entry-README.md').click();
+    await page.locator('.file-browser-preview-text').waitFor();
+    await page.screenshot({
+      path: path.join(outputDir, 'file-browser-drawer.png'),
+      fullPage: true,
+    });
+
+    await page.getByTestId('vscode-toggle').click();
+    if (await waitForVsCodeDrawer(page)) {
+      await page.screenshot({
+        path: path.join(outputDir, 'vscode-drawer.png'),
+        fullPage: true,
+      });
+    }
 
     await page.getByRole('button', { name: '返回宫格' }).click();
     await page.waitForSelector('.grid-card');
@@ -266,6 +370,7 @@ async function main() {
     });
   } finally {
     await browser?.close().catch(() => {});
+    scanFixture.cleanup();
     await cleanupDemoSessions();
   }
 }

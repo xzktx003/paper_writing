@@ -1,0 +1,50 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="700" rx="32" fill="#F3F7FB"/>
+  <text x="70" y="92" fill="#162033" font-size="40" font-family="Arial, sans-serif" font-weight="700">典型使用工作流</text>
+  <text x="70" y="128" fill="#5A6678" font-size="20" font-family="Arial, sans-serif">从创建会话到聚焦处理，再到扫描接管与侧边工具协作。</text>
+
+  <rect x="70" y="200" width="220" height="360" rx="24" fill="#FFF4D6" stroke="#CFB04E" stroke-width="2"/>
+  <circle cx="130" cy="254" r="28" fill="#CFB04E"/>
+  <text x="122" y="264" fill="#FFF" font-size="24" font-family="Arial, sans-serif" font-weight="700">1</text>
+  <text x="170" y="260" fill="#573F00" font-size="28" font-family="Arial, sans-serif" font-weight="700">创建或接入</text>
+  <text x="100" y="320" fill="#573F00" font-size="18" font-family="Arial, sans-serif">• 新建本地会话</text>
+  <text x="100" y="354" fill="#573F00" font-size="18" font-family="Arial, sans-serif">• 连接 SSH 远端</text>
+  <text x="100" y="388" fill="#573F00" font-size="18" font-family="Arial, sans-serif">• 从 tmux 创建</text>
+  <text x="100" y="422" fill="#573F00" font-size="18" font-family="Arial, sans-serif">• 快速连接 tmux</text>
+
+  <rect x="340" y="200" width="220" height="360" rx="24" fill="#DFF1E8" stroke="#75B58D" stroke-width="2"/>
+  <circle cx="400" cy="254" r="28" fill="#75B58D"/>
+  <text x="392" y="264" fill="#FFF" font-size="24" font-family="Arial, sans-serif" font-weight="700">2</text>
+  <text x="438" y="260" fill="#183C26" font-size="28" font-family="Arial, sans-serif" font-weight="700">宫格观察</text>
+  <text x="370" y="320" fill="#183C26" font-size="18" font-family="Arial, sans-serif">• 看状态与缩略图</text>
+  <text x="370" y="354" fill="#183C26" font-size="18" font-family="Arial, sans-serif">• 筛选主机 / 类型</text>
+  <text x="370" y="388" fill="#183C26" font-size="18" font-family="Arial, sans-serif">• 隐藏暂不处理的卡片</text>
+  <text x="370" y="422" fill="#183C26" font-size="18" font-family="Arial, sans-serif">• 管理退出与恢复</text>
+
+  <rect x="610" y="200" width="220" height="360" rx="24" fill="#E5E1F7" stroke="#8C77C8" stroke-width="2"/>
+  <circle cx="670" cy="254" r="28" fill="#8C77C8"/>
+  <text x="662" y="264" fill="#FFF" font-size="24" font-family="Arial, sans-serif" font-weight="700">3</text>
+  <text x="708" y="260" fill="#382458" font-size="28" font-family="Arial, sans-serif" font-weight="700">聚焦处理</text>
+  <text x="640" y="320" fill="#382458" font-size="18" font-family="Arial, sans-serif">• 双击卡片放大</text>
+  <text x="640" y="354" fill="#382458" font-size="18" font-family="Arial, sans-serif">• 直接输入终端</text>
+  <text x="640" y="388" fill="#382458" font-size="18" font-family="Arial, sans-serif">• Alt+Q 返回宫格</text>
+  <text x="640" y="422" fill="#382458" font-size="18" font-family="Arial, sans-serif">• 侧栏保留其他上下文</text>
+
+  <rect x="880" y="200" width="250" height="360" rx="24" fill="#D8ECFF" stroke="#6A9ED8" stroke-width="2"/>
+  <circle cx="940" cy="254" r="28" fill="#6A9ED8"/>
+  <text x="932" y="264" fill="#FFF" font-size="24" font-family="Arial, sans-serif" font-weight="700">4</text>
+  <text x="978" y="260" fill="#133F6B" font-size="28" font-family="Arial, sans-serif" font-weight="700">侧边工具协同</text>
+  <text x="910" y="320" fill="#133F6B" font-size="18" font-family="Arial, sans-serif">• 文件浏览器预览与编辑</text>
+  <text x="910" y="354" fill="#133F6B" font-size="18" font-family="Arial, sans-serif">• VS Code Web 内嵌编辑</text>
+  <text x="910" y="388" fill="#133F6B" font-size="18" font-family="Arial, sans-serif">• 扫描目录接管历史工作</text>
+  <text x="910" y="422" fill="#133F6B" font-size="18" font-family="Arial, sans-serif">• 扫描 tmux 统一接管</text>
+
+  <path d="M292 380H332" stroke="#637182" stroke-width="4" stroke-linecap="round"/>
+  <path d="M322 370L342 380L322 390" stroke="#637182" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M562 380H602" stroke="#637182" stroke-width="4" stroke-linecap="round"/>
+  <path d="M592 370L612 380L592 390" stroke="#637182" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M832 380H872" stroke="#637182" stroke-width="4" stroke-linecap="round"/>
+  <path d="M862 370L882 380L862 390" stroke="#637182" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="92" y="620" fill="#5A6678" font-size="20" font-family="Arial, sans-serif">看板不是单纯展示页，而是把“启动、观察、接管、编辑、恢复”整合到同一个浏览器工作流里。</text>
+</svg>

@@ -42,6 +42,8 @@ const DEFAULT_PREVIEW_GEOMETRY: TerminalGeometry = {
   height: 760,
 };
 
+const EXTERNAL_FOCUS_GRACE_MS = 750;
+
 const previewGeometryCache = new Map<string, TerminalGeometry>();
 const terminalInputOwners = new Map<string, TerminalInputOwner>();
 
@@ -79,8 +81,14 @@ export function TerminalView({
     let handleTerminalInputFocus: (() => void) | null = null;
     let handleTerminalInputBlur: (() => void) | null = null;
     let handleWindowFocus: (() => void) | null = null;
+    let handleDocumentPointerDownCapture:
+      | ((event: PointerEvent) => void)
+      | null = null;
+    let handleDocumentFocusInCapture: ((event: FocusEvent) => void) | null =
+      null;
     let disposed = false;
     let closeAfterOpen = false;
+    let lastProtectedExternalFocusAt = 0;
 
     const ensureInputOwner = () => {
       const currentOwner = terminalInputOwners.get(agentSessionId);
@@ -168,18 +176,17 @@ export function TerminalView({
     termRef.current = term;
     fitRef.current = fitAddon;
 
-    const isIntentionalExternalFocus = (): boolean => {
-      const active = document.activeElement as HTMLElement | null;
-      if (!active || active === document.body) return false;
-      if (active.classList.contains("xterm-helper-textarea")) return false;
-      // NOTE: HTMLButtonElement is intentionally NOT in this whitelist.
-      // Kanban buttons (sidebar collapse, focus-back-to-grid, action toolbar
-      // entries, etc.) are transient triggers — they do not accept text
-      // input, so the terminal must be allowed to reclaim focus right away.
-      // If we leave a button focused, syncTerminalFocusReport reports
-      // CSI O (focus-out) to the embedded TUI and Copilot CLI silently
-      // drops the next keystrokes ("input dies after I click any button"
-      // regression). See tests/e2e/copilot-focus.spec.ts.
+    const isProtectedExternalFocusTarget = (
+      active: HTMLElement | null,
+    ): boolean => {
+      if (!active || active === document.body) {
+        return false;
+      }
+
+      if (active.classList.contains("xterm-helper-textarea")) {
+        return false;
+      }
+
       return (
         active instanceof HTMLIFrameElement ||
         active instanceof HTMLInputElement ||
@@ -189,6 +196,47 @@ export function TerminalView({
         active.closest('[role="dialog"]') !== null ||
         active.closest('[role="alertdialog"]') !== null
       );
+    };
+
+    const rememberProtectedExternalFocus = (
+      target: EventTarget | null,
+    ): void => {
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      if (target.closest(".terminal-view")) {
+        return;
+      }
+
+      if (!isProtectedExternalFocusTarget(target)) {
+        return;
+      }
+
+      lastProtectedExternalFocusAt = Date.now();
+    };
+
+    const isIntentionalExternalFocus = (): boolean => {
+      const active = document.activeElement as HTMLElement | null;
+      if (isProtectedExternalFocusTarget(active)) {
+        return true;
+      }
+
+      if (!active || active === document.body) {
+        return (
+          Date.now() - lastProtectedExternalFocusAt < EXTERNAL_FOCUS_GRACE_MS
+        );
+      }
+
+      // NOTE: HTMLButtonElement is intentionally NOT in this whitelist.
+      // Kanban buttons (sidebar collapse, focus-back-to-grid, action toolbar
+      // entries, etc.) are transient triggers — they do not accept text
+      // input, so the terminal must be allowed to reclaim focus right away.
+      // If we leave a button focused, syncTerminalFocusReport reports
+      // CSI O (focus-out) to the embedded TUI and Copilot CLI silently
+      // drops the next keystrokes ("input dies after I click any button"
+      // regression). See tests/e2e/copilot-focus.spec.ts.
+      return false;
     };
 
     const focusInteractiveTerminal = (unlockInput = false) => {
@@ -206,6 +254,7 @@ export function TerminalView({
       if (unlockInput) {
         term.options.disableStdin = false;
       }
+      lastProtectedExternalFocusAt = 0;
       ensureInputOwner();
       term.focus();
     };
@@ -537,10 +586,24 @@ export function TerminalView({
         scheduleTerminalFocusReport();
       };
 
+      handleDocumentPointerDownCapture = (event) => {
+        rememberProtectedExternalFocus(event.target);
+      };
+
+      handleDocumentFocusInCapture = (event) => {
+        rememberProtectedExternalFocus(event.target);
+      };
+
       container.addEventListener("pointerdown", handlePointerDownCapture, true);
       container.addEventListener("mousedown", handleMouseDownCapture, true);
       container.addEventListener("focusout", handleTerminalFocusOut, true);
       window.addEventListener("focus", handleWindowFocus);
+      document.addEventListener(
+        "pointerdown",
+        handleDocumentPointerDownCapture,
+        true,
+      );
+      document.addEventListener("focusin", handleDocumentFocusInCapture, true);
       helperTextarea?.addEventListener("focus", handleTerminalInputFocus);
       helperTextarea?.addEventListener("blur", handleTerminalInputBlur);
       scheduleFocusInteractiveTerminal();
@@ -598,6 +661,20 @@ export function TerminalView({
       }
       if (handleTerminalInputBlur) {
         helperTextarea?.removeEventListener("blur", handleTerminalInputBlur);
+      }
+      if (handleDocumentPointerDownCapture) {
+        document.removeEventListener(
+          "pointerdown",
+          handleDocumentPointerDownCapture,
+          true,
+        );
+      }
+      if (handleDocumentFocusInCapture) {
+        document.removeEventListener(
+          "focusin",
+          handleDocumentFocusInCapture,
+          true,
+        );
       }
       if (handleWindowFocus) {
         window.removeEventListener("focus", handleWindowFocus);
