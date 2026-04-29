@@ -11,7 +11,7 @@ if [[ -f "${ROOT_DIR}/.env" ]]; then
   set +a
 fi
 
-SERVER_PORT="${SERVER_PORT:-3200}"
+SERVER_PORT="${SERVER_PORT:-${PORT:-3200}}"
 WEB_PORT="${WEB_PORT:-3100}"
 
 RUNTIME_DIR="${ROOT_DIR}/.dev-runtime"
@@ -275,7 +275,7 @@ cd "$ROOT_DIR"
 RUNTIME_PATH="$(build_runtime_path)"
 
 log "Starting backend on ${SERVER_BIND_HOST}:${SERVER_PORT}"
-nohup env -u VSCODE_IPC_HOOK_CLI PATH="$RUNTIME_PATH" HOST="$SERVER_BIND_HOST" PORT="$SERVER_PORT" \
+nohup env -u VSCODE_IPC_HOOK_CLI PATH="$RUNTIME_PATH" HOST="$SERVER_BIND_HOST" PORT="$SERVER_PORT" SERVER_PORT="$SERVER_PORT" \
   pnpm --dir "$SERVER_APP_DIR" dev >"$SERVER_LOG" 2>&1 &
 echo $! >"$SERVER_PID_FILE"
 

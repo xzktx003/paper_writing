@@ -36,7 +36,9 @@ export default defineConfig(({ mode }) => {
   };
 
   const BACKEND_HOST = env.WEB_BACKEND_HOST?.trim() || 'localhost';
-  const BACKEND_PORT = Number(env.WEB_BACKEND_PORT ?? 4000);
+  const BACKEND_PORT = Number(
+    env.WEB_BACKEND_PORT ?? env.SERVER_PORT ?? env.PORT ?? 4000,
+  );
   const HTTP_BACKEND = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
   const WS_BACKEND = `ws://${BACKEND_HOST}:${BACKEND_PORT}`;
 
