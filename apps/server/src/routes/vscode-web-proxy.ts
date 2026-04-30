@@ -3,6 +3,8 @@ import { request as httpsRequest } from "node:https";
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { resolveVsCodeWebRequestTarget } from "./vscode-web-request-target.js";
+
 const VSCODE_WEB_PROXY_PREFIX = "/vscode";
 
 const HOP_BY_HOP_HEADERS = new Set([
@@ -94,6 +96,8 @@ function buildProxyRequestHeaders(
   overrideContentLength?: number,
 ): Record<string, string | string[]> {
   const headers: Record<string, string | string[]> = {};
+  const { requestHost, requestProtocol } =
+    resolveVsCodeWebRequestTarget(request);
 
   for (const [name, value] of Object.entries(request.headers)) {
     if (value === undefined || HOP_BY_HOP_HEADERS.has(name.toLowerCase())) {
@@ -103,13 +107,15 @@ function buildProxyRequestHeaders(
     headers[name] = value;
   }
 
-  if (request.headers.host) {
+  if (requestHost) {
+    headers.host = requestHost;
+    headers["x-forwarded-host"] = requestHost;
+  } else if (request.headers.host) {
     headers.host = request.headers.host;
     headers["x-forwarded-host"] = request.headers.host;
   }
 
-  headers["x-forwarded-proto"] =
-    firstHeaderValue(request.headers["x-forwarded-proto"]) ?? request.protocol;
+  headers["x-forwarded-proto"] = requestProtocol;
 
   const forwardedFor = appendForwardedFor(
     request.headers["x-forwarded-for"],

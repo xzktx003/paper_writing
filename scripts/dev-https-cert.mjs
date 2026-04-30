@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const opensslPreviewWarning =
@@ -27,6 +27,81 @@ function runCommand(command, args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
+}
+
+function metadataPathForCert(certPath) {
+  return `${certPath}.meta.json`;
+}
+
+function normalizeSanEntry(entry) {
+  const trimmed = entry.trim();
+  if (/^IP:/i.test(trimmed)) {
+    return trimmed.replace(/^IP:/i, 'IP Address:');
+  }
+
+  return trimmed;
+}
+
+function readCertificateMetadata(certPath) {
+  const metadataPath = metadataPathForCert(certPath);
+  if (!existsSync(metadataPath)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(metadataPath, 'utf8'));
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    return {
+      generator:
+        parsed.generator === 'mkcert' || parsed.generator === 'openssl'
+          ? parsed.generator
+          : null,
+      san: typeof parsed.san === 'string' ? parsed.san : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCertificateMetadata(certPath, metadata) {
+  writeFileSync(
+    metadataPathForCert(certPath),
+    `${JSON.stringify(metadata, null, 2)}\n`,
+    'utf8',
+  );
+}
+
+function removeCertificateArtifacts(certPath, keyPath) {
+  rmSync(certPath, { force: true });
+  rmSync(keyPath, { force: true });
+  rmSync(metadataPathForCert(certPath), { force: true });
+}
+
+function looksLikeOpenSslFallbackCertificate(certPath) {
+  if (!existsSync(certPath)) {
+    return false;
+  }
+
+  try {
+    const certificateIdentity = runCommand('openssl', [
+      'x509',
+      '-in',
+      certPath,
+      '-noout',
+      '-issuer',
+      '-subject',
+    ]);
+
+    return (
+      certificateIdentity.includes('issuer=CN=localhost') &&
+      certificateIdentity.includes('subject=CN=localhost')
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function commandExists(commandName) {
@@ -78,7 +153,7 @@ export function certificateMatchesRequestedSan(certPath, requestedSan) {
   }
 
   return splitSanEntries(requestedSan).every((entry) =>
-    certificateText.includes(entry),
+    certificateText.includes(normalizeSanEntry(entry)),
   );
 }
 
@@ -134,15 +209,24 @@ export function ensureHttpsCertificate({
 
   if (existsSync(certPath) && existsSync(keyPath)) {
     if (certificateMatchesRequestedSan(certPath, san)) {
-      return {
-        changed: false,
-        generator: 'existing',
-        warning: null,
-      };
-    }
+      const existingMetadata = readCertificateMetadata(certPath);
+      const existingGenerator =
+        existingMetadata?.generator ??
+        (looksLikeOpenSslFallbackCertificate(certPath) ? 'openssl' : null);
 
-    rmSync(certPath, { force: true });
-    rmSync(keyPath, { force: true });
+      if (existingGenerator === 'openssl' && mkcertAvailable) {
+        removeCertificateArtifacts(certPath, keyPath);
+      } else {
+        return {
+          changed: false,
+          generator: 'existing',
+          warning:
+            existingGenerator === 'openssl' ? opensslPreviewWarning : null,
+        };
+      }
+    } else {
+      removeCertificateArtifacts(certPath, keyPath);
+    }
   }
 
   mkdirSync(dirname(certPath), { recursive: true });
@@ -156,6 +240,10 @@ export function ensureHttpsCertificate({
   if (strategy.generator === 'mkcert') {
     try {
       generateWithMkcert({ certPath, keyPath, san });
+      writeCertificateMetadata(certPath, {
+        generator: 'mkcert',
+        san,
+      });
       return {
         changed: true,
         generator: 'mkcert',
@@ -163,6 +251,10 @@ export function ensureHttpsCertificate({
       };
     } catch (error) {
       generateWithOpenSsl({ certPath, keyPath, san });
+      writeCertificateMetadata(certPath, {
+        generator: 'openssl',
+        san,
+      });
       return {
         changed: true,
         generator: 'openssl',
@@ -176,6 +268,10 @@ export function ensureHttpsCertificate({
   }
 
   generateWithOpenSsl({ certPath, keyPath, san });
+  writeCertificateMetadata(certPath, {
+    generator: 'openssl',
+    san,
+  });
   return {
     changed: true,
     generator: 'openssl',
