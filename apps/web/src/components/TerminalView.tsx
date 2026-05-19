@@ -88,6 +88,9 @@ export function TerminalView({
       | null = null;
     let handleDocumentFocusInCapture: ((event: FocusEvent) => void) | null =
       null;
+    let handleDocumentKeyDownCapture:
+      | ((event: KeyboardEvent) => void)
+      | null = null;
     let disposed = false;
     let closeAfterOpen = false;
     let lastProtectedExternalFocusAt = 0;
@@ -261,8 +264,8 @@ export function TerminalView({
 
       if (unlockInput) {
         term.options.disableStdin = false;
+        lastProtectedExternalFocusAt = 0;
       }
-      lastProtectedExternalFocusAt = 0;
       ensureInputOwner();
       term.focus();
     };
@@ -628,6 +631,13 @@ export function TerminalView({
         rememberProtectedExternalFocus(event.target);
       };
 
+      handleDocumentKeyDownCapture = (event) => {
+        const target = event.target as HTMLElement | null;
+        if (target && isProtectedExternalFocusTarget(target)) {
+          lastProtectedExternalFocusAt = Date.now();
+        }
+      };
+
       container.addEventListener("pointerdown", handlePointerDownCapture, true);
       container.addEventListener("mousedown", handleMouseDownCapture, true);
       container.addEventListener("focusin", handleTerminalFocusIn, true);
@@ -639,6 +649,11 @@ export function TerminalView({
         true,
       );
       document.addEventListener("focusin", handleDocumentFocusInCapture, true);
+      document.addEventListener(
+        "keydown",
+        handleDocumentKeyDownCapture,
+        true,
+      );
       intervalIds.push(
         window.setInterval(
           repairPassiveFocusDrift,
@@ -709,6 +724,13 @@ export function TerminalView({
         document.removeEventListener(
           "focusin",
           handleDocumentFocusInCapture,
+          true,
+        );
+      }
+      if (handleDocumentKeyDownCapture) {
+        document.removeEventListener(
+          "keydown",
+          handleDocumentKeyDownCapture,
           true,
         );
       }
