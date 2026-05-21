@@ -83,6 +83,16 @@ export function NewSessionDialog({
       nameInputRef.current?.focus();
     }, 0);
 
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [host, open]);
+
+  useEffect(() => {
+    if (!open || !host) {
+      return;
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape" || submitting) {
         return;
@@ -95,7 +105,6 @@ export function NewSessionDialog({
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.clearTimeout(timerId);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [host, onClose, open, submitting]);
