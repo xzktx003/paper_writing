@@ -1,0 +1,22 @@
+{
+  "name": "@openprism/backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.97.1",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/multipart": "^8.3.1",
+    "@fastify/static": "^7.0.4",
+    "@fastify/websocket": "^8.3.1",
+    "diff": "^5.2.0",
+    "fast-xml-parser": "^4.4.1",
+    "fastify": "^4.26.2",
+    "tar": "^6.2.1",
+    "unzipper": "^0.10.14",
+    "yaml": "^2.9.0",
+    "zod": "^3.23.8"
+  }
+}
