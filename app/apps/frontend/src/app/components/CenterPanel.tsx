@@ -29,7 +29,10 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const [terminalHeight, setTerminalHeight] = useState(250);
   const [terminalMaximized, setTerminalMaximized] = useState(false);
   const [editorRatio, setEditorRatio] = useState(0.5);
+  const [previewScrollRatio, setPreviewScrollRatio] = useState<number | undefined>(undefined);
+  const [editorScrollRatio, setEditorScrollRatio] = useState<number | undefined>(undefined);
   const editorAreaRef = useRef<HTMLDivElement>(null);
+  const scrollSourceRef = useRef<'editor' | 'preview' | null>(null);
   const activeFile = openFiles?.[activeFileIndex];
   const projectId = getOpenPrismProjectId(projectPath);
   const activeIsImage = !!activeFile && isImagePath(activeFile.filename);
@@ -75,6 +78,20 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
+  }, []);
+
+  const handleEditorScroll = useCallback((ratio: number) => {
+    if (scrollSourceRef.current === 'preview') return;
+    scrollSourceRef.current = 'editor';
+    setPreviewScrollRatio(ratio);
+    requestAnimationFrame(() => { scrollSourceRef.current = null; });
+  }, []);
+
+  const handlePreviewScroll = useCallback((ratio: number) => {
+    if (scrollSourceRef.current === 'editor') return;
+    scrollSourceRef.current = 'preview';
+    setEditorScrollRatio(ratio);
+    requestAnimationFrame(() => { scrollSourceRef.current = null; });
   }, []);
 
   const termH = terminalMaximized ? '100%' : terminalHeight;
@@ -183,6 +200,8 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                     <MarkdownEditor
                       content={activeFile.content}
                       onChange={(c) => onFileChange(activeFileIndex, c)}
+                      onScroll={editorViewMode === 'split' ? handleEditorScroll : undefined}
+                      scrollRatio={editorViewMode === 'split' ? editorScrollRatio : undefined}
                     />
                   )}
                 </div>
@@ -196,11 +215,23 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                     >
                       <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '30px', height: '3px', borderRadius: '2px', background: 'var(--muted)', opacity: 0.4 }} />
                     </div>
-                    <div style={{ flex: 1, overflow: 'auto', background: 'var(--paper)' }}>
+                    <div style={{ flex: 1, overflow: 'hidden', background: 'var(--paper)' }}>
                       {activeFile.filename.endsWith('.tex') ? (
-                        <LatexPreview content={activeFile.content} projectId={projectId} currentFile={activeFile.filename} />
+                        <LatexPreview
+                          content={activeFile.content}
+                          projectId={projectId}
+                          currentFile={activeFile.filename}
+                          onScroll={handlePreviewScroll}
+                          scrollRatio={previewScrollRatio}
+                        />
                       ) : (
-                        <MarkdownPreview content={activeFile.content} projectId={projectId} currentFile={activeFile.filename} />
+                        <MarkdownPreview
+                          content={activeFile.content}
+                          projectId={projectId}
+                          currentFile={activeFile.filename}
+                          onScroll={handlePreviewScroll}
+                          scrollRatio={previewScrollRatio}
+                        />
                       )}
                     </div>
                   </>
