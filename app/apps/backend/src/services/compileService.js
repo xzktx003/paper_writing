@@ -62,7 +62,7 @@ const MULTI_PASS_ENGINES = ['pdflatex', 'xelatex', 'lualatex'];
 
 function runSpawn(cmd, args, cwd, pushLog, env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { cwd, env: env || process.env });
+    const child = spawn(cmd, args, { cwd, env: env || getEngineEnv() });
     child.stdout.on('data', pushLog);
     child.stderr.on('data', pushLog);
     child.on('error', (err) => reject(err));
@@ -141,7 +141,7 @@ export async function runCompile({ projectId, mainFile, engine = 'pdflatex' }) {
 
       const bibCmd = useBiber ? 'biber' : 'bibtex';
       const bibEnv = {
-        ...process.env,
+        ...getEngineEnv(),
         BIBINPUTS: `${projectRoot}:`,
         BSTINPUTS: `${projectRoot}:`,
       };

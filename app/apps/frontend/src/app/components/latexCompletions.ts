@@ -1,4 +1,4 @@
-import { Completion } from '@codemirror/autocomplete';
+import { Completion, CompletionContext } from '@codemirror/autocomplete';
 import { searchBibtex, type BibtexResult } from '../api/bibtex';
 
 // LaTeX command completions for academic writing
@@ -358,7 +358,7 @@ export const latexCompletions: Completion[] = [
  * BibTeX citation key search completion
  * Triggers when user types @ followed by text
  */
-export async function bibtexCompletion(context) {
+export async function bibtexCompletion(context: CompletionContext) {
   // Match @ followed by optional text (citation key search)
   const match = context.matchBefore(/@[\w]*/);
   if (!match) return null;

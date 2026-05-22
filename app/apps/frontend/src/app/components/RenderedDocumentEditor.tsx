@@ -127,7 +127,7 @@ function RenderedBlockView({ block, onCommit }: { block: RenderedBlock; onCommit
         contentEditable={block.editable}
         suppressContentEditableWarning
         onInput={() => setDirty(true)}
-        onBlur={(event) => commitIfDirty(event.currentTarget)}
+        onBlur={(event) => commitIfDirty(event.currentTarget as HTMLElement)}
         style={{ ...styles.heading, ...(block.level === 1 ? styles.h1 : block.level === 2 ? styles.h2 : styles.h3) }}
       >
         {block.text}
@@ -143,7 +143,7 @@ function RenderedBlockView({ block, onCommit }: { block: RenderedBlock; onCommit
         contentEditable={block.editable}
         suppressContentEditableWarning
         onInput={() => setDirty(true)}
-        onBlur={(event) => commitIfDirty(event.currentTarget)}
+        onBlur={(event) => commitIfDirty(event.currentTarget as HTMLElement)}
         style={block.kind === 'list' ? styles.listItem : styles.paragraph}
         dangerouslySetInnerHTML={{ __html: block.html || escapeHtml(block.text) }}
       />
@@ -157,7 +157,7 @@ function RenderedBlockView({ block, onCommit }: { block: RenderedBlock; onCommit
         contentEditable={block.editable}
         suppressContentEditableWarning
         onInput={() => setDirty(true)}
-        onBlur={(event) => commitIfDirty(event.currentTarget)}
+        onBlur={(event) => commitIfDirty(event.currentTarget as HTMLElement)}
         style={styles.sourceFallback}
       >
         {block.text}
