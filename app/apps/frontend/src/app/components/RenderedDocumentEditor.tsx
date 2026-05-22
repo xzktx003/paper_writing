@@ -38,6 +38,11 @@ interface SourceLine {
 export function RenderedDocumentEditor({ content, onChange, format, projectId, currentFile = '' }: Props) {
   const options = useMemo(() => ({ projectId, currentFile }), [projectId, currentFile]);
   const blocks = useMemo(() => parseRenderedDocument(content, format, options), [content, format, options]);
+  const [fontSize, setFontSize] = useState(15);
+
+  const zoomIn = () => setFontSize(f => Math.min(f + 2, 28));
+  const zoomOut = () => setFontSize(f => Math.max(f - 2, 8));
+  const zoomReset = () => setFontSize(15);
 
   const commitBlock = (block: RenderedBlock, element: HTMLElement) => {
     if (!block.editable || !block.toSource) return;
@@ -48,7 +53,53 @@ export function RenderedDocumentEditor({ content, onChange, format, projectId, c
   };
 
   return (
-    <div className="rendered-document-editor" data-render-mode="rendered-preview" style={styles.container}>
+    <div className="rendered-document-editor" data-render-mode="rendered-preview" style={{ ...styles.container, fontSize, position: 'relative' }}>
+      {/* Zoom controls - top right */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          display: 'flex',
+          gap: '4px',
+          alignItems: 'center',
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(4px)',
+          padding: '4px 8px',
+          borderRadius: '6px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          float: 'right',
+          marginBottom: '8px',
+        }}
+      >
+        <button
+          onClick={zoomOut}
+          title="缩小"
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', color: '#666', padding: '2px 6px', borderRadius: '4px', lineHeight: 1 }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#ddd')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+        >
+          A-
+        </button>
+        <button
+          onClick={zoomReset}
+          title="重置"
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '11px', color: '#888', padding: '2px 4px', borderRadius: '4px', minWidth: '36px', textAlign: 'center' }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#ddd')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+        >
+          {fontSize}px
+        </button>
+        <button
+          onClick={zoomIn}
+          title="放大"
+          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px', color: '#666', padding: '2px 6px', borderRadius: '4px', lineHeight: 1 }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#ddd')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+        >
+          A+
+        </button>
+      </div>
       {blocks.filter((block) => block.kind !== 'hidden').map((block) => (
         <RenderedBlockView key={block.id} block={block} onCommit={commitBlock} />
       ))}
