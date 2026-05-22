@@ -3395,19 +3395,18 @@ git commit -m "feat: add 19 built-in academic writing skills (ported from Claude
 
 ```javascript
 // apps/backend/src/config/appConfig.js
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import YAML from 'yaml';
+// Current implementation reads and writes repository-root .env directly.
+// API keys are never hardcoded in source or returned unmasked by /api/config.
 
-const CONFIG_DIR = join(process.env.HOME, '.paper-writer');
-const CONFIG_PATH = join(CONFIG_DIR, 'config.yaml');
+const ENV_FILE_NAME = '.env';
 
 const DEFAULT_CONFIG = {
-  claude_api_key: '',
-  claude_model: 'claude-sonnet-4-20250514',
+  llm_provider: 'openai-compatible',
+  llm_api_key: '',
+  llm_base_url: '',
+  llm_model: 'gpt-5.5',
   default_template: 'plain',
   editor_mode: 'markdown',
-  projects_dir: join(process.env.HOME, 'papers'),
 };
 
 export async function loadAppConfig() {
@@ -3549,7 +3548,7 @@ Open `http://localhost:5173`. Verify:
 
 - [ ] **Step 4: Test AI conversation (requires API key)**
 
-Set Claude API key in `~/.paper-writer/config.yaml`. Create a conversation in "chat" mode. Send a message. Verify response comes back.
+Set the LLM API key/base URL/model in the repository-root `.env` or through the settings panel. Create a conversation in "chat" mode. Send a message. Verify response comes back.
 
 - [ ] **Step 5: Test code execution**
 

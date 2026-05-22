@@ -29,11 +29,35 @@ export function TerminalPanel({ cwd }: Props) {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const isCyber = document.documentElement.getAttribute('data-theme') === 'cyber-tech';
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      theme: {
+      theme: isCyber ? {
+        background: '#0a0f14',
+        foreground: '#00ff88',
+        cursor: '#00ff88',
+        cursorAccent: '#0a0f14',
+        selectionBackground: 'rgba(0, 255, 136, 0.2)',
+        selectionForeground: '#ffffff',
+        black: '#0a0f14',
+        red: '#ff5555',
+        green: '#00ff88',
+        yellow: '#f1fa8c',
+        blue: '#00e5ff',
+        magenta: '#a855f7',
+        cyan: '#00e5ff',
+        white: '#e0e6f0',
+        brightBlack: '#505a6e',
+        brightRed: '#ff6e6e',
+        brightGreen: '#69ff94',
+        brightYellow: '#ffffa5',
+        brightBlue: '#6effff',
+        brightMagenta: '#d6acff',
+        brightCyan: '#6effff',
+        brightWhite: '#ffffff',
+      } : {
         background: '#1e1e1e',
         foreground: '#d4d4d4',
       },

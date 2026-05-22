@@ -8,6 +8,9 @@ describe('ProjectTree create actions', () => {
     const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/ProjectTree.tsx'), 'utf8');
     expect(source).toContain('New File');
     expect(source).toContain('New Folder');
+    expect(source).toContain('Upload');
+    expect(source).toContain('Paste');
+    expect(source).toContain("minHeight: '100%'");
     expect(source).toContain("method: 'POST'");
     expect(source).toContain('/api/projects/${projectId}/file');
     expect(source).toContain("type === 'folder' ? 'dir' : 'file'");
@@ -20,5 +23,30 @@ describe('ProjectTree root drop affordance', () => {
     expect(source).toContain('Drop here to move to project root');
     expect(canMoveTreeItem({ path: 'docs/note.md', type: 'file' }, '')).toBe(true);
     expect(canMoveTreeItem({ path: 'docs/nested', type: 'dir' }, '')).toBe(true);
+  });
+});
+
+
+describe('ProjectTree blank-space context menu', () => {
+  it('uses the project root as the target for blank-space paste/create/upload actions', async () => {
+    const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/ProjectTree.tsx'), 'utf8');
+    expect(source).toContain('onContextMenu={(event) => showContextMenu(event, null)}');
+    expect(source).toContain("const createTargetFolderPath = getCreateTargetFolderPath(node);");
+    expect(source).toContain("const targetFolderPath = createTargetFolderPath ?? getParentPath(node?.path || '');");
+    expect(source).toContain("onCreateFile(createTargetFolderPath ?? '')");
+    expect(source).toContain("onCreateFolder(createTargetFolderPath ?? '')");
+    expect(source).toContain("onUpload(createTargetFolderPath ?? '')");
+  });
+});
+
+
+describe('ProjectTree copy path action', () => {
+  it('copies the normalized file path through a HTTP-compatible clipboard fallback', async () => {
+    const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/ProjectTree.tsx'), 'utf8');
+    expect(source).toContain('const pathToCopy = normalizeProjectPath(node.path);');
+    expect(source).toContain('copyTextToClipboard(pathToCopy)');
+    expect(source).toContain("document.execCommand('copy')");
+    expect(source).toContain('Clipboard API can be unavailable or denied on plain HTTP');
+    expect(source).not.toContain('navigator.clipboard?.writeText(node.path)');
   });
 });

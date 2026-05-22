@@ -12,6 +12,7 @@
   --accent-strong: #3b5bdb;
   --accent-soft: rgba(79, 110, 247, 0.12);
   --accent-light: #eef2ff;
+  --accent-bg: rgba(79, 110, 247, 0.12);
   --border: rgba(0, 0, 0, 0.08);
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   --glass: rgba(255, 255, 255, 0.85);
@@ -19,27 +20,130 @@
   --hover: rgba(79, 110, 247, 0.06);
   --success: #10b981;
   --danger: #ef4444;
+
+  /* Zone defaults (non-cyber themes use same accent everywhere) */
+  --zone-files-accent: var(--accent);
+  --zone-files-accent-dim: var(--accent);
+  --zone-files-glow: transparent;
+  --zone-files-header-bg: var(--panel-muted);
+  --zone-files-border: var(--border);
+  --zone-files-dot: var(--accent);
+
+  --zone-terminal-accent: var(--accent);
+  --zone-terminal-accent-dim: var(--accent);
+  --zone-terminal-glow: transparent;
+  --zone-terminal-header-bg: var(--panel-muted);
+  --zone-terminal-border: var(--border);
+  --zone-terminal-dot: var(--accent);
+
+  --zone-ai-accent: var(--accent);
+  --zone-ai-accent-dim: var(--accent);
+  --zone-ai-glow: transparent;
+  --zone-ai-header-bg: var(--panel-muted);
+  --zone-ai-border: var(--border);
+  --zone-ai-dot: var(--accent);
+
+  --zone-editor-accent: var(--accent);
+  --zone-editor-accent-dim: var(--accent);
+  --zone-editor-glow: transparent;
+  --zone-editor-header-bg: var(--panel-muted);
+  --zone-editor-border: var(--border);
+  --zone-editor-dot: var(--accent);
 }
 
-[data-theme="dark"] {
-  --bg: #0f1117;
-  --paper: #1a1d27;
-  --panel: rgba(26, 29, 39, 0.95);
-  --panel-muted: rgba(22, 25, 35, 0.95);
-  --text: #e4e7ec;
-  --text-secondary: #9ca3b4;
-  --muted: #6b7280;
-  --accent: #6d8cff;
-  --accent-strong: #8ba3ff;
-  --accent-soft: rgba(109, 140, 255, 0.15);
-  --accent-light: rgba(109, 140, 255, 0.1);
-  --border: rgba(255, 255, 255, 0.08);
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --glass: rgba(26, 29, 39, 0.9);
-  --bg-secondary: #161922;
-  --hover: rgba(109, 140, 255, 0.08);
-  --success: #34d399;
-  --danger: #f87171;
+[data-theme="primer-dark"] {
+  --bg: #0d1117;
+  --paper: #161b22;
+  --panel: rgba(22, 27, 34, 0.96);
+  --panel-muted: rgba(13, 17, 23, 0.96);
+  --text: #e6edf3;
+  --text-secondary: #8b949e;
+  --muted: #6e7681;
+  --accent: #2f81f7;
+  --accent-strong: #58a6ff;
+  --accent-soft: rgba(47, 129, 247, 0.18);
+  --accent-light: rgba(56, 139, 253, 0.12);
+  --accent-bg: rgba(47, 129, 247, 0.16);
+  --border: rgba(240, 246, 252, 0.12);
+  --shadow: 0 14px 40px rgba(1, 4, 9, 0.5);
+  --glass: rgba(22, 27, 34, 0.82);
+  --bg-secondary: #21262d;
+  --hover: rgba(56, 139, 253, 0.12);
+  --success: #3fb950;
+  --danger: #f85149;
+}
+
+[data-theme="cyber-tech"] {
+  --bg: #080c14;
+  --paper: #0d1117;
+  --panel: rgba(12, 17, 28, 0.96);
+  --panel-muted: rgba(8, 12, 22, 0.96);
+  --text: #e0e6f0;
+  --text-secondary: #8892a8;
+  --muted: #505a6e;
+  --accent: #00e5ff;
+  --accent-strong: #00b8d4;
+  --accent-soft: rgba(0, 229, 255, 0.12);
+  --accent-light: rgba(0, 229, 255, 0.08);
+  --accent-bg: rgba(0, 229, 255, 0.10);
+  --border: rgba(0, 229, 255, 0.10);
+  --shadow: 0 4px 32px rgba(0, 229, 255, 0.08);
+  --glass: rgba(12, 17, 28, 0.88);
+  --bg-secondary: #0a0f1a;
+  --hover: rgba(0, 229, 255, 0.08);
+  --success: #00e676;
+  --danger: #ff1744;
+
+  /* Zone-specific colors */
+  --zone-files-accent: #00e5ff;
+  --zone-files-accent-dim: rgba(0, 229, 255, 0.6);
+  --zone-files-glow: rgba(0, 229, 255, 0.15);
+  --zone-files-header-bg: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(0, 180, 212, 0.04) 100%);
+  --zone-files-border: rgba(0, 229, 255, 0.18);
+  --zone-files-dot: #00e5ff;
+
+  --zone-terminal-accent: #00ff88;
+  --zone-terminal-accent-dim: rgba(0, 255, 136, 0.6);
+  --zone-terminal-glow: rgba(0, 255, 136, 0.12);
+  --zone-terminal-header-bg: linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 200, 83, 0.04) 100%);
+  --zone-terminal-border: rgba(0, 255, 136, 0.18);
+  --zone-terminal-dot: #00ff88;
+
+  --zone-ai-accent: #a855f7;
+  --zone-ai-accent-dim: rgba(168, 85, 247, 0.6);
+  --zone-ai-glow: rgba(168, 85, 247, 0.12);
+  --zone-ai-header-bg: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
+  --zone-ai-border: rgba(168, 85, 247, 0.18);
+  --zone-ai-dot: #a855f7;
+
+  --zone-editor-accent: #3b82f6;
+  --zone-editor-accent-dim: rgba(59, 130, 246, 0.6);
+  --zone-editor-glow: rgba(59, 130, 246, 0.10);
+  --zone-editor-header-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, rgba(59, 130, 246, 0.02) 100%);
+  --zone-editor-border: rgba(59, 130, 246, 0.15);
+  --zone-editor-dot: #3b82f6;
+}
+
+[data-theme="dracula"] {
+  --bg: #282a36;
+  --paper: #21222c;
+  --panel: rgba(33, 34, 44, 0.96);
+  --panel-muted: rgba(40, 42, 54, 0.96);
+  --text: #f8f8f2;
+  --text-secondary: #cfcfe8;
+  --muted: #9a9bb8;
+  --accent: #bd93f9;
+  --accent-strong: #ff79c6;
+  --accent-soft: rgba(189, 147, 249, 0.2);
+  --accent-light: rgba(255, 121, 198, 0.13);
+  --accent-bg: rgba(189, 147, 249, 0.18);
+  --border: rgba(248, 248, 242, 0.13);
+  --shadow: 0 16px 48px rgba(18, 19, 27, 0.52);
+  --glass: rgba(33, 34, 44, 0.84);
+  --bg-secondary: #343746;
+  --hover: rgba(255, 121, 198, 0.12);
+  --success: #50fa7b;
+  --danger: #ff5555;
 }
 
 * {
@@ -60,6 +164,18 @@ body {
   min-height: 100vh;
   overflow: hidden;
   transition: background 0.3s ease, color 0.3s ease;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 32%),
+    linear-gradient(315deg, var(--accent-light), transparent 36%);
+  opacity: 0.42;
+  z-index: -1;
 }
 
 #root {
@@ -2271,7 +2387,7 @@ body {
 
 .btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(180, 74, 47, 0.3);
+  box-shadow: 0 10px 20px var(--accent-soft);
 }
 
 .btn:disabled {
@@ -2281,8 +2397,9 @@ body {
 }
 
 .btn.ghost {
-  background: rgba(120, 98, 83, 0.16);
-  color: #4e453f;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border: 1px solid var(--border);
 }
 
 .btn.full {
@@ -3760,4 +3877,174 @@ textarea.input {
 
 .transfer-widget-log > div {
   margin-bottom: 2px;
+}
+
+/* ===== Zone-specific panel styling for cyber-tech theme ===== */
+
+.zone-files,
+.zone-terminal,
+.zone-ai,
+.zone-editor {
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Zone: Files (Left Panel) - Cyan/Teal */
+.zone-files {
+  border-right-color: var(--zone-files-border) !important;
+}
+[data-theme="cyber-tech"] .zone-files {
+  box-shadow: inset -1px 0 0 var(--zone-files-border), 1px 0 16px -4px var(--zone-files-glow);
+}
+[data-theme="cyber-tech"] .zone-files .zone-header {
+  background: var(--zone-files-header-bg);
+  border-bottom: 1px solid var(--zone-files-border);
+  box-shadow: 0 1px 12px -4px var(--zone-files-glow);
+}
+[data-theme="cyber-tech"] .zone-files .zone-header .zone-dot {
+  background: var(--zone-files-dot);
+  box-shadow: 0 0 8px var(--zone-files-dot), 0 0 2px var(--zone-files-dot);
+}
+[data-theme="cyber-tech"] .zone-files .zone-header .zone-label {
+  color: var(--zone-files-accent);
+  text-shadow: 0 0 12px var(--zone-files-glow);
+}
+[data-theme="cyber-tech"] .zone-files [style*="--panel-muted"] {
+  background: var(--zone-files-header-bg) !important;
+}
+
+/* Zone: Terminal - Green */
+.zone-terminal {
+  border-top-color: var(--zone-terminal-border) !important;
+}
+[data-theme="cyber-tech"] .zone-terminal {
+  box-shadow: inset 0 1px 0 var(--zone-terminal-border), 0 -1px 16px -4px var(--zone-terminal-glow);
+}
+[data-theme="cyber-tech"] .zone-terminal .zone-header {
+  background: var(--zone-terminal-header-bg);
+  border-bottom: 1px solid var(--zone-terminal-border);
+  box-shadow: 0 1px 12px -4px var(--zone-terminal-glow);
+}
+[data-theme="cyber-tech"] .zone-terminal .zone-header .zone-dot {
+  background: var(--zone-terminal-dot);
+  box-shadow: 0 0 8px var(--zone-terminal-dot), 0 0 2px var(--zone-terminal-dot);
+}
+[data-theme="cyber-tech"] .zone-terminal .zone-header .zone-label {
+  color: var(--zone-terminal-accent);
+  text-shadow: 0 0 12px var(--zone-terminal-glow);
+}
+
+/* Zone: AI Assistant (Right Panel) - Purple/Magenta */
+.zone-ai {
+  border-left-color: var(--zone-ai-border) !important;
+}
+[data-theme="cyber-tech"] .zone-ai {
+  box-shadow: inset 1px 0 0 var(--zone-ai-border), -1px 0 16px -4px var(--zone-ai-glow);
+}
+[data-theme="cyber-tech"] .zone-ai .zone-header {
+  background: var(--zone-ai-header-bg);
+  border-bottom: 1px solid var(--zone-ai-border);
+  box-shadow: 0 1px 12px -4px var(--zone-ai-glow);
+}
+[data-theme="cyber-tech"] .zone-ai .zone-header .zone-dot {
+  background: var(--zone-ai-dot);
+  box-shadow: 0 0 8px var(--zone-ai-dot), 0 0 2px var(--zone-ai-dot);
+}
+[data-theme="cyber-tech"] .zone-ai .zone-header .zone-label {
+  color: var(--zone-ai-accent);
+  text-shadow: 0 0 12px var(--zone-ai-glow);
+}
+
+/* Zone: Editor (Center) - Blue */
+.zone-editor {
+  border-color: var(--zone-editor-border) !important;
+}
+[data-theme="cyber-tech"] .zone-editor {
+  box-shadow: 0 0 20px -6px var(--zone-editor-glow);
+}
+[data-theme="cyber-tech"] .zone-editor .zone-header {
+  background: var(--zone-editor-header-bg);
+  border-bottom: 1px solid var(--zone-editor-border);
+}
+[data-theme="cyber-tech"] .zone-editor .zone-header .zone-dot {
+  background: var(--zone-editor-dot);
+  box-shadow: 0 0 8px var(--zone-editor-dot), 0 0 2px var(--zone-editor-dot);
+}
+[data-theme="cyber-tech"] .zone-editor .zone-header .zone-label {
+  color: var(--zone-editor-accent);
+  text-shadow: 0 0 12px var(--zone-editor-glow);
+}
+
+/* Cyber-tech glow line at top of each zone header */
+[data-theme="cyber-tech"] .zone-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--zone-accent, var(--accent)), transparent);
+  opacity: 0.5;
+}
+
+/* Cyber-tech overall body glow effect */
+[data-theme="cyber-tech"] body::before {
+  background:
+    radial-gradient(ellipse 60% 50% at 0% 50%, rgba(0, 229, 255, 0.06), transparent),
+    radial-gradient(ellipse 60% 50% at 100% 50%, rgba(168, 85, 247, 0.06), transparent),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(0, 255, 136, 0.04), transparent),
+    radial-gradient(ellipse 60% 30% at 50% 0%, rgba(59, 130, 246, 0.04), transparent);
+  opacity: 1;
+}
+
+/* Cyber-tech resize handle glow */
+[data-theme="cyber-tech"] .resize-handle:hover {
+  background: var(--accent-soft) !important;
+  box-shadow: 0 0 12px var(--accent-soft);
+}
+
+/* Cyber-tech scrollbar styling */
+[data-theme="cyber-tech"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+[data-theme="cyber-tech"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-theme="cyber-tech"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.15);
+  border-radius: 3px;
+}
+[data-theme="cyber-tech"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.3);
+}
+
+/* Cyber-tech terminal xterm overrides */
+[data-theme="cyber-tech"] .xterm {
+  background: transparent !important;
+}
+[data-theme="cyber-tech"] .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.2);
+}
+[data-theme="cyber-tech"] .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.4);
+}
+
+/* Cyber-tech input/chat styling */
+[data-theme="cyber-tech"] input[type="text"],
+[data-theme="cyber-tech"] textarea {
+  border-color: var(--border) !important;
+}
+[data-theme="cyber-tech"] input[type="text"]:focus,
+[data-theme="cyber-tech"] textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 0 12px var(--accent-soft);
+}
+
+/* Cyber-tech button hover glow */
+[data-theme="cyber-tech"] button {
+  transition: all 0.2s ease;
+}
+[data-theme="cyber-tech"] button:hover {
+  text-shadow: 0 0 8px currentColor;
 }

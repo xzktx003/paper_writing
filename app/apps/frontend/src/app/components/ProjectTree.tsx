@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ProjectConfig } from '../hooks/useProject';
+import { uploadFiles } from '../../api/client';
 import {
   buildProjectTree,
   canCopyTreeItem,
@@ -35,6 +36,9 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   const [draggedItem, setDraggedItem] = useState<ClipboardTreeItem | null>(null);
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
   const [status, setStatus] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTargetFolder, setUploadTargetFolder] = useState<string>('');
   const projectId = getOpenPrismProjectId(projectPath);
   const tree = useMemo(() => buildProjectTree(fileItems), [fileItems]);
 
@@ -71,8 +75,9 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   };
 
   const copyPath = async (node: FileTreeNode) => {
-    await navigator.clipboard?.writeText(node.path);
-    setStatus(`Copied path: ${node.path}`);
+    const pathToCopy = normalizeProjectPath(node.path);
+    const copied = await copyTextToClipboard(pathToCopy);
+    setStatus(copied ? `Copied path: ${pathToCopy}` : `Failed to copy path: ${pathToCopy}`);
   };
 
   const deleteItem = async (node: FileTreeNode) => {
@@ -171,8 +176,59 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     await moveItemToFolder(source, targetFolderPath);
   };
 
+  const triggerUpload = (targetFolder: string) => {
+    if (!projectId) return setStatus('File operations are only available for managed projects.');
+    setUploadTargetFolder(targetFolder);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !projectId) return;
+    
+    setUploading(true);
+    setStatus('Uploading...');
+    
+    try {
+      const result = await uploadFiles(projectId, Array.from(files), uploadTargetFolder || undefined);
+      if (result.ok && result.files) {
+        // Add uploaded files to the tree
+        const newItems: FileItem[] = result.files.map(f => ({
+          path: f,
+          type: 'file' as const,
+        }));
+        setFileItems(prev => [...prev, ...newItems]);
+        
+        // Expand the target folder
+        if (uploadTargetFolder) {
+          setExpandedSections(prev => new Set(prev).add(uploadTargetFolder));
+        }
+        
+        setStatus(`Uploaded ${result.files.length} file(s)`);
+      } else {
+        setStatus('Upload failed');
+      }
+    } catch (err) {
+      setStatus(`Upload error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <div style={{ fontSize: '13px', position: 'relative' }} onContextMenu={(event) => showContextMenu(event, null)}>
+    <div
+      style={{ fontSize: '13px', position: 'relative', minHeight: '100%' }}
+      onContextMenu={(event) => showContextMenu(event, null)}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileUpload}
+      />
       <div>
         <div
           onClick={() => toggleSection('files')}
@@ -190,6 +246,29 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
         >
           <span>{expandedSections.has('files') ? '▼' : '▶'}</span>
           <span>Files</span>
+          {projectId && (
+            <button
+              type="button"
+              title="Upload files"
+              disabled={uploading}
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerUpload('');
+              }}
+              style={{
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: 'none',
+                cursor: uploading ? 'wait' : 'pointer',
+                color: 'var(--muted)',
+                fontSize: '14px',
+                padding: '0 4px',
+                lineHeight: 1,
+              }}
+            >
+              {uploading ? '⏳' : '↑'}
+            </button>
+          )}
         </div>
         {expandedSections.has('files') && (
           <div style={{ paddingLeft: '6px' }}>
@@ -260,6 +339,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
           onCut={(node) => setClipboardItem({ path: node.path, type: node.type, action: 'cut' })}
           onCreateFile={(targetFolder) => createItem(targetFolder, 'file')}
           onCreateFolder={(targetFolder) => createItem(targetFolder, 'folder')}
+          onUpload={(targetFolder) => triggerUpload(targetFolder)}
           onPaste={(targetFolder) => pasteIntoFolder(targetFolder)}
           onDelete={deleteItem}
           onClose={() => setContextMenu(null)}
@@ -383,12 +463,13 @@ interface ContextMenuProps {
   onCut: (node: FileTreeNode) => void;
   onCreateFile: (targetFolderPath: string) => void;
   onCreateFolder: (targetFolderPath: string) => void;
+  onUpload: (targetFolderPath: string) => void;
   onPaste: (targetFolderPath: string) => void;
   onDelete: (node: FileTreeNode) => void;
   onClose: () => void;
 }
 
-function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onCopy, onCut, onCreateFile, onCreateFolder, onPaste, onDelete, onClose }: ContextMenuProps) {
+function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onCopy, onCut, onCreateFile, onCreateFolder, onUpload, onPaste, onDelete, onClose }: ContextMenuProps) {
   const createTargetFolderPath = getCreateTargetFolderPath(node);
   const targetFolderPath = createTargetFolderPath ?? getParentPath(node?.path || '');
   const canCreateChildren = canCreateChildrenFromContext(node);
@@ -425,16 +506,17 @@ function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onCopy, onCut, onC
           <MenuItem label="Copy Path" onClick={() => run(() => void onCopyPath(node))} />
           <MenuItem label="Copy" onClick={() => run(() => onCopy(node))} />
           <MenuItem label="Cut" onClick={() => run(() => onCut(node))} />
-        </>
-      )}
-      {canCreateChildren && (
-        <>
-          {node && <MenuDivider />}
-          <MenuItem label="New File" onClick={() => run(() => void onCreateFile(createTargetFolderPath ?? ''))} />
-          <MenuItem label="New Folder" onClick={() => run(() => void onCreateFolder(createTargetFolderPath ?? ''))} />
+          <MenuDivider />
         </>
       )}
       <MenuItem label="Paste" disabled={!canPaste} onClick={() => run(() => onPaste(targetFolderPath))} />
+      {canCreateChildren && (
+        <>
+          <MenuItem label="New File" onClick={() => run(() => void onCreateFile(createTargetFolderPath ?? ''))} />
+          <MenuItem label="New Folder" onClick={() => run(() => void onCreateFolder(createTargetFolderPath ?? ''))} />
+          <MenuItem label="Upload" onClick={() => run(() => onUpload(createTargetFolderPath ?? ''))} />
+        </>
+      )}
       {node && (
         <>
           <MenuDivider />
@@ -443,6 +525,36 @@ function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onCopy, onCut, onC
       )}
     </div>
   );
+}
+
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back below. Clipboard API can be unavailable or denied on plain HTTP.
+  }
+
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 function MenuItem({ label, disabled, danger, onClick }: { label: string; disabled?: boolean; danger?: boolean; onClick: () => void }) {

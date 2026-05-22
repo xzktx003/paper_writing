@@ -4,7 +4,7 @@ import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import { ensureDir } from './utils/fsUtils.js';
 import { DATA_DIR, PORT } from './config/constants.js';
-import { loadAppConfig, saveAppConfig } from './config/appConfig.js';
+import { loadAppConfig, publicAppConfig, saveAppConfig } from './config/appConfig.js';
 import { initLLM } from './services/llmService.js';
 import { loadSkills, listSkills } from './services/skillEngine.js';
 import { registerHealthRoutes } from './routes/health.js';
@@ -60,10 +60,10 @@ registerWsRoutes(fastify);
 registerTransferRoutes(fastify);
 
 // Config endpoints
-fastify.get('/api/config', async () => appConfig);
+fastify.get('/api/config', async () => publicAppConfig(appConfig));
 fastify.put('/api/config', async (request) => {
-  Object.assign(appConfig, request.body);
-  await saveAppConfig(appConfig);
+  const nextConfig = await saveAppConfig({ ...appConfig, ...request.body });
+  Object.assign(appConfig, nextConfig);
   // Re-init LLM provider if any config changed
   if (request.body.claude_api_key || request.body.claude_base_url || request.body.llm_provider || request.body.llm_api_key || request.body.llm_base_url || request.body.llm_model) {
     await initLLM(appConfig);
@@ -81,7 +81,7 @@ if (existsSync(frontendDist)) {
   await fastify.register(fastifyStatic.default, {
     root: frontendDist,
     prefix: '/',
-    wildcard: false,
+    wildcard: true,
   });
 
   fastify.setNotFoundHandler((req, reply) => {

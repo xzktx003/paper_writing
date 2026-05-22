@@ -18,6 +18,7 @@ import {
 } from '../api/client';
 import type { ProjectMeta, TemplateMeta, TemplateCategory } from '../api/client';
 import TransferPanel from './TransferPanel';
+import { ThemeToggle, useTheme } from './components/ThemeToggle';
 
 type ViewFilter = 'all' | 'mine' | 'archived' | 'trash';
 type SortBy = 'updatedAt' | 'name' | 'createdAt';
@@ -36,19 +37,26 @@ const DEFAULT_LLM: LLMSettings = {
   llmModel: '',
 };
 
-function loadLLMSettings(): LLMSettings {
+
+function removeCachedLLMSettings() {
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_LLM;
+    if (!raw) return;
     const parsed = JSON.parse(raw);
-    return {
-      llmEndpoint: parsed.llmEndpoint ?? DEFAULT_LLM.llmEndpoint,
-      llmApiKey: parsed.llmApiKey ?? DEFAULT_LLM.llmApiKey,
-      llmModel: parsed.llmModel ?? DEFAULT_LLM.llmModel,
-    };
+    delete parsed.llmEndpoint;
+    delete parsed.llmApiKey;
+    delete parsed.llmModel;
+    if (Object.keys(parsed).length === 0) window.localStorage.removeItem(SETTINGS_KEY);
+    else window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
   } catch {
-    return DEFAULT_LLM;
+    window.localStorage.removeItem(SETTINGS_KEY);
   }
+}
+
+function loadLLMSettings(): LLMSettings {
+  // LLM settings are loaded from the repo .env through /api/config.
+  // Never hydrate API keys from browser storage.
+  return DEFAULT_LLM;
 }
 
 async function loadLLMSettingsFromBackend(): Promise<LLMSettings> {
@@ -56,9 +64,9 @@ async function loadLLMSettingsFromBackend(): Promise<LLMSettings> {
     const res = await fetch('/api/config');
     const cfg = await res.json();
     return {
-      llmEndpoint: cfg.claude_base_url || '',
-      llmApiKey: cfg.claude_api_key || '',
-      llmModel: cfg.claude_model || '',
+      llmEndpoint: cfg.llm_base_url || cfg.claude_base_url || '',
+      llmApiKey: '',
+      llmModel: cfg.llm_model || cfg.claude_model || '',
     };
   } catch {
     return loadLLMSettings();
@@ -66,14 +74,16 @@ async function loadLLMSettingsFromBackend(): Promise<LLMSettings> {
 }
 
 async function saveLLMSettingsToBackend(s: LLMSettings) {
-  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  removeCachedLLMSettings();
   await fetch('/api/config', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      llm_provider: 'openai-compatible',
+      llm_base_url: s.llmEndpoint,
+      llm_model: s.llmModel,
+      ...(s.llmApiKey ? { llm_api_key: s.llmApiKey, claude_api_key: s.llmApiKey } : {}),
       claude_base_url: s.llmEndpoint,
-      claude_api_key: s.llmApiKey,
-      claude_model: s.llmModel,
     }),
   });
 }
@@ -91,6 +101,7 @@ function formatRelativeTime(iso: string, t: (k: string, o?: Record<string, unkno
 export default function ProjectPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { theme, setTheme } = useTheme();
 
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [templates, setTemplates] = useState<TemplateMeta[]>([]);
@@ -525,11 +536,7 @@ export default function ProjectPage() {
               )}
             </div>
             <button className="btn ghost" onClick={() => setSettingsOpen(true)}>{t('设置')}</button>
-            <button className="btn ghost" onClick={() => {
-              const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-              document.documentElement.setAttribute('data-theme', next);
-              localStorage.setItem('paper-writer-theme', next);
-            }} style={{ padding: '6px 10px' }}>{document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'}</button>
+            <ThemeToggle theme={theme} onThemeChange={setTheme} />
           </div>
         </header>
 
@@ -995,7 +1002,7 @@ export default function ProjectPage() {
                 <input
                   className="input"
                   type="password"
-                  placeholder="sk-..."
+                  placeholder="Leave blank to keep existing key"
                   value={settingsForm.llmApiKey}
                   onChange={(e) => setSettingsForm((p) => ({ ...p, llmApiKey: e.target.value }))}
                 />

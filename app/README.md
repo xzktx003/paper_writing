@@ -123,8 +123,8 @@ OpenPrism is a local-first LaTeX + AI workspace for academic writing, optimized 
 
 ### ⚙️ Configuration
 
-- **LLM Endpoint**: OpenAI-compatible, supports custom base_url
-- **Local storage**: settings saved to browser localStorage
+- **LLM Base URL**: OpenAI-compatible, supports custom base URL
+- **Env-backed settings**: LLM provider, key, base URL, and model are stored in repository `.env` and API keys are masked in the UI
 - **TexLive config**: customizable TexLive resources
 - **Language switch**: toggle 中文/English in the top bar
 
@@ -358,9 +358,9 @@ npm run build
 
 # 5. Configure environment variables (optional)
 cat > .env << EOF
-OPENPRISM_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions
+OPENPRISM_LLM_BASE_URL=https://api.openai.com/v1
 OPENPRISM_LLM_API_KEY=your-api-key
-OPENPRISM_LLM_MODEL=gpt-4o-mini
+OPENPRISM_LLM_MODEL=gpt-5.5
 OPENPRISM_DATA_DIR=/var/openprism/data
 PORT=8787
 EOF
@@ -385,9 +385,9 @@ Create a `.env` file in the project root (optional):
 
 ```bash
 # LLM Configuration
-OPENPRISM_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions
+OPENPRISM_LLM_BASE_URL=https://api.openai.com/v1
 OPENPRISM_LLM_API_KEY=your-api-key
-OPENPRISM_LLM_MODEL=gpt-4o-mini
+OPENPRISM_LLM_MODEL=gpt-5.5
 
 # Data storage path
 OPENPRISM_DATA_DIR=./data
@@ -402,20 +402,20 @@ OPENPRISM_MINERU_TOKEN=your-mineru-token
 
 ### LLM Configuration
 
-OpenPrism supports any **OpenAI-compatible** endpoint, including custom base_url:
+OpenPrism supports any **OpenAI-compatible** endpoint, including custom base URL:
 
 **Method 1: Environment Variables**
 ```bash
 # .env file
-OPENPRISM_LLM_ENDPOINT=https://api.openai.com/v1/chat/completions
-OPENPRISM_LLM_API_KEY=sk-your-api-key
-OPENPRISM_LLM_MODEL=gpt-4o-mini
+OPENPRISM_LLM_BASE_URL=https://api.openai.com/v1
+OPENPRISM_LLM_API_KEY=your-api-key
+OPENPRISM_LLM_MODEL=gpt-5.5
 ```
 
 **Method 2: Frontend Settings Panel**
 - Click the "Settings" button in the frontend interface
-- Fill in API Endpoint, API Key, and Model
-- Configuration is automatically saved to browser localStorage
+- Fill in Base URL, API Key, and Model
+- Configuration is saved to the repository `.env` through the backend; existing API keys are masked in API responses and are not cached in browser localStorage
 
 <div align="center">
 <br>

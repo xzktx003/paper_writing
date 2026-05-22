@@ -13,12 +13,9 @@ import { downloadArxivSource, extractArxivId } from '../services/arxivService.js
 import { getLang, t } from '../i18n/index.js';
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.pdf', '.eps'];
-const PROJECT_SUPPORT_DIRS = ['docs'];
 
-async function ensureProjectSupportDirs(projectRoot) {
-  for (const dir of PROJECT_SUPPORT_DIRS) {
-    await ensureDir(path.join(projectRoot, dir));
-  }
+async function ensureDocsSupportDir(projectRoot) {
+  await ensureDir(path.join(projectRoot, 'docs'));
 }
 
 export function registerProjectRoutes(fastify) {
@@ -53,7 +50,7 @@ export function registerProjectRoutes(fastify) {
     const id = crypto.randomUUID();
     const projectRoot = path.join(DATA_DIR, id);
     await ensureDir(projectRoot);
-    await ensureProjectSupportDirs(projectRoot);
+    await ensureDocsSupportDir(projectRoot);
     const meta = { id, name, createdAt: new Date().toISOString() };
     await writeJson(path.join(projectRoot, 'project.json'), meta);
     if (template) {
@@ -292,7 +289,7 @@ export function registerProjectRoutes(fastify) {
   fastify.get('/api/projects/:id/tree', async (req) => {
     const { id } = req.params;
     const projectRoot = await getProjectRoot(id);
-    await ensureProjectSupportDirs(projectRoot);
+    await ensureDocsSupportDir(projectRoot);
     const items = await listFilesRecursive(projectRoot);
     let fileOrder = {};
     try {

@@ -13,6 +13,7 @@ import https from 'https';
 /* ── shared state ─────────────────────────────────────── */
 
 let currentProvider = null;
+let currentLLMConfig = { endpoint: '', apiKey: '', model: '' };
 
 /* ── Anthropic provider ───────────────────────────────── */
 
@@ -232,6 +233,11 @@ async function openaiChatWithTools({ systemPrompt, messages, tools, onToolUse, m
 
 export async function initLLM(cfg) {
   const provider = cfg.llm_provider || 'anthropic';
+  currentLLMConfig = {
+    endpoint: cfg.llm_base_url || cfg.claude_base_url || '',
+    apiKey: cfg.llm_api_key || cfg.claude_api_key || '',
+    model: cfg.llm_model || cfg.claude_model || '',
+  };
   if (provider === 'openai-compatible') {
     await initOpenAICompat({
       api_key: cfg.llm_api_key || cfg.claude_api_key,
@@ -259,10 +265,23 @@ export function chatWithTools(params) {
 }
 
 /** Legacy aliases for existing imports from this file */
-export function resolveLLMConfig() {
-  return { model: currentProvider?.chatCompletion ? 'default' : 'claude-sonnet-4-20250514' };
+export function resolveLLMConfig(overrides = {}) {
+  return {
+    endpoint: overrides.endpoint || currentLLMConfig.endpoint,
+    apiKey: overrides.apiKey || currentLLMConfig.apiKey,
+    model: overrides.model || currentLLMConfig.model,
+  };
 }
 
 export async function callOpenAICompatible({ messages, model }) {
-  return chatCompletion({ systemPrompt: '', messages, model });
+  try {
+    const response = await chatCompletion({ systemPrompt: '', messages, model });
+    const text = (response.content || [])
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('\n');
+    return { ok: true, content: text };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
 }

@@ -52,7 +52,7 @@ my-paper/
 │   ├── 04-experiments.md
 │   └── 05-conclusion.md
 ├── code/                   # 代码与实验
-│   ├── config.yaml         # 实验配置
+│   ├── .env                # 本地实验配置（git ignored）
 │   ├── src/                # 实验代码
 │   ├── notebooks/          # Jupyter notebooks
 │   ├── results/            # 实验结果
@@ -400,8 +400,8 @@ services/
 所有数据存储在本地文件系统：
 
 ```
-~/.paper-writer/
-├── config.yaml          # 全局配置（Claude API key、默认模板等）
+<repo-root>/
+├── .env                 # 本地配置（LLM provider/API key/base URL/model 等，git ignored）
 ├── projects/            # 项目索引
 └── conversations/       # 对话历史（按项目分目录）
     └── {project-id}/

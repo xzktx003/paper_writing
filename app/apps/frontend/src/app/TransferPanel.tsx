@@ -43,16 +43,9 @@ export default function TransferPanel({ projectId, onJobUpdate }: TransferPanelP
   const [engine, setEngine] = useState('pdflatex');
   const [layoutCheck, setLayoutCheck] = useState(false);
 
-  // LLM config — read from shared localStorage (set via ProjectPage / EditorPage settings)
+  // LLM config is resolved server-side from the repository .env.
+  // Do not read or cache API keys in browser storage.
   const SETTINGS_KEY = 'openprism-settings-v1';
-  const readLLMFromStorage = (): { llmEndpoint: string; llmApiKey: string; llmModel: string } => {
-    try {
-      const raw = window.localStorage.getItem(SETTINGS_KEY);
-      if (!raw) return { llmEndpoint: '', llmApiKey: '', llmModel: '' };
-      const p = JSON.parse(raw);
-      return { llmEndpoint: p.llmEndpoint || '', llmApiKey: p.llmApiKey || '', llmModel: p.llmModel || '' };
-    } catch { return { llmEndpoint: '', llmApiKey: '', llmModel: '' }; }
-  };
 
   const readMineruConfigFromStorage = (): { mineruApiBase: string; mineruToken: string } => {
     try {
@@ -146,15 +139,7 @@ export default function TransferPanel({ projectId, onJobUpdate }: TransferPanelP
   const selectedTemplateName = templates.find(tp => tp.id === targetTemplateId)?.label || '';
   const selectedTemplate = templates.find(tp => tp.id === targetTemplateId);
 
-  const buildLlmConfig = (): Partial<LLMConfig> | undefined => {
-    const { llmEndpoint, llmApiKey, llmModel } = readLLMFromStorage();
-    if (!llmEndpoint && !llmApiKey && !llmModel) return undefined;
-    return {
-      ...(llmEndpoint ? { endpoint: llmEndpoint } : {}),
-      ...(llmApiKey ? { apiKey: llmApiKey } : {}),
-      ...(llmModel ? { model: llmModel } : {}),
-    };
-  };
+  const buildLlmConfig = (): Partial<LLMConfig> | undefined => undefined;
 
   const handleStart = useCallback(async () => {
     if (!targetTemplateId) return;

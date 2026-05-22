@@ -9,7 +9,7 @@ import { useTheme, ThemeToggle } from './ThemeToggle';
 export function Layout() {
   const app = useApp();
   const navigate = useNavigate();
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [leftWidth, setLeftWidth] = useState(260);
   const [rightWidth, setRightWidth] = useState(380);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -39,8 +39,9 @@ export function Layout() {
           </button>
         </div>
       ) : (
-        <div style={{ width: leftWidth, minWidth: 200, borderRight: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
-          <div style={{ height: '38px', display: 'flex', alignItems: 'center', padding: '0 10px', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, gap: '6px' }}>
+        <div className="zone-files" style={{ width: leftWidth, minWidth: 200, borderRight: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
+          <div className="zone-header" style={{ height: '38px', display: 'flex', alignItems: 'center', padding: '0 10px', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, gap: '6px', position: 'relative' }}>
+            <span className="zone-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
             <button
               onClick={() => navigate('/projects')}
               style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)', padding: '3px 6px', borderRadius: '6px', transition: 'all 0.15s' }}
@@ -49,7 +50,7 @@ export function Layout() {
             >
               ← Back
             </button>
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            <ThemeToggle theme={theme} onThemeChange={setTheme} />
             <button
               onClick={() => setLeftCollapsed(true)}
               style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '11px', color: 'var(--muted)', padding: '3px 5px', borderRadius: '4px', transition: 'color 0.15s' }}
@@ -77,7 +78,7 @@ export function Layout() {
       {!leftCollapsed && <ResizeHandle onResize={(delta) => setLeftWidth(w => Math.max(200, w + delta))} />}
 
       {/* Center Panel */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div className="zone-editor" style={{ flex: 1, overflow: 'hidden', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
         <CenterPanel
           openFiles={app.openFiles}
           activeFileIndex={app.activeFileIndex}
@@ -106,9 +107,10 @@ export function Layout() {
           </button>
         </div>
       ) : (
-        <div style={{ width: rightWidth, minWidth: 300, borderLeft: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
-          <div style={{ height: '38px', display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0 }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em' }}>AI Assistant</span>
+        <div className="zone-ai" style={{ width: rightWidth, minWidth: 300, borderLeft: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
+          <div className="zone-header" style={{ height: '38px', display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, position: 'relative' }}>
+            <span className="zone-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginRight: 8 }} />
+            <span className="zone-label" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em' }}>AI Assistant</span>
             <button
               onClick={() => setRightCollapsed(true)}
               style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '11px', color: 'var(--muted)', padding: '3px 5px', borderRadius: '4px', transition: 'color 0.15s' }}

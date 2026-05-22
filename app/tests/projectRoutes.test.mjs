@@ -86,6 +86,35 @@ describe('Project routes', () => {
     await expect(stat(join(DATA_DIR, projectId, 'fig'))).rejects.toThrow(/ENOENT/);
   });
 
+  it('does not recreate a user-deleted fig folder when refreshing the file tree', async () => {
+    const projectId = `deleted-fig-${crypto.randomUUID()}`;
+    projectIds.push(projectId);
+    await mkdir(join(DATA_DIR, projectId, 'docs'), { recursive: true });
+    await mkdir(join(DATA_DIR, projectId, 'fig'), { recursive: true });
+    await writeFile(join(DATA_DIR, projectId, 'project.json'), JSON.stringify({
+      id: projectId,
+      name: 'Deleted Fig',
+      createdAt: new Date().toISOString(),
+    }));
+
+    const deleteRes = await fastify.inject({
+      method: 'DELETE',
+      url: `/api/projects/${projectId}/file?path=${encodeURIComponent('fig')}`,
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.json()).toEqual({ ok: true });
+    await expect(stat(join(DATA_DIR, projectId, 'fig'))).rejects.toThrow(/ENOENT/);
+
+    const treeRes = await fastify.inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/tree`,
+    });
+    expect(treeRes.statusCode).toBe(200);
+    expect(treeRes.json().items).toContainEqual({ path: 'docs', type: 'dir' });
+    expect(treeRes.json().items).not.toContainEqual({ path: 'fig', type: 'dir' });
+    await expect(stat(join(DATA_DIR, projectId, 'fig'))).rejects.toThrow(/ENOENT/);
+  });
+
   it('serves extensionless figure blob paths from fig folder', async () => {
     const projectId = `fig-blob-${crypto.randomUUID()}`;
     projectIds.push(projectId);
