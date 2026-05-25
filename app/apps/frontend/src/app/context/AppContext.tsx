@@ -32,6 +32,9 @@ interface AppState {
   removeConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, newName: string) => Promise<void>;
   sendMessage: (message: string) => Promise<void>;
+  pendingEdits: any[];
+  acceptEdit: (editId: string) => void;
+  rejectEdit: (editId: string) => void;
   skills: SkillInfo[];
   activateSkill: (name: string) => void;
   terminalVisible: boolean;
@@ -211,6 +214,9 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     removeConversation: convHook.remove,
     renameConversation: convHook.rename,
     sendMessage,
+    pendingEdits: convHook.pendingEdits,
+    acceptEdit: (editId: string) => convHook.acceptEdit(editId, project.path || ''),
+    rejectEdit: convHook.rejectEdit,
     skills,
     activateSkill,
     terminalVisible,

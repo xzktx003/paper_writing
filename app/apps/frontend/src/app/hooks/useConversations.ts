@@ -5,10 +5,20 @@ import {
   Conversation, ConversationSummary
 } from '../api/conversationApi';
 
+export interface PendingEdit {
+  id: string;
+  filename: string;
+  original: string;
+  new_content: string;
+  stats: { added: number; removed: number };
+  status: 'pending' | 'accepted' | 'rejected';
+}
+
 export function useConversations(projectId: string | null) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -96,6 +106,21 @@ export function useConversations(projectId: string | null) {
         },
         onToolResult: (name, result) => {
           toolEvents.push({ type: 'tool_result', name, detail: typeof result === 'string' ? result.slice(0, 500) : '' });
+          if (name === 'propose_edit' && typeof result === 'string') {
+            try {
+              const parsed = JSON.parse(result);
+              if (parsed.action === 'pending_approval') {
+                setPendingEdits(prev => [...prev, {
+                  id: `edit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  filename: parsed.filename,
+                  original: parsed.original,
+                  new_content: parsed.new_content,
+                  stats: parsed.stats || { added: 0, removed: 0 },
+                  status: 'pending',
+                }]);
+              }
+            } catch { /* not valid JSON, ignore */ }
+          }
         },
         onDone: () => {
           setLoading(false);
@@ -118,5 +143,20 @@ export function useConversations(projectId: string | null) {
     }
   }, [projectId, activeConv, sendRaw]);
 
-  return { conversations, activeConv, loading, refresh, select, create, remove, rename, send };
+  const acceptEdit = useCallback(async (editId: string, projectPath: string) => {
+    const edit = pendingEdits.find(e => e.id === editId);
+    if (!edit) return;
+    await fetch(`/api/projects/${projectId}/file`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: edit.filename, content: edit.new_content }),
+    });
+    setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'accepted' as const } : e));
+  }, [projectId, pendingEdits]);
+
+  const rejectEdit = useCallback((editId: string) => {
+    setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'rejected' as const } : e));
+  }, []);
+
+  return { conversations, activeConv, loading, pendingEdits, refresh, select, create, remove, rename, send, acceptEdit, rejectEdit };
 }

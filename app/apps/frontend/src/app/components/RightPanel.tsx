@@ -7,6 +7,7 @@ import { ReviewReportPanel } from './ReviewReportPanel';
 import { AntiAiPanel } from './AntiAiPanel';
 import { PipelinePanel } from './PipelinePanel';
 import { ConversationSummary, Conversation, structuredReview, detectAntiAi } from '../api/conversationApi';
+import { PendingEdit } from '../hooks/useConversations';
 
 type TabType = 'chat' | 'skills' | 'review' | 'anti-ai' | 'pipeline';
 
@@ -26,9 +27,12 @@ interface Props {
   onActivateSkill?: (skillName: string) => void;
   projectPath?: string;
   activeFile?: string;
+  pendingEdits?: PendingEdit[];
+  onAcceptEdit?: (editId: string) => void;
+  onRejectEdit?: (editId: string) => void;
 }
 
-export function RightPanel({ conversations, activeConv, loading, chapters, skills, onSelect, onClose, onCreate, onSend, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile }: Props) {
+export function RightPanel({ conversations, activeConv, loading, chapters, skills, onSelect, onClose, onCreate, onSend, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -107,7 +111,7 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
 
           {activeConv ? (
             <>
-              <ChatView messages={activeConv.history} loading={loading} />
+              <ChatView messages={activeConv.history} loading={loading} pendingEdits={pendingEdits} onAcceptEdit={onAcceptEdit} onRejectEdit={onRejectEdit} />
               <div style={{ borderTop: '1px solid var(--border)', padding: '10px 12px', background: 'var(--panel-muted)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <span style={{ padding: '2px 8px', borderRadius: '999px', background: 'var(--accent-soft)', color: 'var(--accent-strong)', fontSize: '10px', fontWeight: 600 }}>

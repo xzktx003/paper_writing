@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { InlineDiffViewer } from './InlineDiffViewer';
+import { PendingEdit } from '../hooks/useConversations';
 
 interface Message {
   role: string;
@@ -11,9 +13,12 @@ interface Props {
   messages: Message[];
   loading: boolean;
   streamingText?: string;
+  pendingEdits?: PendingEdit[];
+  onAcceptEdit?: (editId: string) => void;
+  onRejectEdit?: (editId: string) => void;
 }
 
-export function ChatView({ messages, loading, streamingText }: Props) {
+export function ChatView({ messages, loading, streamingText, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(0);
 
@@ -100,6 +105,32 @@ export function ChatView({ messages, loading, streamingText }: Props) {
           </div>
         </div>
       )}
+
+      {/* Pending edits from propose_edit tool */}
+      {pendingEdits.filter(e => e.status === 'pending').map(edit => (
+        <div key={edit.id} className="animate-fade-in" style={{ maxWidth: '95%', margin: '4px 0' }}>
+          <InlineDiffViewer
+            original={edit.original}
+            proposed={edit.new_content}
+            filename={edit.filename}
+            stats={edit.stats}
+            compact
+            onAccept={() => onAcceptEdit?.(edit.id)}
+            onReject={() => onRejectEdit?.(edit.id)}
+          />
+        </div>
+      ))}
+
+      {/* Accepted/rejected edits (collapsed) */}
+      {pendingEdits.filter(e => e.status !== 'pending').map(edit => (
+        <div key={edit.id} style={{ padding: '6px 12px', fontSize: '11px', color: 'var(--muted)', borderRadius: '6px', background: 'var(--bg-secondary)', maxWidth: '88%' }}>
+          <span style={{ color: edit.status === 'accepted' ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+            {edit.status === 'accepted' ? '✓ Accepted' : '✗ Rejected'}
+          </span>
+          {' '}{edit.filename}
+          {edit.status === 'accepted' && <span style={{ marginLeft: 4 }}>+{edit.stats.added} -{edit.stats.removed}</span>}
+        </div>
+      ))}
 
       <div ref={bottomRef} />
     </div>

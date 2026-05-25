@@ -110,6 +110,7 @@ export default function TransferPanel({ projectId, onJobUpdate }: TransferPanelP
         }
       })
       .catch((err) => { console.error('Failed to load source files:', err); });
+  }, [projectId]);
 
   // Load templates on mount
   useEffect(() => {

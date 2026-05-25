@@ -160,6 +160,9 @@ export function Layout() {
                 onActivateSkill={app.activateSkill}
                 projectPath={app.project.path || undefined}
                 activeFile={app.openFiles[app.activeFileIndex]?.filename}
+                pendingEdits={app.pendingEdits}
+                onAcceptEdit={app.acceptEdit}
+                onRejectEdit={app.rejectEdit}
               />
             </div>
           </div>

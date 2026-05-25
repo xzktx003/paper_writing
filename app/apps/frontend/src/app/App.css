@@ -3306,7 +3306,6 @@ textarea.input {
   padding: 60px 16px 40px;
   text-align: center;
   position: relative;
-  overflow: hidden;
 }
 
 .landing-hero::before {
@@ -3581,6 +3580,41 @@ textarea.input {
 
 .landing-footer a:hover {
   color: var(--accent);
+}
+
+/* ── Landing Responsive ── */
+@media (max-width: 600px) {
+  .landing-hero {
+    padding: 40px 12px 32px;
+  }
+  .landing-hero-content {
+    padding: 0 12px;
+  }
+  .landing-subtitle {
+    font-size: 15px;
+    padding: 0 8px;
+    margin-bottom: 24px;
+  }
+  .landing-title-line {
+    font-size: clamp(28px, 10vw, 36px);
+  }
+  .landing-hero-meta {
+    gap: 12px;
+  }
+  .landing-features {
+    padding: 40px 12px;
+  }
+  .landing-features-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-cta-section {
+    padding: 40px 12px;
+  }
+  .landing-footer {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 @keyframes dropdownSlideDown {

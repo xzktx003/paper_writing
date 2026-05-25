@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { resolveProjectAssetUrl } from '../utils/previewAssets';
@@ -38,7 +38,11 @@ interface SourceLine {
 
 export function RenderedDocumentEditor({ content, onChange, format, projectId, currentFile = '' }: Props) {
   const options = useMemo(() => ({ projectId, currentFile }), [projectId, currentFile]);
-  const blocks = useMemo(() => parseRenderedDocument(content, format, options), [content, format, options]);
+  const parsedContentRef = useRef(content);
+  const blocks = useMemo(() => {
+    parsedContentRef.current = content;
+    return parseRenderedDocument(content, format, options);
+  }, [content, format, options]);
   const [fontSize, setFontSize] = useState(15);
   const [editingMath, setEditingMath] = useState<RenderedBlock | null>(null);
   const [mathEditorPos, setMathEditorPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -66,6 +70,10 @@ export function RenderedDocumentEditor({ content, onChange, format, projectId, c
 
   const commitBlock = (block: RenderedBlock, element: HTMLElement) => {
     if (!block.editable || !block.toSource) return;
+    if (content !== parsedContentRef.current) {
+      console.warn('[RenderedDocumentEditor] Skipping write-back: content changed externally since blocks were parsed');
+      return;
+    }
     const editedText = readEditableText(element);
     if (editedText === block.text) return;
     const replacement = block.toSource(editedText);
