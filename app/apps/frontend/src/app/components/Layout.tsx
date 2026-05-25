@@ -153,6 +153,7 @@ export function Layout() {
                 loading={app.convLoading}
                 chapters={app.project.config?.chapters || []}
                 skills={app.skills}
+                projectFiles={app.project.config?.files || []}
                 onSelect={app.selectConversation}
                 onClose={app.removeConversation}
                 onCreate={app.createConversation}

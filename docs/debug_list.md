@@ -1,5 +1,27 @@
 # Debug List
 
+## 2026-05-26 - User message disappearing & thinking collapse
+
+- Symptom 1: User messages were hidden immediately after sending — the first streaming token callback used `history.slice(0, -1)` which removed the user message (not a non-existent placeholder).
+- Fix 1: Track `assistantStarted` flag; on first token append a new assistant entry, on subsequent tokens replace the last (assistant) entry.
+- Symptom 2: AI thinking/reasoning content (`` tags from DeepSeek-style models) was displayed inline, cluttering the chat.
+- Fix 2: ChatView now parses `...` and `<thinking>...</thinking>` blocks, renders them as collapsed "💭 Thinking" buttons that expand on click.
+
+## 2026-05-26 - Chapter scope: support any project file
+
+- Symptom: AI conversation "Chapter" scope was hardcoded to `sec/` or `chapters/` directories; users couldn't select arbitrary files like `tab/`, `appendix/`, or root `.tex` files.
+- Fix:
+  - Backend `buildContextMessages`: "chapter" scope now accepts any project-relative file path. Paths with `/` are resolved directly; bare filenames try `sec/` → `chapters/` → root for backward compat.
+  - Frontend `NewConversationDialog`: replaced hardcoded chapter `<select>` with a free-form text input + 📂 Browse file picker showing all project text files.
+  - `RightPanel` and `Layout` now pass `projectFiles` from `config.files` through to the dialog.
+
+## 2026-05-26 - Dark theme chat text color & Ctrl+V paste image
+
+- Symptom: Chat messages displayed black text `#1a1a1a` in cyber-tech/primer-dark/dracula dark themes, making content unreadable against dark backgrounds.
+- Root cause: Dark theme `.markdown-body` overrides in App.css hardcoded light-theme colors (`color: #1a1a1a`, `background: #f5f5f5` etc.) for all dark themes.
+- Fix: Changed all dark theme `.markdown-body` overrides to use CSS variables (`--text`, `--bg-secondary`, `--border`, `--accent-strong`, `--text-secondary`) so they adapt correctly per theme.
+- Also added Ctrl+V clipboard paste support for images in chat input: paste events on the textarea detect `image/*` clipboard items and attach them as image previews.
+
 ## 2026-05-26 - File rename & UI simplification
 
 - Symptom: Right-click rename on files/folders didn't work — `window.prompt()` was blocked or failed silently in some browser contexts.

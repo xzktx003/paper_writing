@@ -24,6 +24,7 @@ interface Props {
   loading: boolean;
   chapters: { file: string }[];
   skills: { name: string; display_name: string }[];
+  projectFiles?: { path: string; type: 'file' | 'dir' }[];
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onCreate: (data: any) => void;
@@ -39,7 +40,7 @@ interface Props {
   onRejectEdit?: (editId: string) => void;
 }
 
-export function RightPanel({ conversations, activeConv, loading, chapters, skills, onSelect, onClose, onCreate, onSend, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function RightPanel({ conversations, activeConv, loading, chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -222,7 +223,8 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a message... (Enter to send, attach images with 🖼️)"
+                    onPaste={handlePaste}
+                    placeholder="Type a message... (Enter to send, Ctrl+V to paste image)"
                     style={{
                       width: '100%',
                       minHeight: '56px',
@@ -342,6 +344,7 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
         <NewConversationDialog
           chapters={chapters}
           skills={skills}
+          projectFiles={projectFiles}
           onSubmit={(data) => { onCreate(data); setShowNewDialog(false); }}
           onCancel={() => setShowNewDialog(false)}
         />

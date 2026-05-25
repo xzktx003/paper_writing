@@ -99,10 +99,25 @@ async function buildContextMessages(conv, resolvedPath, projectConfig) {
   const ctx = [];
   try {
     if (conv.context_scope.type === 'chapter' && conv.context_scope.file) {
-      const chapterContent = await readTextFile(join(resolvedPath, 'sec', conv.context_scope.file)).catch(() => '');
+      // Accept any project-relative file path: try direct path first, then sec/, then chapters/
+      const fileName = conv.context_scope.file.replace(/^\/+/, '');
+      let chapterContent = '';
+      // If path contains a slash, treat as direct project-relative path
+      if (fileName.includes('/')) {
+        chapterContent = await readTextFile(safeJoin(resolvedPath, fileName)).catch(() => '');
+      } else {
+        // Bare filename: try sec/ then chapters/ for backward compat
+        chapterContent = await readTextFile(join(resolvedPath, 'sec', fileName)).catch(() => '');
+        if (!chapterContent) {
+          chapterContent = await readTextFile(join(resolvedPath, 'chapters', fileName)).catch(() => '');
+        }
+        if (!chapterContent) {
+          chapterContent = await readTextFile(safeJoin(resolvedPath, fileName)).catch(() => '');
+        }
+      }
       if (chapterContent) {
-        ctx.push({ role: 'user', content: `[System: Current chapter content — ${conv.context_scope.file}]\n\`\`\`latex\n${chapterContent}\n\`\`\`` });
-        ctx.push({ role: 'assistant', content: 'I have read the current chapter content. Ready to help.' });
+        ctx.push({ role: 'user', content: `[System: Current file content — ${conv.context_scope.file}]\n\`\`\`\n${chapterContent.slice(0, 8000)}\n\`\`\`` });
+        ctx.push({ role: 'assistant', content: 'I have read the current file content. Ready to help.' });
       }
     } else if (conv.context_scope.type === 'global') {
       const secDir = join(resolvedPath, 'sec');

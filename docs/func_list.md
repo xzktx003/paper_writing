@@ -37,7 +37,7 @@
 - Chat mode is read-only discussion and does not receive file-writing or code-execution tools.
 - Agent mode can inspect paper context and propose edits for user confirmation, but it does not directly write files or run code.
 - Tools mode is the only AI conversation mode that can perform multi-step tool work, including controlled operations under the project `code/` directory.
-- Vision/image analysis is integrated into the AI chat input: users can attach images via the 🖼️ button, preview them before sending, and the AI receives them as multimodal vision content.
+- Vision/image analysis is integrated into the AI chat input: users can attach images via the 🖼️ button or Ctrl+V paste, preview them before sending, and the AI receives them as multimodal vision content.
 - The standalone Agent, Vision, Paper Search, Web Search, and Plot left-panel tabs have been removed; Agent lives in chat conversations, Vision is integrated into chat input, and Paper/Web Search/Plot are no longer available.
 
 ## BibTeX Citation Search
@@ -70,7 +70,7 @@
 ## AI Assistant — Auto Context Injection
 
 - New conversations automatically inject relevant context based on `context_scope`:
-  - `chapter` scope: reads the full content of the current chapter file.
+  - `chapter` scope: reads the full content of any project file — type a path directly (e.g., `sec/intro.tex`, `appendix/A.1.tex`) or browse via the 📂 file picker.
   - `global` scope: reads the first 400 chars of each `.tex` file as a paper structure overview.
   - All non-free scopes: injects `references.bib` content (up to 4000 chars) into the context window.
 - Context injection happens server-side before each AI call, ensuring the model always sees the relevant paper content.

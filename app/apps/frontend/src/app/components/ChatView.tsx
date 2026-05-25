@@ -18,9 +18,51 @@ interface Props {
   onRejectEdit?: (editId: string) => void;
 }
 
+/** Splits content into visible text and thinking blocks.
+ *  Detects `<thinking>...</thinking> and `/` tags. */
+function splitThinking(content: string): Array<{ type: 'text' | 'thinking'; text: string }> {
+  const parts: Array<{ type: 'text' | 'thinking'; text: string }> = [];
+  let isThinking = false;
+  let remaining = content;
+
+  while (remaining.length > 0) {
+    if (!isThinking) {
+      // Find start of thinking
+      const match = remaining.match(/<(?:thinking|think)>/);
+      if (match && match.index !== undefined) {
+        if (match.index > 0) {
+          parts.push({ type: 'text', text: remaining.slice(0, match.index) });
+        }
+        remaining = remaining.slice(match.index + match[0].length);
+        isThinking = true;
+      } else {
+        parts.push({ type: 'text', text: remaining });
+        break;
+      }
+    } else {
+      // Find end of thinking
+      const match = remaining.match(/<\/(?:thinking|think)>/);
+      if (match && match.index !== undefined) {
+        if (match.index > 0) {
+          parts.push({ type: 'thinking', text: remaining.slice(0, match.index) });
+        }
+        remaining = remaining.slice(match.index + match[0].length);
+        isThinking = false;
+      } else {
+        // Unclosed thinking tag (streaming)
+        parts.push({ type: 'thinking', text: remaining });
+        break;
+      }
+    }
+  }
+
+  return parts;
+}
+
 export function ChatView({ messages, loading, streamingText, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(0);
+  const [expandedThinking, setExpandedThinking] = useState<Set<number>>(new Set());
 
   // Staggered message reveal animation
   useEffect(() => {
@@ -35,6 +77,84 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, visibleCount, streamingText]);
+
+  const toggleThinking = (idx: number) => {
+    setExpandedThinking(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const renderContent = (content: string, msgIdx: number) => {
+    const parts = splitThinking(content);
+    if (parts.every(p => p.type === 'text')) {
+      // No thinking content, render normally
+      return (
+        <div className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+      );
+    }
+    return (
+      <div>
+        {parts.map((part, pIdx) => {
+          if (part.type === 'text') {
+            return (
+              <div key={pIdx} className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+              </div>
+            );
+          }
+          // Thinking block
+          const isExpanded = expandedThinking.has(msgIdx * 1000 + pIdx);
+          return (
+            <div key={pIdx} style={{ margin: '6px 0' }}>
+              <button
+                onClick={() => toggleThinking(msgIdx * 1000 + pIdx)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '6px',
+                  padding: '5px 10px',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--muted)',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.color = 'var(--muted)'; }}
+              >
+                <span style={{ fontSize: '10px', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
+                <span>💭 Thinking{isExpanded ? '' : ` (${part.text.length} chars)`}</span>
+              </button>
+              {isExpanded && (
+                <div style={{
+                  marginTop: '4px',
+                  padding: '8px 12px',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.5,
+                  maxHeight: '300px',
+                  overflow: 'auto',
+                }}>
+                  {part.text}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -60,9 +180,7 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
             <div style={{ fontSize: '10px', fontWeight: 600, color: isUser ? 'var(--accent-strong)' : 'var(--muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               {isUser ? 'You' : 'AI'}
             </div>
-            <div className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-            </div>
+            {renderContent(msg.content, i)}
           </div>
         );
       })}
@@ -99,10 +217,8 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
           maxWidth: '88%',
         }}>
           <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>AI</div>
-          <div className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
-            <span className="streaming-cursor" style={{ display: 'inline-block', width: 2, height: 14, background: 'var(--accent)', marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
-          </div>
+          {renderContent(streamingText, -1)}
+          <span className="streaming-cursor" style={{ display: 'inline-block', width: 2, height: 14, background: 'var(--accent)', marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
         </div>
       )}
 

@@ -93,6 +93,7 @@ export function useConversations(projectId: string | null) {
 
     setLoading(true);
     let assistantContent = '';
+    let assistantStarted = false;
     const toolEvents: Array<{ type: string; name: string; detail: string }> = [];
 
     try {
@@ -102,10 +103,11 @@ export function useConversations(projectId: string | null) {
           setActiveConv(prev => prev ? {
             ...prev,
             history: [
-              ...prev.history.slice(0, -1), // Remove the "assistant thinking" placeholder if any
+              ...(assistantStarted ? prev.history.slice(0, -1) : prev.history),
               { role: 'assistant', content: assistantContent },
             ],
           } : null);
+          assistantStarted = true;
         },
         onToolUse: (name, input) => {
           toolEvents.push({ type: 'tool_use', name, detail: JSON.stringify(input).slice(0, 200) });
@@ -136,7 +138,7 @@ export function useConversations(projectId: string | null) {
           setActiveConv(prev => prev ? {
             ...prev,
             history: [
-              ...prev.history.slice(0, -1),
+              ...(assistantStarted ? prev.history.slice(0, -1) : prev.history),
               { role: 'assistant', content: assistantContent },
             ],
           } : null);
