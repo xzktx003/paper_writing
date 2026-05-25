@@ -142,6 +142,24 @@ export async function detectAntiAi(projectPath: string, content?: string, chapte
   return res.json();
 }
 
+export async function detectAntiAiDeep(projectPath: string, content?: string, chapterScope?: string) {
+  const res = await fetch(`${BASE}/anti-ai/deep-detect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectPath, content, chapterScope }),
+  });
+  return res.json();
+}
+
+export async function detectAntiAiGPTZero(projectPath: string, content?: string, chapterScope?: string) {
+  const res = await fetch(`${BASE}/anti-ai/gptzero-detect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectPath, content, chapterScope }),
+  });
+  return res.json();
+}
+
 // ── Pipeline API ──
 export async function listPipelineTypes() {
   const res = await fetch(`${BASE}/pipeline/types`);

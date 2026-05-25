@@ -38,6 +38,10 @@ stop_existing_server() {
 
 start_backend() {
   cd "$BACKEND_DIR"
+  # Trust the Caddy local CA cert (used by the LLM gateway) for native fetch
+  if [ -r "$HOME/.claude-code/caddy-root.crt" ]; then
+    export NODE_EXTRA_CA_CERTS="$HOME/.claude-code/caddy-root.crt"
+  fi
   if command -v setsid >/dev/null 2>&1; then
     PORT=$PORT nohup setsid node src/index.js > "$LOG_FILE" 2>&1 &
   else

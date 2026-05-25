@@ -7,7 +7,7 @@ import { ReviewReportPanel } from './ReviewReportPanel';
 import { AntiAiPanel } from './AntiAiPanel';
 import { PipelinePanel } from './PipelinePanel';
 import { PipelinePanelV2 } from './PipelinePanelV2';
-import { ConversationSummary, Conversation, structuredReview, detectAntiAi } from '../api/conversationApi';
+import { ConversationSummary, Conversation, structuredReview, detectAntiAi, detectAntiAiDeep, detectAntiAiGPTZero } from '../api/conversationApi';
 import { PendingEdit } from '../hooks/useConversations';
 
 type TabType = 'chat' | 'skills' | 'review' | 'anti-ai' | 'pipeline';
@@ -41,6 +41,10 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
   const [reviewLoading, setReviewLoading] = useState(false);
   const [antiAiReport, setAntiAiReport] = useState<any>(null);
   const [antiAiLoading, setAntiAiLoading] = useState(false);
+  const [deepReport, setDeepReport] = useState<any>(null);
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [gptzeroReport, setGptzeroReport] = useState<any>(null);
+  const [gptzeroLoading, setGptzeroLoading] = useState(false);
 
   const handleRunReview = useCallback(async () => {
     if (!projectPath) return;
@@ -54,6 +58,20 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
     setAntiAiLoading(true);
     try { const r = await detectAntiAi(projectPath, undefined, activeFile); setAntiAiReport(r); } catch {}
     setAntiAiLoading(false);
+  }, [projectPath, activeFile]);
+
+  const handleRunDeepDetection = useCallback(async () => {
+    if (!projectPath) return;
+    setDeepLoading(true);
+    try { const r = await detectAntiAiDeep(projectPath, undefined, activeFile); setDeepReport(r); } catch {}
+    setDeepLoading(false);
+  }, [projectPath, activeFile]);
+
+  const handleRunGPTZero = useCallback(async () => {
+    if (!projectPath) return;
+    setGptzeroLoading(true);
+    try { const r = await detectAntiAiGPTZero(projectPath, undefined, activeFile); setGptzeroReport(r); } catch {}
+    setGptzeroLoading(false);
   }, [projectPath, activeFile]);
 
   const handleSend = () => {
@@ -209,7 +227,7 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
         </div>
       ) : activeTab === 'anti-ai' ? (
         <div style={{ flex: 1, overflow: 'auto' }}>
-          <AntiAiPanel report={antiAiReport} loading={antiAiLoading} onRunDetection={handleRunAntiAi} />
+          <AntiAiPanel report={antiAiReport} deepReport={deepReport} gptzeroReport={gptzeroReport} loading={antiAiLoading} deepLoading={deepLoading} gptzeroLoading={gptzeroLoading} onRunDetection={handleRunAntiAi} onRunDeepDetection={handleRunDeepDetection} onRunGPTZero={handleRunGPTZero} />
         </div>
       ) : activeTab === 'pipeline' ? (
         <div style={{ flex: 1, overflow: 'auto' }}>

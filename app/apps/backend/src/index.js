@@ -1,3 +1,12 @@
+// Set LD_LIBRARY_PATH for Playwright/Chromium before anything else
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+const __indexDir = dirname(fileURLToPath(import.meta.url));
+const playwrightDeps = resolve(__indexDir, '../../../../.playwright-deps/usr/lib/x86_64-linux-gnu');
+if (!process.env.LD_LIBRARY_PATH?.includes(playwrightDeps)) {
+  process.env.LD_LIBRARY_PATH = `${playwrightDeps}${process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : ''}`;
+}
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -29,9 +38,8 @@ import { registerReviewRoutes } from './routes/review.js';
 import { registerAntiAiRoutes } from './routes/antiAi.js';
 import { registerPipelineRoutes } from './routes/pipeline.js';
 import { registerPipelineV2Routes } from './routes/pipelineV2.js';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const fastify = Fastify({ logger: true });
 

@@ -1,6 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { readFileSync } from 'fs';
-import https from 'https';
 
 /**
  * Provider abstraction layer for LLM services.
@@ -22,14 +20,6 @@ let anthropicClient = null;
 function initAnthropic(cfg) {
   const opts = { apiKey: cfg.api_key };
   if (cfg.base_url) opts.baseURL = cfg.base_url;
-  if (cfg.ca_cert) {
-    try {
-      const ca = readFileSync(cfg.ca_cert);
-      opts.httpAgent = new https.Agent({ ca, rejectUnauthorized: true });
-    } catch (e) {
-      console.warn('Failed to load CA cert:', e.message);
-    }
-  }
   anthropicClient = new Anthropic(opts);
   anthropicClient._defaultModel = cfg.model || 'claude-sonnet-4-20250514';
 }
@@ -95,7 +85,6 @@ async function initOpenAICompat(cfg) {
   openaiClient = new OpenAI({
     apiKey: cfg.api_key,
     baseURL: cfg.base_url || 'https://api.openai.com/v1',
-    ...(cfg.ca_cert ? { httpAgent: (() => { try { const ca = readFileSync(cfg.ca_cert); return new https.Agent({ ca, rejectUnauthorized: true }); } catch { return undefined; } })() } : {}),
   });
   openaiClient._defaultModel = cfg.model || 'gpt-4o';
 }

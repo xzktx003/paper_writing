@@ -2,6 +2,8 @@ import { readTextFile, listDir } from '../services/fileManager.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { resolveProjectPath } from './ai.js';
+import { chatCompletion } from '../services/llmService.js';
+import { detectWithGPTZero } from '../services/gptzeroService.js';
 
 // AI-typical terms organized by severity
 const AI_TERMS = {
@@ -161,14 +163,22 @@ export function registerAntiAiRoutes(fastify) {
 
     let content = directContent || '';
     if (!content) {
-      // Read from file
       const secDir = join(resolvedPath, 'sec');
       const chapDir = join(resolvedPath, 'chapters');
-      const dir = existsSync(secDir) ? secDir : chapDir;
 
       if (chapterScope) {
-        try { content = await readTextFile(join(dir, chapterScope)); } catch {}
+        // Try reading the file from multiple candidate paths
+        const candidates = [
+          join(resolvedPath, chapterScope),
+          join(secDir, chapterScope),
+          join(chapDir, chapterScope),
+        ];
+        for (const candidate of candidates) {
+          try { content = await readTextFile(candidate); break; } catch {}
+        }
       } else {
+        // Scan sec/ or chapters/ for .tex files; fall back to project root
+        const dir = existsSync(secDir) ? secDir : existsSync(chapDir) ? chapDir : resolvedPath;
         const entries = await listDir(dir);
         const texFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.tex')).sort((a, b) => a.name.localeCompare(b.name));
         const parts = [];
@@ -206,5 +216,156 @@ export function registerAntiAiRoutes(fastify) {
       suggestions,
       wordCount: countWords(content),
     };
+  });
+
+  // LLM deep analysis endpoint
+  fastify.post('/api/anti-ai/deep-detect', async (request) => {
+    const { projectPath, content: directContent, chapterScope } = request.body;
+    const resolvedPath = await resolveProjectPath(projectPath);
+
+    let content = directContent || '';
+    if (!content) {
+      const secDir = join(resolvedPath, 'sec');
+      const chapDir = join(resolvedPath, 'chapters');
+
+      if (chapterScope) {
+        const candidates = [
+          join(resolvedPath, chapterScope),
+          join(secDir, chapterScope),
+          join(chapDir, chapterScope),
+        ];
+        for (const candidate of candidates) {
+          try { content = await readTextFile(candidate); break; } catch {}
+        }
+      } else {
+        const dir = existsSync(secDir) ? secDir : existsSync(chapDir) ? chapDir : resolvedPath;
+        const entries = await listDir(dir);
+        const texFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.tex')).sort((a, b) => a.name.localeCompare(b.name));
+        const parts = [];
+        for (const f of texFiles) {
+          try { parts.push(await readTextFile(join(dir, f.name))); } catch {}
+        }
+        content = parts.join('\n\n');
+      }
+    }
+
+    if (!content.trim()) {
+      return { error: 'No content to analyze.' };
+    }
+
+    // Truncate to avoid token limits
+    const maxChars = 12000;
+    const truncated = content.length > maxChars ? content.slice(0, maxChars) + '\n[... truncated]' : content;
+
+    const systemPrompt = `You are an expert academic writing analyst specializing in detecting AI-generated text. Analyze the provided text and return a JSON object with your assessment. Be rigorous and evidence-based.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "aiProbability": <number 0-100, probability the text is AI-generated>,
+  "confidence": "<low|medium|high>",
+  "dimensions": {
+    "lexicalDiversity": { "score": <0-100, higher=more AI-like>, "evidence": "<brief explanation>" },
+    "argumentStructure": { "score": <0-100>, "evidence": "<brief explanation>" },
+    "sentenceVariation": { "score": <0-100>, "evidence": "<brief explanation>" },
+    "specificity": { "score": <0-100>, "evidence": "<brief explanation>" },
+    "transitionPatterns": { "score": <0-100>, "evidence": "<brief explanation>" }
+  },
+  "flaggedPassages": [
+    { "text": "<excerpt max 100 chars>", "reason": "<why it looks AI-generated>" }
+  ],
+  "humanTraits": ["<traits that suggest human writing, if any>"],
+  "rewriteSuggestions": [
+    { "original": "<AI-sounding excerpt>", "suggested": "<more natural alternative>", "reason": "<why>" }
+  ],
+  "summary": "<2-3 sentence overall assessment>"
+}
+
+Scoring dimensions:
+- lexicalDiversity: AI text uses repetitive academic filler ("Moreover", "Furthermore", "crucial", "leverage"). Score high if vocabulary is formulaic.
+- argumentStructure: AI tends to be overly linear (point A → B → C) without digressions, counterarguments, or personal insights. Score high if too neat.
+- sentenceVariation: Human writing has "burstiness" — mix of short punchy sentences and long complex ones. AI is uniform. Score high if uniform.
+- specificity: AI gives abstract/generic examples. Humans cite specific papers, dates, personal experiences. Score high if vague.
+- transitionPatterns: AI uses mechanical transitions ("However", "In contrast", "Furthermore") at predictable intervals. Score high if mechanical.`;
+
+    const messages = [{ role: 'user', content: `Analyze this academic text for AI-generation indicators:\n\n${truncated}` }];
+
+    try {
+      const response = await chatCompletion({ systemPrompt, messages });
+      let text = (response.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+
+      // Strip markdown code fences if present
+      text = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+
+      // Extract JSON from response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return { error: 'Failed to parse LLM response.', raw: text.slice(0, 500) };
+      }
+
+      let jsonStr = jsonMatch[0];
+      // Fix trailing commas before } or ]
+      jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
+      // Fix bad escape sequences: replace \X (where X is not a valid JSON escape) with \\X
+      jsonStr = jsonStr.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+
+      let result;
+      try {
+        result = JSON.parse(jsonStr);
+      } catch {
+        // Try fixing unquoted keys
+        const fixed = jsonStr.replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');
+        try {
+          result = JSON.parse(fixed);
+        } catch (e2) {
+          return { error: 'Failed to parse LLM response JSON.', raw: jsonStr.slice(0, 800) };
+        }
+      }
+      return { ...result, mode: 'deep' };
+    } catch (err) {
+      return { error: `LLM analysis failed: ${err.message}` };
+    }
+  });
+
+  // GPTZero Playwright-based detection endpoint
+  fastify.post('/api/anti-ai/gptzero-detect', async (request) => {
+    const { projectPath, content: directContent, chapterScope } = request.body;
+    const resolvedPath = await resolveProjectPath(projectPath);
+
+    let content = directContent || '';
+    if (!content) {
+      const secDir = join(resolvedPath, 'sec');
+      const chapDir = join(resolvedPath, 'chapters');
+
+      if (chapterScope) {
+        const candidates = [
+          join(resolvedPath, chapterScope),
+          join(secDir, chapterScope),
+          join(chapDir, chapterScope),
+        ];
+        for (const candidate of candidates) {
+          try { content = await readTextFile(candidate); break; } catch {}
+        }
+      } else {
+        const dir = existsSync(secDir) ? secDir : existsSync(chapDir) ? chapDir : resolvedPath;
+        const entries = await listDir(dir);
+        const texFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.tex')).sort((a, b) => a.name.localeCompare(b.name));
+        const parts = [];
+        for (const f of texFiles) {
+          try { parts.push(await readTextFile(join(dir, f.name))); } catch {}
+        }
+        content = parts.join('\n\n');
+      }
+    }
+
+    if (!content.trim()) {
+      return { error: 'No content to analyze.' };
+    }
+
+    try {
+      const result = await detectWithGPTZero(content);
+      return result;
+    } catch (err) {
+      return { error: err.message };
+    }
   });
 }
