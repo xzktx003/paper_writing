@@ -378,6 +378,26 @@ export function plotFromTable(payload: {
   );
 }
 
+export function syncTexSourceToPdf(payload: { projectId: string; file: string; line: number }) {
+  return request<{ ok: boolean; page?: number; x?: number; y?: number; width?: number; height?: number; error?: string }>(
+    `/api/projects/${payload.projectId}/synctex/source-to-pdf`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ file: payload.file, line: payload.line })
+    }
+  );
+}
+
+export function syncTexPdfToSource(payload: { projectId: string; page: number; x: number; y: number }) {
+  return request<{ ok: boolean; file?: string; line?: number; error?: string }>(
+    `/api/projects/${payload.projectId}/synctex/pdf-to-source`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ page: payload.page, x: payload.x, y: payload.y })
+    }
+  );
+}
+
 export function callLLM(payload: {
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
   model?: string;

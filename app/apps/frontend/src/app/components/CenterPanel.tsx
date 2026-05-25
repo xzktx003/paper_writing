@@ -3,8 +3,9 @@ import { MarkdownEditor } from './MarkdownEditor';
 import { RenderedDocumentEditor } from './RenderedDocumentEditor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { LatexPreview } from './LatexPreview';
-import { getOpenPrismProjectId, isImagePath, isPdfPath, isPreviewableTextPath } from '../utils/previewAssets';
-import { compileProject } from '../../api/client';
+import { DrawioEditor } from './DrawioEditor';
+import { getOpenPrismProjectId, isImagePath, isPdfPath, isPreviewableTextPath, isDrawioPath } from '../utils/previewAssets';
+import { compileProject, syncTexSourceToPdf } from '../../api/client';
 
 interface OpenFile {
   filename: string;
@@ -39,6 +40,28 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const activeIsImage = !!activeFile && isImagePath(activeFile.filename);
   const activeIsPdf = !!activeFile && isPdfPath(activeFile.filename);
   const activeIsText = !!activeFile && isPreviewableTextPath(activeFile.filename);
+  const activeIsDrawio = !!activeFile && isDrawioPath(activeFile.filename);
+
+  // SyncTeX: jump from source line to PDF position
+  const handleSyncTeXJump = useCallback(async (line: number) => {
+    if (!projectId || !activeFile) return;
+    try {
+      const result = await syncTexSourceToPdf({
+        projectId,
+        file: activeFile.filename,
+        line,
+      });
+      if (result.ok && result.page !== undefined) {
+        // Scroll the preview to the target position
+        // For LatexPreview, we approximate by scrolling to a ratio based on page number
+        // A more precise implementation would use PDF.js to scroll to exact coordinates
+        const estimatedRatio = Math.min(0.95, Math.max(0, (result.page - 1) * 0.15));
+        setPreviewScrollRatio(estimatedRatio);
+      }
+    } catch {
+      // SyncTeX not available or failed — silent fallback
+    }
+  }, [projectId, activeFile]);
 
   const handleEditorPreviewResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -212,6 +235,13 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                 <div style={{ color: 'var(--muted)', fontSize: 13 }}>PDF preview is available for project files.</div>
               )}
             </div>
+          ) : activeIsDrawio ? (
+            <DrawioEditor
+              content={activeFile.content}
+              onChange={(c) => onFileChange(activeFileIndex, c)}
+              projectId={projectId}
+              currentFile={activeFile.filename}
+            />
           ) : !activeIsText ? (
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--paper)', color: 'var(--muted)', fontSize: 13 }}>
               No inline preview for {activeFile.filename}
@@ -233,6 +263,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                     onChange={(c) => onFileChange(activeFileIndex, c)}
                     onScroll={editorViewMode === 'split' ? handleEditorScroll : undefined}
                     scrollRatio={editorViewMode === 'split' ? editorScrollRatio : undefined}
+                    onLineClick={handleSyncTeXJump}
                   />
                 )}
               </div>

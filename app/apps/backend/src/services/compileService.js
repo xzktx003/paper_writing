@@ -45,9 +45,9 @@ function buildCommand(engine, outDir, mainFile) {
     case 'pdflatex':
     case 'xelatex':
     case 'lualatex':
-      return { cmd: engine, args: ['-interaction=nonstopmode', `-output-directory=${outDir}`, mainFile] };
+      return { cmd: engine, args: ['-interaction=nonstopmode', '-synctex=1', `-output-directory=${outDir}`, mainFile] };
     case 'latexmk':
-      return { cmd: 'latexmk', args: ['-pdf', '-interaction=nonstopmode', `-outdir=${outDir}`, mainFile] };
+      return { cmd: 'latexmk', args: ['-pdf', '-interaction=nonstopmode', '-synctex=1', `-outdir=${outDir}`, mainFile] };
     case 'tectonic':
       return { cmd: 'tectonic', args: ['--outdir', outDir, mainFile] };
     default:
@@ -176,10 +176,21 @@ export async function runCompile({ projectId, mainFile, engine = 'pdflatex' }) {
   } catch {
     pdfBase64 = '';
   }
+
+  // Read SyncTeX data if available
+  let synctex = '';
+  try {
+    const synctexPath = path.join(outDir, `${base}.synctex.gz`);
+    const synctexBuffer = await fs.readFile(synctexPath);
+    synctex = synctexBuffer.toString('base64');
+  } catch {
+    // synctex not generated (tectonic or missing)
+  }
+
   const log = logChunks.join('');
   await fs.rm(outDir, { recursive: true, force: true });
   if (!pdfBase64) {
     return { ok: false, error: 'No PDF generated.', log, status: code ?? -1 };
   }
-  return { ok: true, pdf: pdfBase64, log, status: code ?? 0 };
+  return { ok: true, pdf: pdfBase64, log, status: code ?? 0, synctex };
 }

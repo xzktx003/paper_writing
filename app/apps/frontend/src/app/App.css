@@ -5209,3 +5209,42 @@ textarea.input {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================
+   Streaming Cursor
+   ============================================ */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+/* ============================================
+   Anti-AI Highlight Flags (CodeMirror decoration)
+   ============================================ */
+.anti-ai-flag {
+  background: rgba(255, 165, 0, 0.12);
+  border-bottom: 2px wavy #f97316;
+  border-radius: 2px;
+}
+.anti-ai-flag.severity-high {
+  background: rgba(239, 68, 68, 0.1);
+  border-bottom-color: #ef4444;
+}
+.anti-ai-flag.severity-medium {
+  background: rgba(249, 115, 22, 0.1);
+  border-bottom-color: #f97316;
+}
+.anti-ai-flag.severity-low {
+  background: rgba(234, 179, 8, 0.08);
+  border-bottom-color: #eab308;
+}

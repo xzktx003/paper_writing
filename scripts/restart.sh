@@ -1,6 +1,7 @@
 #!/bin/sh
 # Restart Paper Writer (backend serves frontend static files)
-# Usage: sh scripts/restart.sh [--build|--check-paths]
+# Usage: sh scripts/restart.sh [--no-build|--check-paths]
+# By default, frontend is always rebuilt to ensure latest code is served.
 
 set -e
 
@@ -63,12 +64,12 @@ echo "[1/4] Stopping existing server..."
 stop_existing_server
 sleep 1
 
-# Build frontend if needed
-if [ "${1:-}" = "--build" ] || [ ! -d "$FRONTEND_DIR/dist" ]; then
+# Build frontend (always by default, skip with --no-build)
+if [ "${1:-}" = "--no-build" ]; then
+  echo "[2/4] Frontend build skipped (--no-build)"
+else
   echo "[2/4] Building frontend..."
   (cd "$FRONTEND_DIR" && npm run build)
-else
-  echo "[2/4] Frontend build skipped (use --build to force)"
 fi
 
 # Start backend

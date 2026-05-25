@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { resolveProjectAssetUrl } from '../utils/previewAssets';
+import { MathLiveEditor } from './MathLiveEditor';
 
 interface Props {
   content: string;
@@ -39,10 +40,29 @@ export function RenderedDocumentEditor({ content, onChange, format, projectId, c
   const options = useMemo(() => ({ projectId, currentFile }), [projectId, currentFile]);
   const blocks = useMemo(() => parseRenderedDocument(content, format, options), [content, format, options]);
   const [fontSize, setFontSize] = useState(15);
+  const [editingMath, setEditingMath] = useState<RenderedBlock | null>(null);
+  const [mathEditorPos, setMathEditorPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const zoomIn = () => setFontSize(f => Math.min(f + 2, 28));
   const zoomOut = () => setFontSize(f => Math.max(f - 2, 8));
   const zoomReset = () => setFontSize(15);
+
+  const handleMathEdit = useCallback((block: RenderedBlock, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    setMathEditorPos({ top: rect.bottom + 4, left: rect.left });
+    setEditingMath(block);
+  }, []);
+
+  const handleMathSave = useCallback((newLatex: string) => {
+    if (!editingMath || !editingMath.toSource) return;
+    const replacement = editingMath.toSource(newLatex);
+    onChange(content.slice(0, editingMath.start) + replacement + content.slice(editingMath.end));
+    setEditingMath(null);
+  }, [editingMath, content, onChange]);
+
+  const handleMathCancel = useCallback(() => {
+    setEditingMath(null);
+  }, []);
 
   const commitBlock = (block: RenderedBlock, element: HTMLElement) => {
     if (!block.editable || !block.toSource) return;
@@ -101,13 +121,21 @@ export function RenderedDocumentEditor({ content, onChange, format, projectId, c
         </button>
       </div>
       {blocks.filter((block) => block.kind !== 'hidden').map((block) => (
-        <RenderedBlockView key={block.id} block={block} onCommit={commitBlock} />
+        <RenderedBlockView key={block.id} block={block} onCommit={commitBlock} onMathEdit={handleMathEdit} />
       ))}
+      {editingMath && (
+        <MathLiveEditor
+          latex={editingMath.text}
+          onSave={handleMathSave}
+          onCancel={handleMathCancel}
+          position={mathEditorPos}
+        />
+      )}
     </div>
   );
 }
 
-function RenderedBlockView({ block, onCommit }: { block: RenderedBlock; onCommit: (block: RenderedBlock, element: HTMLElement) => void }) {
+function RenderedBlockView({ block, onCommit, onMathEdit }: { block: RenderedBlock; onCommit: (block: RenderedBlock, element: HTMLElement) => void; onMathEdit?: (block: RenderedBlock, element: HTMLElement) => void }) {
   const [dirty, setDirty] = useState(false);
   const commitIfDirty = (element: HTMLElement) => {
     if (!dirty) return;
@@ -166,7 +194,23 @@ function RenderedBlockView({ block, onCommit }: { block: RenderedBlock; onCommit
   }
 
   if (block.kind === 'math') {
-    return <div data-rendered-block="math" style={styles.math} dangerouslySetInnerHTML={{ __html: block.html || escapeHtml(block.text) }} />;
+    return (
+      <div
+        data-rendered-block="math"
+        style={{ ...styles.math, cursor: 'pointer', position: 'relative', borderRadius: '4px', transition: 'background 0.15s, box-shadow 0.15s' }}
+        dangerouslySetInnerHTML={{ __html: block.html || escapeHtml(block.text) }}
+        title="Click to edit formula"
+        onClick={(e) => onMathEdit?.(block, e.currentTarget as HTMLElement)}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(0,102,204,0.06)';
+          e.currentTarget.style.boxShadow = '0 0 0 2px rgba(0,102,204,0.2)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.boxShadow = 'none';
+        }}
+      />
+    );
   }
 
   if (block.kind === 'image') {

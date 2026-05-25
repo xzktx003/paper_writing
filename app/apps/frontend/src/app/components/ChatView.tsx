@@ -10,9 +10,10 @@ interface Message {
 interface Props {
   messages: Message[];
   loading: boolean;
+  streamingText?: string;
 }
 
-export function ChatView({ messages, loading }: Props) {
+export function ChatView({ messages, loading, streamingText }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(0);
 
@@ -28,7 +29,7 @@ export function ChatView({ messages, loading }: Props) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, visibleCount]);
+  }, [messages, visibleCount, streamingText]);
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -60,7 +61,9 @@ export function ChatView({ messages, loading }: Props) {
           </div>
         );
       })}
-      {loading && (
+
+      {/* Streaming text indicator - shows live text as it arrives */}
+      {loading && !streamingText && (
         <div 
           className="animate-fade-in"
           style={{ 
@@ -80,6 +83,24 @@ export function ChatView({ messages, loading }: Props) {
           <span>Thinking...</span>
         </div>
       )}
+
+      {/* Streaming cursor */}
+      {loading && streamingText && (
+        <div style={{
+          padding: '10px 14px',
+          borderRadius: '14px 14px 14px 4px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
+          maxWidth: '88%',
+        }}>
+          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>AI</div>
+          <div className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
+            <span className="streaming-cursor" style={{ display: 'inline-block', width: 2, height: 14, background: 'var(--accent)', marginLeft: 2, animation: 'blink 1s step-end infinite' }} />
+          </div>
+        </div>
+      )}
+
       <div ref={bottomRef} />
     </div>
   );

@@ -1,6 +1,7 @@
 export const BROWSER_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
 export const GRAPHIC_EXTENSIONS = [...BROWSER_IMAGE_EXTENSIONS, '.pdf', '.eps'];
 export const TEXT_EXTENSIONS = ['.md', '.markdown', '.tex', '.txt', '.bib', '.sty', '.cls', '.bst', '.yaml', '.yml', '.json', '.py', '.sh', '.js', '.ts', '.tsx', '.css'];
+export const DRAWIO_EXTENSIONS = ['.drawio'];
 
 const PROJECT_ROOT_DIRS = new Set([
   'fig',
@@ -38,6 +39,11 @@ export function isPdfPath(filePath: string): boolean {
 export function isPreviewableTextPath(filePath: string): boolean {
   const clean = stripQueryAndHash(filePath).toLowerCase();
   return TEXT_EXTENSIONS.some((ext) => clean.endsWith(ext));
+}
+
+export function isDrawioPath(filePath: string): boolean {
+  const clean = stripQueryAndHash(filePath).toLowerCase();
+  return DRAWIO_EXTENSIONS.some((ext) => clean.endsWith(ext));
 }
 
 export function resolveProjectAssetUrl(projectId: string | null | undefined, currentFile: string, src: string | undefined): string | undefined {

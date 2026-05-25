@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import {
   listConversations, getConversation, createConversation,
-  deleteConversation, updateConversation, sendMessage, Conversation, ConversationSummary
+  deleteConversation, updateConversation, sendMessage, sendMessageStream,
+  Conversation, ConversationSummary
 } from '../api/conversationApi';
 
 export function useConversations(projectId: string | null) {
@@ -47,7 +48,8 @@ export function useConversations(projectId: string | null) {
     await refresh();
   }, [projectId, activeConv, refresh]);
 
-  const send = useCallback(async (message: string, projectPath: string, projectConfig: any) => {
+  /** Non-streaming send (fallback) */
+  const sendRaw = useCallback(async (message: string, projectPath: string, projectConfig: any) => {
     if (!projectId || !activeConv) return;
     setActiveConv(prev => prev ? {
       ...prev,
@@ -62,6 +64,59 @@ export function useConversations(projectId: string | null) {
     setLoading(false);
     return result;
   }, [projectId, activeConv]);
+
+  /** Streaming send with token-by-token updates */
+  const send = useCallback(async (message: string, projectPath: string, projectConfig: any) => {
+    if (!projectId || !activeConv) return;
+
+    // Optimistic: add user message immediately
+    setActiveConv(prev => prev ? {
+      ...prev,
+      history: [...prev.history, { role: 'user', content: message }],
+    } : null);
+
+    setLoading(true);
+    let assistantContent = '';
+    const toolEvents: Array<{ type: string; name: string; detail: string }> = [];
+
+    try {
+      await sendMessageStream(projectId, activeConv.id, projectPath, message, projectConfig, {
+        onToken: (text) => {
+          assistantContent += text;
+          setActiveConv(prev => prev ? {
+            ...prev,
+            history: [
+              ...prev.history.slice(0, -1), // Remove the "assistant thinking" placeholder if any
+              { role: 'assistant', content: assistantContent },
+            ],
+          } : null);
+        },
+        onToolUse: (name, input) => {
+          toolEvents.push({ type: 'tool_use', name, detail: JSON.stringify(input).slice(0, 200) });
+        },
+        onToolResult: (name, result) => {
+          toolEvents.push({ type: 'tool_result', name, detail: typeof result === 'string' ? result.slice(0, 500) : '' });
+        },
+        onDone: () => {
+          setLoading(false);
+        },
+        onError: (msg) => {
+          assistantContent += `\n\n⚠️ Error: ${msg}`;
+          setActiveConv(prev => prev ? {
+            ...prev,
+            history: [
+              ...prev.history.slice(0, -1),
+              { role: 'assistant', content: assistantContent },
+            ],
+          } : null);
+          setLoading(false);
+        },
+      });
+    } catch {
+      // Fallback to non-streaming if SSE fails
+      await sendRaw(message, projectPath, projectConfig);
+    }
+  }, [projectId, activeConv, sendRaw]);
 
   return { conversations, activeConv, loading, refresh, select, create, remove, rename, send };
 }

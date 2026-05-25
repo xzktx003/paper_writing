@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ConversationTabs } from './ConversationTabs';
 import { ChatView } from './ChatView';
 import { NewConversationDialog } from './NewConversationDialog';
 import { SkillPanel } from './SkillPanel';
-import { ConversationSummary, Conversation } from '../api/conversationApi';
+import { ReviewReportPanel } from './ReviewReportPanel';
+import { AntiAiPanel } from './AntiAiPanel';
+import { PipelinePanel } from './PipelinePanel';
+import { ConversationSummary, Conversation, structuredReview, detectAntiAi } from '../api/conversationApi';
 
-type TabType = 'chat' | 'skills';
+type TabType = 'chat' | 'skills' | 'review' | 'anti-ai' | 'pipeline';
 
 interface Props {
   conversations: ConversationSummary[];
@@ -21,12 +24,32 @@ interface Props {
   globalSkills?: string[];
   chapterSkills?: string[];
   onActivateSkill?: (skillName: string) => void;
+  projectPath?: string;
+  activeFile?: string;
 }
 
-export function RightPanel({ conversations, activeConv, loading, chapters, skills, onSelect, onClose, onCreate, onSend, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {} }: Props) {
+export function RightPanel({ conversations, activeConv, loading, chapters, skills, onSelect, onClose, onCreate, onSend, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile }: Props) {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('chat');
+  const [reviewReport, setReviewReport] = useState<any>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [antiAiReport, setAntiAiReport] = useState<any>(null);
+  const [antiAiLoading, setAntiAiLoading] = useState(false);
+
+  const handleRunReview = useCallback(async () => {
+    if (!projectPath) return;
+    setReviewLoading(true);
+    try { const r = await structuredReview(projectPath, activeFile); setReviewReport(r); } catch {}
+    setReviewLoading(false);
+  }, [projectPath, activeFile]);
+
+  const handleRunAntiAi = useCallback(async () => {
+    if (!projectPath) return;
+    setAntiAiLoading(true);
+    try { const r = await detectAntiAi(projectPath, undefined, activeFile); setAntiAiReport(r); } catch {}
+    setAntiAiLoading(false);
+  }, [projectPath, activeFile]);
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -44,41 +67,29 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--panel)' }}>
       {/* Tab switcher */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0 }}>
-        <button
-          onClick={() => setActiveTab('chat')}
-          style={{
-            flex: 1,
-            padding: '8px 0',
-            border: 'none',
-            borderBottom: activeTab === 'chat' ? '2px solid var(--accent)' : '2px solid transparent',
-            background: 'none',
-            color: activeTab === 'chat' ? 'var(--accent-strong)' : 'var(--muted)',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => setActiveTab('skills')}
-          style={{
-            flex: 1,
-            padding: '8px 0',
-            border: 'none',
-            borderBottom: activeTab === 'skills' ? '2px solid var(--accent)' : '2px solid transparent',
-            background: 'none',
-            color: activeTab === 'skills' ? 'var(--accent-strong)' : 'var(--muted)',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-        >
-          Skills
-        </button>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, overflow: 'auto' }}>
+        {([
+          { key: 'chat', label: '💬 Chat' },
+          { key: 'skills', label: '🧩 Skills' },
+          { key: 'review', label: '📋 Review' },
+          { key: 'anti-ai', label: '🔍 Anti-AI' },
+          { key: 'pipeline', label: '⚡ Pipeline' },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              flex: 1, padding: '8px 2px', minWidth: 0,
+              border: 'none',
+              borderBottom: activeTab === tab.key ? '2px solid var(--accent)' : '2px solid transparent',
+              background: 'none',
+              color: activeTab === tab.key ? 'var(--accent-strong)' : 'var(--muted)',
+              fontSize: '10px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'chat' ? (
@@ -179,7 +190,7 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
             </div>
           )}
         </>
-      ) : (
+      ) : activeTab === 'skills' ? (
         <div style={{ flex: 1, overflow: 'auto' }}>
           <SkillPanel
             globalSkills={globalSkills}
@@ -187,7 +198,20 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
             onActivateSkill={onActivateSkill}
           />
         </div>
-      )}
+      ) : activeTab === 'review' ? (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <ReviewReportPanel report={reviewReport} loading={reviewLoading} onRunReview={handleRunReview} />
+        </div>
+      ) : activeTab === 'anti-ai' ? (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <AntiAiPanel report={antiAiReport} loading={antiAiLoading} onRunDetection={handleRunAntiAi} />
+        </div>
+      ) : activeTab === 'pipeline' ? (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <PipelinePanel projectPath={projectPath || ''} chapterScope={activeFile} />
+        </div>
+      ) : null
+      }
 
       {showNewDialog && (
         <NewConversationDialog

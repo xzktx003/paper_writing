@@ -56,3 +56,52 @@
 - Theme transitions with smooth color and background changes.
 - LaTeX preview content change animation with subtle shimmer effect.
 - Respects `prefers-reduced-motion` accessibility setting.
+
+## AI Assistant — SSE Streaming
+
+- AI chat supports real-time SSE (Server-Sent Events) streaming; tokens appear incrementally as the model generates them.
+- Streaming endpoint `POST /api/ai/stream` provides `token`, `tool_use`, `tool_result`, `done`, and `error` events.
+- Streaming cursor animation (blinking vertical bar) shows during active generation.
+- Automatic fallback to non-streaming `POST /api/ai/send` if SSE connection fails.
+- Both Anthropic and OpenAI-compatible providers support streaming with tool use (agent/tools modes).
+
+## AI Assistant — Auto Context Injection
+
+- New conversations automatically inject relevant context based on `context_scope`:
+  - `chapter` scope: reads the full content of the current chapter file.
+  - `global` scope: reads the first 400 chars of each `.tex` file as a paper structure overview.
+  - All non-free scopes: injects `references.bib` content (up to 4000 chars) into the context window.
+- Context injection happens server-side before each AI call, ensuring the model always sees the relevant paper content.
+
+## AI Assistant — Structured Review Report
+
+- `POST /api/review/structured` endpoint generates a structured peer review with JSON output.
+- Review includes: overall score (0-100), editorial decision (accept/minor_revision/major_revision/reject), dimension scores (methodology, novelty, clarity, reproducibility, writing_quality), per-issue severity/location/suggestion, summary (Markdown), and revision checklist.
+- ReviewReportPanel displays: score ring chart, decision badge, dimension bars with issue lists, Markdown summary, and interactive revision checklist with checkboxes.
+- Triggered from the "📋 Review" tab in the right panel.
+
+## AI Assistant — Inline Diff Visualization
+
+- `propose_edit` tool now returns unified diff with `original`, `new_content`, `patch`, and `stats` (added/removed line counts).
+- InlineDiffViewer component renders side-by-side line numbers with color-coded additions (green) and deletions (red).
+- Collapsible mode: shows summary bar (filename + +/- counts), click to expand full diff.
+- Accept/Reject buttons for proposed edits; accept applies the change to the file.
+- Supports both compact (300px max) and full (500px max) display modes.
+
+## AI Assistant — Anti-AI Detection
+
+- `POST /api/anti-ai/detect` endpoint analyzes text for AI writing patterns.
+- Detection includes: flagged terms (high/medium/low severity with line locations), sentence patterns (hedging, throat-clearing, passive voice, list intros, mechanical transitions), vocabulary diversity (type-token ratio), sentence length variety (avg/stdDev/min/max), and paragraph uniformity.
+- Overall AI writing score (0-100) with color-coded gauge: Low AI (green) / Moderate (yellow) / High AI (red).
+- Generates actionable suggestions with original → replacement mappings.
+- AntiAiPanel displays: score gauge, stats grid, flagged term badges (expandable), pattern list, and suggestion cards.
+- Triggered from the "🔍 Anti-AI" tab in the right panel.
+
+## AI Assistant — Paper Writing Pipeline
+
+- `POST /api/pipeline/start` creates a multi-stage pipeline; built-in pipelines: `paper-pipeline` (Polish → Review → Revise → Finalize) and `quick-review` (Review → Revise).
+- Pipeline engine (`pipelineEngine.js`) manages stage state (pending/running/completed/failed), persists to `~/.paper-writer/pipelines/`, and supports approve/retry with feedback.
+- `POST /api/pipeline/:id/run-stage` executes the current stage using its associated skill (nature-polishing, academic-paper-reviewer, etc.).
+- `POST /api/pipeline/:id/advance` advances to the next stage (approved=true) or retries with feedback (approved=false).
+- PipelinePanel displays: stage progress ring (○/⟳/✓/✗), stage details, output preview (Markdown for polish, ReviewReport for review), feedback textarea, Approve & Next / Revise & Retry buttons.
+- Triggered from the "⚡ Pipeline" tab in the right panel.

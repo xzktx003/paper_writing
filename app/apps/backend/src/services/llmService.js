@@ -229,6 +229,148 @@ async function openaiChatWithTools({ systemPrompt, messages, tools, onToolUse, m
   };
 }
 
+/* ── Streaming variants ─────────────────────────────── */
+
+async function anthropicChatCompletionStream({ systemPrompt, messages, tools, model, onToken, onToolUse, onToolResult }) {
+  if (!anthropicClient) throw new Error('Anthropic not initialized.');
+  const useModel = model || anthropicClient._defaultModel;
+  const params = { model: useModel, max_tokens: 8192, system: systemPrompt, messages, stream: true };
+  if (tools && tools.length > 0) params.tools = tools;
+
+  const stream = anthropicClient.messages.stream(params);
+  let fullText = '';
+  const toolUseBlocks = [];
+  let currentToolId = null;
+  let currentToolName = '';
+  let currentToolInput = '';
+
+  for await (const event of stream) {
+    if (event.type === 'content_block_start') {
+      if (event.content_block.type === 'tool_use') {
+        currentToolId = event.content_block.id;
+        currentToolName = event.content_block.name;
+        currentToolInput = '';
+      }
+    } else if (event.type === 'content_block_delta') {
+      if (event.delta.type === 'text_delta') {
+        fullText += event.delta.text;
+        if (onToken) onToken(event.delta.text);
+      }
+      if (event.delta.type === 'input_json_delta') {
+        currentToolInput += event.delta.partial_json;
+      }
+    } else if (event.type === 'content_block_stop') {
+      if (currentToolName && currentToolId) {
+        let input = {};
+        try { input = JSON.parse(currentToolInput); } catch { input = { raw: currentToolInput }; }
+        toolUseBlocks.push({ id: currentToolId, name: currentToolName, input });
+        currentToolName = '';
+        currentToolId = '';
+        currentToolInput = '';
+      }
+    }
+  }
+
+  if (toolUseBlocks.length > 0 && onToolUse) {
+    const toolResults = [];
+    for (const block of toolUseBlocks) {
+      let result;
+      try { result = await onToolUse(block.name, block.input); }
+      catch (err) { result = `Tool error (${block.name}): ${err.message || String(err)}`; }
+      if (onToolResult) onToolResult(block.name, result);
+      toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
+    }
+    const newMessages = [
+      ...messages,
+      { role: 'assistant', content: toolUseBlocks.map(b => ({ type: 'tool_use', id: b.id, name: b.name, input: b.input })) },
+      { role: 'user', content: toolResults },
+    ];
+    return anthropicChatCompletionStream({ systemPrompt, messages: newMessages, tools, model, onToken, onToolUse, onToolResult });
+  }
+
+  return { fullText };
+}
+
+async function openaiChatCompletionStream({ systemPrompt, messages, tools, model, onToken, onToolUse, onToolResult }) {
+  if (!openaiClient) throw new Error('OpenAI-compatible provider not initialized.');
+  const useModel = model || openaiClient._defaultModel;
+  const oaiMessages = buildOpenAIMessages(systemPrompt, messages);
+  const params = { model: useModel, messages: oaiMessages, max_tokens: 8192, stream: true };
+  const oaiTools = toOpenAITools(tools);
+  if (oaiTools) params.tools = oaiTools;
+
+  const stream = await openaiClient.chat.completions.create(params);
+  let fullText = '';
+  const toolCallsMap = new Map();
+
+  for await (const chunk of stream) {
+    const delta = chunk.choices?.[0]?.delta;
+    if (!delta) continue;
+    if (delta.content) {
+      fullText += delta.content;
+      if (onToken) onToken(delta.content);
+    }
+    if (delta.tool_calls) {
+      for (const tc of delta.tool_calls) {
+        const idx = tc.index ?? 0;
+        if (!toolCallsMap.has(idx)) {
+          toolCallsMap.set(idx, { id: tc.id || '', name: '', arguments: '' });
+        }
+        const entry = toolCallsMap.get(idx);
+        if (tc.id) entry.id = tc.id;
+        if (tc.function?.name) entry.name += tc.function.name;
+        if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+      }
+    }
+  }
+
+  if (toolCallsMap.size > 0 && onToolUse) {
+    const assistantMsg = {
+      role: 'assistant', content: fullText || null,
+      tool_calls: Array.from(toolCallsMap.values()).map(tc => ({
+        id: tc.id, type: 'function',
+        function: { name: tc.name, arguments: tc.arguments },
+      })),
+    };
+    const newOaiMessages = [...oaiMessages, assistantMsg];
+    for (const [, tc] of toolCallsMap) {
+      let input = {};
+      try { input = JSON.parse(tc.arguments); } catch { input = { raw: tc.arguments }; }
+      let result;
+      try { result = await onToolUse(tc.name, input); }
+      catch (err) { result = `Tool error (${tc.name}): ${err.message || String(err)}`; }
+      if (onToolResult) onToolResult(tc.name, result);
+      newOaiMessages.push({ role: 'tool', tool_call_id: tc.id, content: typeof result === 'string' ? result : JSON.stringify(result) });
+    }
+    const followUp = await openaiClient.chat.completions.create({
+      model: useModel, messages: newOaiMessages, max_tokens: 8192,
+      ...(oaiTools ? { tools: oaiTools } : {}),
+    });
+    const followContent = followUp.choices?.[0]?.message?.content;
+    if (followContent) {
+      fullText += followContent;
+      if (onToken) onToken(followContent);
+    }
+  }
+
+  return { fullText };
+}
+
+export async function chatCompletionStream(params) {
+  if (!currentProvider) throw new Error('LLM provider not initialized.');
+  if (currentProvider.name === 'openai-compatible') {
+    return openaiChatCompletionStream(params);
+  }
+  return anthropicChatCompletionStream(params);
+}
+
+export function getDefaultModel() {
+  if (!currentProvider) return '';
+  return currentProvider.name === 'openai-compatible'
+    ? (openaiClient?._defaultModel || '')
+    : (anthropicClient?._defaultModel || '');
+}
+
 /* ── Public API ───────────────────────────────────────── */
 
 export async function initLLM(cfg) {

@@ -24,6 +24,10 @@ import { registerExportRoutes } from './routes/export.js';
 import { registerWsRoutes } from './routes/ws.js';
 import { registerTransferRoutes } from './routes/transfer.js';
 import { registerBibtexRoutes } from './routes/bibtex.js';
+import { registerSyncTeXRoutes } from './routes/synctex.js';
+import { registerReviewRoutes } from './routes/review.js';
+import { registerAntiAiRoutes } from './routes/antiAi.js';
+import { registerPipelineRoutes } from './routes/pipeline.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -60,6 +64,10 @@ registerExportRoutes(fastify);
 registerWsRoutes(fastify);
 registerTransferRoutes(fastify);
 registerBibtexRoutes(fastify);
+registerSyncTeXRoutes(fastify);
+registerReviewRoutes(fastify);
+registerAntiAiRoutes(fastify);
+registerPipelineRoutes(fastify);
 
 // Config endpoints
 fastify.get('/api/config', async () => publicAppConfig(appConfig));

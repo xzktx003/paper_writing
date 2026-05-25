@@ -14,6 +14,7 @@ interface Props {
   onChange: (content: string) => void;
   onScroll?: (ratio: number) => void;
   scrollRatio?: number;
+  onLineClick?: (line: number) => void;
 }
 
 export interface MarkdownEditorHandle {
@@ -21,14 +22,16 @@ export interface MarkdownEditorHandle {
 }
 
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
-  ({ content, onChange, onScroll, scrollRatio }, ref) => {
+  ({ content, onChange, onScroll, scrollRatio, onLineClick }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     const onScrollRef = useRef(onScroll);
+    const onLineClickRef = useRef(onLineClick);
     const scrollingRef = useRef(false);
     onChangeRef.current = onChange;
     onScrollRef.current = onScroll;
+    onLineClickRef.current = onLineClick;
 
     useImperativeHandle(ref, () => ({
       scrollToRatio: (ratio: number) => {
@@ -89,6 +92,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
               const maxScroll = scroller.scrollHeight - scroller.clientHeight;
               if (maxScroll <= 0) return;
               onScrollRef.current(scroller.scrollTop / maxScroll);
+            },
+            click: (event, view) => {
+              // SyncTeX: handle line number gutter clicks
+              const target = event.target as HTMLElement;
+              if (target.closest('.cm-lineNumbers') && onLineClickRef.current) {
+                const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+                if (pos !== null) {
+                  const line = view.state.doc.lineAt(pos).number;
+                  onLineClickRef.current(line);
+                }
+              }
             },
           }),
           EditorView.lineWrapping,

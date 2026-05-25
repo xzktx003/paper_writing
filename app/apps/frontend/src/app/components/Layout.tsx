@@ -158,6 +158,8 @@ export function Layout() {
                 globalSkills={app.project.config?.global_skills || []}
                 chapterSkills={currentChapterSkills}
                 onActivateSkill={app.activateSkill}
+                projectPath={app.project.path || undefined}
+                activeFile={app.openFiles[app.activeFileIndex]?.filename}
               />
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { chatCompletion, chatWithTools } from '../services/llmService.js';
+import { chatCompletion, chatWithTools, chatCompletionStream } from '../services/llmService.js';
 import { assemblePrompt } from '../services/skillEngine.js';
 import { appendMessage, getConversation } from '../services/conversationStore.js';
 import { readTextFile, writeTextFile, listDir } from '../services/fileManager.js';
@@ -8,8 +8,9 @@ import { safeJoin } from '../utils/pathUtils.js';
 import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
 import { getProjectRoot } from '../services/projectService.js';
+import { diffLines } from 'diff';
 
-async function resolveProjectPath(projectPath) {
+export async function resolveProjectPath(projectPath) {
   if (projectPath && projectPath.startsWith('__openprism__:')) {
     const id = projectPath.replace('__openprism__:', '');
     return await getProjectRoot(id);
@@ -58,7 +59,127 @@ function resolveCodePath(projectPath, inputPath = '') {
   return safeJoin(codeRoot, normalizeCodePath(inputPath));
 }
 
+/** Build auto-injected context messages based on conversation scope */
+async function buildContextMessages(conv, resolvedPath, projectConfig) {
+  const ctx = [];
+  try {
+    if (conv.context_scope.type === 'chapter' && conv.context_scope.file) {
+      const chapterContent = await readTextFile(join(resolvedPath, 'sec', conv.context_scope.file)).catch(() => '');
+      if (chapterContent) {
+        ctx.push({ role: 'user', content: `[System: Current chapter content — ${conv.context_scope.file}]\n\`\`\`latex\n${chapterContent}\n\`\`\`` });
+        ctx.push({ role: 'assistant', content: 'I have read the current chapter content. Ready to help.' });
+      }
+    } else if (conv.context_scope.type === 'global') {
+      const secDir = join(resolvedPath, 'sec');
+      const chapDir = join(resolvedPath, 'chapters');
+      const dir = existsSync(secDir) ? secDir : (existsSync(chapDir) ? chapDir : null);
+      if (dir) {
+        const entries = await listDir(dir);
+        const texFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.tex')).slice(0, 10);
+        const summaries = [];
+        for (const f of texFiles) {
+          try {
+            const content = await readTextFile(join(dir, f.name));
+            summaries.push(`## ${f.name}\n${content.slice(0, 400)}...`);
+          } catch {}
+        }
+        if (summaries.length > 0) {
+          ctx.push({ role: 'user', content: `[System: Paper structure overview]\n${summaries.join('\n\n')}` });
+          ctx.push({ role: 'assistant', content: 'I have reviewed the paper structure. Ready to help.' });
+        }
+      }
+    }
+    // Inject references if not free scope
+    if (conv.context_scope.type !== 'free') {
+      try {
+        const refsPath = join(resolvedPath, 'references.bib');
+        if (existsSync(refsPath)) {
+          const refs = await readTextFile(refsPath);
+          if (refs.trim()) {
+            ctx.unshift({ role: 'user', content: `[System: References]\n\`\`\`bibtex\n${refs.slice(0, 4000)}\n\`\`\`` });
+            ctx.splice(1, 0, { role: 'assistant', content: 'I have read the references.' });
+          }
+        }
+      } catch {}
+    }
+  } catch (e) {
+    console.warn('Context injection failed:', e.message);
+  }
+  return ctx;
+}
+
 export function registerAIRoutes(fastify) {
+  // ── SSE Streaming endpoint ──────────────────────────────
+  fastify.post('/api/ai/stream', async (request, reply) => {
+    const { projectId, convId, projectPath, userMessage, projectConfig } = request.body;
+
+    const resolvedPath = await resolveProjectPath(projectPath);
+    const conv = await getConversation(projectId, convId);
+    await appendMessage(projectId, convId, { role: 'user', content: userMessage });
+
+    const globalSkills = projectConfig?.global_skills || [];
+    let chapterSkills = [];
+    if (conv.context_scope.type === 'chapter') {
+      const chapterConfig = (projectConfig?.chapters || []).find(c => c.file === conv.context_scope.file);
+      chapterSkills = chapterConfig?.skills || [];
+    }
+    const manualSkill = conv.active_skills?.[0] || null;
+    const systemPrompt = appendModeGuidance(assemblePrompt({ globalSkills, chapterSkills, manualSkill }), conv.mode);
+
+    // Auto context injection: read current chapter / paper structure / references
+    const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
+
+    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userMessage }];
+    const modelOverride = conv.model || undefined;
+
+    // Set SSE headers
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    const sendEvent = (event, data) => {
+      reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      if (conv.mode === 'chat') {
+        const result = await chatCompletionStream({
+          systemPrompt, messages, model: modelOverride,
+          onToken: (text) => sendEvent('token', { text }),
+        });
+        await appendMessage(projectId, convId, { role: 'assistant', content: result.fullText });
+        sendEvent('done', { fullText: result.fullText });
+      } else {
+        // agent/tools mode with streaming
+        let fullText = '';
+        const result = await chatCompletionStream({
+          systemPrompt, messages, tools: getToolsForMode(conv.mode), model: modelOverride,
+          onToken: (text) => { fullText += text; sendEvent('token', { text }); },
+          onToolUse: async (name, input) => {
+            sendEvent('tool_use', { name, input });
+            return await executeTool(name, input, resolvedPath);
+          },
+          onToolResult: (name, result) => {
+            sendEvent('tool_result', { name, result: typeof result === 'string' ? result.slice(0, 2000) : String(result).slice(0, 2000) });
+          },
+        });
+        await appendMessage(projectId, convId, { role: 'assistant', content: result.fullText });
+        sendEvent('done', { fullText: result.fullText });
+      }
+    } catch (err) {
+      const errorMsg = err.status === 402
+        ? 'API quota exceeded. Please check your Claude API billing.'
+        : `AI error: ${err.message || String(err)}`;
+      sendEvent('error', { message: errorMsg });
+    }
+
+    reply.raw.end();
+  });
+
+  // ── Legacy non-streaming endpoint ────────────────────────
   fastify.post('/api/ai/send', async (request) => {
     const { projectId, convId, projectPath, userMessage, projectConfig } = request.body;
 
@@ -76,7 +197,9 @@ export function registerAIRoutes(fastify) {
 
     const systemPrompt = appendModeGuidance(assemblePrompt({ globalSkills, chapterSkills, manualSkill }), conv.mode);
 
-    const messages = [...conv.history, { role: 'user', content: userMessage }];
+    // Auto context injection
+    const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
+    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userMessage }];
     const modelOverride = conv.model || undefined;
 
     try {
@@ -134,8 +257,28 @@ export async function executeTool(name, input, projectPath) {
       const dir = existsSync(secDir) ? secDir : chapDir;
       return JSON.stringify(await listDir(dir));
     }
-    case 'propose_edit':
-      return JSON.stringify({ filename: input.filename, new_content: input.new_content, action: 'pending_approval' });
+    case 'propose_edit': {
+      // Read original file content for diff calculation
+      const filename = String(input.filename || '').replace(/^\/+/, '');
+      let original = '';
+      for (const prefix of ['sec', 'chapters', '']) {
+        try {
+          const p = prefix ? join(projectPath, prefix, filename) : join(projectPath, filename);
+          original = await readTextFile(p);
+          break;
+        } catch {}
+      }
+      const changes = diffLines(original, input.new_content);
+      const added = changes.filter(c => c.added).reduce((n, c) => n + (c.count || 0), 0);
+      const removed = changes.filter(c => c.removed).reduce((n, c) => n + (c.count || 0), 0);
+      return JSON.stringify({
+        filename: input.filename,
+        original,
+        new_content: input.new_content,
+        stats: { added, removed },
+        action: 'pending_approval'
+      });
+    }
     case 'list_code': {
       const rel = String(input.path || '').replace(/^\/+/, '').replace(/^code\/?/, '');
       const dir = resolveCodePath(projectPath, rel);
