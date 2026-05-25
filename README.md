@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="asserts/logo-rotating.gif" alt="Paper Agent Logo" width="200"/>
+<img src="asserts/landing-page-en.png" alt="Paper Agent" width="90%"/>
 
 # Paper Agent
 
-### Paper Agent — AI-Powered Academic Writing
+### AI-Powered Academic Writing Platform
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -13,19 +13,19 @@
 
 ---
 
-### ✨ Highlights
+### Highlights
 
 | 🤖 AI Assistant | ✍️ Compile & Preview | 📚 Templates |
 |:---:|:---:|:---:|
-| Chat / Agent history<br>Tools multi-step edits | TexLive / Tectonic / Auto<br>PDF preview & download | ACL / CVPR / NeurIPS / ICML<br>One-click conversion |
+| Chat / Agent / Tools<br>Multi-step tool calls | TexLive / Tectonic / Auto<br>PDF preview & download | ACL / CVPR / NeurIPS / ICML<br>One-click conversion |
 
 | 🔄 Template Transfer | ⚡ Pipeline | 🔍 Anti-AI Detection |
 |:---:|:---:|:---:|
-| Legacy (LaTeX→LaTeX) / MinerU (PDF→MD→LaTeX)<br>LLM-powered migration + auto compile fix + VLM layout check | Multi-stage workflow engine<br>AI / Human / Compile / Citation | Rule scan + LLM deep analysis<br>+ GPTZero third-party detection |
+| Legacy (LaTeX→LaTeX) / MinerU (PDF→MD→LaTeX)<br>LLM migration + auto compile fix + VLM check | Multi-stage workflow engine<br>AI / Human / Compile / Citation | Rule scan + LLM deep analysis<br>+ GPTZero third-party detection |
 
 | 🔧 Advanced Editing | 🗂️ Project Management | ⚙️ Configuration |
 |:---:|:---:|:---:|
-| AI autocomplete / Diff / diagnose | Multi-project + file tree + upload | OpenAI-compatible endpoint<br>Local-first privacy |
+| AI autocomplete / Diff / Diagnose | Multi-project + file tree + upload | OpenAI-compatible endpoint<br>Local-first privacy |
 
 | 🔍 Search | 📊 Charting | 🧠 Recognition |
 |:---:|:---:|:---:|
@@ -60,7 +60,7 @@
 
 > [!WARNING]
 > 🚧 <strong>Template Transfer is under testing</strong><br>
-> The Template Transfer feature is currently in beta and may contain known or unknown bugs. If you encounter any issues, please report them via [Issues](https://github.com/OpenDCAI/OpenPrism/issues).
+> The Template Transfer feature is currently in beta and may contain known or unknown bugs. If you encounter any issues, please report them via [Issues](https://github.com/xzktx003/paper_wrighting/issues).
 
 > [!TIP]
 > 🆕 <strong>2025-02 · Template Transfer (Dual Mode)</strong><br>
@@ -69,16 +69,6 @@
 > [!TIP]
 > 🆕 <strong>2025-02 · Real-time Collaboration</strong><br>
 > Multi-user simultaneous editing is now available, powered by CRDT with automatic conflict resolution and cursor sync. Current version requires a server with a public IP; invite remote collaborators via token-based links.
-
----
-
-<div align="center">
-<br>
-<img src="asserts/首页.gif" alt="Paper Agent Home" width="90%"/>
-<br>
-<sub>✨ Home preview: three-panel workspace + editor + preview</sub>
-<br><br>
-</div>
 
 ---
 
@@ -179,9 +169,9 @@ Paper Agent is a local-first LaTeX + AI workspace for academic writing, optimize
 
 <div align="center">
 <br>
-<img src="asserts/三栏界面.png" alt="Three-panel workspace" width="90%"/>
+<img src="asserts/editor-with-file.png" alt="Three-panel workspace" width="90%"/>
 <br>
-<sub>✨ AI Assistant | LaTeX Editor | PDF Preview</sub>
+<sub>Left: File tree & tools | Center: LaTeX editor | Right: AI assistant & preview</sub>
 <br><br>
 </div>
 
@@ -189,77 +179,19 @@ Paper Agent is a local-first LaTeX + AI workspace for academic writing, optimize
 
 <div align="center">
 <br>
-<img src="asserts/编辑页面的界面.png" alt="Editor view" width="90%"/>
+<img src="asserts/editor-main.png" alt="Editor view" width="90%"/>
 <br>
-<sub>✨ Synchronized editing and preview</sub>
+<sub>LaTeX editor with synchronized preview</sub>
 <br><br>
 </div>
 
-### 🤖 Agent Mode
+### 🗂️ Projects Page
 
 <div align="center">
 <br>
-<img src="asserts/Agent模式.png" alt="Agent mode" width="85%"/>
+<img src="asserts/projects-page.png" alt="Projects page" width="85%"/>
 <br>
-<sub>✨ Generate diff suggestions for review</sub>
-<br><br>
-</div>
-
-### 🧪 One-Click Diagnose
-
-<div align="center">
-<br>
-<img src="asserts/一键诊断.png" alt="One-click diagnose" width="85%"/>
-<br>
-<sub>✨ Parse compile errors and jump to locations</sub>
-<br><br>
-</div>
-
-### 🌐 WebSearch
-
-<div align="center">
-<br>
-<img src="asserts/网络搜索.gif" alt="WebSearch" width="85%"/>
-<br>
-<sub>✨ Online search with concise summaries</sub>
-<br><br>
-</div>
-
-### 📄 PaperSearch
-
-<div align="center">
-<br>
-<img src="asserts/论文检索.gif" alt="PaperSearch" width="85%"/>
-<br>
-<sub>✨ Academic search and citation info</sub>
-<br><br>
-</div>
-
-### 📊 Table-to-Chart
-
-<div align="center">
-<br>
-<img src="asserts/图表生成.png" alt="Chart generation" width="85%"/>
-<br><sub>✨ Turn tables into charts in one step</sub>
-<br><br>
-</div>
-
-### 🧠 Formula/Chart Recognition
-
-<div align="center">
-<br>
-<img src="asserts/公式识别.png" alt="Formula recognition" width="85%"/>
-<br><sub>✨ Recognize structures for editable outputs</sub>
-<br><br>
-</div>
-
-### 🔧 AI Autocomplete
-
-<div align="center">
-<br>
-<img src="asserts/AI自动补全.gif" alt="AI autocomplete" width="85%"/>
-<br>
-<sub>✨ Option/Alt + / to trigger, Tab to accept</sub>
+<sub>Multi-project management with template selection</sub>
 <br><br>
 </div>
 
@@ -267,19 +199,9 @@ Paper Agent is a local-first LaTeX + AI workspace for academic writing, optimize
 
 <div align="center">
 <br>
-<img src="asserts/同行评审.png" alt="Peer Review" width="85%"/>
+<img src="asserts/review-panel.png" alt="Peer Review" width="85%"/>
 <br>
-<sub>✨ AI Quality Check: Review Report / Consistency Check / Missing Citations / Compile Summary</sub>
-<br><br>
-</div>
-
-### 👥 Real-time Collaboration
-
-<div align="center">
-<br>
-<img src="asserts/协作.png" alt="Real-time Collaboration" width="85%"/>
-<br>
-<sub>✨ Multi-user real-time collaborative editing with cursor sync and online user management</sub>
+<sub>AI Quality Check: Review Report / Consistency / Missing Citations / Compile Summary</sub>
 <br><br>
 </div>
 
@@ -289,7 +211,7 @@ Paper Agent is a local-first LaTeX + AI workspace for academic writing, optimize
 <br>
 <img src="asserts/anti-ai-panel.png" alt="Anti-AI Detection" width="85%"/>
 <br>
-<sub>✨ Rule scan + LLM deep analysis + GPTZero third-party detection for multi-dimensional AI trace identification</sub>
+<sub>Rule scan + LLM deep analysis + GPTZero third-party detection</sub>
 <br><br>
 </div>
 
@@ -299,7 +221,7 @@ Paper Agent is a local-first LaTeX + AI workspace for academic writing, optimize
 <br>
 <img src="asserts/pipeline-panel.png" alt="Pipeline" width="85%"/>
 <br>
-<sub>✨ Multi-stage workflow: Polish → Review → Revise → Compile with human checkpoints</sub>
+<sub>Multi-stage workflow: Polish → Review → Revise → Compile with human checkpoints</sub>
 <br><br>
 </div>
 
@@ -349,8 +271,8 @@ Paper Agent requires a LaTeX engine to generate PDFs. Choose one of the followin
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/OpenDCAI/OpenPrism.git
-cd OpenPrism
+git clone https://github.com/xzktx003/paper_wrighting.git
+cd paper_wrighting
 
 # 2. Install dependencies
 npm install
@@ -389,17 +311,16 @@ node --version  # Should show >= 18.0.0
 pdflatex --version  # Should show TexLive version
 
 # 4. Clone and deploy project
-git clone https://github.com/OpenDCAI/OpenPrism.git
-cd OpenPrism
+git clone https://github.com/xzktx003/paper_wrighting.git
+cd paper_wrighting
 npm install
 npm run build
 
 # 5. Configure environment variables (optional)
 cat > .env << EOF
-# LLM Configuration (env vars prefixed with OPENPRISM_ for legacy compatibility)
 OPENPRISM_LLM_BASE_URL=https://api.openai.com/v1
 OPENPRISM_LLM_API_KEY=your-api-key
-OPENPRISM_LLM_MODEL=gpt-5.5
+OPENPRISM_LLM_MODEL=gpt-4o
 OPENPRISM_DATA_DIR=./data
 PORT=8787
 EOF
@@ -409,7 +330,7 @@ npm start
 
 # 7. Use PM2 for process management (recommended)
 sudo npm install -g pm2
-pm2 start npm --name "openprism" -- start
+pm2 start npm --name "paper-agent" -- start
 pm2 save
 pm2 startup
 ```
@@ -426,7 +347,7 @@ Create a `.env` file in the project root (optional):
 # LLM Configuration
 OPENPRISM_LLM_BASE_URL=https://api.openai.com/v1
 OPENPRISM_LLM_API_KEY=your-api-key
-OPENPRISM_LLM_MODEL=gpt-5.5
+OPENPRISM_LLM_MODEL=gpt-4o
 
 # Data storage path
 OPENPRISM_DATA_DIR=./data
@@ -448,7 +369,7 @@ Paper Agent supports any **OpenAI-compatible** endpoint, including custom base U
 # .env file
 OPENPRISM_LLM_BASE_URL=https://api.openai.com/v1
 OPENPRISM_LLM_API_KEY=your-api-key
-OPENPRISM_LLM_MODEL=gpt-5.5
+OPENPRISM_LLM_MODEL=gpt-4o
 ```
 
 **Method 2: Frontend Settings Panel**
@@ -456,18 +377,10 @@ OPENPRISM_LLM_MODEL=gpt-5.5
 - Fill in Base URL, API Key, and Model
 - Configuration is saved to the repository `.env` through the backend; existing API keys are masked in API responses and are not cached in browser localStorage
 
-<div align="center">
-<br>
-<img src="asserts/模型配置setting.png" alt="Model Configuration Settings" width="85%"/>
-<br>
-<sub>✨ LLM Configuration Settings Panel</sub>
-<br><br>
-</div>
-
 **Supported Third-party Services:**
 - OpenAI: `https://api.openai.com/v1`
 - Azure OpenAI: `https://your-resource.openai.azure.com/openai/deployments/your-deployment`
-- Other compatible services: `https://api.apiyi.com/v1`
+- Other compatible services (e.g. local LLM servers)
 
 ### LaTeX Compilation Configuration
 
@@ -488,8 +401,7 @@ OPENPRISM_LLM_MODEL=gpt-5.5
 Default data storage is in `./data` directory, can be modified via environment variable:
 
 ```bash
-# Custom data directory
-OPENPRISM_DATA_DIR=/var/openprism/data
+OPENPRISM_DATA_DIR=/var/paper-agent/data
 ```
 
 **Directory Structure:**
@@ -568,9 +480,7 @@ You can collaborate remotely without a public server. Paper Agent has built-in t
 
 ```bash
 export NGROK_AUTHTOKEN=your_token_here
-
 npm run tunnel:ngrok
-
 ```
 
 3. On startup, the terminal prints a public URL. Share it with your collaborator:
@@ -611,7 +521,7 @@ npm run tunnel:ngrok
 ## 📁 Project Structure
 
 ```
-Paper Agent/
+paper_wrighting/
 ├── apps/
 │   ├── frontend/           # React + Vite frontend
 │   │   ├── src/
@@ -680,7 +590,7 @@ Paper Agent/
 <tr>
 <td><strong>🌐 Serverless Collaboration</strong></td>
 <td><img src="https://img.shields.io/badge/⏳-Planned-yellow?style=flat-square" alt="Planned"/></td>
-<td>Local collaboration without a public server: ① built-in tunnel integration (ngrok / Cloudflare Tunnel) to expose local services in one click; ② WebRTC-based P2P direct connection without third-party relay</td>
+<td>Local collaboration without a public server: built-in tunnel integration (ngrok / Cloudflare Tunnel) and WebRTC-based P2P direct connection</td>
 </tr>
 <tr>
 <td><strong>🔍 Enhanced WebSearch</strong></td>
@@ -688,7 +598,7 @@ Paper Agent/
 <td>Integrate third-party Search APIs (e.g. Google / Baidu / SerpAPI) for improved search quality and coverage</td>
 </tr>
 <tr>
-<td><strong>📸 Version Snapshots &amp; Rollback</strong></td>
+<td><strong>📸 Version Snapshots & Rollback</strong></td>
 <td><img src="https://img.shields.io/badge/⏳-Planned-yellow?style=flat-square" alt="Planned"/></td>
 <td>Project version management with snapshot saving and one-click rollback</td>
 </tr>
@@ -737,10 +647,10 @@ MIT License. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**If this project helps you, please give us a ⭐️ Star!**
+**If this project helps you, please give us a Star!**
 
-[![GitHub stars](https://img.shields.io/github/stars/OpenDCAI/OpenPrism?style=social)](https://github.com/OpenDCAI/OpenPrism/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/OpenDCAI/OpenPrism?style=social)](https://github.com/OpenDCAI/OpenPrism/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/xzktx003/paper_wrighting?style=social)](https://github.com/xzktx003/paper_wrighting/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/xzktx003/paper_wrighting?style=social)](https://github.com/xzktx003/paper_wrighting/network/members)
 
 <br>
 

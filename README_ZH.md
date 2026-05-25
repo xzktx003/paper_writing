@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="asserts/logo-rotating.gif" alt="Paper Agent Logo" width="200"/>
+<img src="asserts/landing-page.png" alt="Paper Agent" width="200"/>
 
 # Paper Agent
 
@@ -54,7 +54,7 @@
 
 > [!WARNING]
 > 🚧 <strong>模板转换功能仍在测试中</strong><br>
-> 模板转换（Template Transfer）功能目前处于测试阶段，可能存在已知或未知的 Bug。如遇到问题，欢迎在 [Issues](https://github.com/OpenDCAI/OpenPrism/issues) 中反馈。
+> 模板转换（Template Transfer）功能目前处于测试阶段，可能存在已知或未知的 Bug。如遇到问题，欢迎在 [Issues](https://github.com/xzktx003/paper_wrighting/issues) 中反馈。
 
 > [!TIP]
 > 🆕 <strong>2025-02 · 模板转换（双模式）</strong><br>
@@ -417,7 +417,7 @@ Paper Agent 需要 LaTeX 编译引擎来生成 PDF，请根据操作系统选择
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/OpenDCAI/OpenPrism.git
+git clone https://github.com/xzktx003/paper_wrighting.git
 cd OpenPrism
 
 # 2. 安装依赖
@@ -457,7 +457,7 @@ node --version  # 应显示 >= 18.0.0
 pdflatex --version  # 应显示 TexLive 版本
 
 # 4. 克隆并部署项目
-git clone https://github.com/OpenDCAI/OpenPrism.git
+git clone https://github.com/xzktx003/paper_wrighting.git
 cd OpenPrism
 npm install
 npm run build
@@ -803,8 +803,8 @@ MIT License. See [LICENSE](LICENSE).
 
 **如果这个项目对你有帮助，请给我们一个 ⭐️ Star！**
 
-[![GitHub stars](https://img.shields.io/github/stars/OpenDCAI/OpenPrism?style=social)](https://github.com/OpenDCAI/OpenPrism/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/OpenDCAI/OpenPrism?style=social)](https://github.com/OpenDCAI/OpenPrism/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/OpenDCAI/OpenPrism?style=social)](https://github.com/xzktx003/paper_wrighting/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/OpenDCAI/OpenPrism?style=social)](https://github.com/xzktx003/paper_wrighting/network/members)
 
 <br>
 

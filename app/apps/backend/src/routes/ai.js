@@ -18,6 +18,41 @@ export async function resolveProjectPath(projectPath) {
   return projectPath;
 }
 
+/**
+ * Build user message content, optionally including image attachments
+ * as base64 vision content blocks for multimodal LLMs.
+ */
+function buildUserMessageContent(userMessage, images) {
+  if (!images || images.length === 0) return userMessage;
+
+  const content = [];
+  // Text part
+  if (userMessage && userMessage.trim()) {
+    content.push({ type: 'text', text: userMessage });
+  }
+  // Image parts
+  for (const img of images) {
+    const dataUrl = img.dataUrl || '';
+    // Extract base64 and mime type from data URL (data:image/png;base64,...)
+    const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)/);
+    if (match) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: match[1],
+          data: match[2],
+        },
+      });
+    }
+  }
+  // If no text but has images, add a default prompt
+  if (!content.some(c => c.type === 'text')) {
+    content.unshift({ type: 'text', text: 'Please analyze this image.' });
+  }
+  return content;
+}
+
 const TOOL_DEFINITIONS = [
   { name: 'read_chapter', description: 'Read a chapter file', input_schema: { type: 'object', properties: { filename: { type: 'string' } }, required: ['filename'] } },
   { name: 'list_chapters', description: 'List all chapter files', input_schema: { type: 'object', properties: {} } },
@@ -132,7 +167,7 @@ function classifyAIError(err) {
 export function registerAIRoutes(fastify) {
   // ── SSE Streaming endpoint ──────────────────────────────
   fastify.post('/api/ai/stream', async (request, reply) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig } = request.body;
+    const { projectId, convId, projectPath, userMessage, projectConfig, images } = request.body;
 
     const resolvedPath = await resolveProjectPath(projectPath);
     const conv = await getConversation(projectId, convId);
@@ -150,7 +185,9 @@ export function registerAIRoutes(fastify) {
     // Auto context injection: read current chapter / paper structure / references
     const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
 
-    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userMessage }];
+    // Build user message with optional image attachments
+    const userContent = buildUserMessageContent(userMessage, images);
+    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userContent }];
     const modelOverride = conv.model || undefined;
 
     // Set SSE headers
@@ -207,7 +244,7 @@ export function registerAIRoutes(fastify) {
 
   // ── Legacy non-streaming endpoint ────────────────────────
   fastify.post('/api/ai/send', async (request) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig } = request.body;
+    const { projectId, convId, projectPath, userMessage, projectConfig, images } = request.body;
 
     const resolvedPath = await resolveProjectPath(projectPath);
     const conv = await getConversation(projectId, convId);
@@ -225,7 +262,10 @@ export function registerAIRoutes(fastify) {
 
     // Auto context injection
     const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
-    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userMessage }];
+
+    // Build user message with optional image attachments
+    const userContent = buildUserMessageContent(userMessage, images);
+    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userContent }];
     const modelOverride = conv.model || undefined;
 
     try {

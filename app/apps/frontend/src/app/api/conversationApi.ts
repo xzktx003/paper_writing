@@ -56,11 +56,11 @@ export async function deleteConversation(projectId: string, convId: string) {
   await fetch(`${BASE}/conversations/${projectId}/${convId}`, { method: 'DELETE' });
 }
 
-export async function sendMessage(projectId: string, convId: string, projectPath: string, userMessage: string, projectConfig: any) {
+export async function sendMessage(projectId: string, convId: string, projectPath: string, userMessage: string, projectConfig: any, images?: { dataUrl: string; name: string }[]) {
   const res = await fetch(`${BASE}/ai/send`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, convId, projectPath, userMessage, projectConfig }),
+    body: JSON.stringify({ projectId, convId, projectPath, userMessage, projectConfig, images: images?.map(img => ({ dataUrl: img.dataUrl, name: img.name })) }),
   });
   return res.json();
 }
@@ -68,6 +68,7 @@ export async function sendMessage(projectId: string, convId: string, projectPath
 /** SSE streaming version of sendMessage */
 export async function sendMessageStream(
   projectId: string, convId: string, projectPath: string, userMessage: string, projectConfig: any,
+  images: { dataUrl: string; name: string }[] | undefined,
   callbacks: {
     onToken: (text: string) => void;
     onToolUse?: (name: string, input: any) => void;
@@ -79,7 +80,7 @@ export async function sendMessageStream(
   const res = await fetch(`${BASE}/ai/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, convId, projectPath, userMessage, projectConfig }),
+    body: JSON.stringify({ projectId, convId, projectPath, userMessage, projectConfig, images: images?.map(img => ({ dataUrl: img.dataUrl, name: img.name })) }),
   });
 
   if (!res.ok) {

@@ -7,7 +7,8 @@
 - Existing projects receive `docs/` automatically the next time their file tree is opened. `fig/` is no longer created automatically; image folders only appear when imported or created by the user.
 - The project file tree supports arbitrary files under `docs/`; users can create, upload, edit, rename, and delete those files through the existing project file APIs.
 - The project file tree blank/root context menu supports Paste, New File, New Folder, and Upload; folder context menus target child creation/upload/paste inside that folder; file context menus do not show create actions. New files are created empty, opened immediately, and existing paths are not overwritten.
-- The editor file tree supports VS Code-style context actions for files and folders: copy path, copy, cut, paste, and delete.
+- The editor file tree supports VS Code-style context actions for files and folders: copy path, copy, cut, paste, rename, and delete.
+- File/folder rename uses inline editing: right-click Rename turns the filename into an editable input field with Enter to confirm and Escape to cancel.
 - Files and folders can be dragged from the editor file tree into another folder, or onto the explicit project-root drop target, to move them inside the same project.
 - The divider between the editor file tree and Skills panel can be dragged vertically to resize both areas.
 - The integrated terminal opens a project-bound tmux session, reattaches to the same session after closing/reopening or refreshing the page, and creates a new tmux session only if the previous one was killed.
@@ -36,7 +37,8 @@
 - Chat mode is read-only discussion and does not receive file-writing or code-execution tools.
 - Agent mode can inspect paper context and propose edits for user confirmation, but it does not directly write files or run code.
 - Tools mode is the only AI conversation mode that can perform multi-step tool work, including controlled operations under the project `code/` directory.
-- The previous standalone Code conversation scope has been removed from the new-conversation UI; code work is handled through Tools mode instead.
+- Vision/image analysis is integrated into the AI chat input: users can attach images via the 🖼️ button, preview them before sending, and the AI receives them as multimodal vision content.
+- The standalone Agent, Vision, Paper Search, Web Search, and Plot left-panel tabs have been removed; Agent lives in chat conversations, Vision is integrated into chat input, and Paper/Web Search/Plot are no longer available.
 
 ## BibTeX Citation Search
 

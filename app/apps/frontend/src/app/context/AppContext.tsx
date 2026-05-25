@@ -31,7 +31,7 @@ interface AppState {
   createConversation: (data: any) => Promise<unknown>;
   removeConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, newName: string) => Promise<void>;
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (message: string, images?: { id: string; dataUrl: string; name: string }[]) => Promise<void>;
   pendingEdits: any[];
   acceptEdit: (editId: string) => void;
   rejectEdit: (editId: string) => void;
@@ -189,9 +189,9 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     });
   }, [project.config, setProject]);
 
-  const sendMessage = useCallback(async (message: string) => {
+  const sendMessage = useCallback(async (message: string, images?: { id: string; dataUrl: string; name: string }[]) => {
     if (!project.path || !project.config) return;
-    await convHook.send(message, project.path, project.config);
+    await convHook.send(message, project.path, project.config, images);
   }, [project.path, project.config, convHook]);
 
   const value: AppState = {

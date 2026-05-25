@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { ConversationTabs } from './ConversationTabs';
 import { ChatView } from './ChatView';
 import { NewConversationDialog } from './NewConversationDialog';
@@ -12,6 +12,12 @@ import { PendingEdit } from '../hooks/useConversations';
 
 type TabType = 'chat' | 'skills' | 'review' | 'anti-ai' | 'pipeline';
 
+interface AttachedImage {
+  id: string;
+  dataUrl: string;
+  name: string;
+}
+
 interface Props {
   conversations: ConversationSummary[];
   activeConv: Conversation | null;
@@ -21,7 +27,7 @@ interface Props {
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onCreate: (data: any) => void;
-  onSend: (message: string) => void;
+  onSend: (message: string, images?: AttachedImage[]) => void;
   onRename?: (id: string, newName: string) => void;
   globalSkills?: string[];
   chapterSkills?: string[];
@@ -45,6 +51,8 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
   const [deepLoading, setDeepLoading] = useState(false);
   const [gptzeroReport, setGptzeroReport] = useState<any>(null);
   const [gptzeroLoading, setGptzeroLoading] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const handleRunReview = useCallback(async () => {
     if (!projectPath) return;
@@ -75,9 +83,10 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
   }, [projectPath, activeFile]);
 
   const handleSend = () => {
-    if (!inputValue.trim()) return;
-    onSend(inputValue.trim());
+    if (!inputValue.trim() && attachedImages.length === 0) return;
+    onSend(inputValue.trim(), attachedImages.length > 0 ? attachedImages : undefined);
     setInputValue('');
+    setAttachedImages([]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -85,6 +94,52 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
       e.preventDefault();
       handleSend();
     }
+  };
+
+  /** Handle Ctrl+V paste for images from clipboard */
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        const reader = new FileReader();
+        reader.onload = () => {
+          setAttachedImages(prev => [...prev, {
+            id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            dataUrl: reader.result as string,
+            name: `paste-${Date.now()}.png`,
+          }]);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  }, []);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue;
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachedImages(prev => [...prev, {
+          id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          dataUrl: reader.result as string,
+          name: file.name,
+        }]);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so same file can be re-selected
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const removeImage = (id: string) => {
+    setAttachedImages(prev => prev.filter(img => img.id !== id));
   };
 
   return (
@@ -141,12 +196,33 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
                     {activeConv.mode}
                   </span>
                 </div>
+                {/* Image previews */}
+                {attachedImages.length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    {attachedImages.map(img => (
+                      <div key={img.id} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                        <img src={img.dataUrl} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          onClick={() => removeImage(img.id)}
+                          style={{
+                            position: 'absolute', top: 2, right: 2,
+                            width: 18, height: 18, borderRadius: '50%',
+                            border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff',
+                            fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            lineHeight: 1,
+                          }}
+                          title="Remove image"
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{ position: 'relative' }}>
                   <textarea
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a message... (Enter to send)"
+                    placeholder="Type a message... (Enter to send, attach images with 🖼️)"
                     style={{
                       width: '100%',
                       minHeight: '56px',
@@ -165,26 +241,52 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
                     onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-soft)'; }}
                     onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
-                  <button
-                    onClick={handleSend}
-                    disabled={!inputValue.trim()}
-                    style={{
-                      position: 'absolute',
-                      right: '8px',
-                      bottom: '8px',
-                      border: 'none',
-                      background: inputValue.trim() ? 'var(--accent)' : 'var(--bg-secondary)',
-                      color: inputValue.trim() ? '#fff' : 'var(--muted)',
-                      borderRadius: '8px',
-                      padding: '5px 12px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: inputValue.trim() ? 'pointer' : 'default',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    Send
-                  </button>
+                  <div style={{ position: 'absolute', right: '8px', bottom: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={handleImageUpload}
+                    />
+                    <button
+                      onClick={() => imageInputRef.current?.click()}
+                      title="Attach image"
+                      style={{
+                        border: 'none',
+                        background: 'var(--bg-secondary)',
+                        color: 'var(--muted)',
+                        borderRadius: '8px',
+                        padding: '5px 8px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-soft)'; e.currentTarget.style.color = 'var(--accent-strong)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.color = 'var(--muted)'; }}
+                    >
+                      🖼️
+                    </button>
+                    <button
+                      onClick={handleSend}
+                      disabled={!inputValue.trim() && attachedImages.length === 0}
+                      style={{
+                        border: 'none',
+                        background: (inputValue.trim() || attachedImages.length > 0) ? 'var(--accent)' : 'var(--bg-secondary)',
+                        color: (inputValue.trim() || attachedImages.length > 0) ? '#fff' : 'var(--muted)',
+                        borderRadius: '8px',
+                        padding: '5px 12px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: (inputValue.trim() || attachedImages.length > 0) ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      Send
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

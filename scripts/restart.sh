@@ -81,16 +81,29 @@ echo "[3/4] Starting backend on port $PORT..."
 start_backend
 sleep 4
 
-# Verify
+# Verify — retry up to 10 times (max ~10s)
 echo "[4/4] Verifying..."
-if curl -s "http://localhost:$PORT/api/health" | grep -q '"ok":true'; then
+VERIFY_OK=0
+for i in $(seq 1 10); do
+  if curl -s -o /dev/null -w '' "http://localhost:$PORT/api/health" 2>/dev/null; then
+    if curl -s "http://localhost:$PORT/api/health" | grep -q '"ok":true'; then
+      VERIFY_OK=1
+      break
+    fi
+  fi
+  printf '.' >&2
+  sleep 1
+done
+echo >&2
+
+if [ "$VERIFY_OK" -eq 1 ]; then
   echo ""
   echo "  Paper Writer running at http://10.30.0.22:$PORT"
-  echo "  PID: $SERVER_PID"
+  echo "  PID: $(cat "$PID_FILE" 2>/dev/null || echo 'unknown')"
   echo "  Log: $LOG_FILE"
   echo ""
 else
-  echo "  ERROR: Server failed to start. Check $LOG_FILE"
-  tail -5 "$LOG_FILE"
+  echo "  ERROR: Server failed to start after 10s. Check $LOG_FILE"
+  tail -10 "$LOG_FILE"
   exit 1
 fi

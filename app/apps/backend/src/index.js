@@ -17,11 +17,8 @@ import { loadAppConfig, publicAppConfig, saveAppConfig } from './config/appConfi
 import { initLLM } from './services/llmService.js';
 import { loadSkills, listSkills } from './services/skillEngine.js';
 import { registerHealthRoutes } from './routes/health.js';
-import { registerArxivRoutes } from './routes/arxiv.js';
 import { registerProjectRoutes } from './routes/projects.js';
 import { registerCompileRoutes } from './routes/compile.js';
-import { registerVisionRoutes } from './routes/vision.js';
-import { registerPlotRoutes } from './routes/plot.js';
 import { registerAIRoutes } from './routes/ai.js';
 import { registerAICompletionRoute } from './routes/ai.js';
 import { registerSkillRoutes } from './routes/skills.js';
@@ -39,7 +36,6 @@ import { registerReviewRoutes } from './routes/review.js';
 import { registerAntiAiRoutes } from './routes/antiAi.js';
 import { registerPipelineRoutes } from './routes/pipeline.js';
 import { registerPipelineV2Routes } from './routes/pipelineV2.js';
-import { registerWebsearchRoutes } from './routes/websearch.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -59,11 +55,8 @@ await fastify.register(multipart, {
 await fastify.register(websocket);
 
 registerHealthRoutes(fastify);
-registerArxivRoutes(fastify);
 registerProjectRoutes(fastify);
 registerCompileRoutes(fastify);
-registerVisionRoutes(fastify);
-registerPlotRoutes(fastify);
 registerAIRoutes(fastify);
 registerAICompletionRoute(fastify);
 registerSkillRoutes(fastify);
@@ -81,7 +74,6 @@ registerReviewRoutes(fastify);
 registerAntiAiRoutes(fastify);
 registerPipelineRoutes(fastify);
 registerPipelineV2Routes(fastify);
-registerWebsearchRoutes(fastify);
 
 // Config endpoints
 fastify.get('/api/config', async () => publicAppConfig(appConfig));

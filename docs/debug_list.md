@@ -1,5 +1,15 @@
 # Debug List
 
+## 2026-05-26 - File rename & UI simplification
+
+- Symptom: Right-click rename on files/folders didn't work — `window.prompt()` was blocked or failed silently in some browser contexts.
+- Fix: Replaced `window.prompt()` with inline rename editing. Clicking "Rename" now turns the filename into an editable `<input>` field with Enter/Escape key handling and auto-focus with name selection.
+- Also removed standalone Agent, Vision, Paper Search, Web Search, and Plot tabs from the left panel:
+  - Agent is redundant with the AI chat's Agent/Tools conversation modes.
+  - Vision is now integrated into the AI chat input as an image attachment button (🖼️), sending base64 images as multimodal content to the LLM.
+  - Paper Search, Web Search, and Plot features deleted entirely (frontend components + backend routes + services).
+- Updated `docs/func_list.md` and `docs/debug_list.md`.
+
 ## 2026-05-22 - Restart script resolved app paths under `scripts/`
 
 - Symptom: `sh scripts/restart.sh` tried to enter `scripts/app/apps/frontend` and `scripts/app/apps/backend`, then reported success against an already-running service.

@@ -14,6 +14,12 @@ export interface PendingEdit {
   status: 'pending' | 'accepted' | 'rejected';
 }
 
+export interface AttachedImage {
+  id: string;
+  dataUrl: string;
+  name: string;
+}
+
 export function useConversations(projectId: string | null) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
@@ -59,14 +65,14 @@ export function useConversations(projectId: string | null) {
   }, [projectId, activeConv, refresh]);
 
   /** Non-streaming send (fallback) */
-  const sendRaw = useCallback(async (message: string, projectPath: string, projectConfig: any) => {
+  const sendRaw = useCallback(async (message: string, projectPath: string, projectConfig: any, images?: AttachedImage[]) => {
     if (!projectId || !activeConv) return;
     setActiveConv(prev => prev ? {
       ...prev,
       history: [...prev.history, { role: 'user', content: message }],
     } : null);
     setLoading(true);
-    const result = await sendMessage(projectId, activeConv.id, projectPath, message, projectConfig);
+    const result = await sendMessage(projectId, activeConv.id, projectPath, message, projectConfig, images);
     setActiveConv(prev => prev ? {
       ...prev,
       history: [...prev.history, { role: 'assistant', content: result.reply }],
@@ -76,7 +82,7 @@ export function useConversations(projectId: string | null) {
   }, [projectId, activeConv]);
 
   /** Streaming send with token-by-token updates */
-  const send = useCallback(async (message: string, projectPath: string, projectConfig: any) => {
+  const send = useCallback(async (message: string, projectPath: string, projectConfig: any, images?: AttachedImage[]) => {
     if (!projectId || !activeConv) return;
 
     // Optimistic: add user message immediately
@@ -90,7 +96,7 @@ export function useConversations(projectId: string | null) {
     const toolEvents: Array<{ type: string; name: string; detail: string }> = [];
 
     try {
-      await sendMessageStream(projectId, activeConv.id, projectPath, message, projectConfig, {
+      await sendMessageStream(projectId, activeConv.id, projectPath, message, projectConfig, images, {
         onToken: (text) => {
           assistantContent += text;
           setActiveConv(prev => prev ? {
@@ -139,7 +145,7 @@ export function useConversations(projectId: string | null) {
       });
     } catch {
       // Fallback to non-streaming if SSE fails
-      await sendRaw(message, projectPath, projectConfig);
+      await sendRaw(message, projectPath, projectConfig, images);
     }
   }, [projectId, activeConv, sendRaw]);
 

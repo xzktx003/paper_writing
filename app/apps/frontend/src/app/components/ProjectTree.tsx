@@ -39,6 +39,9 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTargetFolder, setUploadTargetFolder] = useState<string>('');
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null!);
   const projectId = getPaperAgentProjectId(projectPath);
   const tree = useMemo(() => buildProjectTree(fileItems), [fileItems]);
 
@@ -96,27 +99,55 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
 
   const renameItem = async (node: FileTreeNode) => {
     if (!projectId) return setStatus('File operations are only available for managed projects.');
+    // Start inline rename instead of window.prompt()
     const oldName = getBaseName(node.path);
-    const newName = window.prompt('Rename to:', oldName);
-    if (newName === null || !newName.trim() || newName.trim() === oldName) return;
-    const trimmed = newName.trim();
-    if (trimmed.includes('/') || trimmed === '.' || trimmed === '..') {
-      return setStatus('Invalid file name.');
+    setRenamingPath(node.path);
+    setRenameValue(oldName);
+    // Focus the input after render
+    setTimeout(() => {
+      const input = renameInputRef.current;
+      if (input) {
+        input.focus();
+        // Select name without extension for files
+        const dotIdx = oldName.lastIndexOf('.');
+        if (dotIdx > 0) {
+          input.setSelectionRange(0, dotIdx);
+        } else {
+          input.select();
+        }
+      }
+    }, 0);
+  };
+
+  const confirmRename = async () => {
+    const oldPath = renamingPath;
+    if (!oldPath || !projectId) return;
+    const oldName = getBaseName(oldPath);
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === oldName || trimmed.includes('/') || trimmed === '.' || trimmed === '..') {
+      setStatus(!trimmed ? 'Name cannot be empty.' : trimmed === oldName ? '' : 'Invalid file name.');
+      setRenamingPath(null);
+      return;
     }
-    const parentPath = getParentPath(node.path);
+    const parentPath = getParentPath(oldPath);
     const newPath = joinProjectPath(parentPath, trimmed);
     const res = await fetch(`/api/projects/${projectId}/rename`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: node.path, to: newPath }),
+      body: JSON.stringify({ from: oldPath, to: newPath }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.ok === false) {
-      setStatus(body.error || `Failed to rename ${node.path}`);
-      return;
+      setStatus(body.error || `Failed to rename ${oldPath}`);
+    } else {
+      setFileItems(prev => moveTreeItem(prev, oldPath, newPath));
+      setStatus(`Renamed ${oldName} → ${trimmed}`);
     }
-    setFileItems(prev => moveTreeItem(prev, node.path, newPath));
-    setStatus(`Renamed ${oldName} → ${trimmed}`);
+    setRenamingPath(null);
+  };
+
+  const cancelRename = () => {
+    setRenamingPath(null);
   };
 
   const moveItemToFolder = async (source: ClipboardTreeItem, targetFolderPath: string) => {
@@ -317,6 +348,12 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
                 draggedItem={draggedItem}
                 dropTargetPath={dropTargetPath}
                 onDropTargetChange={setDropTargetPath}
+                renamingPath={renamingPath}
+                renameValue={renameValue}
+                onRenameChange={setRenameValue}
+                onRenameConfirm={confirmRename}
+                onRenameCancel={cancelRename}
+                renameInputRef={renameInputRef}
               />
             ))}
             {draggedItem && canMoveTreeItem(draggedItem, '') && (
@@ -388,6 +425,12 @@ interface TreeNodeProps {
   draggedItem: ClipboardTreeItem | null;
   dropTargetPath: string | null;
   onDropTargetChange: (path: string | null) => void;
+  renamingPath: string | null;
+  renameValue: string;
+  onRenameChange: (value: string) => void;
+  onRenameConfirm: () => void;
+  onRenameCancel: () => void;
+  renameInputRef: React.RefObject<HTMLInputElement>;
 }
 
 function TreeNode({
@@ -403,18 +446,36 @@ function TreeNode({
   draggedItem,
   dropTargetPath,
   onDropTargetChange,
+  renamingPath,
+  renameValue,
+  onRenameChange,
+  onRenameConfirm,
+  onRenameCancel,
+  renameInputRef,
 }: TreeNodeProps) {
   const isDir = node.type === 'dir';
   const isOpen = expanded.has(node.path);
   const isDropTarget = isDir && dropTargetPath === node.path;
+  const isRenaming = renamingPath === node.path;
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onRenameConfirm();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onRenameCancel();
+    }
+  };
 
   return (
     <div>
       <div
         onClick={() => isDir ? onToggle(node.path) : onSelect(node.path)}
         onContextMenu={(event) => onContextMenu(event, node)}
-        draggable
+        draggable={!isRenaming}
         onDragStart={(event) => {
+          if (isRenaming) return;
           event.stopPropagation();
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', node.path);
@@ -454,9 +515,32 @@ function TreeNode({
       >
         <span style={{ width: 12, flexShrink: 0, color: 'var(--muted)' }}>{isDir ? (isOpen ? '▼' : '▶') : ''}</span>
         <FileIcon path={node.path} isDir={isDir} isOpen={isOpen} />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={node.path}>
-          {node.name}
-        </span>
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            value={renameValue}
+            onChange={e => onRenameChange(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={onRenameConfirm}
+            onClick={e => e.stopPropagation()}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              border: '1px solid var(--accent)',
+              borderRadius: 3,
+              padding: '1px 4px',
+              fontSize: '13px',
+              background: 'var(--paper)',
+              color: 'var(--text)',
+              outline: 'none',
+              boxShadow: '0 0 0 2px var(--accent-soft)',
+            }}
+          />
+        ) : (
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={node.path}>
+            {node.name}
+          </span>
+        )}
       </div>
       {isDir && isOpen && node.children.map((child) => (
         <TreeNode
@@ -473,6 +557,12 @@ function TreeNode({
           draggedItem={draggedItem}
           dropTargetPath={dropTargetPath}
           onDropTargetChange={onDropTargetChange}
+          renamingPath={renamingPath}
+          renameValue={renameValue}
+          onRenameChange={onRenameChange}
+          onRenameConfirm={onRenameConfirm}
+          onRenameCancel={onRenameCancel}
+          renameInputRef={renameInputRef}
         />
       ))}
     </div>
