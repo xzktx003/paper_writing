@@ -257,38 +257,10 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
   const [expandedTerm, setExpandedTerm] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'quick' | 'deep' | 'gptzero'>('quick');
 
-  if (!report && !deepReport && !gptzeroReport && !loading && !deepLoading && !gptzeroLoading) {
-    return (
-      <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>
-        <p style={{ fontSize: 13 }}>No anti-AI analysis yet</p>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-          {onRunDetection && (
-            <button onClick={onRunDetection} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              Quick Scan
-            </button>
-          )}
-          {onRunDeepDetection && (
-            <button onClick={onRunDeepDetection} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#8b5cf6', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              Deep Analysis (AI)
-            </button>
-          )}
-          {onRunGPTZero && (
-            <button onClick={onRunGPTZero} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#0ea5e9', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              GPTZero
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const showTabs = report || deepReport || gptzeroReport;
-
   return (
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, overflow: 'auto', maxHeight: '100%' }}>
       {/* Tab switcher + action buttons */}
-      {showTabs && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => setActiveTab('quick')}
             style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: activeTab === 'quick' ? 'var(--accent)' : 'var(--bg-secondary)', color: activeTab === 'quick' ? '#fff' : 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
             Quick
@@ -305,23 +277,22 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
           {onRunDetection && activeTab === 'quick' && (
             <button onClick={onRunDetection} disabled={loading}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontSize: 10, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? '...' : 'Re-scan'}
+              {loading ? '...' : report ? 'Re-scan' : 'Scan'}
             </button>
           )}
           {onRunDeepDetection && activeTab === 'deep' && (
             <button onClick={onRunDeepDetection} disabled={deepLoading}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #8b5cf640', background: 'transparent', color: '#8b5cf6', fontSize: 10, cursor: deepLoading ? 'not-allowed' : 'pointer' }}>
-              {deepLoading ? '...' : 'Re-analyze'}
+              {deepLoading ? '...' : deepReport ? 'Re-analyze' : 'Analyze'}
             </button>
           )}
           {onRunGPTZero && activeTab === 'gptzero' && (
             <button onClick={onRunGPTZero} disabled={gptzeroLoading}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #0ea5e940', background: 'transparent', color: '#0ea5e9', fontSize: 10, cursor: gptzeroLoading ? 'not-allowed' : 'pointer' }}>
-              {gptzeroLoading ? '...' : 'Re-detect'}
+              {gptzeroLoading ? '...' : gptzeroReport ? 'Re-detect' : 'Detect'}
             </button>
           )}
         </div>
-      )}
 
       {/* Quick tab */}
       {activeTab === 'quick' && (
@@ -394,11 +365,9 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
               )}
             </>
           )}
-          {!loading && !report && onRunDetection && (
-            <div style={{ textAlign: 'center', padding: 16 }}>
-              <button onClick={onRunDetection} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                Run Quick Scan
-              </button>
+          {!loading && !report && (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
+              No quick scan results yet. Click "Re-scan" above to start.
             </div>
           )}
         </>
@@ -414,12 +383,9 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
             </div>
           )}
           {!deepLoading && deepReport && <DeepAnalysisView report={deepReport} />}
-          {!deepLoading && !deepReport && onRunDeepDetection && (
-            <div style={{ textAlign: 'center', padding: 16 }}>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Uses your configured LLM to analyze writing patterns at a semantic level.</p>
-              <button onClick={onRunDeepDetection} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#8b5cf6', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                Run Deep Analysis
-              </button>
+          {!deepLoading && !deepReport && (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
+              Uses your configured LLM to analyze writing patterns at a semantic level. Click "Re-analyze" above to start.
             </div>
           )}
         </>
@@ -436,13 +402,9 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
             </div>
           )}
           {!gptzeroLoading && gptzeroReport && <GPTZeroView report={gptzeroReport} />}
-          {!gptzeroLoading && !gptzeroReport && onRunGPTZero && (
-            <div style={{ textAlign: 'center', padding: 16 }}>
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Uses Playwright to automate GPTZero's web interface.</p>
-              <p style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 10 }}>Results are parsed by your configured LLM.</p>
-              <button onClick={onRunGPTZero} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#0ea5e9', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                Run GPTZero Detection
-              </button>
+          {!gptzeroLoading && !gptzeroReport && (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
+              Uses Playwright to automate GPTZero's web interface. Click "Re-detect" above to start.
             </div>
           )}
         </>
