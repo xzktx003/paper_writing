@@ -300,6 +300,13 @@ const latexStyles = `
 .latex-preview-page table.latex-tabular .hline-top { border-top: 1.5px solid #333; }
 .latex-preview-page table.latex-tabular .hline-bottom { border-bottom: 1.5px solid #333; }
 .latex-preview-page table.latex-tabular .hline-mid { border-bottom: 0.8px solid #333; }
+.latex-preview-page table.latex-tabular .cmidrule-line {
+  border: none;
+  border-top: 0.8px solid #333;
+  padding: 0;
+  height: 1px;
+  background: transparent;
+}
 .latex-preview-page ul, .latex-preview-page ol {
   margin: 8px 0;
   padding-left: 28px;
@@ -595,35 +602,332 @@ function renderTabular(_colspec: string, body: string): string {
   const rows = body.trim().split('\\\\');
   let html = '<table class="latex-tabular">';
 
+  // Track merged cells: { row: number, col: number } -> remaining rows to skip
+  const mergedCells: Map<string, number> = new Map();
+
   for (let i = 0; i < rows.length; i++) {
     let row = rows[i].trim();
     if (!row) continue;
 
+    // Check for booktabs commands: \toprule, \midrule, \bottomrule, \cmidrule
+    const hasToprule = /\\toprule\b/.test(row);
+    const hasMidrule = /\\midrule\b/.test(row);
+    const hasBottomrule = /\\bottomrule\b/.test(row);
+    const hasCmidrule = /\\cmidrule\b/.test(row);
+    const hasAddlinespace = /\\addlinespace\b/.test(row);
+
+    // Check for standard \hline
     const hasHlineBefore = row.startsWith('\\hline');
-    row = row.replace(/\\hline/g, '').trim();
-    if (!row && hasHlineBefore) {
-      if (i === 0) html += '<tr class="hline-marker"></tr>';
+
+    // Parse cmidrule column ranges for partial lines
+    const cmidruleRanges: Array<{ start: number; end: number }> = [];
+    const cmidruleRegex = /\\cmidrule\s*(?:\([^)]*\))?\s*\{(\d+)-(\d+)\}/g;
+    let cmidruleMatch;
+    while ((cmidruleMatch = cmidruleRegex.exec(row)) !== null) {
+      cmidruleRanges.push({
+        start: parseInt(cmidruleMatch[1], 10) - 1, // Convert to 0-based
+        end: parseInt(cmidruleMatch[2], 10) - 1
+      });
+    }
+
+    // Remove all rule commands (improved regex for cmidrule with parentheses)
+    row = row
+      .replace(/\\toprule\b(?:\[[^\]]*\])?/g, '')
+      .replace(/\\midrule\b(?:\[[^\]]*\])?/g, '')
+      .replace(/\\bottomrule\b/g, '')
+      .replace(/\\cmidrule\s*(?:\([^)]*\))?\s*\{[^}]*\}/g, '')
+      .replace(/\\addlinespace\b/g, '')
+      .replace(/\\hline/g, '')
+      .trim();
+
+    if (!row) {
+      // Empty row after removing rules - add a separator row
+      if (hasToprule || hasMidrule || hasBottomrule || hasCmidrule || hasHlineBefore || hasAddlinespace) {
+        const ruleClass = hasToprule ? ' rule-top' : (hasMidrule || hasCmidrule ? ' rule-mid' : (hasBottomrule ? ' rule-bottom' : ''));
+        html += `<tr class="hline-marker${ruleClass}">`;
+        // Add partial line cells for cmidrule
+        if (cmidruleRanges.length > 0) {
+          html += cmidruleRanges.map(range => {
+            const colspan = range.end - range.start + 1;
+            return `<td colspan="${colspan}" class="cmidrule-line"></td>`;
+          }).join('');
+        }
+        html += '</tr>';
+      }
       continue;
     }
 
-    const cells = row.split('&').map(c => c.trim());
+    // Split by & but preserve content in braces
+    const rawCells = splitCellsByAmpersand(row);
+    const cells: string[] = [];
+    let colIndex = 0;
+
+    for (const rawCell of rawCells) {
+      const trimmedCell = rawCell.trim();
+
+      // Check if this cell position is occupied by a multirow from previous row
+      const mergeKey = `${i}-${colIndex}`;
+      if (mergedCells.has(mergeKey)) {
+        const remainingRows = mergedCells.get(mergeKey)!;
+        if (remainingRows > 1) {
+          mergedCells.set(mergeKey, remainingRows - 1);
+          colIndex++;
+          continue; // Skip this cell position
+        } else {
+          mergedCells.delete(mergeKey);
+        }
+      }
+
+      cells.push(trimmedCell);
+      colIndex++;
+    }
+
     const isFirst = i === 0;
     const isLast = i === rows.length - 1 || (i === rows.length - 2 && !rows[rows.length - 1].trim());
 
     let rowClass = '';
-    if (hasHlineBefore) rowClass += ' hline-top';
-    if (isLast) rowClass += ' hline-bottom';
+    if (hasToprule || hasHlineBefore) rowClass += ' hline-top';
+    if (hasMidrule || hasCmidrule) rowClass += ' hline-mid';
+    if (isLast || hasBottomrule) rowClass += ' hline-bottom';
 
     html += '<tr>';
-    for (const cell of cells) {
+    let cellColIndex = 0;
+    for (let c = 0; c < cells.length; c++) {
+      const cell = cells[c];
       const cls = rowClass.trim();
-      html += `<td${cls ? ` class="${cls}"` : ''}>${cell}</td>`;
+
+      // Check for \multirow command
+      const multirowMatch = cell.match(/\\multirow\s*(?:\{([^}]*)\})?\s*(?:\{[^}]*\})?\s*(?:\{[^}]*\})?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/);
+      if (multirowMatch) {
+        const nrows = parseInt(multirowMatch[1] || '1', 10);
+        const text = multirowMatch[2] || '';
+        const renderedText = renderLatexInline(text);
+
+        // Track merged cells for subsequent rows
+        for (let r = 1; r < nrows; r++) {
+          mergedCells.set(`${i + r}-${cellColIndex}`, nrows - r);
+        }
+
+        html += `<td${cls ? ` class="${cls}"` : ''} rowspan="${nrows}" style="vertical-align:middle">${renderedText}</td>`;
+        cellColIndex++;
+        continue;
+      }
+
+      // Check for \multicol command (alternative syntax)
+      const multicolMatch = cell.match(/\\multicol\s*\{(\d+)\}\s*(?:\{[^}]*\})?\s*\{([^}]*)\}/);
+      if (multicolMatch) {
+        const ncols = parseInt(multicolMatch[1], 10);
+        const text = multicolMatch[2] || '';
+        const renderedText = renderLatexInline(text);
+        html += `<td${cls ? ` class="${cls}"` : ''} colspan="${ncols}">${renderedText}</td>`;
+        cellColIndex += ncols;
+        continue;
+      }
+
+      // Check for \multicolumn command
+      const multicolumnMatch = cell.match(/\\multicolumn\s*\{(\d+)\}\s*\{[^}]*\}\s*\{([^}]*)\}/);
+      if (multicolumnMatch) {
+        const ncols = parseInt(multicolumnMatch[1], 10);
+        const text = multicolumnMatch[2] || '';
+        const renderedText = renderLatexInline(text);
+        html += `<td${cls ? ` class="${cls}"` : ''} colspan="${ncols}">${renderedText}</td>`;
+        cellColIndex += ncols;
+        continue;
+      }
+
+      // Regular cell
+      const renderedCell = renderLatexInline(cell);
+      html += `<td${cls ? ` class="${cls}"` : ''}>${renderedCell}</td>`;
+      cellColIndex++;
     }
     html += '</tr>';
   }
 
   html += '</table>';
   return html;
+}
+
+// Split row by & but preserve content within braces
+function splitCellsByAmpersand(row: string): string[] {
+  const cells: string[] = [];
+  let current = '';
+  let braceDepth = 0;
+
+  for (let i = 0; i < row.length; i++) {
+    const char = row[i];
+
+    if (char === '{') {
+      braceDepth++;
+      current += char;
+    } else if (char === '}') {
+      braceDepth--;
+      current += char;
+    } else if (char === '&' && braceDepth === 0) {
+      cells.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    cells.push(current);
+  }
+
+  return cells;
+}
+
+// Render LaTeX content inline (for table cells, etc.)
+function renderLatexInline(text: string): string {
+  if (!text) return '';
+
+  // Handle inline math: $...$ and \(...\)
+  text = text.replace(/\$([^$\n]+?)\$/g, (_, math) => renderMathInline(math));
+  text = text.replace(/\\\((.*?)\\\)/g, (_, math) => renderMathInline(math));
+
+  // Handle text formatting commands
+  text = text.replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>');
+  text = text.replace(/\\textit\{([^}]*)\}/g, '<em>$1</em>');
+  text = text.replace(/\\emph\{([^}]*)\}/g, '<em>$1</em>');
+  text = text.replace(/\\underline\{([^}]*)\}/g, '<u>$1</u>');
+  text = text.replace(/\\texttt\{([^}]*)\}/g, '<code style="font-family:monospace;font-size:12px;background:#f0f0f0;padding:1px 3px;border-radius:2px">$1</code>');
+  text = text.replace(/\\textsf\{([^}]*)\}/g, '<span style="font-family:sans-serif">$1</span>');
+  text = text.replace(/\\textrm\{([^}]*)\}/g, '<span style="font-family:serif">$1</span>');
+  text = text.replace(/\\mathrm\{([^}]*)\}/g, '<span style="font-family:serif">$1</span>');
+  text = text.replace(/\\mathbf\{([^}]*)\}/g, '<strong>$1</strong>');
+  text = text.replace(/\\mathit\{([^}]*)\}/g, '<em>$1</em>');
+  text = text.replace(/\\mathsf\{([^}]*)\}/g, '<span style="font-family:sans-serif">$1</span>');
+  text = text.replace(/\\mathtt\{([^}]*)\}/g, '<span style="font-family:monospace">$1</span>');
+  text = text.replace(/\\text\{([^}]*)\}/g, '$1');
+  text = text.replace(/\\mbox\{([^}]*)\}/g, '$1');
+  text = text.replace(/\\hbox\{([^}]*)\}/g, '$1');
+  text = text.replace(/\\verb\*?\|([^|]+)\|/g, '<code style="font-family:monospace;background:#f0f0f0;padding:1px 3px;border-radius:2px">$1</code>');
+  text = text.replace(/\\verb\*?'([^']+)'/g, '<code style="font-family:monospace;background:#f0f0f0;padding:1px 3px;border-radius:2px">$1</code>');
+
+  // Handle font size commands
+  text = text.replace(/\\tiny\{([^}]*)\}/g, '<span style="font-size:10px">$1</span>');
+  text = text.replace(/\\small\{([^}]*)\}/g, '<span style="font-size:12px">$1</span>');
+  text = text.replace(/\\large\{([^}]*)\}/g, '<span style="font-size:16px">$1</span>');
+  text = text.replace(/\\Large\{([^}]*)\}/g, '<span style="font-size:18px">$1</span>');
+
+  // Handle special characters
+  text = text.replace(/\\&/g, '&amp;');
+  text = text.replace(/\\%/g, '%');
+  text = text.replace(/\\#/g, '#');
+  text = text.replace(/\\\$/g, '$');
+  text = text.replace(/\\_/g, '_');
+  text = text.replace(/\\textbackslash{}/g, '\\');
+  text = text.replace(/\\textasciitilde{}/g, '~');
+  text = text.replace(/\\textasciicircum{}/g, '^');
+  text = text.replace(/---/g, '—');
+  text = text.replace(/--/g, '–');
+  text = text.replace(/``/g, '“');
+  text = text.replace(/''/g, '”');
+  text = text.replace(/`/g, '‘');
+  text = text.replace(/'/g, '’');
+  text = text.replace(/~/g, '&nbsp;');
+
+  // Handle spacing commands
+  text = text.replace(/\\quad/g, '&emsp;');
+  text = text.replace(/\\qquad/g, '&emsp;&emsp;');
+  text = text.replace(/\\,/g, '&thinsp;');
+  text = text.replace(/\\;/g, '&ensp;');
+  text = text.replace(/\\!/g, '');
+
+  // Handle Greek letters and common symbols
+  text = text.replace(/\\alpha\b/g, 'α');
+  text = text.replace(/\\beta\b/g, 'β');
+  text = text.replace(/\\gamma\b/g, 'γ');
+  text = text.replace(/\\delta\b/g, 'δ');
+  text = text.replace(/\\epsilon\b/g, 'ε');
+  text = text.replace(/\\zeta\b/g, 'ζ');
+  text = text.replace(/\\eta\b/g, 'η');
+  text = text.replace(/\\theta\b/g, 'θ');
+  text = text.replace(/\\iota\b/g, 'ι');
+  text = text.replace(/\\kappa\b/g, 'κ');
+  text = text.replace(/\\lambda\b/g, 'λ');
+  text = text.replace(/\\mu\b/g, 'μ');
+  text = text.replace(/\\nu\b/g, 'ν');
+  text = text.replace(/\\xi\b/g, 'ξ');
+  text = text.replace(/\\pi\b/g, 'π');
+  text = text.replace(/\\rho\b/g, 'ρ');
+  text = text.replace(/\\sigma\b/g, 'σ');
+  text = text.replace(/\\tau\b/g, 'τ');
+  text = text.replace(/\\upsilon\b/g, 'υ');
+  text = text.replace(/\\phi\b/g, 'φ');
+  text = text.replace(/\\chi\b/g, 'χ');
+  text = text.replace(/\\psi\b/g, 'ψ');
+  text = text.replace(/\\omega\b/g, 'ω');
+  text = text.replace(/\\Alpha\b/g, 'Α');
+  text = text.replace(/\\Beta\b/g, 'Β');
+  text = text.replace(/\\Gamma\b/g, 'Γ');
+  text = text.replace(/\\Delta\b/g, 'Δ');
+  text = text.replace(/\\Theta\b/g, 'Θ');
+  text = text.replace(/\\Lambda\b/g, 'Λ');
+  text = text.replace(/\\Xi\b/g, 'Ξ');
+  text = text.replace(/\\Pi\b/g, 'Π');
+  text = text.replace(/\\Sigma\b/g, 'Σ');
+  text = text.replace(/\\Phi\b/g, 'Φ');
+  text = text.replace(/\\Psi\b/g, 'Ψ');
+  text = text.replace(/\\Omega\b/g, 'Ω');
+
+  // Handle common operators
+  text = text.replace(/\\times\b/g, '×');
+  text = text.replace(/\\div\b/g, '÷');
+  text = text.replace(/\\pm\b/g, '±');
+  text = text.replace(/\\mp\b/g, '∓');
+  text = text.replace(/\\cdot\b/g, '·');
+  text = text.replace(/\\leq\b/g, '≤');
+  text = text.replace(/\\geq\b/g, '≥');
+  text = text.replace(/\\neq\b/g, '≠');
+  text = text.replace(/\\approx\b/g, '≈');
+  text = text.replace(/\\equiv\b/g, '≡');
+  text = text.replace(/\\in\b/g, '∈');
+  text = text.replace(/\\notin\b/g, '∉');
+  text = text.replace(/\\subset\b/g, '⊂');
+  text = text.replace(/\\subseteq\b/g, '⊆');
+  text = text.replace(/\\cup\b/g, '∪');
+  text = text.replace(/\\cap\b/g, '∩');
+  text = text.replace(/\\emptyset\b/g, '∅');
+  text = text.replace(/\\infty\b/g, '∞');
+  text = text.replace(/\\forall\b/g, '∀');
+  text = text.replace(/\\exists\b/g, '∃');
+  text = text.replace(/\\partial\b/g, '∂');
+  text = text.replace(/\\nabla\b/g, '∇');
+  text = text.replace(/\\sum\b/g, '∑');
+  text = text.replace(/\\prod\b/g, '∏');
+  text = text.replace(/\\int\b/g, '∫');
+  text = text.replace(/\\partial\b/g, '∂');
+
+  // Handle superscript and subscript (simple cases)
+  text = text.replace(/\^2\b/g, '²');
+  text = text.replace(/\^3\b/g, '³');
+  text = text.replace(/\^{2}/g, '²');
+  text = text.replace(/\^{3}/g, '³');
+  text = text.replace(/\^{n}/g, 'ⁿ');
+  text = text.replace(/\^{'}/g, "'");
+  text = text.replace(/\^{T}/g, 'ᵀ');
+  text = text.replace(/_1\b/g, '₁');
+  text = text.replace(/_2\b/g, '₂');
+  text = text.replace(/_n\b/g, 'ₙ');
+  text = text.replace(/_{'}/g, '₊');
+
+  // Handle remaining unknown commands (remove them but keep content)
+  text = text.replace(/\\centering\b/g, '');
+  text = text.replace(/\\raggedright\b/g, '');
+  text = text.replace(/\\raggedleft\b/g, '');
+  text = text.replace(/\\normalfont\b/g, '');
+  text = text.replace(/\\normalsize\b/g, '');
+  text = text.replace(/\\selectfont\b/g, '');
+
+  // Remove remaining backslash commands (but not already processed ones)
+  text = text.replace(/\\([a-zA-Z]+)(?:\s|\{|$)/g, (match) => {
+    // Keep some common commands that might be at end of text
+    const keepCommands = ['\\'];
+    return keepCommands.includes(match) ? match : '';
+  });
+
+  return text;
 }
 
 function renderImage(imagePath: string, caption: string, options: RenderOptions): string {

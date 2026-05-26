@@ -1,5 +1,11 @@
 # Debug List
 
+## 2026-05-26 - 右键文件夹上传文件被传到同级目录而非文件夹内
+
+- 现象：在 Files 面板右键点击文件夹 → Upload，文件被上传到与文件夹同级的位置（如右击 `img/` 传文件，文件出现在 `img/` 旁边而非 `img/` 内部）。
+- 根因：`triggerUpload` 用共享 state/ref 来桥接"设目标路径"与"在 onChange 中消费"两段逻辑，存在闭包脱节。无论 `useState` 还是 `useRef`，这种共享态的间接传参模式本质上不健壮，多个上传间还有竞态风险。
+- 修复：彻底重构上传机制 — 每次 `triggerUpload` 动态创建 `<input>` 元素，`targetFolder` 通过闭包直接捕获在 `change` 事件处理函数中，用完即销毁。消除共享状态、ref、闭包过期、竞态等多类问题。
+
 ## 2026-05-26 - User message disappearing & thinking collapse
 
 - Symptom 1: User messages were hidden immediately after sending — the first streaming token callback used `history.slice(0, -1)` which removed the user message (not a non-existent placeholder).

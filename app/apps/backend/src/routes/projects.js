@@ -384,7 +384,7 @@ export function registerProjectRoutes(fastify) {
     const parts = req.parts();
     for await (const part of parts) {
       if (part.type !== 'file') continue;
-      const relPath = sanitizeUploadPath(part.filename);
+      let relPath = sanitizeUploadPath(part.filename); if (req.query.targetFolder) relPath = sanitizeUploadPath(req.query.targetFolder + "/" + relPath);
       if (!relPath) continue;
       const abs = safeJoin(projectRoot, relPath);
       await ensureDir(path.dirname(abs));

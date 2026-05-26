@@ -244,10 +244,12 @@ export async function uploadFiles(projectId: string, files: File[], basePath?: s
   const form = new FormData();
   files.forEach((file) => {
     const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
-    const finalPath = basePath ? `${basePath}/${rel}` : rel;
-    form.append('files', file, finalPath);
+    form.append('files', file, rel);
   });
-  const res = await fetch(`/api/projects/${projectId}/upload`, {
+  const url = basePath 
+    ? `/api/projects/${projectId}/upload?targetFolder=${encodeURIComponent(basePath)}`
+    : `/api/projects/${projectId}/upload`;
+  const res = await fetch(url, {
     method: 'POST',
     body: form,
     headers: {

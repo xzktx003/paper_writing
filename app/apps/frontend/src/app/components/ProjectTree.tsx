@@ -37,8 +37,6 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadTargetFolder, setUploadTargetFolder] = useState<string>('');
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null!);
@@ -71,10 +69,37 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     });
   };
 
+  // 智能菜单位置计算：检测底部/右侧边界，必要时向上/向左弹出
+  const getMenuPosition = (clientX: number, clientY: number, menuWidth = 176, menuItemHeight = 32, itemCount = 5) => {
+    const menuHeight = menuItemHeight * Math.min(itemCount, 8) + 16; // 估算菜单高度
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    let x = clientX;
+    let y = clientY;
+
+    // 检测底部边界：菜单向下会超出视口，则向上弹出
+    if (clientY + menuHeight > viewportHeight - 10) {
+      y = clientY - menuHeight;
+    }
+
+    // 检测右侧边界：菜单向右会超出视口，则向左弹出
+    if (clientX + menuWidth > viewportWidth - 10) {
+      x = clientX - menuWidth;
+    }
+
+    // 确保最小值（不会跑到屏幕外）
+    x = Math.max(10, x);
+    y = Math.max(10, y);
+
+    return { x, y };
+  };
+
   const showContextMenu = (event: React.MouseEvent, node: FileTreeNode | null) => {
     event.preventDefault();
     event.stopPropagation();
-    setContextMenu({ x: event.clientX, y: event.clientY, node });
+    const pos = getMenuPosition(event.clientX, event.clientY);
+    setContextMenu({ x: pos.x, y: pos.y, node });
   };
 
   const copyPath = async (node: FileTreeNode) => {
@@ -234,43 +259,46 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
 
   const triggerUpload = (targetFolder: string) => {
     if (!projectId) return setStatus('File operations are only available for managed projects.');
-    setUploadTargetFolder(targetFolder);
-    fileInputRef.current?.click();
-  };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0 || !projectId) return;
-    
-    setUploading(true);
-    setStatus('Uploading...');
-    
-    try {
-      const result = await uploadFiles(projectId, Array.from(files), uploadTargetFolder || undefined);
-      if (result.ok && result.files) {
-        // Add uploaded files to the tree
-        const newItems: FileItem[] = result.files.map(f => ({
-          path: f,
-          type: 'file' as const,
-        }));
-        setFileItems(prev => [...prev, ...newItems]);
-        
-        // Expand the target folder
-        if (uploadTargetFolder) {
-          setExpandedSections(prev => new Set(prev).add(uploadTargetFolder));
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (!files || files.length === 0) return;
+
+      document.body.removeChild(input);
+      setUploading(true);
+      setStatus('Uploading...');
+
+      try {
+        const result = await uploadFiles(projectId, Array.from(files), targetFolder || undefined);
+        if (result.ok && result.files) {
+          const newItems: FileItem[] = result.files.map(f => ({
+            path: f,
+            type: 'file' as const,
+          }));
+          setFileItems(prev => [...prev, ...newItems]);
+
+          if (targetFolder) {
+            setExpandedSections(prev => new Set(prev).add(targetFolder));
+          }
+
+          setStatus(`Uploaded ${result.files.length} file(s)`);
+        } else {
+          setStatus('Upload failed');
         }
-        
-        setStatus(`Uploaded ${result.files.length} file(s)`);
-      } else {
-        setStatus('Upload failed');
+      } catch (err) {
+        setStatus(`Upload error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
+        setUploading(false);
       }
-    } catch (err) {
-      setStatus(`Upload error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setUploading(false);
-      // Reset file input
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    }, { once: true });
+
+    document.body.appendChild(input);
+    input.click();
   };
 
   return (
@@ -278,13 +306,6 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
       style={{ fontSize: '13px', position: 'relative', minHeight: '100%' }}
       onContextMenu={(event) => showContextMenu(event, null)}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        style={{ display: 'none' }}
-        onChange={handleFileUpload}
-      />
       <div>
         <div
           onClick={() => toggleSection('files')}
@@ -587,6 +608,35 @@ interface ContextMenuProps {
 }
 
 function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onCopy, onCut, onRename, onCreateFile, onCreateFolder, onUpload, onPaste, onDelete, onClose }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState({ x, y });
+
+  // 动态调整菜单位置，确保不超出视口
+  useEffect(() => {
+    if (!menuRef.current) return;
+    const menu = menuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    let newX = x;
+    let newY = y;
+
+    // 检测底部边界
+    if (rect.bottom > viewportHeight - 10) {
+      newY = y - rect.height;
+      newY = Math.max(10, newY);
+    }
+
+    // 检测右侧边界
+    if (rect.right > viewportWidth - 10) {
+      newX = x - rect.width;
+      newX = Math.max(10, newX);
+    }
+
+    setAdjustedPos({ x: newX, y: newY });
+  }, [x, y]);
+
   const createTargetFolderPath = getCreateTargetFolderPath(node);
   const targetFolderPath = createTargetFolderPath ?? getParentPath(node?.path || '');
   const canCreateChildren = canCreateChildrenFromContext(node);
@@ -602,12 +652,13 @@ function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onCopy, onCut, onR
 
   return (
     <div
+      ref={menuRef}
       role="menu"
       onClick={(event) => event.stopPropagation()}
       style={{
         position: 'fixed',
-        top: y,
-        left: x,
+        top: adjustedPos.y,
+        left: adjustedPos.x,
         zIndex: 1000,
         minWidth: 176,
         padding: '4px',

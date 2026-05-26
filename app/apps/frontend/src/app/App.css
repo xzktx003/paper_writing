@@ -3900,13 +3900,17 @@ textarea.input {
   color: #555;
 }
 
+[data-theme="cyber-tech"] .latex-preview-page table.latex-tabular,
 [data-theme="cyber-tech"] .latex-preview-page table.latex-tabular td,
 [data-theme="cyber-tech"] .latex-preview-page table.latex-tabular th,
+[data-theme="primer-dark"] .latex-preview-page table.latex-tabular,
 [data-theme="primer-dark"] .latex-preview-page table.latex-tabular td,
 [data-theme="primer-dark"] .latex-preview-page table.latex-tabular th,
+[data-theme="dracula"] .latex-preview-page table.latex-tabular,
 [data-theme="dracula"] .latex-preview-page table.latex-tabular td,
 [data-theme="dracula"] .latex-preview-page table.latex-tabular th {
-  border-color: #ccc;
+  background: #ffffff;
+  border: 1px solid #ccc;
   color: #1a1a1a;
 }
 
@@ -3919,7 +3923,7 @@ textarea.input {
 [data-theme="dracula"] .latex-preview-page table.latex-tabular .hline-top,
 [data-theme="dracula"] .latex-preview-page table.latex-tabular .hline-bottom,
 [data-theme="dracula"] .latex-preview-page table.latex-tabular .hline-mid {
-  border-color: #333;
+  border-top: 1px solid #333;
 }
 
 /* Rendered Document Editor - white background for paper simulation in dark themes */
