@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import path from "node:path";
 
@@ -240,6 +241,8 @@ export async function registerFilesystemRoutes(
     let targetDirectory: string | null = null;
     let overwritePath: string | null = null;
     let sshTarget: SshTarget | undefined;
+    let relativePaths: string[] = [];
+    let fileIndex = 0;
 
     try {
       for await (const part of request.parts()) {
@@ -250,6 +253,8 @@ export async function registerFilesystemRoutes(
             overwritePath = String(part.value);
           } else if (part.fieldname === "sshTarget") {
             sshTarget = parseMaybeSshTarget(String(part.value));
+          } else if (part.fieldname === "relativePaths") {
+            relativePaths = JSON.parse(String(part.value));
           }
           continue;
         }
@@ -259,15 +264,30 @@ export async function registerFilesystemRoutes(
           return { error: "Upload target path is required before files" };
         }
 
-        const nextPath =
-          overwritePath && uploadedPaths.length === 0
-            ? overwritePath
-            : path.join(targetDirectory ?? "", part.filename);
+        let nextPath: string;
+        if (overwritePath && uploadedPaths.length === 0) {
+          nextPath = overwritePath;
+        } else if (relativePaths.length > 0 && relativePaths[fileIndex]) {
+          nextPath = path.join(targetDirectory ?? "", relativePaths[fileIndex]);
+        } else {
+          nextPath = path.join(targetDirectory ?? "", part.filename);
+        }
+
+        const parentDir = path.dirname(nextPath);
+        if (parentDir && parentDir !== targetDirectory) {
+          if (sshTarget) {
+            await sftpService.ensureDirectory(sshTarget, parentDir);
+          } else {
+            await mkdir(localFsService.resolvePath(parentDir), { recursive: true });
+          }
+        }
+
         const output = sshTarget
           ? await sftpService.createWriteStream(sshTarget, nextPath)
           : localFsService.createWriteStream(nextPath);
         await pipeline(part.file, output);
         uploadedPaths.push(nextPath);
+        fileIndex++;
       }
 
       const response: FileUploadResponse = { uploadedPaths };

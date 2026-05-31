@@ -106,6 +106,10 @@ export class LocalFsService {
     return createWriteStream(resolvedPath);
   }
 
+  resolvePath(inputPath: string): string {
+    return normalizeLocalPath(inputPath);
+  }
+
   async preview(
     inputPath: string,
     maxBytes = 64 * 1024,

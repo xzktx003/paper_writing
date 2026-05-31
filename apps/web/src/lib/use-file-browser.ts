@@ -220,6 +220,12 @@ export function useFileBrowser(
   );
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<{
+    state: "uploading" | "success" | "error";
+    total: number;
+    message?: string;
+  } | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
   const currentPathRef = useRef(currentPath);
   const listRequestIdRef = useRef(0);
   const previewRequestIdRef = useRef(0);
@@ -526,26 +532,45 @@ export function useFileBrowser(
   );
 
   const upload = useCallback(
-    async (files: File[], overwritePath?: string) => {
+    async (files: File[], overwritePath?: string, relativePaths?: string[]) => {
       if (!overwritePath && !currentPath.trim()) {
         throw new Error("当前目录尚未准备好");
       }
+      const abortController = new AbortController();
+      uploadAbortRef.current = abortController;
       setUploadProgress(0);
+      setUploadStatus({ state: "uploading", total: files.length });
       try {
         await uploadFiles({
           path: overwritePath ? undefined : currentPath,
           overwritePath,
           sshTarget,
           files,
+          relativePaths,
           onProgress: setUploadProgress,
+          signal: abortController.signal,
         });
+        setUploadStatus({ state: "success", total: files.length });
         await refresh();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "上传失败";
+        if (message === "Upload cancelled") {
+          setUploadStatus({ state: "error", total: files.length, message: "已取消上传" });
+        } else {
+          setUploadStatus({ state: "error", total: files.length, message });
+        }
       } finally {
+        uploadAbortRef.current = null;
         setUploadProgress(null);
+        setTimeout(() => setUploadStatus(null), 4000);
       }
     },
     [currentPath, refresh, sshTarget],
   );
+
+  const cancelUpload = useCallback(() => {
+    uploadAbortRef.current?.abort();
+  }, []);
 
   const saveTextFile = useCallback(
     async (filePath: string, content: string) => {
@@ -607,6 +632,7 @@ export function useFileBrowser(
     sortDirection,
     preview,
     uploadProgress,
+    uploadStatus,
     sshTarget,
     navigate,
     refresh,
@@ -618,6 +644,7 @@ export function useFileBrowser(
     renameEntry,
     deleteEntries,
     upload,
+    cancelUpload,
     saveTextFile,
     downloadEntries,
     updatePermissions,

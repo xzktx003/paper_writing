@@ -2183,6 +2183,41 @@ input {
   color: rgba(244, 241, 234, 0.46);
 }
 
+.file-browser-pane-hint.success {
+  color: #4caf50;
+}
+
+.file-browser-pane-hint.error {
+  color: #f44336;
+}
+
+.file-browser-upload-progress-bar {
+  height: 3px;
+  width: 100%;
+  background: rgba(244, 241, 234, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.file-browser-upload-progress-fill {
+  height: 100%;
+  background: #4fc3f7;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.file-browser-upload-cancel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.file-browser-upload-cancel-text {
+  color: rgba(244, 241, 234, 0.6);
+}
+
 .file-browser-tree-node {
   display: flex;
   align-items: center;

@@ -168,6 +168,7 @@ export function FileBrowserDrawer({
   const TREE_WIDTH_STORAGE_KEY = "file-browser-tree-width";
   const PREVIEW_HEIGHT_STORAGE_KEY = "file-browser-preview-height";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const treeResizeRef = useRef<{
     startX: number;
     startWidth: number;
@@ -230,6 +231,7 @@ export function FileBrowserDrawer({
     sortDirection,
     preview,
     uploadProgress,
+    uploadStatus,
     sshTarget,
     navigate,
     refresh,
@@ -241,6 +243,7 @@ export function FileBrowserDrawer({
     renameEntry,
     deleteEntries,
     upload,
+    cancelUpload,
     saveTextFile,
     downloadEntries,
     updatePermissions,
@@ -479,9 +482,54 @@ export function FileBrowserDrawer({
       onDrop={async (event) => {
         event.preventDefault();
         setDragDepth(0);
-        const files = Array.from(event.dataTransfer.files);
-        if (files.length > 0) {
-          await upload(files);
+        const items = event.dataTransfer.items;
+        if (!items || items.length === 0) return;
+
+        const fileEntries: { file: File; relativePath: string }[] = [];
+
+        const readEntry = (entry: FileSystemEntry, basePath: string): Promise<void> => {
+          return new Promise((resolve) => {
+            if (entry.isFile) {
+              (entry as FileSystemFileEntry).file((file) => {
+                fileEntries.push({ file, relativePath: basePath + file.name });
+                resolve();
+              }, () => resolve());
+            } else if (entry.isDirectory) {
+              const reader = (entry as FileSystemDirectoryEntry).createReader();
+              reader.readEntries(async (entries) => {
+                for (const child of entries) {
+                  await readEntry(child, basePath + entry.name + "/");
+                }
+                resolve();
+              }, () => resolve());
+            } else {
+              resolve();
+            }
+          });
+        };
+
+        const hasDirectories = Array.from(items).some((item) => {
+          const entry = item.webkitGetAsEntry?.();
+          return entry?.isDirectory;
+        });
+
+        if (hasDirectories) {
+          const entries = Array.from(items)
+            .map((item) => item.webkitGetAsEntry?.())
+            .filter(Boolean) as FileSystemEntry[];
+          for (const entry of entries) {
+            await readEntry(entry, "");
+          }
+          if (fileEntries.length > 0) {
+            const files = fileEntries.map((e) => e.file);
+            const relativePaths = fileEntries.map((e) => e.relativePath);
+            await upload(files, undefined, relativePaths);
+          }
+        } else {
+          const files = Array.from(event.dataTransfer.files);
+          if (files.length > 0) {
+            await upload(files);
+          }
         }
       }}
     >
@@ -543,7 +591,15 @@ export function FileBrowserDrawer({
           onClick={() => fileInputRef.current?.click()}
           type="button"
         >
-          上传
+          上传文件
+        </button>
+        <button
+          className="file-browser-pill"
+          disabled={!ready}
+          onClick={() => folderInputRef.current?.click()}
+          type="button"
+        >
+          上传文件夹
         </button>
         <button
           className="file-browser-pill"
@@ -642,7 +698,38 @@ export function FileBrowserDrawer({
                   上传 {Math.round(uploadProgress * 100)}%
                 </span>
               )}
+              {uploadStatus && uploadStatus.state !== "uploading" && (
+                <span
+                  className={`file-browser-pane-hint ${uploadStatus.state === "success" ? "success" : "error"}`}
+                >
+                  {uploadStatus.state === "success"
+                    ? `✓ ${uploadStatus.total} 个文件上传成功`
+                    : `✗ 上传失败: ${uploadStatus.message}`}
+                </span>
+              )}
             </div>
+            {uploadProgress !== null && (
+              <div className="file-browser-upload-progress-bar">
+                <div
+                  className="file-browser-upload-progress-fill"
+                  style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+                />
+              </div>
+            )}
+            {uploadProgress !== null && (
+              <div className="file-browser-upload-cancel-row">
+                <span className="file-browser-upload-cancel-text">
+                  正在上传 {Math.round(uploadProgress * 100)}%
+                </span>
+                <button
+                  className="file-browser-pill danger"
+                  onClick={cancelUpload}
+                  type="button"
+                >
+                  取消上传
+                </button>
+              </div>
+            )}
             {error && <div className="file-browser-error">{error}</div>}
             <div className="file-browser-table file-browser-table--header">
               <button type="button" onClick={() => toggleSort("name")}>
@@ -1132,7 +1219,7 @@ export function FileBrowserDrawer({
 
       {dragActive && (
         <div className="file-browser-upload-zone">
-          拖入文件即可上传到 {currentPath || "当前目录"}
+          拖入文件或文件夹即可上传到 {currentPath || "当前目录"}
         </div>
       )}
 
@@ -1145,6 +1232,22 @@ export function FileBrowserDrawer({
           const files = Array.from(event.target.files ?? []);
           if (files.length > 0) {
             await upload(files);
+          }
+          event.target.value = "";
+        }}
+      />
+      <input
+        hidden
+        ref={folderInputRef}
+        type="file"
+        {...({ webkitdirectory: "", directory: "", multiple: true } as React.InputHTMLAttributes<HTMLInputElement>)}
+        onChange={async (event) => {
+          const files = Array.from(event.target.files ?? []);
+          if (files.length > 0) {
+            const relativePaths = files.map((file) => {
+              return (file as File & { webkitRelativePath: string }).webkitRelativePath || file.name;
+            });
+            await upload(files, undefined, relativePaths);
           }
           event.target.value = "";
         }}

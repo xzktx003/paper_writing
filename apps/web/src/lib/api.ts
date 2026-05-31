@@ -348,7 +348,9 @@ export function uploadFiles(options: {
   overwritePath?: string;
   sshTarget?: ListFilesInput["sshTarget"];
   files: File[];
+  relativePaths?: string[];
   onProgress?: (progress: number) => void;
+  signal?: AbortSignal;
 }): Promise<FileUploadResponse> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
@@ -365,6 +367,10 @@ export function uploadFiles(options: {
       formData.append("sshTarget", JSON.stringify(options.sshTarget));
     }
 
+    if (options.relativePaths && options.relativePaths.length > 0) {
+      formData.append("relativePaths", JSON.stringify(options.relativePaths));
+    }
+
     for (const file of options.files) {
       formData.append("files", file);
     }
@@ -378,6 +384,7 @@ export function uploadFiles(options: {
       }
     };
     xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.onabort = () => reject(new Error("Upload cancelled"));
     xhr.onload = () => {
       if (xhr.status < 200 || xhr.status >= 300) {
         reject(new Error(`Upload failed: ${xhr.status}`));
@@ -388,6 +395,15 @@ export function uploadFiles(options: {
         (xhr.response ?? JSON.parse(xhr.responseText)) as FileUploadResponse,
       );
     };
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        reject(new Error("Upload cancelled"));
+        return;
+      }
+      options.signal.addEventListener("abort", () => xhr.abort());
+    }
+
     xhr.send(formData);
   });
 }

@@ -302,6 +302,25 @@ export class SftpService {
     return remotePath;
   }
 
+  async ensureDirectory(target: SshTarget, inputPath: string): Promise<void> {
+    const remotePath = await this.resolveRemotePath(target, inputPath);
+    const segments = remotePath.split("/").filter(Boolean);
+    let current = remotePath.startsWith("/") ? "/" : "";
+
+    await this.withConnection(target, async (client) =>
+      withSftp(client, async (sftp) => {
+        for (const segment of segments) {
+          current = current ? `${current}/${segment}` : segment;
+          try {
+            await sftpStat(sftp, current);
+          } catch {
+            await sftpMkdir(sftp, current);
+          }
+        }
+      }),
+    );
+  }
+
   async rename(
     target: SshTarget,
     fromPath: string,
