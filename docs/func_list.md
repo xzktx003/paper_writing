@@ -24,7 +24,9 @@
 
 - Projects can be listed, renamed, copied, archived, moved to trash, restored, and permanently deleted.
 - Project listings include both the display name from `project.json.name` and the backing directory name.
+- Project listing automatically creates compatible `project.json` metadata for newly uploaded paper folders under `papers/` when they contain recognizable paper files and no metadata yet.
 - Project deletion is tolerant of missing or invalid `project.json` metadata and supports projects whose directory name differs from their project ID.
+- `scripts/generate-paper-project-json.mjs` can be run from the repo root or copied into `papers/` to generate missing `project.json` files for existing paper folders without overwriting existing metadata by default.
 
 
 ## Configuration

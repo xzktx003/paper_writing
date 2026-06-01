@@ -54,6 +54,8 @@ export async function markdownToLatex(projectPath, inputFile) {
   return { texPath: outputTex, relativePath: 'output/paper.tex' };
 }
 
+export const exportToLatex = markdownToLatex;
+
 export async function latexToMarkdown(projectPath, inputFile) {
   const outputDir = await ensureOutputDir(projectPath);
   const srcPath = inputFile ? join(projectPath, inputFile) : join(outputDir, 'paper.tex');

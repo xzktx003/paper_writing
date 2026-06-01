@@ -247,7 +247,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
           <button
             onClick={handleCompileAll}
             disabled={compilingAll || !projectId}
-            title={`Compile full paper (${chaptersCount} chapters) into a single PDF`}
+            title="Compile full paper into a single PDF"
             style={{
               marginLeft: '4px',
               fontSize: '11px',
@@ -261,7 +261,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
               transition: 'all 0.15s',
             }}
           >
-            {compilingAll ? 'Compiling All...' : compileAllResult?.ok ? `View PDF` : `Compile All (${chaptersCount})`}
+            {compilingAll ? 'Compiling All...' : compileAllResult?.ok ? `View PDF` : 'Compile All'}
           </button>
         )}
       </div>

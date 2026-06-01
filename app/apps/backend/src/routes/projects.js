@@ -1,7 +1,7 @@
 import path from 'path';
 import { promises as fs, createWriteStream } from 'fs';
 import { pipeline } from 'stream/promises';
-import tar from 'tar';
+import * as tar from 'tar';
 import unzipper from 'unzipper';
 import crypto from 'crypto';
 import { DATA_DIR, TEMPLATE_DIR } from '../config/constants.js';
@@ -13,6 +13,13 @@ import { downloadArxivSource, extractArxivId } from '../services/arxivService.js
 import { getLang, t } from '../i18n/index.js';
 
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.pdf', '.eps'];
+const PROJECT_FILE_EXTENSIONS = new Set(['.tex', '.bib', '.pdf', '.md', '.sty', '.cls']);
+const PROJECT_SCAN_EXCLUDES = new Set([
+  '.git',
+  '.playwright-deps',
+  'node_modules',
+  '.compile',
+]);
 
 function downloadFileName(relPath, fallbackName) {
   const base = path.basename(relPath || '') || fallbackName || 'download';
@@ -51,6 +58,51 @@ async function ensureDocsSupportDir(projectRoot) {
   await ensureDir(path.join(projectRoot, 'docs'));
 }
 
+async function containsPaperProjectFiles(projectRoot, depth = 0) {
+  if (depth > 2) return false;
+
+  let entries = [];
+  try {
+    entries = await fs.readdir(projectRoot, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+
+  for (const entry of entries) {
+    if (entry.name === 'project.json' || PROJECT_SCAN_EXCLUDES.has(entry.name)) continue;
+
+    const abs = path.join(projectRoot, entry.name);
+    if (entry.isFile() && PROJECT_FILE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+      return true;
+    }
+    if (entry.isDirectory() && !entry.name.startsWith('.') && await containsPaperProjectFiles(abs, depth + 1)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function createProjectMetaForUploadedFolder(projectRoot, dirName) {
+  if (!await containsPaperProjectFiles(projectRoot)) return null;
+
+  const dirStat = await fs.stat(projectRoot);
+  const createdAt = dirStat.birthtime?.toISOString?.() || new Date().toISOString();
+  const updatedAt = dirStat.mtime?.toISOString?.() || createdAt;
+  const meta = {
+    id: crypto.randomUUID(),
+    name: dirName,
+    createdAt,
+    updatedAt,
+    tags: [],
+    archived: false,
+    trashed: false,
+    trashedAt: null
+  };
+  await writeJson(path.join(projectRoot, 'project.json'), meta);
+  return meta;
+}
+
 export function registerProjectRoutes(fastify) {
   fastify.get('/api/projects', async () => {
     await ensureDir(DATA_DIR);
@@ -58,9 +110,18 @@ export function registerProjectRoutes(fastify) {
     const projects = [];
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const metaPath = path.join(DATA_DIR, entry.name, 'project.json');
+      if (PROJECT_SCAN_EXCLUDES.has(entry.name)) continue;
+      const projectRoot = path.join(DATA_DIR, entry.name);
+      const metaPath = path.join(projectRoot, 'project.json');
       try {
-        const meta = await readJson(metaPath);
+        let meta;
+        try {
+          meta = await readJson(metaPath);
+        } catch (err) {
+          if (err.code !== 'ENOENT') throw err;
+          meta = await createProjectMetaForUploadedFolder(projectRoot, entry.name);
+        }
+        if (!meta) continue;
         projects.push({
           ...meta,
           dirName: entry.name,

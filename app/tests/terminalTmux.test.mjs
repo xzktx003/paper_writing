@@ -27,10 +27,13 @@ describe('tmux-backed terminal sessions', () => {
     expect(config.options.env.TERM).toBe('xterm-256color');
   });
 
-  it('documents that websocket close detaches the client without treating the project terminal as disposable', async () => {
+  it('documents that websocket close detaches the client and keeps the tmux session resumable until delayed cleanup', async () => {
     const source = await readFile(join(process.cwd(), 'apps/backend/src/routes/terminal.js'), 'utf8');
-    expect(source).toContain("ws.send(JSON.stringify({ type: 'id', id, session: sessionName, backend: 'tmux' }))");
-    expect(source).toContain('new-session -A');
-    expect(source).toContain('tmux session remains alive');
+    expect(source).toContain("ws.send(JSON.stringify({ type: 'id', session: sessionName, backend: 'tmux', resumed: true }))");
+    expect(source).toContain("ws.send(JSON.stringify({ type: 'id', session: sessionName, backend: 'tmux', resumed: false }))");
+    expect(source).toContain("args: ['new-session', '-A', '-s', sessionName, '-c', cwd]");
+    expect(source).toContain('entry.ws = null');
+    expect(source).toContain('entry.cleanupTimer = setTimeout');
+    expect(source).toContain('CLEANUP_TIMEOUT_MS');
   });
 });

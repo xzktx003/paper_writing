@@ -19,6 +19,7 @@ function removeCachedLLMSettings() {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw);
+    // Never hydrate API keys from browser storage; server .env owns LLM config.
     delete parsed.llmEndpoint;
     delete parsed.llmApiKey;
     delete parsed.llmModel;

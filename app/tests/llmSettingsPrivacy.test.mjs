@@ -4,9 +4,12 @@ import { join } from 'path';
 
 describe('LLM settings privacy', () => {
   it('does not cache LLM API key/base/model in browser localStorage', async () => {
-    const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/ProjectPage.tsx'), 'utf8');
+    const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/SettingsModal.tsx'), 'utf8');
     expect(source).toContain('Never hydrate API keys from browser storage');
+    expect(source).toContain('delete parsed.llmEndpoint');
     expect(source).toContain('delete parsed.llmApiKey');
+    expect(source).toContain('delete parsed.llmModel');
+    expect(source).toContain("llmApiKey: ''");
     expect(source).not.toContain('localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))');
   });
 

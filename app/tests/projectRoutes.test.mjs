@@ -61,6 +61,49 @@ describe('Project routes', () => {
     expect(project.dirName).toBe(projectId);
   });
 
+  it('auto-registers uploaded paper folders that do not have project metadata yet', async () => {
+    const dirName = `uploaded-paper-${crypto.randomUUID()}`;
+    projectIds.push(dirName);
+    await mkdir(join(DATA_DIR, dirName, 'source'), { recursive: true });
+    await writeFile(join(DATA_DIR, dirName, 'source', 'main.tex'), '\\documentclass{article}\n');
+
+    const res = await fastify.inject({
+      method: 'GET',
+      url: '/api/projects',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const project = res.json().projects.find((item) => item.dirName === dirName);
+    expect(project).toMatchObject({
+      name: dirName,
+      dirName,
+      tags: [],
+      archived: false,
+      trashed: false,
+      trashedAt: null,
+    });
+    expect(project.id).toMatch(/^[0-9a-f-]{36}$/);
+
+    const meta = JSON.parse(await readFile(join(DATA_DIR, dirName, 'project.json'), 'utf8'));
+    expect(meta.id).toBe(project.id);
+    expect(meta.name).toBe(dirName);
+  });
+
+  it('does not auto-register empty folders as projects', async () => {
+    const dirName = `empty-folder-${crypto.randomUUID()}`;
+    projectIds.push(dirName);
+    await mkdir(join(DATA_DIR, dirName), { recursive: true });
+
+    const res = await fastify.inject({
+      method: 'GET',
+      url: '/api/projects',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().projects.some((item) => item.dirName === dirName)).toBe(false);
+    await expect(readFile(join(DATA_DIR, dirName, 'project.json'), 'utf8')).rejects.toThrow(/ENOENT/);
+  });
+
   it('adds docs support folder when opening the tree for an older project without forcing fig', async () => {
     const projectId = `legacy-no-docs-${crypto.randomUUID()}`;
     projectIds.push(projectId);

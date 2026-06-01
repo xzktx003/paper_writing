@@ -13,6 +13,14 @@
 
 ---
 
+### Research Software Submission Package
+
+Paper Agent is being prepared for submission to Software: Practice and Experience
+(SPE). The manuscript and supporting materials are collected in
+[`docs/spe/`](docs/spe/).
+
+---
+
 ### Highlights
 
 | 🤖 AI Assistant | ✍️ Compile & Preview | 📚 Templates |
@@ -309,10 +317,10 @@ Paper Agent requires a LaTeX engine to generate PDFs. Choose one of the followin
 ```bash
 # 1. Clone repository
 git clone https://github.com/xzktx003/paper_wrighting.git
-cd paper_wrighting
+cd paper_wrighting/app
 
 # 2. Install dependencies
-npm install
+npm ci
 
 # 3. Start dev server (frontend + backend)
 npm run dev
@@ -326,6 +334,7 @@ Access:
 
 ```bash
 # 1. Build frontend and backend
+cd paper_wrighting/app
 npm run build
 
 # 2. Start production server
@@ -349,8 +358,8 @@ pdflatex --version  # Should show TexLive version
 
 # 4. Clone and deploy project
 git clone https://github.com/xzktx003/paper_wrighting.git
-cd paper_wrighting
-npm install
+cd paper_wrighting/app
+npm ci
 npm run build
 
 # 5. Configure environment variables (optional)

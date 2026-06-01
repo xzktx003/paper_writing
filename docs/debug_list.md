@@ -1,5 +1,11 @@
 # Debug List
 
+## 2026-06-01 - Release verification test drift
+
+- Symptom: Full `npx vitest run` failed on three stale checks: `exportToLatex` no longer existed after export service naming moved to `markdownToLatex`, the LLM privacy test still inspected `ProjectPage.tsx` after settings moved to `SettingsModal.tsx`, and the tmux terminal test still expected the old websocket id payload/comment.
+- Root cause: Tests were locking old implementation details while the live behavior had moved to new module boundaries and resumable tmux session payloads.
+- Fix: Restored `exportToLatex` as a compatibility alias, pointed the privacy test at `SettingsModal.tsx`, and updated the tmux test to assert current `session/backend/resumed` payload and delayed cleanup semantics.
+
 ## 2026-05-27 - 引用验证引擎三个核心 Bug 修复
 
 - **Bug 1 — arXiv DOI 不被 CrossRef 支持**:
@@ -110,6 +116,8 @@
 - 2026-05-22: 改进集成 Terminal 生命周期；每个项目/cwd 使用稳定 tmux session，关闭面板或刷新页面只断开当前客户端并在下次打开时重新 attach，只有 tmux session 被杀掉时才自动新建。
 - 2026-05-22: 修复 Files 右键 Copy Path 在 HTTP/非安全上下文下未真正写入剪贴板、导致用户粘贴到旧选中文本/正文片段的问题；复制路径现在先规范化项目相对路径，并在 Clipboard API 不可用时使用 textarea + execCommand fallback。
 - 2026-05-22: Fixed Rendered editor mode semantics. The prior implementation still used CodeMirror source lines with inline replacement widgets, which looked and behaved like source editing rather than an editable compiled preview. Rendered mode now uses a dedicated editable preview surface and keeps malformed/unsupported syntax as editable source fallback.
+- 2026-05-31: 修复已有论文目录缺少 `project.json` 时不会出现在 Projects 列表的问题；新增 `scripts/generate-paper-project-json.mjs`，可扫描 `papers/` 子目录并为缺失元数据的论文工程生成兼容前端识别的 `project.json`，默认不覆盖已有项目元数据。
+- 2026-05-31: 进一步修复“上传/复制论文文件夹到 `papers/` 后仍需手动跑脚本”的体验问题；`GET /api/projects` 现在会在扫描项目列表时为包含论文文件但缺少 `project.json` 的新目录自动创建兼容元数据，同时跳过空目录和工具目录。
 
 ## 2026-05-25 - Sprint 1/2 系统稳定性修复
 
@@ -430,6 +438,25 @@ TypeScript 编译零错误通过
 ```
 
 **后续建议**: 进一步拆分为 FileContext + ConversationContext + SkillContext，各自独立 Provider。
+
+---
+
+## 2026-05-28: Remove Compile All chapter count from button label
+
+**问题**: Frontend `Compile All` action displayed the chapter count in the button text, for example `Compile All (10)`, adding unnecessary visual noise.
+
+**修复方案**:
+1. Keep the existing compile-all availability logic based on chapter count.
+2. Change the visible idle button label to `Compile All`.
+3. Remove the chapter count from the button tooltip.
+
+**修改文件**:
+- `app/apps/frontend/src/app/components/CenterPanel.tsx`
+
+**测试结果**:
+```
+npm --workspace apps/frontend run build
+```
 
 ---
 

@@ -1,0 +1,40 @@
+\documentclass{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\title{A Minimal Paper Agent Demonstration Project}
+\author{Paper Agent Contributors}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This small project is a redistributable LaTeX paper project for exercising
+and evaluating Paper Agent. It contains a
+main manuscript file and a BibTeX database with one public reference.
+\end{abstract}
+
+\section{Introduction}
+
+Paper Agent manages a scholarly manuscript as a project rather than a single
+prompt. The project contains source files, references, notes, figures, and
+compilation artifacts. This demonstration file can be opened in the editor,
+used with Chat or Agent mode, checked for citations, and compiled into a PDF.
+
+\section{Citation Check}
+
+This sentence cites the TeX Live project~\cite{texlive}. Reviewers can use the
+citation panel to check that the citation key is present in \texttt{references.bib}.
+
+\section{Conclusion}
+
+The project is intentionally small so that installation and smoke testing do not
+depend on unpublished papers or private data.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

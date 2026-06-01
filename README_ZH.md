@@ -13,6 +13,13 @@
 
 ---
 
+### 研究软件投稿材料
+
+Paper Agent 正在为 Software: Practice and Experience (SPE) 期刊投稿做准备。
+论文草稿和相关材料位于 [`docs/spe/`](docs/spe/)。
+
+---
+
 ### ✨ 核心特性一览
 
 | 🤖 AI 智能助手 | ✍️ 编译与预览 | 📚 模板系统 |
@@ -321,10 +328,10 @@ Paper Agent 需要 LaTeX 编译引擎来生成 PDF，请根据操作系统选择
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/xzktx003/paper_wrighting.git
-cd paper_wrighting
+cd paper_wrighting/app
 
 # 2. 安装依赖
-npm install
+npm ci
 
 # 3. 启动开发服务器（前端 + 后端）
 npm run dev
@@ -338,6 +345,7 @@ npm run dev
 
 ```bash
 # 1. 构建前端和后端
+cd paper_wrighting/app
 npm run build
 
 # 2. 启动生产服务器
@@ -361,8 +369,8 @@ pdflatex --version  # 应显示 TexLive 版本
 
 # 4. 克隆并部署项目
 git clone https://github.com/xzktx003/paper_wrighting.git
-cd paper_wrighting
-npm install
+cd paper_wrighting/app
+npm ci
 npm run build
 
 # 5. 配置环境变量（可选）
