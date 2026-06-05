@@ -16,6 +16,7 @@ type SnapshotListener = (snapshot: ListAgentSessionsResponse) => void;
 
 const MAX_OUTPUT_ENTRIES = 200;
 const DEFAULT_AWAITING_INPUT_IDLE_MS = 10_000;
+const DEFAULT_SNAPSHOT_THROTTLE_MS = 250;
 const MAX_INFERENCE_WINDOW_CHARS = 4096;
 
 const ANSI_ESCAPE_PATTERN =
@@ -79,11 +80,14 @@ export class AgentSessionRegistry {
   private readonly sessionOrder = new Map<string, number>();
   private readonly awaitingInputTimers = new Map<string, NodeJS.Timeout>();
   private readonly listeners = new Set<SnapshotListener>();
+  private pendingSnapshotTimer: NodeJS.Timeout | null = null;
   private activeAgentSessionId: string | null = null;
+  private lastSnapshotEmittedAt = 0;
   private nextSessionOrder = 0;
 
   constructor(
     private readonly awaitingInputIdleMs = DEFAULT_AWAITING_INPUT_IDLE_MS,
+    private readonly snapshotThrottleMs = DEFAULT_SNAPSHOT_THROTTLE_MS,
   ) {}
 
   list(): ListAgentSessionsResponse {
@@ -102,6 +106,9 @@ export class AgentSessionRegistry {
 
     return () => {
       this.listeners.delete(listener);
+      if (this.listeners.size === 0) {
+        this.clearPendingSnapshot();
+      }
     };
   }
 
@@ -269,7 +276,9 @@ export class AgentSessionRegistry {
     if (screenChanged) {
       this.screenWindows.set(agentSessionId, nextScreenWindow);
       this.lastScreenChangedAt.set(agentSessionId, Date.now());
-      this.refreshAwaitingInputTimer(agentSessionId);
+      if (this.shouldUseTimedAwaitingInput(agentSession)) {
+        this.refreshAwaitingInputTimer(agentSessionId);
+      }
     }
 
     const nextSession: AgentSessionRecord = {
@@ -295,7 +304,7 @@ export class AgentSessionRegistry {
       stream,
       text,
     });
-    this.emitSnapshot();
+    this.emitSnapshotSoon();
 
     return nextSession;
   }
@@ -430,11 +439,54 @@ export class AgentSessionRegistry {
     this.sessionOrder.get(agentSessionId) ?? Number.MAX_SAFE_INTEGER;
 
   private emitSnapshot(): void {
+    this.clearPendingSnapshot();
+    this.emitSnapshotNow();
+  }
+
+  private emitSnapshotNow(): void {
+    this.lastSnapshotEmittedAt = Date.now();
     const snapshot = this.list();
 
     for (const listener of this.listeners) {
       listener(snapshot);
     }
+  }
+
+  private emitSnapshotSoon(): void {
+    if (this.listeners.size === 0) {
+      return;
+    }
+
+    if (this.snapshotThrottleMs <= 0) {
+      this.emitSnapshotNow();
+      return;
+    }
+
+    const elapsedMs = Date.now() - this.lastSnapshotEmittedAt;
+    if (elapsedMs >= this.snapshotThrottleMs) {
+      this.emitSnapshotNow();
+      return;
+    }
+
+    if (this.pendingSnapshotTimer) {
+      return;
+    }
+
+    const delayMs = this.snapshotThrottleMs - elapsedMs;
+    this.pendingSnapshotTimer = setTimeout(() => {
+      this.pendingSnapshotTimer = null;
+      this.emitSnapshotNow();
+    }, delayMs);
+    this.pendingSnapshotTimer.unref();
+  }
+
+  private clearPendingSnapshot(): void {
+    if (!this.pendingSnapshotTimer) {
+      return;
+    }
+
+    clearTimeout(this.pendingSnapshotTimer);
+    this.pendingSnapshotTimer = null;
   }
 
   noteUserInput(agentSessionId: string, input: string): AgentSessionRecord {

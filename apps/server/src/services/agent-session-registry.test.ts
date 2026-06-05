@@ -37,6 +37,63 @@ async function waitForInteractionState(
   assert.equal(registry.get(sessionId).interactionState, expectedState);
 }
 
+type FakeTimeout = NodeJS.Timeout & {
+  id: number;
+  unrefCalled: boolean;
+};
+
+function installFakeTimers(startMs = 1_000) {
+  const originalNow = Date.now;
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const scheduled = new Map<
+    FakeTimeout,
+    { callback: () => void; delay: number }
+  >();
+  let now = startMs;
+  let nextHandle = 1;
+
+  Date.now = () => now;
+  globalThis.setTimeout = ((callback: () => void, delay?: number) => {
+    const handle = {
+      id: nextHandle++,
+      unrefCalled: false,
+      unref(this: FakeTimeout) {
+        this.unrefCalled = true;
+        return this;
+      },
+    } as unknown as FakeTimeout;
+    scheduled.set(handle, {
+      callback,
+      delay: Number(delay ?? 0),
+    });
+    return handle;
+  }) as unknown as typeof setTimeout;
+  globalThis.clearTimeout = ((handle: NodeJS.Timeout) => {
+    scheduled.delete(handle as FakeTimeout);
+  }) as typeof clearTimeout;
+
+  return {
+    scheduled,
+    fireTimeout(handle: FakeTimeout) {
+      const timeout = scheduled.get(handle);
+      assert.ok(timeout, `expected timeout ${handle.id} to be scheduled`);
+      assert.equal(handle.unrefCalled, true);
+      scheduled.delete(handle);
+      now += timeout.delay;
+      timeout.callback();
+    },
+    restore() {
+      Date.now = originalNow;
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    },
+    setNow(nextNow: number) {
+      now = nextNow;
+    },
+  };
+}
+
 test("marks direct sessions awaiting_input after screen stays unchanged", async () => {
   const registry = new AgentSessionRegistry(20);
   const session = createSession(registry);
@@ -253,4 +310,93 @@ test("awaiting_input timer is unref-ed so it cannot block Node process exit", ()
     false,
     "awaiting_input timer must be unref-ed to avoid blocking `node --test` shutdown",
   );
+});
+
+test("bursty terminal output coalesces session snapshots behind an unref-ed timer", () => {
+  const timers = installFakeTimers();
+
+  try {
+    const registry = new AgentSessionRegistry(60_000, 250);
+    const snapshots: string[] = [];
+    registry.subscribe((snapshot) => {
+      snapshots.push(snapshot.items[0]?.outputPreview ?? "<empty>");
+    });
+    const session = registry.register({
+      workspaceId: "test",
+      hostId: "local",
+      sourceType: "remote-tmux-discovered",
+      agentKind: "shell",
+      displayName: "snapshot-throttle",
+      interactionState: "running",
+    });
+
+    assert.deepEqual(snapshots, ["<empty>", "<empty>"]);
+
+    registry.appendOutput(session.id, "frame 1\n", "stdout");
+    registry.appendOutput(session.id, "frame 2\n", "stdout");
+    registry.appendOutput(session.id, "frame 3\n", "stdout");
+
+    assert.equal(
+      snapshots.length,
+      2,
+      "output bursts should not emit one full snapshot per frame",
+    );
+    assert.equal(timers.scheduled.size, 1);
+
+    const [timer] = [...timers.scheduled.keys()];
+    assert.equal(timer.unrefCalled, true);
+    assert.ok(
+      timers.scheduled.get(timer)!.delay > 0,
+      "trailing snapshot should wait for the throttle window",
+    );
+
+    timers.fireTimeout(timer);
+    assert.deepEqual(snapshots, ["<empty>", "<empty>", "frame 3"]);
+  } finally {
+    timers.restore();
+  }
+});
+
+test("immediate session updates cancel pending coalesced snapshots and publish the latest state", () => {
+  const timers = installFakeTimers();
+
+  try {
+    const registry = new AgentSessionRegistry(60_000, 250);
+    const snapshots: string[] = [];
+    registry.subscribe((snapshot) => {
+      const item = snapshot.items[0];
+      snapshots.push(
+        item ? `${item.displayName}:${item.outputPreview ?? "<empty>"}` : "",
+      );
+    });
+    const session = registry.register({
+      workspaceId: "test",
+      hostId: "local",
+      sourceType: "remote-tmux-discovered",
+      agentKind: "shell",
+      displayName: "snapshot-throttle",
+      interactionState: "running",
+    });
+
+    registry.appendOutput(session.id, "frame 1\n", "stdout");
+    assert.equal(
+      snapshots.length,
+      2,
+      "high-frequency output should wait for the trailing snapshot",
+    );
+    assert.equal(timers.scheduled.size, 1);
+
+    registry.updateSession(session.id, {
+      displayName: "snapshot-renamed",
+    });
+
+    assert.equal(
+      timers.scheduled.size,
+      0,
+      "immediate updates should cancel pending trailing snapshots",
+    );
+    assert.equal(snapshots.at(-1), "snapshot-renamed:frame 1");
+  } finally {
+    timers.restore();
+  }
 });

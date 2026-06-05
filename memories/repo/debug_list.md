@@ -39,3 +39,4 @@
 - 本地 HTTPS 已回退到 OpenSSL 自签证书时，VS Code Web 的 webview / 图片预览会继续报 service worker 的 SSL 证书错误。根因是浏览器不会为不受信任的证书注册 service worker，而旧脚本在“复用已有证书”路径上没有持续告警，也不会在之后装好 `mkcert` 时自动升级掉旧自签证书。修复为修正 IP SAN 匹配、为脚本生成的证书记录 generator metadata，并在复用 OpenSSL 自签证书时持续警告；检测到 `mkcert` 后则自动重签为受信任证书。
 - commit `fc57a80` 引入的终端焦点保留修复过度：`rememberExternalPointerIntent` 仅对受保护目标记录意图，导致点击非保护元素时终端抢回焦点；`hasIntentionalExternalFocus` 对非保护、非 body 元素直接返回 false 加剧了问题。修复为 pointerdown 统一记录意图 + 纯时间戳比较，不再区分 active element 类型。
 - VS Code Web 与终端来回切换两轮后，点击 VS Code iframe 内部无法重新输入：上一版只依赖父文档 `pointerdown` 记录外部意图，但 iframe 内点击不稳定冒到父页面。修复为在父窗口 `blur` 和被动终端聚焦前，根据当前 `document.activeElement` 将 hovered iframe 补记为用户外部焦点意图，并补 VS Code -> 终端 -> VS Code round-trip e2e 回归。
+- 轻量预览下浏览器内存和网络仍持续增长：资源诊断显示 `/ws/agent-sessions` 全量快照达到数百 msg/s、数 MB/s；根因是每个终端输出帧都触发一次全量 snapshot，前端持续 JSON 解析和 React 更新。修复为后端对输出触发的 snapshot 做 trailing 合并广播，结构性操作仍即时刷新，并避免 observe-only 会话输出时创建无效 awaiting_input timer。
