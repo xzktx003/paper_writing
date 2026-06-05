@@ -38,6 +38,13 @@ export function AgentGrid({
   onShowHidden,
   useLightweightTerminalPreview = true,
 }: AgentGridProps) {
+  const runningCount = sessions.filter(
+    (session) => session.interactionState === "running",
+  ).length;
+  const awaitingCount = sessions.filter(
+    (session) => session.interactionState === "awaiting_input",
+  ).length;
+
   return (
     <div className="agent-grid-container">
       <div className="agent-grid-toolbar">
@@ -46,15 +53,33 @@ export function AgentGrid({
           filters={filters}
           onFiltersChange={onFiltersChange}
         />
-        {hiddenCount > 0 && (
-          <button
-            className="hidden-sessions-btn"
-            onClick={onShowHidden}
-            type="button"
-          >
-            已隐藏 ({hiddenCount})
-          </button>
-        )}
+        <div className="agent-grid-toolbar-actions">
+          {hiddenCount > 0 && (
+            <button
+              className="hidden-sessions-btn"
+              onClick={onShowHidden}
+              type="button"
+            >
+              已隐藏 ({hiddenCount})
+            </button>
+          )}
+          {awaitingCount > 0 && (
+            <span
+              className="stat-item stat-awaiting grid-status-chip"
+              data-testid="grid-stat-awaiting"
+            >
+              🟡 {awaitingCount} 等待输入
+            </span>
+          )}
+          {runningCount > 0 && (
+            <span
+              className="stat-item stat-running grid-status-chip"
+              data-testid="grid-stat-running"
+            >
+              🟢 {runningCount} 运行中
+            </span>
+          )}
+        </div>
       </div>
       {sessions.length === 0 ? (
         <div className="grid-empty">

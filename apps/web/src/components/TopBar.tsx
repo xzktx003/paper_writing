@@ -78,12 +78,6 @@ export function TopBar({
   }, []);
   const hintsRef = useRef<HTMLDivElement | null>(null);
   const hintsPopoverId = "operation-hints-popover";
-  const runningCount = sessions.filter(
-    (s) => s.interactionState === "running",
-  ).length;
-  const awaitingCount = sessions.filter(
-    (s) => s.interactionState === "awaiting_input",
-  ).length;
   const totalCount = sessions.length;
 
   useEffect(() => {
@@ -262,16 +256,6 @@ export function TopBar({
         <span className="stat-item">
           共 <strong>{totalCount}</strong> 个会话
         </span>
-        {runningCount > 0 && (
-          <span className="stat-item stat-running">
-            🟢 {runningCount} 运行中
-          </span>
-        )}
-        {awaitingCount > 0 && (
-          <span className="stat-item stat-awaiting">
-            🟡 {awaitingCount} 等待输入
-          </span>
-        )}
         <button
           className={`top-bar-action top-bar-action--ghost${isFullscreen ? " top-bar-action--active" : ""}`}
           data-testid="fullscreen-toggle"

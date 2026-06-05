@@ -34,12 +34,17 @@ test('terminal session shows awaiting-input state in yellow', async ({ page }) =
 
     await expect(card).toBeVisible({ timeout: 15000 });
     await expect(card.locator('.grid-card-badge')).toHaveText('运行中');
+    await expect(page.getByTestId('grid-stat-running')).toContainText(
+      '运行中',
+    );
 
     await page.waitForTimeout(11_000);
 
     await expect(card.locator('.grid-card-badge')).toHaveText('等待输入');
     await expect(card).toHaveClass(/card-awaiting/);
-    await expect(page.locator('.stat-awaiting')).toContainText('等待输入');
+    await expect(page.getByTestId('grid-stat-awaiting')).toContainText(
+      '等待输入',
+    );
   } finally {
     await page
       .evaluate(async (nextDisplayName) => {

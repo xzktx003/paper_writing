@@ -675,6 +675,31 @@ input {
   flex: 1;
 }
 
+.agent-grid-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grid-status-chip {
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.grid-status-chip.stat-running {
+  border-color: rgba(134, 239, 172, 0.22);
+  background: rgba(134, 239, 172, 0.08);
+}
+
+.grid-status-chip.stat-awaiting {
+  border-color: rgba(255, 195, 106, 0.25);
+  background: rgba(255, 195, 106, 0.09);
+}
+
 /* ===== Filter Bar ===== */
 .filter-bar {
   display: flex;
