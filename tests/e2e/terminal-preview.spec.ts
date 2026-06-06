@@ -280,7 +280,8 @@ test("focus monitor panes accept dragged sidebar sessions and swap dragged panes
       has: page.locator(".grid-card-name", { hasText: "Alpha Session" }),
     })
     .dblclick();
-  await page.getByRole("button", { name: /左右双屏/ }).click();
+  await page.getByRole("button", { name: /屏幕布局/ }).click();
+  await page.getByRole("menuitemradio", { name: /左右双屏/ }).click();
 
   const firstPane = page.locator(
     '[data-terminal-pane-slot="terminal-monitor-slot-1"]',

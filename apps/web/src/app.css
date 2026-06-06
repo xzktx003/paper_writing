@@ -1254,30 +1254,31 @@ input {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.focus-layout-switcher {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.focus-layout-btn {
+.focus-layout-menu {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: rgba(244, 241, 234, 0.68);
+}
+
+.focus-layout-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 152, 0, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 152, 0, 0.08);
+  color: rgba(255, 224, 173, 0.88);
   cursor: pointer;
   font-size: 12px;
 }
 
-.focus-layout-btn span {
+.focus-layout-menu-current {
+  color: rgba(244, 241, 234, 0.78);
+}
+
+.focus-layout-menu-count,
+.focus-layout-option strong {
   min-width: 15px;
   padding: 1px 4px;
   border-radius: 999px;
@@ -1286,9 +1287,49 @@ input {
   text-align: center;
 }
 
-.focus-layout-btn:hover,
-.focus-layout-btn--active {
+.focus-layout-menu-chevron {
+  color: rgba(244, 241, 234, 0.58);
+}
+
+.focus-layout-menu-trigger:hover,
+.focus-layout-menu-trigger[aria-expanded="true"] {
   border-color: rgba(255, 152, 0, 0.35);
+  background: rgba(255, 152, 0, 0.12);
+  color: #ffe0ad;
+}
+
+.focus-layout-menu-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid rgba(255, 152, 0, 0.18);
+  border-radius: 10px;
+  background: rgba(14, 18, 23, 0.98);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
+}
+
+.focus-layout-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(244, 241, 234, 0.72);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.focus-layout-option:hover,
+.focus-layout-option--active {
+  border-color: rgba(255, 152, 0, 0.32);
   background: rgba(255, 152, 0, 0.12);
   color: #ffe0ad;
 }
@@ -1363,6 +1404,11 @@ input {
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
+.focus-terminal-layout--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .focus-terminal-layout--quad {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
@@ -1370,6 +1416,11 @@ input {
 
 .focus-terminal-layout--six {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.focus-terminal-layout--eight {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
@@ -1488,7 +1539,9 @@ input {
 
 @media (max-width: 1180px) {
   .focus-terminal-layout--dual,
+  .focus-terminal-layout--triple,
   .focus-terminal-layout--six,
+  .focus-terminal-layout--eight,
   .focus-terminal-layout--quad {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1501,8 +1554,16 @@ input {
     grid-template-rows: repeat(4, minmax(0, 1fr));
   }
 
+  .focus-terminal-layout--triple {
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+  }
+
   .focus-terminal-layout--six {
     grid-template-rows: repeat(6, minmax(0, 1fr));
+  }
+
+  .focus-terminal-layout--eight {
+    grid-template-rows: repeat(8, minmax(0, 1fr));
   }
 }
 

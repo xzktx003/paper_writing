@@ -18,6 +18,8 @@ const sessions = [
   { id: "agent-4" },
   { id: "agent-5" },
   { id: "agent-6" },
+  { id: "agent-7" },
+  { id: "agent-8" },
 ];
 
 describe("terminal monitor layout", () => {
@@ -25,8 +27,10 @@ describe("terminal monitor layout", () => {
     assert.equal(getTerminalMonitorLayoutCapacity("single"), 1);
     assert.equal(getTerminalMonitorLayoutCapacity("dual"), 2);
     assert.equal(getTerminalMonitorLayoutCapacity("dual-vertical"), 2);
+    assert.equal(getTerminalMonitorLayoutCapacity("triple"), 3);
     assert.equal(getTerminalMonitorLayoutCapacity("quad"), 4);
     assert.equal(getTerminalMonitorLayoutCapacity("six"), 6);
+    assert.equal(getTerminalMonitorLayoutCapacity("eight"), 8);
 
     const slots = normalizeTerminalMonitorSlots({
       mode: "quad",
@@ -38,6 +42,32 @@ describe("terminal monitor layout", () => {
     assert.deepEqual(
       slots.map((slot) => slot.sessionId),
       ["agent-1", "agent-2", "agent-3", "agent-4"],
+    );
+  });
+
+  it("fills a left-middle-right three-pane layout", () => {
+    assert.equal(isTerminalMonitorLayoutMode("triple"), true);
+    assert.equal(
+      TERMINAL_MONITOR_LAYOUT_OPTIONS.some(
+        (option) => option.mode === "triple",
+      ),
+      true,
+    );
+
+    const slots = normalizeTerminalMonitorSlots({
+      mode: "triple",
+      sessions,
+      preferredSessionId: "agent-3",
+      previousSlots: [
+        { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+        { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+      ],
+      preferredSlotId: "terminal-monitor-slot-3",
+    });
+
+    assert.deepEqual(
+      slots.map((slot) => slot.sessionId),
+      ["agent-1", "agent-2", "agent-3"],
     );
   });
 
@@ -103,6 +133,56 @@ describe("terminal monitor layout", () => {
     assert.deepEqual(
       slots.map((slot) => slot.sessionId),
       ["agent-1", "agent-2", "agent-3", "agent-4", "agent-5", "agent-6"],
+    );
+  });
+
+  it("fills eight unique terminal panes in eight-pane mode", () => {
+    assert.equal(isTerminalMonitorLayoutMode("eight"), true);
+    assert.equal(
+      TERMINAL_MONITOR_LAYOUT_OPTIONS.some((option) => option.mode === "eight"),
+      true,
+    );
+
+    const slots = normalizeTerminalMonitorSlots({
+      mode: "eight",
+      sessions,
+      preferredSessionId: "agent-8",
+      previousSlots: [
+        { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+        { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+        { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+        { id: "terminal-monitor-slot-4", sessionId: "agent-4" },
+        { id: "terminal-monitor-slot-5", sessionId: "agent-5" },
+        { id: "terminal-monitor-slot-6", sessionId: "agent-6" },
+      ],
+      preferredSlotId: "terminal-monitor-slot-8",
+    });
+
+    assert.deepEqual(
+      slots.map((slot) => slot.id),
+      [
+        "terminal-monitor-slot-1",
+        "terminal-monitor-slot-2",
+        "terminal-monitor-slot-3",
+        "terminal-monitor-slot-4",
+        "terminal-monitor-slot-5",
+        "terminal-monitor-slot-6",
+        "terminal-monitor-slot-7",
+        "terminal-monitor-slot-8",
+      ],
+    );
+    assert.deepEqual(
+      slots.map((slot) => slot.sessionId),
+      [
+        "agent-1",
+        "agent-2",
+        "agent-3",
+        "agent-4",
+        "agent-5",
+        "agent-6",
+        "agent-7",
+        "agent-8",
+      ],
     );
   });
 

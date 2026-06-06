@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AgentSessionRecord } from "@agent-orchestrator/shared";
 
@@ -132,7 +132,9 @@ export function AgentFocusView({
   const [headerCollapsed, setHeaderCollapsed] = useState(
     loadFocusHeaderCollapsed,
   );
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
+  const layoutMenuRef = useRef<HTMLDivElement | null>(null);
   const sessionById = useMemo(() => {
     return new Map(sessions.map((session) => [session.id, session]));
   }, [sessions]);
@@ -151,6 +153,10 @@ export function AgentFocusView({
   const safeActiveSlotId = activeSlotAvailable
     ? activeSlotId
     : (terminalSlots[0]?.id ?? DEFAULT_TERMINAL_MONITOR_SLOT_ID);
+  const activeLayoutOption =
+    TERMINAL_MONITOR_LAYOUT_OPTIONS.find(
+      (option) => option.mode === terminalLayoutMode,
+    ) ?? TERMINAL_MONITOR_LAYOUT_OPTIONS[0]!;
 
   useEffect(() => {
     saveTerminalMonitorLayoutMode(terminalLayoutMode);
@@ -159,6 +165,36 @@ export function AgentFocusView({
   useEffect(() => {
     saveFocusHeaderHeaderCollapsed(headerCollapsed);
   }, [headerCollapsed]);
+
+  useEffect(() => {
+    if (!layoutMenuOpen) {
+      return;
+    }
+
+    function handleDocumentMouseDown(event: MouseEvent) {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        layoutMenuRef.current &&
+        !layoutMenuRef.current.contains(target)
+      ) {
+        setLayoutMenuOpen(false);
+      }
+    }
+
+    function handleDocumentKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setLayoutMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, [layoutMenuOpen]);
 
   useEffect(() => {
     const availableSlotIds = getTerminalMonitorSlotIds(terminalLayoutMode);
@@ -326,6 +362,7 @@ export function AgentFocusView({
 
   function handleLayoutModeChange(mode: TerminalMonitorLayoutMode) {
     setTerminalLayoutMode(mode);
+    setLayoutMenuOpen(false);
     const slotIds = getTerminalMonitorSlotIds(mode);
     if (!slotIds.includes(activeSlotId)) {
       setActiveSlotId(slotIds[0] ?? DEFAULT_TERMINAL_MONITOR_SLOT_ID);
@@ -475,22 +512,49 @@ export function AgentFocusView({
               </button>
               <div
                 aria-label="终端监控布局"
-                className="focus-layout-switcher"
-                role="group"
+                className="focus-layout-menu"
+                ref={layoutMenuRef}
               >
-                {TERMINAL_MONITOR_LAYOUT_OPTIONS.map((option) => (
-                  <button
-                    key={option.mode}
-                    aria-pressed={terminalLayoutMode === option.mode}
-                    className={`focus-layout-btn${terminalLayoutMode === option.mode ? " focus-layout-btn--active" : ""}`}
-                    onClick={() => handleLayoutModeChange(option.mode)}
-                    title={`${option.label}监控 ${option.capacity} 个终端`}
-                    type="button"
+                <button
+                  aria-expanded={layoutMenuOpen}
+                  aria-haspopup="menu"
+                  className="focus-layout-menu-trigger"
+                  onClick={() => setLayoutMenuOpen((current) => !current)}
+                  title="选择终端监控屏幕布局"
+                  type="button"
+                >
+                  屏幕布局
+                  <span className="focus-layout-menu-current">
+                    {activeLayoutOption.label}
+                  </span>
+                  <span className="focus-layout-menu-count">
+                    {activeLayoutOption.capacity}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="focus-layout-menu-chevron"
                   >
-                    {option.label}
-                    <span>{option.capacity}</span>
-                  </button>
-                ))}
+                    ▾
+                  </span>
+                </button>
+                {layoutMenuOpen && (
+                  <div className="focus-layout-menu-options" role="menu">
+                    {TERMINAL_MONITOR_LAYOUT_OPTIONS.map((option) => (
+                      <button
+                        key={option.mode}
+                        aria-checked={terminalLayoutMode === option.mode}
+                        className={`focus-layout-option${terminalLayoutMode === option.mode ? " focus-layout-option--active" : ""}`}
+                        onClick={() => handleLayoutModeChange(option.mode)}
+                        role="menuitemradio"
+                        title={`${option.label}监控 ${option.capacity} 个终端`}
+                        type="button"
+                      >
+                        <span>{option.label}</span>
+                        <strong>{option.capacity}</strong>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <button className="focus-exit-btn" onClick={onExit} title="Alt+Q">
                 返回宫格

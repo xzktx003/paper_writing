@@ -2,8 +2,10 @@ export type TerminalMonitorLayoutMode =
   | "single"
   | "dual"
   | "dual-vertical"
+  | "triple"
   | "quad"
-  | "six";
+  | "six"
+  | "eight";
 
 export interface TerminalMonitorSession {
   id: string;
@@ -29,6 +31,8 @@ const TERMINAL_MONITOR_SLOT_IDS = [
   "terminal-monitor-slot-4",
   "terminal-monitor-slot-5",
   "terminal-monitor-slot-6",
+  "terminal-monitor-slot-7",
+  "terminal-monitor-slot-8",
 ] as const;
 
 export const TERMINAL_MONITOR_LAYOUT_OPTIONS: ReadonlyArray<{
@@ -39,8 +43,10 @@ export const TERMINAL_MONITOR_LAYOUT_OPTIONS: ReadonlyArray<{
   { mode: "single", label: "单屏", capacity: 1 },
   { mode: "dual", label: "左右双屏", capacity: 2 },
   { mode: "dual-vertical", label: "上下双屏", capacity: 2 },
+  { mode: "triple", label: "左中右三屏", capacity: 3 },
   { mode: "quad", label: "四屏", capacity: 4 },
   { mode: "six", label: "六屏", capacity: 6 },
+  { mode: "eight", label: "八屏", capacity: 8 },
 ];
 
 export function getTerminalMonitorLayoutCapacity(
@@ -50,10 +56,14 @@ export function getTerminalMonitorLayoutCapacity(
     case "dual":
     case "dual-vertical":
       return 2;
+    case "triple":
+      return 3;
     case "quad":
       return 4;
     case "six":
       return 6;
+    case "eight":
+      return 8;
     case "single":
     default:
       return 1;
@@ -67,8 +77,10 @@ export function isTerminalMonitorLayoutMode(
     value === "single" ||
     value === "dual" ||
     value === "dual-vertical" ||
+    value === "triple" ||
     value === "quad" ||
-    value === "six"
+    value === "six" ||
+    value === "eight"
   );
 }
 
