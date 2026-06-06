@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { gsap, ScrollTrigger } from "./gsap";
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -360,6 +361,33 @@ export default function ProjectPage() {
     { key: 'trash', label: t('回收站') },
   ];
 
+
+  // ── GSAP Page Entrance Animations ──
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Animate sidebar items
+      gsap.from(".project-sidebar-item", {
+        x: -30, opacity: 0, duration: 0.5, stagger: 0.05, ease: "power3.out", delay: 0.3
+      });
+      // Animate header
+      gsap.from(".project-page-header", {
+        y: -20, opacity: 0, duration: 0.6, ease: "power3.out", delay: 0.2
+      });
+      // Animate project cards with ScrollTrigger
+      const cards = document.querySelectorAll(".project-card, .project-row");
+      if (cards.length) {
+        gsap.set(cards, { y: 40, opacity: 0 });
+        gsap.to(cards, {
+          y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: "power3.out", delay: 0.5
+        });
+      }
+      // Animate stats bar
+      gsap.from(".project-page-stats", {
+        y: 10, opacity: 0, duration: 0.5, ease: "power2.out", delay: 0.4
+      });
+    });
+    return () => ctx.revert();
+  }, [projects.length, viewFilter]);
   return (
     <div className="project-shell">
       {/* ── Sidebar ── */}

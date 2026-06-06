@@ -1,5 +1,26 @@
 # Debug List
 
+## 2026-06-05 - AutoQuantizer Qwen3-4B experiments used a mislabeled local checkpoint
+
+- Symptom: `experiments/results/qwen3-4b_autoquantizer_final.json` reported the same FP16 PPL, layer count, and per-layer beta distribution as Qwen3-0.6B, making the 4B AutoQuantizer result invalid.
+- Root cause: `code/run_iclr_final.py` mapped `qwen3-4b` to `/data01/datasets/Qwen3-4B`, but that local mirror contains a 28-layer/1024-hidden Qwen3-0.6B checkpoint instead of the expected 36-layer/2560-hidden Qwen3-4B checkpoint.
+- Fix: Point the final experiment runner at `Qwen/Qwen3-4B` and add model configuration validation so aliases fail fast when they resolve to the wrong checkpoint dimensions. The runner also now preserves an externally set `CUDA_VISIBLE_DEVICES` instead of overwriting it with `--gpu_id`, preventing resumed experiments from landing on the wrong physical GPU. AutoQuantizer's RTN branch and the final runner's RTN baseline now use the same standard int4 RTN formula as the earlier validated baselines instead of a weaker `linspace(-1,1,16)` codebook.
+
+## 2026-06-03 - SPE package sanitizer reintroduced local machine strings
+
+- Symptom: The Coding Kanban SPE package verifier protected the curated
+  software artifact from local path/user fixture residue, but the publication
+  package docs, manifest, verifier source, and stale supporting archive still
+  contained the exact local strings as guard examples.
+- Root cause: The sanitizer listed the forbidden strings literally in
+  publication-facing files and only scanned `code/coding_kanban`, so the
+  package-level docs/tools included by the supporting archive were outside the
+  guard.
+- Fix: Replaced literal examples with category descriptions, encoded the
+  verifier's guarded tokens so the tool can still check them without
+  reintroducing them as plain text, expanded the verifier to scan package text
+  and generated archive entries, and rebuilt the SPE archives/checksums.
+
 ## 2026-06-01 - Release verification test drift
 
 - Symptom: Full `npx vitest run` failed on three stale checks: `exportToLatex` no longer existed after export service naming moved to `markdownToLatex`, the LLM privacy test still inspected `ProjectPage.tsx` after settings moved to `SettingsModal.tsx`, and the tmux terminal test still expected the old websocket id payload/comment.
@@ -549,4 +570,191 @@ DATA_DIR: .../paper_wrighting/app/data (正确使用相对路径)
 npm install --workspace packages/shared → 成功
 import '@paper-agent/shared' → OK
 TypeScript 编译零错误通过
+```
+
+---
+
+## P3-17: 修复局域网访问默认地址与 MCP 发现 URL
+
+**问题**:
+- Vite 开发服务未显式绑定 `0.0.0.0`，同网段设备可能无法访问前端开发页。
+- README、Playwright 默认地址和 MCP discovery 示例仍使用 `localhost`，与仓库要求的局域网 HTTP 验收地址不一致。
+
+**修复方案**:
+1. Vite 开发服务显式绑定 `0.0.0.0`，并允许通过环境变量覆盖端口与 API origin。
+2. 后端启动日志、README 和 E2E 默认地址统一使用 `http://10.30.0.22:8787`。
+3. MCP `/api/mcp/info` 根据请求 Host / forwarded headers 生成客户端 URL，避免局域网或反向代理环境下暴露 `localhost`。
+
+**修改文件**:
+- `app/apps/frontend/vite.config.ts`
+- `app/apps/backend/src/index.js`
+- `app/apps/backend/src/routes/mcp.js`
+- `app/playwright.config.ts`
+- `app/tests/e2e/projects.spec.ts`
+- `app/tests/e2e-smoke.mjs`
+- `README.md`
+
+**测试结果**:
+```
+新增 MCP discovery 回归测试，验证客户端配置 URL 使用 http://10.30.0.22:8787。
+```
+
+---
+
+## P3-18: 修复 React Router Routes 类型检查失败
+
+**问题**:
+- 前端 TypeScript 检查报错：`Routes` 组件不接受 `future` 属性。
+- 当前 `react-router-dom@6.30.3` 的 future flags 已在 `BrowserRouter` 上配置，`Routes` 上的重复配置会破坏类型检查。
+
+**修复方案**:
+1. 移除 `App.tsx` 中 `Routes` 的多余 `future` 属性。
+2. 保留 `main.tsx` 中 `BrowserRouter` 的 future flags，避免改变路由行为。
+
+**修改文件**:
+- `app/apps/frontend/src/app/App.tsx`
+
+**测试结果**:
+```
+前端 TypeScript 检查覆盖该修复。
+```
+
+---
+
+## P3-19: 修复终端路由导入时强依赖 node-pty
+
+**问题**:
+- `terminalTmux.test.mjs` 在测试收集阶段导入终端路由时立即加载 `node-pty`。
+- 当前环境缺少 `node-pty` 原生二进制时，全量 Vitest 在 215 个测试通过后仍因模块导入失败退出。
+- 同一问题也会让后端启动被集成终端的可选原生模块阻断。
+
+**修复方案**:
+1. 将 `node-pty` 改为终端 WebSocket 首次创建 tmux 会话时懒加载。
+2. 原生模块不可用时向 WebSocket 客户端返回明确错误并关闭连接。
+3. 保持 tmux session name 和 spawn 参数等纯函数可无原生依赖导入和测试。
+
+**修改文件**:
+- `app/apps/backend/src/routes/terminal.js`
+
+**测试结果**:
+```
+全量 Vitest 覆盖该修复。
+```
+
+---
+
+## P3-20: 修复依赖审计高危漏洞
+
+**问题**:
+- `npm audit` 报告 `fast-uri`、`pdfjs-dist`、`tar` 等高危漏洞，以及旧 Vite 链路中的 `esbuild` 开发服务风险。
+- `pdfjs-dist` 没有源码使用点，却通过 `canvas/@mapbox/node-pre-gyp` 拉入存在审计风险的传递依赖。
+
+**修复方案**:
+1. 升级后端到 Fastify 5 及兼容的官方插件版本，消除 Fastify 4 链路中的 `fast-uri` 漏洞。
+2. 将后端 `tar` 升级到安全补丁版本。
+3. 删除前端未使用的 `pdfjs-dist`。
+4. 升级前端 Vite 与 React 插件，消除旧 `esbuild` 开发服务审计项。
+
+**修改文件**:
+- `app/apps/backend/package.json`
+- `app/apps/frontend/package.json`
+- `app/package-lock.json`
+
+**测试结果**:
+```
+npm audit 报告 0 vulnerabilities。
+```
+
+---
+
+## P3-21: 修复 SPE 论文图表文字溢出与 EPS 构建阻塞
+
+**问题**:
+- `paper-agent-spe` 论文的四张说明图存在固定框内长文本溢出、连线穿过文字、模板图例与连线交叉等阅读问题。
+- 使用 Tectonic 重建 `main.pdf` 时，Wiley 模板显式引用 EPS 小图标，导致 PDF 后端无法包含 `Wiley_logo.eps` / `openaccess.eps`。
+
+**修复方案**:
+1. 重排 `fig-architecture`、`fig-ai-modes`、`fig-pipeline`、`fig-citation-strategy` 的 SVG 源图，缩短节点文本、增加换行和留白，并避开连线遮挡。
+2. 重新导出四张提交用 PDF 图表。
+3. 将 Wiley 模板中的小图标引用切换到仓库已有的 `*-eps-converted-to.pdf` 资产，避免 Tectonic 触发 EPS 包含失败。
+
+**修改文件**:
+- `papers/paper-agent-spe/figures/fig-architecture.svg`
+- `papers/paper-agent-spe/figures/fig-ai-modes.svg`
+- `papers/paper-agent-spe/figures/fig-pipeline.svg`
+- `papers/paper-agent-spe/figures/fig-citation-strategy.svg`
+- `papers/paper-agent-spe/figures/fig-*.pdf`
+- `papers/paper-agent-spe/wiley/USG.cls`
+- `papers/paper-agent-spe/main.pdf`
+
+**测试结果**:
+```
+LD_LIBRARY_PATH=/data01/home/xuzk/anaconda3/lib /data01/home/xuzk/bin/tectonic main.tex
+bash verify.sh
+```
+
+---
+
+## P3-22: 修复 SPE 论文参考文献缺失和引用标签泄漏
+
+**问题**:
+- `paper-agent-spe` 重新编译后的 `main.pdf` 正文引用显示为 `[?]`，末尾没有生成参考文献列表。
+- 根因是 `main.aux` 缺少 `\bibstyle`，BibTeX 报 `I found no \bibstyle command` 并生成空 `.bbl`。
+- 直接切到 Wiley Chicago `.bst` 后，该样式在当前 BibTeX 下出现内部函数冲突；切到 `lastoo` 样式后又因未加载 natbib 数字模式导致正文泄漏长 author-year 标签。
+
+**修复方案**:
+1. 在 `main.tex` 显式加载 `NJDnatbib` 数字引用模式，并使用 `wileyNJD-Chicago-lastoo` 样式。
+2. 将 `references.bib` 中 Wiley `.bst` 不支持的 `@online` 条目类型统一改为 `@misc`。
+3. 增强 `verify.sh`，检查 bibliography style/database 声明，并用 PyMuPDF 检测 PDF 中是否仍有 `[?]`、缺失 References 或泄漏 author-year citation labels。
+
+**修改文件**:
+- `papers/paper-agent-spe/main.tex`
+- `papers/paper-agent-spe/references.bib`
+- `papers/paper-agent-spe/verify.sh`
+- `papers/paper-agent-spe/main.pdf`
+
+**测试结果**:
+```
+LD_LIBRARY_PATH=/data01/home/xuzk/anaconda3/lib /data01/home/xuzk/bin/tectonic --keep-logs --keep-intermediates main.tex
+bash verify.sh
+```
+
+---
+
+## P3-23: 修复 SPE 论文主体与投稿包的实现描述/生产元数据疏漏
+
+**问题**:
+- `paper-agent-spe` 正文和架构图仍将当前 PDF 预览实现描述为 PDF.js，并将构建系统描述为 Turborepo，但仓库实际使用浏览器原生 PDF embed、npm workspaces 和 concurrently。
+- `main.tex` 保留 Wiley 模板的 `XX Month 202X` 和 `10.1002/spe.0000` 占位符；删除占位值后，类文件仍会输出空的 `Received/Revised/Accepted` 标签和裸 `https://doi.org/` 页脚。
+- `submission-upload/latex-bundle` 是投稿包副本，仍保留上述旧正文；独立编译时还缺少 `images/` 兼容路径和 `wiley/wileyNJD-Chicago-lastoo.bst`，会导致参考文献再次丢失。
+
+**修复方案**:
+1. 将正文、技术栈表、架构图和致谢中的旧实现描述统一改为当前实现：native browser PDF viewer/embed、npm workspaces/concurrently。
+2. 删除假日期/假 DOI，并让 `USG.cls` 在生产元数据为空时不输出历史字段标签或 DOI 页脚。
+3. 从 `references.bib` 移除不再引用的 PDF.js 条目，增强 `verify.sh` 的模板占位符和旧实现声明检查。
+4. 同步更新 `submission-upload/latex-bundle`，补齐 `images/` 目录和 Wiley bibliography style 路径，确保上传包可独立编译。
+
+**修改文件**:
+- `papers/paper-agent-spe/main.tex`
+- `papers/paper-agent-spe/sec/3.design.tex`
+- `papers/paper-agent-spe/sec/4.implementation.tex`
+- `papers/paper-agent-spe/sec/5.evaluation.tex`
+- `papers/paper-agent-spe/sec/6.discussion.tex`
+- `papers/paper-agent-spe/sec/8.conclusion.tex`
+- `papers/paper-agent-spe/references.bib`
+- `papers/paper-agent-spe/figures/fig-architecture.svg`
+- `papers/paper-agent-spe/figures/fig-architecture.pdf`
+- `papers/paper-agent-spe/USG.cls`
+- `papers/paper-agent-spe/wiley/USG.cls`
+- `papers/paper-agent-spe/verify.sh`
+- `papers/paper-agent-spe/main.pdf`
+- `papers/paper-agent-spe/submission-upload/latex-bundle/`
+
+**测试结果**:
+```
+/data01/home/xuzk/anaconda3/bin/cairosvg figures/fig-architecture.svg -o figures/fig-architecture.pdf
+LD_LIBRARY_PATH=/data01/home/xuzk/anaconda3/lib /data01/home/xuzk/bin/tectonic --keep-logs --keep-intermediates main.tex
+bash verify.sh
+LD_LIBRARY_PATH=/data01/home/xuzk/anaconda3/lib /data01/home/xuzk/bin/tectonic --keep-logs --keep-intermediates main.tex  # in submission-upload/latex-bundle
+PyMuPDF text checks: main.pdf and submission-upload/latex-bundle/main.pdf both have References, no [?], no template dates/fake DOI, no bare DOI footer, no PDF.js/Turborepo.
 ```

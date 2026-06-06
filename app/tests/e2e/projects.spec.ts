@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const FRONTEND_URL = process.env.BASE_URL || 'http://localhost:5173';
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8787';
+const FRONTEND_URL = process.env.BASE_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
 
 /* ── helpers ─────────────────────────────────────────────── */
 

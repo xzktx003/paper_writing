@@ -1,0 +1,6 @@
+name: awesome-rebuttal
+display_name: "Awesome Rebuttal"
+description: "Global-installable, project-level academic rebuttal strategy skill for AI/ML/CV/NLP/Robotics papers. Use when authors need a workspace-local .awesome-rebuttal state folder, paper/code/review/venue-rule intake, JSON memory, snapshots, LaTeX/template handling for one-page rebuttals, reviewer stance analysis, strategy planning, experiment triage, safe author response drafting, or AC summaries under confirmed venue rules."
+type: writing
+trigger: manual
+kind: package

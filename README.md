@@ -17,7 +17,7 @@
 
 Paper Agent is being prepared for submission to Software: Practice and Experience
 (SPE). The manuscript and supporting materials are collected in
-[`docs/spe/`](docs/spe/).
+[`papers/paper-agent-spe/`](papers/paper-agent-spe/).
 
 ---
 
@@ -327,8 +327,9 @@ npm run dev
 ```
 
 Access:
-- **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:8787
+- **App / Backend**: http://10.30.0.22:8787
+- **Vite Dev Frontend**: http://10.30.0.22:5173
+- **Health Check**: http://10.30.0.22:8787/api/health
 
 #### Production Deployment
 
@@ -532,7 +533,7 @@ npm run tunnel:ngrok
 3. On startup, the terminal prints a public URL. Share it with your collaborator:
 
 ```
-  Paper Agent started at http://localhost:8787
+  Paper Agent started at http://10.30.0.22:8787
 
   Tunnel active (ngrok):
   Public URL: https://xxxx.ngrok-free.app

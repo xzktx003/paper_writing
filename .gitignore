@@ -30,4 +30,10 @@ app/data/
 .DS_Store
 
 papers/.playwright-deps/
-papers/
+papers/*
+!papers/paper-agent-spe/
+!papers/paper-agent-spe/**
+
+# Test temp dirs
+app/.tmp-test-home/
+app/.tmp-v8-coverage/

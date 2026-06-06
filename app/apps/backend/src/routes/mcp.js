@@ -15,6 +15,18 @@ import { handleMcpRequest } from '../services/mcpServer.js';
 const sseClients = new Map();
 let sseMessageId = 0;
 
+function firstHeaderValue(value) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getPublicBaseUrl(request) {
+  const forwardedProto = firstHeaderValue(request.headers['x-forwarded-proto']);
+  const forwardedHost = firstHeaderValue(request.headers['x-forwarded-host']);
+  const protocol = forwardedProto || request.protocol || 'http';
+  const host = forwardedHost || request.headers.host || '10.30.0.22:8787';
+  return `${protocol}://${host}`;
+}
+
 /**
  * 注册 MCP 路由
  * @param {import('fastify').FastifyInstance} fastify
@@ -24,7 +36,8 @@ export function registerMcpRoutes(fastify) {
    * GET /api/mcp/info
    * 非 MCP 协议端点 — 返回服务信息，便于外部工具发现
    */
-  fastify.get('/api/mcp/info', async () => {
+  fastify.get('/api/mcp/info', async (request) => {
+    const baseUrl = getPublicBaseUrl(request);
     return {
       name: 'Paper Agent MCP Server',
       version: '1.0.0',
@@ -49,14 +62,14 @@ export function registerMcpRoutes(fastify) {
         'claude-desktop': {
           mcpServers: {
             'paper-agent': {
-              url: 'http://localhost:8787/api/mcp/sse',
+              url: `${baseUrl}/api/mcp/sse`,
             },
           },
         },
         'cursor': {
           mcpServers: {
             'paper-agent': {
-              url: 'http://localhost:8787/api/mcp',
+              url: `${baseUrl}/api/mcp`,
             },
           },
         },

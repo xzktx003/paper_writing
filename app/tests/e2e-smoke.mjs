@@ -1,8 +1,8 @@
 import { chromium } from 'playwright';
 
 const CHROMIUM_PATH = '/data01/home/xuzk/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome';
-const FRONTEND_URL = 'http://localhost:5173';
-const BACKEND_URL = 'http://localhost:8787';
+const FRONTEND_URL = process.env.BASE_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
 
 let browser, page;
 let passed = 0, failed = 0;

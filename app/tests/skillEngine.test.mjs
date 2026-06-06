@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { loadSkills, listSkills, getSkill, assemblePrompt } from '../apps/backend/src/services/skillEngine.js';
 
 describe('Skill Engine', () => {
@@ -62,5 +65,30 @@ describe('Skill Engine', () => {
   it('assemblePrompt includes manual skill when provided', async () => {
     const prompt = assemblePrompt({ globalSkills: [], chapterSkills: [], manualSkill: 'writing-anti-ai' });
     expect(prompt).toContain('AI');
+  });
+
+  it('loads directory skill packages with manifest, references, and scripts metadata', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'skill-package-'));
+    try {
+      const packageDir = join(root, 'paper-spine-lite');
+      await mkdir(join(packageDir, 'references'), { recursive: true });
+      await mkdir(join(packageDir, 'scripts'), { recursive: true });
+      await writeFile(join(packageDir, 'manifest.yaml'), `name: paper-spine-lite\ndisplay_name: PaperSpine Lite\ndescription: Motivation-first paper writing workflow\ntype: writing\ntrigger: manual\ntags:\n  - spine\n  - motivation\n`);
+      await writeFile(join(packageDir, 'SKILL.md'), '# PaperSpine Lite\n\nBuild a motivation-first draft from materials.');
+      await writeFile(join(packageDir, 'references', 'workflow.md'), 'Workflow notes');
+      await writeFile(join(packageDir, 'scripts', 'audit.mjs'), 'console.log("audit")');
+
+      await loadSkills(root);
+
+      const skill = getSkill('paper-spine-lite');
+      expect(skill).toBeTruthy();
+      expect(skill.kind).toBe('package');
+      expect(skill.prompt).toContain('motivation-first');
+      expect(skill.package.references).toContain('references/workflow.md');
+      expect(skill.package.scripts).toContain('scripts/audit.mjs');
+      expect(listSkills().find(s => s.name === 'paper-spine-lite')).toMatchObject({ source: 'custom', kind: 'package' });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

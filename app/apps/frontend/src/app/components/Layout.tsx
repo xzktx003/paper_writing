@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { gsap } from "../gsap";
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { LeftPanel } from './LeftPanel';
@@ -58,6 +59,17 @@ export function Layout() {
     document.addEventListener('mouseup', onUp);
   }, [terminalHeight]);
 
+
+  // ── GSAP Layout Entrance Animation ──
+  React.useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Panels slide in from sides
+      gsap.from(".zone-files", { x: -60, opacity: 0, duration: 0.7, ease: "power3.out", delay: 0.1 });
+      gsap.from(".zone-editor", { y: 20, opacity: 0, duration: 0.6, ease: "power3.out", delay: 0.2 });
+      gsap.from(".zone-ai, .zone-terminal", { x: 60, opacity: 0, duration: 0.7, ease: "power3.out", delay: 0.3 });
+    });
+    return () => ctx.revert();
+  }, []);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>

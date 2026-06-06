@@ -132,3 +132,32 @@
 - 7 registered MCP tools: `paper_search`, `verify_citations`, `cross_check_citations`, `compile_latex`, `read_project_file`, `ai_polish`, `ai_review`.
 - Compatible with Claude Desktop, Cursor, Copilot, and other MCP clients.
 - Configuration examples provided for Claude Desktop (`mcpServers` SSE config) and Cursor (HTTP POST config).
+
+## Skill Package Manager
+
+- Skill Engine supports three skill sources: builtin (local YAML), imported (GitHub), and custom (project-level).
+- Skills can be imported from GitHub URLs (github.com/owner/repo) as skill packages.
+- Imported skill packages include SKILL.md + manifest.yaml + references/ + scripts/ + assets/ + tests/ subdirectories.
+- GitHub import automatically downloads directory structures from any public repo.
+- Imported skills can be updated (re-downloaded) and removed.
+- Each imported skill's source URL, owner, repo, and import/update timestamps are tracked in `tracker.json`.
+- Skill package directory tree can be browsed from the UI (📂 Package tree).
+- Skill package tests (`.sh`, `.py`, `.js`, `.mjs`) can be run with timeout and sandboxed env.
+- Skills display file counts for references, scripts, assets, and tests.
+- Pipeline 2.0 presets added: `rag-literature-review`, `paper-spine-build`, `nature-submission`, `claim-audit`, `stats-sanity`, `repro-pack`.
+
+## Paper RAG (Research Corpus)
+
+- Project-level research corpus under `research_corpus/` directory.
+- Supports indexing of `.md`, `.markdown`, `.txt`, `.tex`, `.bib`, `.json`, `.csv`, `.xml`, `.html`, `.yaml`, `.yml` files.
+- Word-based chunking with configurable chunk size (120 words) and overlap (30 words).
+- Scored search with token overlap and density calculation.
+- Cited RAG context builder for prompt injection.
+- Documents can be added by pasting text, uploading files (drag & drop or click), or writing directly.
+- Supported upload formats: `.md`, `.txt`, `.tex`, `.bib`, `.pdf`, `.docx`, `.csv`, `.json`, `.html`.
+- Documents can be deleted from the corpus.
+- **External Academic Search**: Search Semantic Scholar, arXiv, CrossRef, and OpenAlex from the RAG panel.
+- External search results show title, authors, year, venue, abstract, citation count, DOI, and source link.
+- External search supports filtering by source (comma-separated source names).
+- RAG panel has four tabs: Corpus (manage docs), Search (corpus search + evidence), External (academic search), Upload (file drag/drop).
+- REST API at `/api/projects/:id/rag/*` with documents, index, search, context, external-search, upload endpoints.

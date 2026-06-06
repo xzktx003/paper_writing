@@ -8,12 +8,19 @@ import { getProjectRoot } from '../services/projectService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootRequire = createRequire(path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'noop.txt'));
-const pty = rootRequire('node-pty');
+let ptyModule = null;
 
 const MAX_BUFFER_BYTES = 50 * 1024;
 const CLEANUP_TIMEOUT_MS = 5 * 60 * 1000;
 
 const sessionPool = new Map();
+
+function loadPty() {
+  if (!ptyModule) {
+    ptyModule = rootRequire('node-pty');
+  }
+  return ptyModule;
+}
 
 async function resolveCwd(cwd) {
   if (cwd && cwd.startsWith('__paper_agent__:')) {
@@ -89,6 +96,16 @@ export function registerTerminalRoutes(fastify) {
       }
     } else {
       const spawnConfig = buildTmuxSpawnOptions({ cwd, cols, rows, sessionName });
+      let pty;
+      try {
+        pty = loadPty();
+      } catch (error) {
+        const message = 'Terminal backend unavailable: node-pty native module failed to load.';
+        fastify.log.error({ err: error }, message);
+        try { ws.send(JSON.stringify({ type: 'error', error: message })); } catch (e) {}
+        try { ws.close(1011, message); } catch (e) {}
+        return;
+      }
       const ptyProcess = pty.spawn(spawnConfig.command, spawnConfig.args, spawnConfig.options);
 
       entry = {

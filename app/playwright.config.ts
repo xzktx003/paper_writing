@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const defaultBaseURL = process.env.BASE_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
+
 /**
  * Paper Agent Playwright E2E 测试配置
  *
@@ -34,7 +36,7 @@ export default defineConfig({
 
   /* 全局设置 */
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    baseURL: defaultBaseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -62,7 +64,7 @@ export default defineConfig({
   /* 如需自动启动，取消注释：
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: defaultBaseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },

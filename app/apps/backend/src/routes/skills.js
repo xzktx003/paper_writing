@@ -1,4 +1,14 @@
-import { listSkills, getSkill, loadSkills } from '../services/skillEngine.js';
+import {
+  listSkills,
+  getSkill,
+  loadSkills,
+  importSkillFromGitHub,
+  updateImportedSkill,
+  getSkillPackageTree,
+  runSkillTests,
+  listImportedSkills,
+  removeImportedSkill
+} from '../services/skillEngine.js';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
@@ -8,6 +18,8 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const customSkillsDir = join(__dirname, '../../skills');
 
 export function registerSkillRoutes(fastify) {
+  /* ── List / Get / Reload ──────────────────────────────────── */
+
   fastify.get('/api/skills', async () => {
     return listSkills();
   });
@@ -23,6 +35,8 @@ export function registerSkillRoutes(fastify) {
     await loadSkills(projectSkillsDir);
     return { ok: true, count: listSkills().length };
   });
+
+  /* ── Create YAML Skill ───────────────────────────────────── */
 
   fastify.post('/api/skills', async (request) => {
     const { name, display_name, description, type, trigger, prompt } = request.body;
@@ -46,5 +60,45 @@ export function registerSkillRoutes(fastify) {
     }
     await loadSkills();
     return { ok: true };
+  });
+
+  /* ── GitHub Import / Update / Remove ──────────────────────── */
+
+  fastify.post('/api/skills/import', async (request) => {
+    const { url, name } = request.body || {};
+    if (!url) return { error: 'GitHub URL is required' };
+    const result = await importSkillFromGitHub(url, { name });
+    return { ok: true, skill: result };
+  });
+
+  fastify.post('/api/skills/:name/update', async (request) => {
+    const { name } = request.params;
+    const result = await updateImportedSkill(name);
+    return { ok: true, skill: result };
+  });
+
+  fastify.get('/api/skills/imported/list', async () => {
+    return { skills: listImportedSkills() };
+  });
+
+  fastify.delete('/api/skills/:name/imported', async (request) => {
+    const { name } = request.params;
+    return await removeImportedSkill(name);
+  });
+
+  /* ── Package Operations ───────────────────────────────────── */
+
+  fastify.get('/api/skills/:name/package-tree', async (request) => {
+    const { name } = request.params;
+    const subdir = request.query.subdir || '';
+    const tree = await getSkillPackageTree(name, subdir);
+    return { tree };
+  });
+
+  fastify.post('/api/skills/:name/run-tests', async (request) => {
+    const { name } = request.params;
+    const timeout = request.body?.timeout;
+    const result = await runSkillTests(name, { timeout });
+    return { ok: true, ...result };
   });
 }

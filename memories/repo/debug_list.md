@@ -1,5 +1,23 @@
 # Debug List
 
+## 2026-06-05 - AutoQuantizer Qwen3-4B result invalidated by wrong local checkpoint
+
+- Symptom: The Qwen3-4B AutoQuantizer output duplicated Qwen3-0.6B metrics and beta counts.
+- Root cause: `/data01/datasets/Qwen3-4B` is a mislabeled 0.6B checkpoint; the final experiment runner trusted the local path without checking config dimensions. The same runner also overwrote externally assigned GPUs via `CUDA_VISIBLE_DEVICES`, and its RTN implementation diverged from the validated int4 RTN baseline.
+- Fix: Use the HF `Qwen/Qwen3-4B` alias for final experiments, validate expected layer/hidden sizes before quantization/evaluation, preserve an existing `CUDA_VISIBLE_DEVICES` value, and align AutoQuantizer/final-runner RTN with standard int4 round-to-nearest.
+
+## 2026-06-03 - SPE package sanitizer reintroduced local machine strings
+
+- Symptom: Coding Kanban SPE package docs/tools and the supporting archive
+  still contained the exact local path/user fixture strings that the verifier
+  was meant to keep out of the publication artifact.
+- Root cause: The verifier stored the guarded strings literally and scanned
+  only the curated `code/coding_kanban` tree, while the supporting archive also
+  ships package docs and tools.
+- Fix: Use encoded verifier constants, replace publication-facing literal
+  examples with categories, scan package text plus archive text entries, and
+  rebuild the generated SPE archives/checksums.
+
 ## 2026-06-01 - Release verification test drift
 
 - Symptom: Full `npx vitest run` failed on stale export, settings privacy, and tmux websocket assertions.
@@ -56,3 +74,10 @@
 - 2026-05-22: 改进集成 Terminal 生命周期；每个项目/cwd 使用稳定 tmux session，关闭面板或刷新页面只断开当前客户端并在下次打开时重新 attach，只有 tmux session 被杀掉时才自动新建。
 - 2026-05-22: 修复 Files 右键 Copy Path 在 HTTP/非安全上下文下未真正写入剪贴板、导致用户粘贴到旧选中文本/正文片段的问题；复制路径现在先规范化项目相对路径，并在 Clipboard API 不可用时使用 textarea + execCommand fallback。
 - 2026-05-22: Fixed Rendered editor mode semantics. The prior implementation still used CodeMirror source lines with inline replacement widgets, which looked and behaved like source editing rather than an editable compiled preview. Rendered mode now uses a dedicated editable preview surface and keeps malformed/unsupported syntax as editable source fallback.
+- 2026-06-02: Vite 开发服务必须显式绑定 `0.0.0.0`，README/Playwright/MCP discovery 默认地址应优先使用 `http://10.30.0.22:8787`；MCP `/api/mcp/info` 需按请求 Host / forwarded headers 生成客户端 URL，不能硬编码 localhost。
+- 2026-06-02: React Router future flags 只应放在 `BrowserRouter`；`Routes` 不接受 `future` 属性，重复配置会导致前端 TypeScript 检查失败。
+- 2026-06-02: 终端路由不能在模块导入阶段强制加载 `node-pty`；应在首次创建终端会话时懒加载，原生模块不可用时通过 WebSocket 返回错误，避免测试收集和后端启动被可选终端能力阻断。
+- 2026-06-02: 依赖审计高危项通过升级 Fastify 5/官方插件、升级后端 `tar`、删除未使用 `pdfjs-dist`、升级 Vite/React 插件修复；提交前需要同时跑 `npm audit`、前端构建和全量 Vitest。
+- 2026-06-06: `papers/paper-agent-spe` 的四张论文说明图曾存在框内文字溢出、连线穿字和底部图例交叉；已重排 SVG、重新导出 PDF，并将 Wiley 模板 EPS 小图标切到已有 `*-eps-converted-to.pdf`，Tectonic 需带 `LD_LIBRARY_PATH=/data01/home/xuzk/anaconda3/lib` 才能解析本机缺失的旧 OpenSSL/graphite 库。
+- 2026-06-06: `papers/paper-agent-spe` 编译后参考文献消失是因为 `main.aux` 缺 `\bibstyle`，BibTeX 生成空 `.bbl`；修复为显式加载 `NJDnatbib` 数字模式、使用 `wileyNJD-Chicago-lastoo`，并把 `@online` 改为 Wiley `.bst` 支持的 `@misc`。`verify.sh` 现在会检查 PDF 中的 `[?]`、References 缺失和 author-year 标签泄漏。
+- 2026-06-06: `papers/paper-agent-spe` 正文、架构图和投稿 bundle 曾残留 PDF.js/Turborepo 旧实现描述，以及 Wiley 模板日期/假 DOI；删除占位元数据后还会输出空历史字段和裸 DOI 页脚。已改为 native browser PDF viewer/embed、npm workspaces/concurrently，`USG.cls` 对空生产元数据不输出标签/DOI，并同步 `submission-upload/latex-bundle` 的正文、图、类文件、images 兼容目录和 `wiley/*.bst`，避免上传包独立编译时参考文献丢失。

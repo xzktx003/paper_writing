@@ -37,6 +37,7 @@ import { registerAntiAiRoutes } from './routes/antiAi.js';
 import { registerPipelineV2Routes } from './routes/pipelineV2.js';
 import { registerCitationVerificationRoutes } from './routes/citationVerification.js';
 import { registerMcpRoutes } from './routes/mcp.js';
+import { registerPaperRagRoutes } from './routes/paperRag.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { registerAuthHook } from './middleware/auth.js';
@@ -90,6 +91,7 @@ registerAntiAiRoutes(fastify);
 registerPipelineV2Routes(fastify);
 registerCitationVerificationRoutes(fastify);
 registerMcpRoutes(fastify);
+registerPaperRagRoutes(fastify);
 
 // Config endpoints
 fastify.get('/api/config', async () => publicAppConfig(appConfig));
@@ -145,6 +147,7 @@ fastify.get('/api/models', async (request, reply) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const frontendDist = join(__dirname, '../../frontend/dist');
+const publicHost = process.env.OPENPRISM_PUBLIC_HOST || '10.30.0.22';
 
 if (existsSync(frontendDist)) {
   const fastifyStatic = await import('@fastify/static');
@@ -174,5 +177,5 @@ fastify.addHook('onClose', async () => {
 await fastify.listen({ port: PORT, host: '0.0.0.0' });
 
 console.log('');
-console.log(`  Paper Writer started at http://localhost:${PORT}`);
+console.log(`  Paper Writer started at http://${publicHost}:${PORT}`);
 console.log('');
