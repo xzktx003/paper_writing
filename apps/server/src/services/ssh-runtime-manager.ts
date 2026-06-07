@@ -8,6 +8,7 @@ import type {
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
 import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
+import { normalizeStdinPayload } from "./stdin-payload.js";
 
 function quoteForPosixShell(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
@@ -119,10 +120,7 @@ export class SshRuntimeManager {
       );
     }
 
-    const payload = input.input.endsWith("\n")
-      ? input.input
-      : `${input.input}\n`;
-    childProcess.stdin.write(payload);
+    childProcess.stdin.write(normalizeStdinPayload(input.input));
 
     return this.registry.writeToSession(agentSessionId, input);
   }

@@ -115,8 +115,9 @@ function createScanDemoFixture() {
   };
 }
 
-async function chooseLocalHost(page, triggerPattern) {
-  await page.getByRole('button', { name: triggerPattern }).click();
+async function chooseScanHost(page, triggerTestId) {
+  await page.getByTestId('scan-menu-toggle').click();
+  await page.getByTestId(triggerTestId).click();
   await page.getByRole('button', { name: /本机/ }).click();
 }
 
@@ -264,7 +265,7 @@ async function main() {
       fullPage: true,
     });
 
-    await chooseLocalHost(page, /扫描会话/);
+    await chooseScanHost(page, 'btn-扫描会话');
     const appDiscoveryDialog = page.locator('.discovery-dialog');
     await appDiscoveryDialog.waitFor();
     await appDiscoveryDialog.locator('.discovery-path-input').fill(scanFixture.rootDir);
@@ -277,7 +278,7 @@ async function main() {
     await appDiscoveryDialog.getByRole('button', { name: '关闭' }).click();
     await appDiscoveryDialog.waitFor({ state: 'hidden' });
 
-    await chooseLocalHost(page, /扫描 tmux/);
+    await chooseScanHost(page, 'btn-扫描 tmux');
     const tmuxDiscoveryDialog = page.locator('.discovery-dialog');
     await tmuxDiscoveryDialog.waitFor();
     await page.locator('.discovery-item-name', { hasText: 'readme-demo' }).waitFor();
@@ -338,7 +339,7 @@ async function main() {
     await page.getByRole('button', { name: '返回宫格' }).click();
     await page.waitForSelector('.grid-card');
 
-    await page.getByRole('button', { name: /快速连接 tmux/ }).click();
+    await page.keyboard.press('Control+E');
     await page.waitForSelector('[data-testid="quick-tmux-connect-dialog"]');
 
     const hostSearch = page.getByTestId('quick-tmux-host-search');

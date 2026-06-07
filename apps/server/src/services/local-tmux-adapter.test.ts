@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildTmuxSendKeySteps,
   isNoTmuxServerError,
   parsePaneInfo,
   summarizeTmuxSessions,
@@ -56,4 +57,27 @@ test("isNoTmuxServerError classifies missing server errors", () => {
     isNoTmuxServerError(new Error("command not found: tmux")),
     false,
   );
+});
+
+test("buildTmuxSendKeySteps preserves text submit while keeping paste raw", () => {
+  assert.deepEqual(buildTmuxSendKeySteps("hello codex\r"), [
+    { kind: "literal", value: "hello codex" },
+    { kind: "keys", keys: ["Enter"] },
+  ]);
+
+  assert.deepEqual(buildTmuxSendKeySteps("hello codex"), [
+    { kind: "literal", value: "hello codex" },
+  ]);
+});
+
+test("buildTmuxSendKeySteps maps mobile control keys without appending Enter", () => {
+  assert.deepEqual(buildTmuxSendKeySteps("\t"), [
+    { kind: "keys", keys: ["Tab"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x03"), [
+    { kind: "keys", keys: ["C-c"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[A"), [
+    { kind: "keys", keys: ["Up"] },
+  ]);
 });

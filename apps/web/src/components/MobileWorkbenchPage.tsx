@@ -29,6 +29,7 @@ export function MobileWorkbenchPage({
   onSwitchSession,
 }: MobileWorkbenchPageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sendingInput, setSendingInput] = useState(false);
   const visibleSessions = useMemo(
     () => sessions.filter((session) => !session.hidden),
     [sessions],
@@ -50,15 +51,18 @@ export function MobileWorkbenchPage({
   }, []);
 
   const handleSendInput = async (input: string) => {
-    if (!activeSession) {
+    if (!activeSession || sendingInput) {
       return;
     }
 
     setErrorMessage(null);
+    setSendingInput(true);
     try {
       await sendAgentInput(activeSession.id, { input });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "发送失败");
+    } finally {
+      setSendingInput(false);
     }
   };
 
@@ -131,11 +135,11 @@ export function MobileWorkbenchPage({
       )}
 
       <MobileTerminalToolbar
-        disabled={!activeSession}
+        disabled={!activeSession || sendingInput}
         onSendInput={handleSendInput}
       />
       <MobileAgentComposer
-        disabled={!activeSession}
+        disabled={!activeSession || sendingInput}
         onSendInput={handleSendInput}
       />
     </main>

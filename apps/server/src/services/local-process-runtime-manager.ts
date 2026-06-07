@@ -8,6 +8,7 @@ import type {
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
 import { resolveLocalWorkingDirectory } from "./resolve-local-working-directory.js";
+import { normalizeStdinPayload } from "./stdin-payload.js";
 
 export class LocalProcessRuntimeManager {
   private readonly processes = new Map<
@@ -96,10 +97,7 @@ export class LocalProcessRuntimeManager {
       );
     }
 
-    const payload = input.input.endsWith("\n")
-      ? input.input
-      : `${input.input}\n`;
-    childProcess.stdin.write(payload);
+    childProcess.stdin.write(normalizeStdinPayload(input.input));
 
     return this.registry.writeToSession(agentSessionId, input);
   }

@@ -16,6 +16,10 @@ import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 
 const TMUX_BINARY = resolveTmuxBinary();
 
+export type TmuxSendKeyStep =
+  | { kind: "literal"; value: string }
+  | { kind: "keys"; keys: string[] };
+
 interface TmuxPaneInfo {
   sessionName: string;
   attachedCount: number;
@@ -24,6 +28,78 @@ interface TmuxPaneInfo {
   paneId: string;
   currentCommand: string;
   currentPath: string;
+}
+
+const CONTROL_KEY_MAP = new Map<string, string>([
+  ["\x01", "C-a"],
+  ["\x03", "C-c"],
+  ["\x04", "C-d"],
+  ["\x05", "C-e"],
+  ["\t", "Tab"],
+  ["\n", "Enter"],
+  ["\r", "Enter"],
+  ["\x0c", "C-l"],
+  ["\x1b", "Escape"],
+]);
+
+const CSI_KEY_MAP = new Map<string, string>([
+  ["\x1b[A", "Up"],
+  ["\x1b[B", "Down"],
+  ["\x1b[C", "Right"],
+  ["\x1b[D", "Left"],
+]);
+
+function appendKeyStep(steps: TmuxSendKeyStep[], key: string): void {
+  const lastStep = steps.at(-1);
+
+  if (lastStep?.kind === "keys") {
+    lastStep.keys.push(key);
+    return;
+  }
+
+  steps.push({ kind: "keys", keys: [key] });
+}
+
+export function buildTmuxSendKeySteps(input: string): TmuxSendKeyStep[] {
+  const steps: TmuxSendKeyStep[] = [];
+  let literalBuffer = "";
+
+  function flushLiteral(): void {
+    if (!literalBuffer) {
+      return;
+    }
+
+    steps.push({ kind: "literal", value: literalBuffer });
+    literalBuffer = "";
+  }
+
+  for (let index = 0; index < input.length; ) {
+    const csiSequence = input.slice(index, index + 3);
+    const csiKey = CSI_KEY_MAP.get(csiSequence);
+
+    if (csiKey) {
+      flushLiteral();
+      appendKeyStep(steps, csiKey);
+      index += csiSequence.length;
+      continue;
+    }
+
+    const currentChar = input[index];
+    const controlKey = CONTROL_KEY_MAP.get(currentChar);
+
+    if (controlKey) {
+      flushLiteral();
+      appendKeyStep(steps, controlKey);
+      index += 1;
+      continue;
+    }
+
+    literalBuffer += currentChar;
+    index += 1;
+  }
+
+  flushLiteral();
+  return steps;
 }
 
 export interface TmuxSessionInfo {
@@ -260,14 +336,12 @@ export class LocalTmuxAdapter {
       );
     }
 
-    const lines = input.input.replace(/\r/g, "").split("\n");
-
-    for (const line of lines) {
-      if (line) {
-        await this.runTmux(["send-keys", "-t", paneId, "-l", line]);
+    for (const step of buildTmuxSendKeySteps(input.input)) {
+      if (step.kind === "literal") {
+        await this.runTmux(["send-keys", "-t", paneId, "-l", step.value]);
+      } else {
+        await this.runTmux(["send-keys", "-t", paneId, ...step.keys]);
       }
-
-      await this.runTmux(["send-keys", "-t", paneId, "Enter"]);
     }
 
     return this.registry.writeToSession(agentSession.id, input);
