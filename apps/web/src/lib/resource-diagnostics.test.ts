@@ -410,6 +410,48 @@ describe("resource diagnostics", () => {
     );
   });
 
+  it("flags terminal history truncation from backend diagnostics", () => {
+    const findings = classifyResourcePressure({
+      snapshot: makeSnapshot(),
+      terminalHistoryDiagnostics: {
+        timestamp: new Date(1_000).toISOString(),
+        pty: {
+          activeSessions: 1,
+          maxScrollbackBytes: 16,
+          sessions: [
+            {
+              agentSessionId: "agent-1",
+              droppedScrollbackBytes: 32,
+              droppedScrollbackChunks: 2,
+              scrollbackBytes: 12,
+              scrollbackChunks: 1,
+            },
+          ],
+          totalDroppedScrollbackBytes: 32,
+          totalDroppedScrollbackChunks: 2,
+          totalScrollbackBytes: 12,
+          truncatedSessionCount: 1,
+        },
+        registry: {
+          maxOutputEntries: 1000,
+        },
+        tmux: {
+          captureLines: 5000,
+        },
+      },
+      useLightweightTerminalPreview: true,
+    });
+
+    assert.equal(
+      findings.some((finding) => finding.includes("终端历史缓冲已发生裁剪")),
+      true,
+    );
+    assert.equal(
+      findings.some((finding) => finding.includes("未显示明显泄漏源")),
+      false,
+    );
+  });
+
   it("falls back to heap snapshots when no live pressure source is visible", () => {
     const findings = classifyResourcePressure({
       snapshot: makeSnapshot(),

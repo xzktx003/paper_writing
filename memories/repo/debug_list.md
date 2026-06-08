@@ -11,6 +11,7 @@
 - 远端 SSH 会话在线时，文件浏览器首屏偶发空白并报 `write ECONNRESET` / `No response from server`：`SftpService` 在连接还没 `ready` 时就把连接放进池里，UI 初始化打出的并发 `/api/fs/list` 会抢到半初始化连接。修复为复用连接前必须等待 `ready`，并在连接失败时及时把坏连接移出池。
 - 远端 SSH 会话已经退出时，kanban 终端只剩 `[连接已断开]`：PTY runtime 退出就删除 handle，terminal websocket 后续重连拿不到 scrollback，只能 4004 关闭，导致真实错误（例如 `fatal: Gerrit Code Review: exec: not found`）被泛化提示覆盖。修复为 runtime 已退出但 session 仍存在时，从 registry 的历史输出回放 terminal 内容。
 - live stdin 过滤握手应答导致 Copilot CLI 等 TUI 卡死：修复为仅清洗 replay，不过滤 live stdin 的 DA/DSR/CPR 等应答。
+- Codex CLI 运行后鼠标滚轮偶发变成输入历史上下翻页：xterm.js 会在 TUI 鼠标追踪或无 scrollback 路径中把 wheel 转成鼠标协议/方向键输入；修复为前端接管 wheel，只滚动 xterm scrollback 并阻止 wheel 进入 stdin。
 - 终端 focus-report mock 未进入 raw mode 导致测试假红：修复为断言前先切 raw mode。
 - Secondary DA 应答污染 shell 提示符：修复为只过滤会造成噪音的 Secondary DA，保留必要握手应答。
 - 非交互 tmux 缩略图回写 resize 导致真实 pane 缩小：修复为缓存 live geometry，在前端做本地缩放预览。
@@ -40,6 +41,7 @@
 - commit `fc57a80` 引入的终端焦点保留修复过度：`rememberExternalPointerIntent` 仅对受保护目标记录意图，导致点击非保护元素时终端抢回焦点；`hasIntentionalExternalFocus` 对非保护、非 body 元素直接返回 false 加剧了问题。修复为 pointerdown 统一记录意图 + 纯时间戳比较，不再区分 active element 类型。
 - VS Code Web 与终端来回切换两轮后，点击 VS Code iframe 内部无法重新输入：上一版只依赖父文档 `pointerdown` 记录外部意图，但 iframe 内点击不稳定冒到父页面。修复为在父窗口 `blur` 和被动终端聚焦前，根据当前 `document.activeElement` 将 hovered iframe 补记为用户外部焦点意图，并补 VS Code -> 终端 -> VS Code round-trip e2e 回归。
 - 轻量预览下浏览器内存和网络仍持续增长：资源诊断显示 `/ws/agent-sessions` 全量快照达到数百 msg/s、数 MB/s；根因是每个终端输出帧都触发一次全量 snapshot，前端持续 JSON 解析和 React 更新。修复为后端对输出触发的 snapshot 做 trailing 合并广播，结构性操作仍即时刷新，并避免 observe-only 会话输出时创建无效 awaiting_input timer。
+- Codex 长输出在切换/重开终端或 tmux observe 刷新后只能看到最近一小段：根因是 live PTY replay 仅 256 KiB、tmux capture 固定最近 200 行、registry fallback 仅 200 条。修复为把 PTY replay、tmux capture、registry fallback、xterm scrollback 做成可配置较大默认值，并在资源诊断展示 PTY 历史裁剪状态。
 - 手机浏览器查看 Codex 长上下文终端时，终端区域下拉会触发浏览器下拉刷新，或只滑动页面不滑动 xterm 历史：根因是桌面页面滚动结构没有锁住根滚动链路；首版 touch 监听在冒泡阶段，遇到 xterm viewport/浏览器手势竞争时拦截不够早，且桌面聚焦页没有启用手机触控模式。修复为新增 `/mobile` 手机终端页锁定 `html/body/#root` 滚动，并让 `TerminalView` 手机触控模式用捕获阶段的非 passive `touchstart/touchmove` 接管单指滑动、滚动 xterm 历史，双指缩放字号；触屏设备的桌面聚焦页也启用同一逻辑。
 - 手机访问 `/mobile` 进不去或 404：根因是部分运行入口只暴露根页面或只启动后端，history route 依赖前端服务提供 SPA fallback。修复为手机端按钮改用 `/?view=mobile` 根路径 query 入口，并保留 `/mobile`、`/m`、`#/mobile` 兼容解析。
 - 手机端 Tab、Esc、Ctrl+C、方向键等快捷键在部分会话里会变成“控制键 + Enter”或不能作为真实按键送入 Codex：根因是手机端快捷键走已有 stdin 路由，旧的非 PTY runtime 会给任意输入追加换行，tmux 控制路径也把输入按行拆分并总是补 Enter。修复为对 stdin payload 做控制字符识别，普通文本仍可补换行提交，Tab/Esc/Ctrl/方向键和多行粘贴按原始输入转发；tmux 接入路径只转换通用控制字符，不增加 tmux 专用快捷键按钮。

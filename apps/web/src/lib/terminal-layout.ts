@@ -16,12 +16,37 @@ export interface TerminalMonitorSlot {
   sessionId: string | null;
 }
 
+export type RestorableTerminalMonitorLayoutMode = Exclude<
+  TerminalMonitorLayoutMode,
+  "single"
+>;
+
+export interface TerminalMonitorLayoutSnapshot {
+  mode: RestorableTerminalMonitorLayoutMode;
+  slots: TerminalMonitorSlot[];
+  activeSlotId: string;
+  closedSlotIds: string[];
+}
+
 export interface NormalizeTerminalMonitorSlotsOptions {
   mode: TerminalMonitorLayoutMode;
   sessions: TerminalMonitorSession[];
   preferredSessionId?: string | null;
   preferredSlotId?: string | null;
   previousSlots?: TerminalMonitorSlot[];
+}
+
+export interface RestoreTerminalMonitorLayoutSnapshotOptions {
+  snapshot: TerminalMonitorLayoutSnapshot;
+  sessions: TerminalMonitorSession[];
+  preferredSessionId?: string | null;
+}
+
+export interface RestoredTerminalMonitorLayout {
+  mode: RestorableTerminalMonitorLayoutMode;
+  slots: TerminalMonitorSlot[];
+  activeSlotId: string;
+  closedSlotIds: string[];
 }
 
 const TERMINAL_MONITOR_SLOT_IDS = [
@@ -187,6 +212,86 @@ export function setTerminalMonitorSlotSession(
 
     return slot;
   });
+}
+
+export function closeTerminalMonitorSlot(
+  slots: TerminalMonitorSlot[],
+  slotId: string,
+): TerminalMonitorSlot[] {
+  return slots.map((slot) =>
+    slot.id === slotId ? { ...slot, sessionId: null } : slot,
+  );
+}
+
+export function closeTerminalMonitorSlotWithReplacement(
+  slots: TerminalMonitorSlot[],
+  slotId: string,
+  replacementSessionId?: string | null,
+): TerminalMonitorSlot[] {
+  if (!replacementSessionId) {
+    return closeTerminalMonitorSlot(slots, slotId);
+  }
+
+  return setTerminalMonitorSlotSession(slots, slotId, replacementSessionId);
+}
+
+export function findFirstTerminalMonitorReplacementSession(
+  sessions: TerminalMonitorSession[],
+  currentSessionId?: string | null,
+): TerminalMonitorSession | null {
+  return sessions.find((session) => session.id !== currentSessionId) ?? null;
+}
+
+export function findNextOccupiedTerminalMonitorSlot(
+  slots: TerminalMonitorSlot[],
+  excludedSlotId?: string | null,
+): TerminalMonitorSlot | null {
+  return (
+    slots.find(
+      (slot) => slot.id !== excludedSlotId && Boolean(slot.sessionId),
+    ) ??
+    slots.find((slot) => Boolean(slot.sessionId)) ??
+    null
+  );
+}
+
+export function getTerminalPaneContextPrimaryActionLabel(
+  canRestoreMultiPaneLayout: boolean,
+): "单屏展示" | "还原多屏展示" {
+  return canRestoreMultiPaneLayout ? "还原多屏展示" : "单屏展示";
+}
+
+export function restoreTerminalMonitorLayoutSnapshot({
+  snapshot,
+  sessions,
+  preferredSessionId,
+}: RestoreTerminalMonitorLayoutSnapshotOptions): RestoredTerminalMonitorLayout {
+  const validSlotIds = new Set(getTerminalMonitorSlotIds(snapshot.mode));
+  const closedSlotIds = snapshot.closedSlotIds.filter((slotId) =>
+    validSlotIds.has(slotId),
+  );
+  const closedSlotIdSet = new Set(closedSlotIds);
+  const slots = normalizeTerminalMonitorSlots({
+    mode: snapshot.mode,
+    sessions,
+    preferredSessionId,
+    preferredSlotId: snapshot.activeSlotId,
+    previousSlots: snapshot.slots,
+  }).map((slot) =>
+    closedSlotIdSet.has(slot.id) ? { ...slot, sessionId: null } : slot,
+  );
+  const activeSlot =
+    slots.find((slot) => slot.id === snapshot.activeSlotId && slot.sessionId) ??
+    findNextOccupiedTerminalMonitorSlot(slots) ??
+    slots.find((slot) => slot.id === snapshot.activeSlotId) ??
+    slots[0]!;
+
+  return {
+    mode: snapshot.mode,
+    slots,
+    activeSlotId: activeSlot.id,
+    closedSlotIds,
+  };
 }
 
 export function placeTerminalMonitorSlotSession(

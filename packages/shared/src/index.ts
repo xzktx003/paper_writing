@@ -274,6 +274,31 @@ export interface VsCodeWebProxyDiagnosticsResponse {
   };
 }
 
+export interface TerminalHistoryDiagnosticsResponse {
+  timestamp: string;
+  pty: {
+    activeSessions: number;
+    maxScrollbackBytes: number;
+    totalScrollbackBytes: number;
+    totalDroppedScrollbackBytes: number;
+    totalDroppedScrollbackChunks: number;
+    truncatedSessionCount: number;
+    sessions: Array<{
+      agentSessionId: string;
+      scrollbackBytes: number;
+      scrollbackChunks: number;
+      droppedScrollbackBytes: number;
+      droppedScrollbackChunks: number;
+    }>;
+  };
+  registry: {
+    maxOutputEntries: number;
+  };
+  tmux: {
+    captureLines: number;
+  };
+}
+
 export type FileEntryType = "file" | "directory" | "symlink";
 
 export interface FileEntry {

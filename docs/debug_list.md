@@ -27,6 +27,7 @@
 - 手机访问 `/mobile` 进不去或 404。根因是部分当前运行入口只暴露根页面或只启动了后端，`/mobile` 这种 history route 依赖前端开发服务/静态服务提供 SPA fallback。修复为移动端按钮改用 `/?view=mobile` 根路径 query 入口，并保留 `/mobile`、`/m`、`#/mobile` 兼容解析。
 - 手机端 Tab、Esc、Ctrl+C、方向键等快捷键在部分会话里会变成“控制键 + Enter”或不能作为真实按键送入 Codex。根因是手机端快捷键走已有 stdin 路由，而旧的非 PTY runtime 会给任意输入追加换行，tmux 控制路径也把输入按行拆分并总是补 Enter。修复为对 stdin payload 做控制字符识别：普通文本仍可补换行提交，Tab/Esc/Ctrl/方向键和多行粘贴按原始输入转发；tmux 接入路径把通用控制字符转换成 `send-keys` 按键名但不增加 tmux 专用快捷键按钮。
 - 轻量预览下未开启完整小终端时，浏览器资源诊断仍显示 `/ws/agent-sessions` 达到数百 msg/s、数 MB/s，内存和网络持续增长。根因是每个终端输出帧都会触发后端发送一次全量会话 snapshot，前端必须持续 JSON 解析并刷新 React 状态。修复为对高频输出触发的全量看板快照做 trailing 合并广播，结构性操作仍即时刷新，同时避免 observe-only 会话输出时创建无效 awaiting_input timer。
+- Codex 产生很长输出后，切换/重开终端或从 tmux observe 刷新时只能看到最近一小段，像是丢了几百行。根因是 live PTY replay 只保留 256 KiB，tmux capture 固定 `-S -200` 且 detail 再截 200 行，registry fallback 也只留 200 条。修复为把 PTY replay、tmux capture、registry fallback 和前端 xterm scrollback 上限改成可配置默认值，并在资源诊断中展示 PTY 历史裁剪状态。
 - 选定机器扫描 tmux 会话后，按钮会在“扫描中...”和“刷新”之间频繁交替。根因是 `TmuxDiscoveryPanel` 把全局 `sessions` 列表放进自动扫描 effect 依赖，WebSocket snapshot 刷新会话列表时会反复触发 `/api/agent-discovery/tmux/scan`；并发 scan 的旧请求也可能提前把 `loading` 改回 false。修复为扫描触发只依赖稳定 host key，`sessions` 更新只重新计算已加入标记，并用请求序号/host key 丢弃过期扫描结果。
 - 非交互缩略图把真实 tmux 会话 resize 成小终端，导致布局和状态栏错乱。修复为缓存主终端几何尺寸，在前端做本地缩放预览，不把缩略图尺寸回写到后端。
 - SSH -> tmux 场景中，仅调用 `node-pty.resize()` 不足以让远端 tmux 感知尺寸变化。修复为补发 `SIGWINCH`，确保 ssh 把尺寸变化转发给远端 client。
@@ -67,5 +68,6 @@
 
 ## 终端焦点保留
 
+- Codex CLI 运行后，鼠标滚轮有时滚动上下文，有时变成输入框历史记录上下翻页。根因是 xterm.js 在 TUI 开启鼠标追踪或无 scrollback 路径时会把 wheel 事件转换为鼠标协议或 Up/Down 方向键序列转发给 PTY。修复为前端接管 `attachCustomWheelEventHandler`，自己计算并滚动 xterm scrollback，返回 `false` 阻止 wheel 进入 stdin；输入历史翻页只保留给键盘上下箭头。
 - commit `fc57a80` 引入的"保留显式用户焦点"修复过度：`rememberExternalPointerIntent` 只对"受保护目标"（input、iframe、dialog 等）记录外部点击意图，导致点击普通 div、按钮等非保护元素时终端立刻抢回焦点。`hasIntentionalExternalFocus` 里对非保护、非 body 元素直接返回 `false`，进一步放大了这个问题。修复为：1）`rememberExternalPointerIntent` 对 `.terminal-view` 以外的任意 `pointerdown` 都记录意图；2）`hasIntentionalExternalFocus` 简化为纯时间戳比较，不再区分 active element 类型。
 - VS Code Web 与终端来回切换两轮后，点击 VS Code iframe 内部无法重新输入。上一轮修复只覆盖父文档能收到 `pointerdown` 的外部点击；真实 iframe 内点击不会稳定冒到父页面，导致 `lastTerminalIntentAt` 仍然更新于外部意图之后，`handleWindowFocus` / 被动焦点修复又把 xterm-helper textarea 抢回。修复为在父窗口 `blur`、被动终端聚焦前，基于当前 `document.activeElement` 补记 hovered iframe 的外部焦点意图，并补 VS Code -> 终端 -> VS Code round-trip e2e 回归用例。

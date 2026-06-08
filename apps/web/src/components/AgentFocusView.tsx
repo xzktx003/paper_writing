@@ -1,18 +1,34 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 
 import type { AgentSessionRecord } from "@agent-orchestrator/shared";
 
 import { FocusSidebarSessionCard } from "./FocusSidebarSessionCard";
 import { LazyTerminalView } from "./LazyTerminalView";
 import { TerminalPreview } from "./TerminalPreview";
+import { shouldActivateTerminalPaneFromPointer } from "../lib/terminal-focus";
 import {
   TERMINAL_MONITOR_LAYOUT_OPTIONS,
   areTerminalMonitorSlotsEqual,
+  closeTerminalMonitorSlot,
+  closeTerminalMonitorSlotWithReplacement,
+  findFirstTerminalMonitorReplacementSession,
+  findNextOccupiedTerminalMonitorSlot,
   getTerminalMonitorSlotIds,
+  getTerminalPaneContextPrimaryActionLabel,
   isTerminalMonitorLayoutMode,
   normalizeTerminalMonitorSlots,
   placeTerminalMonitorSlotSession,
+  restoreTerminalMonitorLayoutSnapshot,
   setTerminalMonitorSlotSession,
+  type RestorableTerminalMonitorLayoutMode,
+  type TerminalMonitorLayoutSnapshot,
   type TerminalMonitorLayoutMode,
   type TerminalMonitorSlot,
 } from "../lib/terminal-layout";
@@ -23,6 +39,8 @@ interface AgentFocusViewProps {
   onSwitchFocus: (id: string) => void;
   onExit: () => void;
   onReconnect: (id: string) => void;
+  onDeleteSession: (id: string) => Promise<void> | void;
+  onHideSession: (id: string) => Promise<void> | void;
   onRename?: (id: string) => void;
   mobileTerminalTouchMode?: boolean;
   useLightweightTerminalPreview?: boolean;
@@ -45,6 +63,15 @@ const TERMINAL_MONITOR_DRAG_MIME =
 interface TerminalMonitorDragPayload {
   sessionId: string;
   sourceSlotId?: string;
+}
+
+interface TerminalPaneContextMenuState {
+  source: "pane" | "sidebar";
+  slotId: string;
+  sessionId: string;
+  displayName: string;
+  x: number;
+  y: number;
 }
 
 function loadTerminalMonitorLayoutMode(): TerminalMonitorLayoutMode {
@@ -112,10 +139,26 @@ export function AgentFocusView({
   onSwitchFocus,
   onExit,
   onReconnect,
+  onDeleteSession,
+  onHideSession,
   onRename,
   mobileTerminalTouchMode = false,
   useLightweightTerminalPreview = true,
 }: AgentFocusViewProps) {
+  const visibleSessions = useMemo(
+    () => sessions.filter((session) => !session.hidden),
+    [sessions],
+  );
+  const displayableSessions = useMemo(() => {
+    if (!focusedSession.hidden) {
+      return visibleSessions;
+    }
+
+    return [
+      focusedSession,
+      ...visibleSessions.filter((session) => session.id !== focusedSession.id),
+    ];
+  }, [focusedSession, visibleSessions]);
   const [terminalLayoutMode, setTerminalLayoutMode] =
     useState<TerminalMonitorLayoutMode>(loadTerminalMonitorLayoutMode);
   const [activeSlotId, setActiveSlotId] = useState(
@@ -125,7 +168,7 @@ export function AgentFocusView({
     () =>
       normalizeTerminalMonitorSlots({
         mode: terminalLayoutMode,
-        sessions,
+        sessions: displayableSessions,
         preferredSessionId: focusedSession.id,
         preferredSlotId: DEFAULT_TERMINAL_MONITOR_SLOT_ID,
       }),
@@ -136,7 +179,15 @@ export function AgentFocusView({
   );
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
+  const [closedSlotIds, setClosedSlotIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [paneContextMenu, setPaneContextMenu] =
+    useState<TerminalPaneContextMenuState | null>(null);
+  const [restorableTerminalMonitorLayout, setRestorableTerminalMonitorLayout] =
+    useState<TerminalMonitorLayoutSnapshot | null>(null);
   const layoutMenuRef = useRef<HTMLDivElement | null>(null);
+  const paneContextMenuRef = useRef<HTMLDivElement | null>(null);
   const sessionById = useMemo(() => {
     return new Map(sessions.map((session) => [session.id, session]));
   }, [sessions]);
@@ -147,7 +198,7 @@ export function AgentFocusView({
   );
   const usedSessionIds = renderedSessionIds;
   const otherSessions = sessions.filter(
-    (session) => !renderedSessionIds.has(session.id),
+    (session) => !session.hidden && !renderedSessionIds.has(session.id),
   );
   const activeSlotAvailable = terminalSlots.some(
     (slot) => slot.id === activeSlotId,
@@ -159,6 +210,10 @@ export function AgentFocusView({
     TERMINAL_MONITOR_LAYOUT_OPTIONS.find(
       (option) => option.mode === terminalLayoutMode,
     ) ?? TERMINAL_MONITOR_LAYOUT_OPTIONS[0]!;
+  const canRestoreMultiPaneLayout =
+    terminalLayoutMode === "single" && restorableTerminalMonitorLayout !== null;
+  const primaryContextMenuActionLabel =
+    getTerminalPaneContextPrimaryActionLabel(canRestoreMultiPaneLayout);
 
   useEffect(() => {
     saveTerminalMonitorLayoutMode(terminalLayoutMode);
@@ -199,6 +254,38 @@ export function AgentFocusView({
   }, [layoutMenuOpen]);
 
   useEffect(() => {
+    if (!paneContextMenu) {
+      return;
+    }
+
+    function handleDocumentMouseDown(event: MouseEvent) {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        paneContextMenuRef.current &&
+        paneContextMenuRef.current.contains(target)
+      ) {
+        return;
+      }
+
+      setPaneContextMenu(null);
+    }
+
+    function handleDocumentKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPaneContextMenu(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, [paneContextMenu]);
+
+  useEffect(() => {
     const availableSlotIds = getTerminalMonitorSlotIds(terminalLayoutMode);
     const nextActiveSlotId = availableSlotIds.includes(activeSlotId)
       ? activeSlotId
@@ -209,17 +296,26 @@ export function AgentFocusView({
     }
 
     setTerminalSlots((current) => {
-      const next = normalizeTerminalMonitorSlots({
+      const normalized = normalizeTerminalMonitorSlots({
         mode: terminalLayoutMode,
-        sessions,
+        sessions: displayableSessions,
         preferredSessionId: focusedSession.id,
         preferredSlotId: nextActiveSlotId,
         previousSlots: current,
       });
+      const next = normalized.map((slot) =>
+        closedSlotIds.has(slot.id) ? { ...slot, sessionId: null } : slot,
+      );
 
       return areTerminalMonitorSlotsEqual(current, next) ? current : next;
     });
-  }, [activeSlotId, focusedSession.id, sessions, terminalLayoutMode]);
+  }, [
+    activeSlotId,
+    closedSlotIds,
+    displayableSessions,
+    focusedSession.id,
+    terminalLayoutMode,
+  ]);
 
   function getActiveTerminalTextarea(): HTMLTextAreaElement | null {
     return document.querySelector(
@@ -255,6 +351,15 @@ export function AgentFocusView({
     slot: TerminalMonitorSlot,
     event: React.PointerEvent<HTMLDivElement>,
   ) {
+    if (
+      !shouldActivateTerminalPaneFromPointer({
+        button: event.button,
+        pointerType: event.pointerType,
+      })
+    ) {
+      return;
+    }
+
     const target = event.target as HTMLElement | null;
     if (
       target?.closest(
@@ -272,9 +377,15 @@ export function AgentFocusView({
       return;
     }
 
+    setRestorableTerminalMonitorLayout(null);
     setTerminalSlots((current) =>
       setTerminalMonitorSlotSession(current, slotId, sessionId),
     );
+    setClosedSlotIds((current) => {
+      const next = new Set(current);
+      next.delete(slotId);
+      return next;
+    });
     setActiveSlotId(slotId);
     if (sessionId !== focusedSession.id) {
       onSwitchFocus(sessionId);
@@ -290,9 +401,18 @@ export function AgentFocusView({
       return;
     }
 
+    setRestorableTerminalMonitorLayout(null);
     setTerminalSlots((current) =>
       placeTerminalMonitorSlotSession(current, slotId, sessionId, sourceSlotId),
     );
+    setClosedSlotIds((current) => {
+      const next = new Set(current);
+      next.delete(slotId);
+      if (sourceSlotId) {
+        next.delete(sourceSlotId);
+      }
+      return next;
+    });
     setActiveSlotId(slotId);
     if (sessionId !== focusedSession.id) {
       onSwitchFocus(sessionId);
@@ -351,11 +471,193 @@ export function AgentFocusView({
     placeSessionInSlot(slotId, payload.sessionId, payload.sourceSlotId);
   }
 
+  function handlePaneTitleContextMenu(
+    slot: TerminalMonitorSlot,
+    session: AgentSessionRecord | null,
+    isActiveInputPane: boolean,
+    event: ReactMouseEvent<HTMLDivElement>,
+  ) {
+    if (!session || !isActiveInputPane) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    setPaneContextMenu({
+      source: "pane",
+      slotId: slot.id,
+      sessionId: session.id,
+      displayName: session.displayName,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }
+
+  function handleSidebarContextMenu(
+    session: AgentSessionRecord,
+    event: ReactMouseEvent<HTMLDivElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    setPaneContextMenu({
+      source: "sidebar",
+      slotId: "",
+      sessionId: session.id,
+      displayName: session.displayName,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }
+
+  function showContextSessionInSinglePane() {
+    if (!paneContextMenu) {
+      return;
+    }
+
+    if (terminalLayoutMode !== "single") {
+      setRestorableTerminalMonitorLayout({
+        mode: terminalLayoutMode as RestorableTerminalMonitorLayoutMode,
+        slots: terminalSlots.map((slot) => ({ ...slot })),
+        activeSlotId: safeActiveSlotId,
+        closedSlotIds: Array.from(closedSlotIds),
+      });
+    }
+    setTerminalLayoutMode("single");
+    setClosedSlotIds(new Set());
+    setTerminalSlots([
+      {
+        id: DEFAULT_TERMINAL_MONITOR_SLOT_ID,
+        sessionId: paneContextMenu.sessionId,
+      },
+    ]);
+    setActiveSlotId(DEFAULT_TERMINAL_MONITOR_SLOT_ID);
+    if (paneContextMenu.sessionId !== focusedSession.id) {
+      onSwitchFocus(paneContextMenu.sessionId);
+    }
+    setPaneContextMenu(null);
+  }
+
+  function restoreContextMultiPaneLayout() {
+    if (!paneContextMenu || !restorableTerminalMonitorLayout) {
+      return;
+    }
+
+    const restored = restoreTerminalMonitorLayoutSnapshot({
+      snapshot: restorableTerminalMonitorLayout,
+      sessions: displayableSessions,
+      preferredSessionId: paneContextMenu.sessionId,
+    });
+    const activeSessionId =
+      restored.slots.find((slot) => slot.id === restored.activeSlotId)
+        ?.sessionId ?? null;
+
+    setTerminalLayoutMode(restored.mode);
+    setTerminalSlots(restored.slots);
+    setClosedSlotIds(new Set(restored.closedSlotIds));
+    setActiveSlotId(restored.activeSlotId);
+    setRestorableTerminalMonitorLayout(null);
+    if (activeSessionId && activeSessionId !== focusedSession.id) {
+      onSwitchFocus(activeSessionId);
+    }
+    setPaneContextMenu(null);
+  }
+
+  function closeContextPaneDisplay(
+    contextMenu: TerminalPaneContextMenuState | null = paneContextMenu,
+  ) {
+    if (!contextMenu || contextMenu.source !== "pane") {
+      return;
+    }
+
+    setRestorableTerminalMonitorLayout(null);
+    const replacementSession = findFirstTerminalMonitorReplacementSession(
+      otherSessions,
+      contextMenu.sessionId,
+    );
+    const nextSlots = closeTerminalMonitorSlotWithReplacement(
+      terminalSlots,
+      contextMenu.slotId,
+      replacementSession?.id,
+    );
+    const activeSlotStillVisible = nextSlots.find(
+      (slot) => slot.id === safeActiveSlotId && Boolean(slot.sessionId),
+    );
+    const nextActiveSlot =
+      activeSlotStillVisible ??
+      findNextOccupiedTerminalMonitorSlot(nextSlots, contextMenu.slotId);
+
+    setClosedSlotIds((current) => {
+      if (!replacementSession) {
+        return new Set(current).add(contextMenu.slotId);
+      }
+
+      const next = new Set(current);
+      next.delete(contextMenu.slotId);
+      return next;
+    });
+    setTerminalSlots(nextSlots);
+    if (nextActiveSlot) {
+      setActiveSlotId(nextActiveSlot.id);
+      if (
+        nextActiveSlot.sessionId &&
+        nextActiveSlot.sessionId !== focusedSession.id
+      ) {
+        onSwitchFocus(nextActiveSlot.sessionId);
+      }
+    } else {
+      setActiveSlotId(contextMenu.slotId);
+    }
+    setPaneContextMenu(null);
+  }
+
+  async function hideContextSessionFromKanban() {
+    const contextMenu = paneContextMenu;
+    if (!contextMenu) {
+      return;
+    }
+
+    setPaneContextMenu(null);
+    if (contextMenu.source === "pane") {
+      closeContextPaneDisplay(contextMenu);
+      return;
+    }
+
+    setRestorableTerminalMonitorLayout(null);
+    await onHideSession(contextMenu.sessionId);
+  }
+
+  async function deleteContextSession() {
+    const contextMenu = paneContextMenu;
+    if (!contextMenu) {
+      return;
+    }
+
+    const { displayName, sessionId, slotId, source } = contextMenu;
+    const confirmed = window.confirm(`彻底删除终端「${displayName}」？`);
+    setPaneContextMenu(null);
+    if (!confirmed) {
+      return;
+    }
+
+    setRestorableTerminalMonitorLayout(null);
+    if (source === "pane") {
+      setClosedSlotIds((current) => new Set(current).add(slotId));
+      setTerminalSlots((current) => closeTerminalMonitorSlot(current, slotId));
+    }
+    await onDeleteSession(sessionId);
+  }
+
   function handleSidebarSwitchFocus(sessionId: string) {
     const slotId = safeActiveSlotId;
+    setRestorableTerminalMonitorLayout(null);
     setTerminalSlots((current) =>
       setTerminalMonitorSlotSession(current, slotId, sessionId),
     );
+    setClosedSlotIds((current) => {
+      const next = new Set(current);
+      next.delete(slotId);
+      return next;
+    });
     setActiveSlotId(slotId);
     if (sessionId !== focusedSession.id) {
       onSwitchFocus(sessionId);
@@ -364,6 +666,8 @@ export function AgentFocusView({
 
   function handleLayoutModeChange(mode: TerminalMonitorLayoutMode) {
     setTerminalLayoutMode(mode);
+    setRestorableTerminalMonitorLayout(null);
+    setClosedSlotIds(new Set());
     setLayoutMenuOpen(false);
     const slotIds = getTerminalMonitorSlotIds(mode);
     if (!slotIds.includes(activeSlotId)) {
@@ -579,7 +883,7 @@ export function AgentFocusView({
           >
             {terminalSlots.map((slot, index) => {
               const session = slot.sessionId
-                ? sessionById.get(slot.sessionId)
+                ? (sessionById.get(slot.sessionId) ?? null)
                 : null;
               const isActiveInputPane = Boolean(
                 session && slot.id === safeActiveSlotId,
@@ -607,7 +911,18 @@ export function AgentFocusView({
                 >
                   <div
                     className="focus-terminal-pane-header"
+                    data-terminal-pane-menu-scope={
+                      isActiveInputPane ? "active-titlebar" : undefined
+                    }
                     draggable={Boolean(session)}
+                    onContextMenuCapture={(event) =>
+                      handlePaneTitleContextMenu(
+                        slot,
+                        session,
+                        isActiveInputPane,
+                        event,
+                      )
+                    }
                     onDragStart={(event) => {
                       if (session) {
                         startSessionDrag(session.id, event, slot.id);
@@ -617,6 +932,14 @@ export function AgentFocusView({
                     <span className="focus-terminal-pane-index">
                       {index + 1}
                     </span>
+                    {isActiveInputPane && (
+                      <span
+                        aria-label="当前输入终端"
+                        className="focus-terminal-active-badge"
+                      >
+                        当前输入
+                      </span>
+                    )}
                     <select
                       aria-label={`选择第 ${index + 1} 个监控终端`}
                       className="focus-terminal-session-select"
@@ -626,7 +949,7 @@ export function AgentFocusView({
                       value={session?.id ?? ""}
                     >
                       {!session && <option value="">无可用会话</option>}
-                      {sessions.map((candidate) => {
+                      {displayableSessions.map((candidate) => {
                         const usedElsewhere =
                           usedSessionIds.has(candidate.id) &&
                           candidate.id !== session?.id;
@@ -645,7 +968,8 @@ export function AgentFocusView({
                     </select>
                     <button
                       className={`focus-terminal-input-btn${isActiveInputPane ? " focus-terminal-input-btn--active" : ""}`}
-                      disabled={!session || isActiveInputPane}
+                      aria-disabled={isActiveInputPane ? "true" : undefined}
+                      disabled={!session}
                       onClick={() => activateSlot(slot)}
                       type="button"
                     >
@@ -697,6 +1021,7 @@ export function AgentFocusView({
                   key={session.id}
                   session={session}
                   onDragStart={startSessionDrag}
+                  onContextMenu={handleSidebarContextMenu}
                   onRename={onRename}
                   onSwitchFocus={handleSidebarSwitchFocus}
                   useLightweightTerminalPreview={useLightweightTerminalPreview}
@@ -705,6 +1030,45 @@ export function AgentFocusView({
             </div>
           )}
         </>
+      )}
+      {paneContextMenu && (
+        <div
+          className="focus-terminal-pane-context-menu"
+          data-testid="terminal-pane-context-menu"
+          ref={paneContextMenuRef}
+          role="menu"
+          style={{ left: paneContextMenu.x, top: paneContextMenu.y }}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          {paneContextMenu.source === "pane" && (
+            <button
+              onClick={
+                canRestoreMultiPaneLayout
+                  ? restoreContextMultiPaneLayout
+                  : showContextSessionInSinglePane
+              }
+              role="menuitem"
+              type="button"
+            >
+              {primaryContextMenuActionLabel}
+            </button>
+          )}
+          <button
+            onClick={() => void hideContextSessionFromKanban()}
+            role="menuitem"
+            type="button"
+          >
+            关闭看板展示该窗口
+          </button>
+          <button
+            className="focus-terminal-pane-context-menu-danger"
+            onClick={() => void deleteContextSession()}
+            role="menuitem"
+            type="button"
+          >
+            彻底删除该终端
+          </button>
+        </div>
       )}
     </div>
   );

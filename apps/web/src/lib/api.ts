@@ -25,6 +25,7 @@ import type {
   ScanDirectoryResponse,
   SshHostsResponse,
   StdinAgentSessionInput,
+  TerminalHistoryDiagnosticsResponse,
   TmuxControlActionResponse,
   UpdateAgentSessionInput,
   VsCodeWebProxyDiagnosticsResponse,
@@ -506,6 +507,12 @@ export function openVsCodeWeb(
 export function getVsCodeWebProxyDiagnostics(): Promise<VsCodeWebProxyDiagnosticsResponse> {
   return request<VsCodeWebProxyDiagnosticsResponse>(
     "/api/diagnostics/vscode-web-proxy",
+  );
+}
+
+export function getTerminalHistoryDiagnostics(): Promise<TerminalHistoryDiagnosticsResponse> {
+  return request<TerminalHistoryDiagnosticsResponse>(
+    "/api/diagnostics/terminal-history",
   );
 }
 

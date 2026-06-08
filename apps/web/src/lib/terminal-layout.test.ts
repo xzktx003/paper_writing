@@ -4,10 +4,16 @@ import { describe, it } from "node:test";
 import {
   TERMINAL_MONITOR_LAYOUT_OPTIONS,
   areTerminalMonitorSlotsEqual,
+  closeTerminalMonitorSlot,
+  closeTerminalMonitorSlotWithReplacement,
+  findFirstTerminalMonitorReplacementSession,
+  findNextOccupiedTerminalMonitorSlot,
   getTerminalMonitorLayoutCapacity,
+  getTerminalPaneContextPrimaryActionLabel,
   isTerminalMonitorLayoutMode,
   normalizeTerminalMonitorSlots,
   placeTerminalMonitorSlotSession,
+  restoreTerminalMonitorLayoutSnapshot,
   setTerminalMonitorSlotSession,
 } from "./terminal-layout.js";
 
@@ -239,6 +245,105 @@ describe("terminal monitor layout", () => {
       { id: "terminal-monitor-slot-1", sessionId: null },
       { id: "terminal-monitor-slot-2", sessionId: "agent-1" },
     ]);
+  });
+
+  it("closes one monitor pane display without deleting other pane sessions", () => {
+    const slots = closeTerminalMonitorSlot(
+      [
+        { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+        { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+        { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+      ],
+      "terminal-monitor-slot-2",
+    );
+
+    assert.deepEqual(slots, [
+      { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+      { id: "terminal-monitor-slot-2", sessionId: null },
+      { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+    ]);
+  });
+
+  it("fills a closed monitor pane with the first other session when available", () => {
+    const replacementSession = findFirstTerminalMonitorReplacementSession(
+      [{ id: "agent-4" }, { id: "agent-5" }],
+      "agent-2",
+    );
+    const slots = closeTerminalMonitorSlotWithReplacement(
+      [
+        { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+        { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+        { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+      ],
+      "terminal-monitor-slot-2",
+      replacementSession?.id,
+    );
+
+    assert.equal(replacementSession?.id, "agent-4");
+    assert.deepEqual(slots, [
+      { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+      { id: "terminal-monitor-slot-2", sessionId: "agent-4" },
+      { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+    ]);
+  });
+
+  it("skips the current pane session when picking a replacement session", () => {
+    const replacementSession = findFirstTerminalMonitorReplacementSession(
+      [{ id: "agent-2" }, { id: "agent-4" }],
+      "agent-2",
+    );
+
+    assert.equal(replacementSession?.id, "agent-4");
+  });
+
+  it("finds the next occupied pane after closing the active display", () => {
+    const nextSlot = findNextOccupiedTerminalMonitorSlot(
+      [
+        { id: "terminal-monitor-slot-1", sessionId: null },
+        { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+        { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+      ],
+      "terminal-monitor-slot-1",
+    );
+
+    assert.deepEqual(nextSlot, {
+      id: "terminal-monitor-slot-2",
+      sessionId: "agent-2",
+    });
+  });
+
+  it("labels the primary pane menu action as restore after single-pane focus", () => {
+    assert.equal(getTerminalPaneContextPrimaryActionLabel(false), "单屏展示");
+    assert.equal(
+      getTerminalPaneContextPrimaryActionLabel(true),
+      "还原多屏展示",
+    );
+  });
+
+  it("restores the previous multi-pane layout snapshot from single-pane focus", () => {
+    const restored = restoreTerminalMonitorLayoutSnapshot({
+      snapshot: {
+        mode: "quad",
+        activeSlotId: "terminal-monitor-slot-3",
+        closedSlotIds: ["terminal-monitor-slot-2"],
+        slots: [
+          { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+          { id: "terminal-monitor-slot-2", sessionId: null },
+          { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+          { id: "terminal-monitor-slot-4", sessionId: "agent-4" },
+        ],
+      },
+      sessions,
+      preferredSessionId: "agent-3",
+    });
+
+    assert.equal(restored.mode, "quad");
+    assert.equal(restored.activeSlotId, "terminal-monitor-slot-3");
+    assert.deepEqual(restored.closedSlotIds, ["terminal-monitor-slot-2"]);
+    assert.deepEqual(
+      restored.slots.map((slot) => slot.sessionId),
+      ["agent-1", null, "agent-3", "agent-4"],
+    );
   });
 
   it("places a sidebar session into a monitor pane without duplicating it", () => {

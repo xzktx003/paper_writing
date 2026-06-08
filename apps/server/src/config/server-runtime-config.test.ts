@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveServerRuntimeConfig } from "./server-runtime-config.js";
+import {
+  DEFAULT_TERMINAL_REGISTRY_OUTPUT_ENTRIES,
+  DEFAULT_TERMINAL_SCROLLBACK_BYTES,
+  DEFAULT_TERMINAL_TMUX_CAPTURE_LINES,
+  resolveServerRuntimeConfig,
+  resolveTerminalHistoryRuntimeConfig,
+} from "./server-runtime-config.js";
 
 test("uses repo defaults when HOST and SERVER_PORT are unset", () => {
   assert.deepEqual(resolveServerRuntimeConfig({}), {
     host: "0.0.0.0",
     port: 3200,
+    terminalRegistryOutputEntries: DEFAULT_TERMINAL_REGISTRY_OUTPUT_ENTRIES,
+    terminalScrollbackBytes: DEFAULT_TERMINAL_SCROLLBACK_BYTES,
+    terminalTmuxCaptureLines: DEFAULT_TERMINAL_TMUX_CAPTURE_LINES,
   });
 });
 
@@ -19,7 +28,49 @@ test("keeps explicit HOST and SERVER_PORT values", () => {
     {
       host: "127.0.0.1",
       port: 4300,
+      terminalRegistryOutputEntries: DEFAULT_TERMINAL_REGISTRY_OUTPUT_ENTRIES,
+      terminalScrollbackBytes: DEFAULT_TERMINAL_SCROLLBACK_BYTES,
+      terminalTmuxCaptureLines: DEFAULT_TERMINAL_TMUX_CAPTURE_LINES,
     },
+  );
+});
+
+test("keeps explicit terminal history config values", () => {
+  assert.deepEqual(
+    resolveTerminalHistoryRuntimeConfig({
+      TERMINAL_REGISTRY_OUTPUT_ENTRIES: "1200",
+      TERMINAL_SCROLLBACK_BYTES: "8388608",
+      TERMINAL_TMUX_CAPTURE_LINES: "8000",
+    }),
+    {
+      terminalRegistryOutputEntries: 1200,
+      terminalScrollbackBytes: 8388608,
+      terminalTmuxCaptureLines: 8000,
+    },
+  );
+});
+
+test("rejects invalid terminal history config values", () => {
+  assert.throws(
+    () =>
+      resolveTerminalHistoryRuntimeConfig({
+        TERMINAL_SCROLLBACK_BYTES: "0",
+      }),
+    /TERMINAL_SCROLLBACK_BYTES must be a positive integer/,
+  );
+  assert.throws(
+    () =>
+      resolveTerminalHistoryRuntimeConfig({
+        TERMINAL_TMUX_CAPTURE_LINES: "3.14",
+      }),
+    /TERMINAL_TMUX_CAPTURE_LINES must be a positive integer/,
+  );
+  assert.throws(
+    () =>
+      resolveTerminalHistoryRuntimeConfig({
+        TERMINAL_REGISTRY_OUTPUT_ENTRIES: "abc",
+      }),
+    /TERMINAL_REGISTRY_OUTPUT_ENTRIES must be a positive integer/,
   );
 });
 

@@ -11,6 +11,7 @@ import type {
 } from "@agent-orchestrator/shared";
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
+import { DEFAULT_TERMINAL_TMUX_CAPTURE_LINES } from "../config/server-runtime-config.js";
 import { quoteForPosixShell, resolveTmuxBinary } from "./runtime-compat.js";
 import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 
@@ -19,6 +20,10 @@ const TMUX_BINARY = resolveTmuxBinary();
 export type TmuxSendKeyStep =
   | { kind: "literal"; value: string }
   | { kind: "keys"; keys: string[] };
+
+export interface LocalTmuxAdapterOptions {
+  captureLines?: number;
+}
 
 interface TmuxPaneInfo {
   sessionName: string;
@@ -206,6 +211,13 @@ export function isNoTmuxServerError(error: unknown): boolean {
   return /no server running|failed to connect to server/i.test(message);
 }
 
+export function buildTmuxCapturePaneArgs(
+  paneId: string,
+  captureLines: number,
+): string[] {
+  return ["capture-pane", "-p", "-t", paneId, "-S", `-${captureLines}`];
+}
+
 function pickPreview(text: string): string | undefined {
   return text
     .split(/\r?\n/)
@@ -222,7 +234,15 @@ function buildTmuxStatusPreview(sessionInfo: TmuxSessionInfo): string {
 }
 
 export class LocalTmuxAdapter {
-  constructor(private readonly registry: AgentSessionRegistry) {}
+  private readonly captureLines: number;
+
+  constructor(
+    private readonly registry: AgentSessionRegistry,
+    options: LocalTmuxAdapterOptions = {},
+  ) {
+    this.captureLines =
+      options.captureLines ?? DEFAULT_TERMINAL_TMUX_CAPTURE_LINES;
+  }
 
   async discover(): Promise<DiscoverTmuxSessionsResponse> {
     try {
@@ -309,7 +329,7 @@ export class LocalTmuxAdapter {
     const outputEntries: AgentOutputEntry[] = capture
       .split(/\r?\n/)
       .filter(Boolean)
-      .slice(-200)
+      .slice(-this.captureLines)
       .map((line) => ({
         id: randomUUID(),
         timestamp: new Date().toISOString(),
@@ -412,16 +432,15 @@ export class LocalTmuxAdapter {
   }
 
   private async capturePane(paneId: string): Promise<string> {
-    const { stdout } = await this.runTmux([
-      "capture-pane",
-      "-p",
-      "-t",
-      paneId,
-      "-S",
-      "-200",
-    ]);
+    const { stdout } = await this.runTmux(
+      buildTmuxCapturePaneArgs(paneId, this.captureLines),
+    );
 
     return stdout;
+  }
+
+  getCaptureLines(): number {
+    return this.captureLines;
   }
 
   async discoverRemote(

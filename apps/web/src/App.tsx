@@ -1111,6 +1111,8 @@ export default function App() {
               onSwitchFocus={handleSwitchFocus}
               onExit={handleExitFocus}
               onReconnect={handleReconnectSession}
+              onDeleteSession={handleDeleteSession}
+              onHideSession={handleHideSession}
               onRename={handleRenameSession}
               useLightweightTerminalPreview={useLightweightTerminalPreview}
               mobileTerminalTouchMode={mobileTerminalTouchMode}

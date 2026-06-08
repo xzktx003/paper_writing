@@ -13,6 +13,10 @@ interface FocusSidebarSessionCardProps {
     sessionId: string,
     event: React.DragEvent<HTMLDivElement>,
   ) => void;
+  onContextMenu?: (
+    session: AgentSessionRecord,
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => void;
   useLightweightTerminalPreview?: boolean;
 }
 
@@ -29,13 +33,16 @@ export function FocusSidebarSessionCard({
   onSwitchFocus,
   onRename,
   onDragStart,
+  onContextMenu,
   useLightweightTerminalPreview = true,
 }: FocusSidebarSessionCardProps) {
   return (
     <div
       className={`focus-sidebar-card card-${session.interactionState}`}
+      data-terminal-sidebar-menu-scope="other-session"
       data-session-id={session.id}
       draggable={Boolean(onDragStart)}
+      onContextMenu={(event) => onContextMenu?.(session, event)}
       onDragStart={(event) => onDragStart?.(session.id, event)}
       onDoubleClick={() => onSwitchFocus(session.id)}
     >

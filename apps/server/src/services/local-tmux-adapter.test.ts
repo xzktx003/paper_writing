@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildTmuxCapturePaneArgs,
   buildTmuxSendKeySteps,
   isNoTmuxServerError,
   parsePaneInfo,
@@ -57,6 +58,17 @@ test("isNoTmuxServerError classifies missing server errors", () => {
     isNoTmuxServerError(new Error("command not found: tmux")),
     false,
   );
+});
+
+test("buildTmuxCapturePaneArgs uses the configured capture line window", () => {
+  assert.deepEqual(buildTmuxCapturePaneArgs("%7", 5000), [
+    "capture-pane",
+    "-p",
+    "-t",
+    "%7",
+    "-S",
+    "-5000",
+  ]);
 });
 
 test("buildTmuxSendKeySteps preserves text submit while keeping paste raw", () => {

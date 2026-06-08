@@ -21,8 +21,10 @@ import {
   shouldPromoteExternalFocusToUserIntent,
   shouldRepairPassiveTerminalFocus,
 } from "../lib/terminal-focus";
+import { TERMINAL_SCROLLBACK_LINES } from "../lib/terminal-history-config";
 import { shouldAttemptTerminalInputForward } from "../lib/terminal-input-forwarding";
 import { stripTerminalResponsePayload } from "../lib/terminal-input";
+import { computeTerminalWheelScrollLines } from "../lib/terminal-wheel";
 
 interface TerminalViewProps {
   agentSessionId: string;
@@ -141,6 +143,7 @@ export function TerminalView({
     let lastExternalPointerIntentAt = 0;
     let lastExternalUserIntentAt = 0;
     let lastTerminalIntentAt = 0;
+    let wheelScrollRemainder = 0;
 
     const ensureInputOwner = () => {
       if (!inputEnabledRef.current) {
@@ -217,7 +220,7 @@ export function TerminalView({
         cursor: "#ff8f1f",
         selectionBackground: "rgba(255, 152, 0, 0.3)",
       },
-      scrollback: 5000,
+      scrollback: TERMINAL_SCROLLBACK_LINES,
       disableStdin: true,
     });
 
@@ -235,6 +238,19 @@ export function TerminalView({
 
     termRef.current = term;
     fitRef.current = fitAddon;
+
+    const getTerminalLineHeight = () => {
+      const fontSize =
+        typeof term.options.fontSize === "number"
+          ? term.options.fontSize
+          : initialFontSize;
+      const lineHeight =
+        typeof term.options.lineHeight === "number"
+          ? term.options.lineHeight
+          : 1;
+
+      return Math.max(8, fontSize * lineHeight);
+    };
 
     const isProtectedExternalFocusTarget = (
       active: HTMLElement | null,
@@ -618,19 +634,6 @@ export function TerminalView({
         startFontSize: initialFontSize,
       };
 
-      const getLineHeight = () => {
-        const fontSize =
-          typeof term.options.fontSize === "number"
-            ? term.options.fontSize
-            : initialFontSize;
-        const lineHeight =
-          typeof term.options.lineHeight === "number"
-            ? term.options.lineHeight
-            : 1;
-
-        return Math.max(8, fontSize * lineHeight);
-      };
-
       const shouldIgnoreMobileTouch = (target: EventTarget | null) =>
         target instanceof HTMLElement &&
         target.closest(".terminal-mobile-bottom-btn") !== null;
@@ -679,7 +682,7 @@ export function TerminalView({
           const deltaY = nextY - touchState.lastY;
           const result = computeMobileTerminalScrollLines({
             accumulatedDeltaY: touchState.scrollRemainder + deltaY,
-            lineHeight: getLineHeight(),
+            lineHeight: getTerminalLineHeight(),
           });
 
           touchState.lastY = nextY;
@@ -885,12 +888,33 @@ export function TerminalView({
       };
 
       term.attachCustomWheelEventHandler((event) => {
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        event.stopPropagation();
+
         if (inputEnabledRef.current) {
           rememberTerminalIntent();
           focusInteractiveTerminal(true);
-          event.stopPropagation();
         }
-        return true;
+
+        const result = computeTerminalWheelScrollLines({
+          deltaMode: event.deltaMode,
+          deltaY: event.deltaY,
+          lineHeight: getTerminalLineHeight(),
+          pageHeight: Math.max(
+            getTerminalLineHeight(),
+            stage.clientHeight || term.rows * getTerminalLineHeight(),
+          ),
+          previousDeltaY: wheelScrollRemainder,
+        });
+
+        wheelScrollRemainder = result.remainingDeltaY;
+        if (result.scrollLines !== 0) {
+          term.scrollLines(result.scrollLines);
+        }
+
+        return false;
       });
 
       handlePointerDownCapture = () => {

@@ -12,9 +12,10 @@ import {
   type StdinAgentSessionInput,
 } from "@agent-orchestrator/shared";
 
+import { DEFAULT_TERMINAL_REGISTRY_OUTPUT_ENTRIES } from "../config/server-runtime-config.js";
+
 type SnapshotListener = (snapshot: ListAgentSessionsResponse) => void;
 
-const MAX_OUTPUT_ENTRIES = 200;
 const DEFAULT_AWAITING_INPUT_IDLE_MS = 10_000;
 const DEFAULT_SNAPSHOT_THROTTLE_MS = 250;
 const MAX_INFERENCE_WINDOW_CHARS = 4096;
@@ -88,6 +89,7 @@ export class AgentSessionRegistry {
   constructor(
     private readonly awaitingInputIdleMs = DEFAULT_AWAITING_INPUT_IDLE_MS,
     private readonly snapshotThrottleMs = DEFAULT_SNAPSHOT_THROTTLE_MS,
+    private readonly maxOutputEntries = DEFAULT_TERMINAL_REGISTRY_OUTPUT_ENTRIES,
   ) {}
 
   list(): ListAgentSessionsResponse {
@@ -314,10 +316,17 @@ export class AgentSessionRegistry {
     entries: AgentOutputEntry[],
   ): AgentSessionDetailResponse {
     this.get(agentSessionId);
-    this.outputEntries.set(agentSessionId, entries.slice(-MAX_OUTPUT_ENTRIES));
+    this.outputEntries.set(
+      agentSessionId,
+      entries.slice(-this.maxOutputEntries),
+    );
     this.emitSnapshot();
 
     return this.getDetail(agentSessionId);
+  }
+
+  getOutputEntryLimit(): number {
+    return this.maxOutputEntries;
   }
 
   syncCapturedScreen(
@@ -431,7 +440,7 @@ export class AgentSessionRegistry {
     currentEntries.push(outputEntry);
     this.outputEntries.set(
       agentSessionId,
-      currentEntries.slice(-MAX_OUTPUT_ENTRIES),
+      currentEntries.slice(-this.maxOutputEntries),
     );
   }
 

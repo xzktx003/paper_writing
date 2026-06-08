@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   hasIntentionalExternalFocus,
+  shouldActivateTerminalPaneFromPointer,
   shouldPromoteExternalFocusToUserIntent,
   shouldRepairPassiveTerminalFocus,
 } from "./terminal-focus.js";
@@ -73,6 +74,35 @@ describe("shouldRepairPassiveTerminalFocus", () => {
         intentionalExternalFocus: false,
         lastExternalUserIntentAt: 0,
         lastTerminalIntentAt: 0,
+      }),
+      true,
+    );
+  });
+});
+
+describe("shouldActivateTerminalPaneFromPointer", () => {
+  it("keeps right-click from selecting a terminal monitor pane", () => {
+    assert.equal(
+      shouldActivateTerminalPaneFromPointer({
+        button: 2,
+        pointerType: "mouse",
+      }),
+      false,
+    );
+  });
+
+  it("allows left-click and touch to select a terminal monitor pane", () => {
+    assert.equal(
+      shouldActivateTerminalPaneFromPointer({
+        button: 0,
+        pointerType: "mouse",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldActivateTerminalPaneFromPointer({
+        button: 0,
+        pointerType: "touch",
       }),
       true,
     );

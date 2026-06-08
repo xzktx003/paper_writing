@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
 import {
+  appendPtyScrollback,
   PtyRuntimeManager,
   sanitizeReplayForTerminal,
 } from "./pty-runtime-manager.js";
@@ -128,6 +129,24 @@ test("launch stores the resolved local working directory when input is omitted",
     outputText,
     new RegExp(process.cwd().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
   );
+});
+
+test("appendPtyScrollback tracks truncation when replay buffer is exceeded", () => {
+  const state = {
+    droppedScrollbackBytes: 0,
+    droppedScrollbackChunks: 0,
+    scrollback: [],
+    scrollbackBytes: 0,
+  };
+
+  appendPtyScrollback(state, "TRUNC_A\n", 16);
+  appendPtyScrollback(state, "TRUNC_B\n", 16);
+  appendPtyScrollback(state, "TRUNC_C\n", 16);
+
+  assert.deepEqual(state.scrollback, ["TRUNC_B\n", "TRUNC_C\n"]);
+  assert.equal(state.scrollbackBytes, 16);
+  assert.equal(state.droppedScrollbackBytes, 8);
+  assert.equal(state.droppedScrollbackChunks, 1);
 });
 
 test("launch prefers the resolved copilot binary on PATH for shell sessions", async () => {

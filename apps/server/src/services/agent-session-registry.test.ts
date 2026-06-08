@@ -107,6 +107,22 @@ test("marks direct sessions awaiting_input after screen stays unchanged", async 
   assert.equal(registry.get(session.id).stateConfidence, "medium");
 });
 
+test("uses configured output entry retention limit for fallback replay", () => {
+  const registry = new AgentSessionRegistry(10_000, 250, 3);
+  const session = createSession(registry);
+
+  registry.appendOutput(session.id, "one\n", "stdout");
+  registry.appendOutput(session.id, "two\n", "stdout");
+  registry.appendOutput(session.id, "three\n", "stdout");
+  registry.appendOutput(session.id, "four\n", "stdout");
+
+  assert.equal(registry.getOutputEntryLimit(), 3);
+  assert.deepEqual(
+    registry.getDetail(session.id).outputEntries.map((entry) => entry.text),
+    ["two\n", "three\n", "four\n"],
+  );
+});
+
 test("user input resets inactivity timer and later returns to awaiting_input", async () => {
   const registry = new AgentSessionRegistry(25);
   const session = createSession(registry);

@@ -3,16 +3,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AgentSessionRecord,
   SshHostPreset,
+  TerminalHistoryDiagnosticsResponse,
   VsCodeWebProxyDiagnosticsResponse,
 } from "@agent-orchestrator/shared";
 
-import { getVsCodeWebProxyDiagnostics } from "../lib/api";
+import {
+  getTerminalHistoryDiagnostics,
+  getVsCodeWebProxyDiagnostics,
+} from "../lib/api";
 import { getQuickTmuxShortcutLabel } from "../lib/platform-compat";
 import {
   classifyResourcePressure,
   getResourceDiagnosticsSnapshot,
   type ResourceDiagnosticsSnapshot,
 } from "../lib/resource-diagnostics";
+import { TERMINAL_SCROLLBACK_LINES } from "../lib/terminal-history-config";
 import type { VsCodeIframeCacheMode } from "../lib/vscode-cache";
 
 import { HostDropdown, type SelectedHost } from "./HostDropdown";
@@ -23,6 +28,16 @@ type TopBarMenuId = "scan" | "tools" | "resource";
 
 function formatKilobytes(value: number): string {
   return `${value.toFixed(value >= 100 ? 0 : 1)} KB`;
+}
+
+function formatBytes(value: number): string {
+  const kilobytes = value / 1024;
+  if (kilobytes < 1024) {
+    return formatKilobytes(kilobytes);
+  }
+
+  const megabytes = kilobytes / 1024;
+  return `${megabytes.toFixed(megabytes >= 100 ? 0 : 1)} MB`;
 }
 
 function formatKilobytesPerSecond(value: number): string {
@@ -114,6 +129,26 @@ function getVsCodeProxyWebSocketSummary(
   ].join(" / ");
 }
 
+function getTerminalHistorySummary(
+  diagnostics: TerminalHistoryDiagnosticsResponse | null,
+): string {
+  if (!diagnostics) {
+    return "后端未返回";
+  }
+
+  return [
+    `PTY ${formatBytes(diagnostics.pty.totalScrollbackBytes)} / 上限 ${formatBytes(
+      diagnostics.pty.maxScrollbackBytes,
+    )}`,
+    diagnostics.pty.totalDroppedScrollbackBytes > 0
+      ? `已裁剪 ${formatBytes(diagnostics.pty.totalDroppedScrollbackBytes)}`
+      : "未裁剪",
+    `tmux ${diagnostics.tmux.captureLines} 行`,
+    `fallback ${diagnostics.registry.maxOutputEntries} 条`,
+    `xterm ${TERMINAL_SCROLLBACK_LINES} 行`,
+  ].join(" / ");
+}
+
 interface TopBarProps {
   sessions: AgentSessionRecord[];
   collapsed: boolean;
@@ -166,6 +201,8 @@ export function TopBar({
     );
   const [vscodeProxyDiagnostics, setVsCodeProxyDiagnostics] =
     useState<VsCodeWebProxyDiagnosticsResponse | null>(null);
+  const [terminalHistoryDiagnostics, setTerminalHistoryDiagnostics] =
+    useState<TerminalHistoryDiagnosticsResponse | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(
     Boolean(document.fullscreenElement),
   );
@@ -194,6 +231,7 @@ export function TopBar({
   const totalCount = sessions.length;
   const resourceFindings = classifyResourcePressure({
     snapshot: diagnosticsSnapshot,
+    terminalHistoryDiagnostics,
     useLightweightTerminalPreview,
     vscodeProxyDiagnostics,
   });
@@ -271,6 +309,17 @@ export function TopBar({
         .catch(() => {
           if (!cancelled) {
             setVsCodeProxyDiagnostics(null);
+          }
+        });
+      void getTerminalHistoryDiagnostics()
+        .then((diagnostics) => {
+          if (!cancelled) {
+            setTerminalHistoryDiagnostics(diagnostics);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setTerminalHistoryDiagnostics(null);
           }
         });
     };
@@ -633,6 +682,10 @@ export function TopBar({
                 {formatKilobytesPerSecond(
                   diagnosticsSnapshot.terminalFrames.kilobytesPerSecond,
                 )}
+              </strong>
+              <span>终端历史缓冲</span>
+              <strong>
+                {getTerminalHistorySummary(terminalHistoryDiagnostics)}
               </strong>
               <span>VS Code iframe</span>
               <strong>

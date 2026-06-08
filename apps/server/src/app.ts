@@ -2,8 +2,15 @@ import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 
-import type { AgentSessionSnapshotEvent } from "@agent-orchestrator/shared";
+import type {
+  AgentSessionSnapshotEvent,
+  TerminalHistoryDiagnosticsResponse,
+} from "@agent-orchestrator/shared";
 
+import {
+  resolveTerminalHistoryRuntimeConfig,
+  type TerminalHistoryRuntimeConfig,
+} from "./config/server-runtime-config.js";
 import { registerAgentSessionRoutes } from "./routes/agent-sessions.js";
 import { registerFilesystemRoutes } from "./routes/filesystem.js";
 import { registerSshHostsRoutes } from "./routes/ssh-hosts.js";
@@ -24,6 +31,7 @@ import { VsCodeWebManager } from "./services/vscode-web-manager.js";
 interface BuildServerOptions {
   localFsService?: LocalFsService;
   sftpService?: SftpService;
+  terminalHistoryConfig?: TerminalHistoryRuntimeConfig;
   vsCodeWebManager?: VsCodeWebManager;
 }
 
@@ -40,11 +48,22 @@ export function buildServer(options: BuildServerOptions = {}): {
   registry: AgentSessionRegistry;
 } {
   const app = Fastify({ logger: true });
-  const registry = new AgentSessionRegistry();
+  const terminalHistoryConfig =
+    options.terminalHistoryConfig ??
+    resolveTerminalHistoryRuntimeConfig(process.env);
+  const registry = new AgentSessionRegistry(
+    undefined,
+    undefined,
+    terminalHistoryConfig.terminalRegistryOutputEntries,
+  );
   const processRuntimeManager = new LocalProcessRuntimeManager(registry);
-  const tmuxAdapter = new LocalTmuxAdapter(registry);
+  const tmuxAdapter = new LocalTmuxAdapter(registry, {
+    captureLines: terminalHistoryConfig.terminalTmuxCaptureLines,
+  });
   const sshRuntimeManager = new SshRuntimeManager(registry);
-  const ptyRuntimeManager = new PtyRuntimeManager(registry);
+  const ptyRuntimeManager = new PtyRuntimeManager(registry, {
+    maxScrollbackBytes: terminalHistoryConfig.terminalScrollbackBytes,
+  });
   const localFsService = options.localFsService ?? new LocalFsService();
   const sftpService = options.sftpService ?? new SftpService();
   const vsCodeWebManager = options.vsCodeWebManager ?? new VsCodeWebManager();
@@ -72,6 +91,21 @@ export function buildServer(options: BuildServerOptions = {}): {
     });
     await registerVsCodeWebProxyRoutes(instance, {
       vsCodeWebManager,
+    });
+
+    instance.get("/api/diagnostics/terminal-history", async () => {
+      const response: TerminalHistoryDiagnosticsResponse = {
+        timestamp: new Date().toISOString(),
+        pty: ptyRuntimeManager.getScrollbackDiagnostics(),
+        registry: {
+          maxOutputEntries: registry.getOutputEntryLimit(),
+        },
+        tmux: {
+          captureLines: tmuxAdapter.getCaptureLines(),
+        },
+      };
+
+      return response;
     });
 
     instance.get("/ws/agent-sessions", { websocket: true }, (socket) => {

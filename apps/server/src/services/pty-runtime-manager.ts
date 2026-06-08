@@ -9,6 +9,7 @@ import type {
 } from "@agent-orchestrator/shared";
 
 import { AgentSessionRegistry } from "./agent-session-registry.js";
+import { DEFAULT_TERMINAL_SCROLLBACK_BYTES } from "../config/server-runtime-config.js";
 import { resolveCopilotBinary } from "./copilot-binary.js";
 import { resolveLocalWorkingDirectory } from "./resolve-local-working-directory.js";
 import { resolvePreferredShell } from "./runtime-compat.js";
@@ -17,12 +18,56 @@ import { sanitizeReplayForTerminal } from "./terminal-control-filter.js";
 
 type PtyDataListener = (data: string) => void;
 
-const MAX_SCROLLBACK_BYTES = 256 * 1024; // 256 KB replay buffer
-interface PtyHandle {
-  ptyProcess: pty.IPty;
-  dataListeners: Set<PtyDataListener>;
+export interface PtyRuntimeManagerOptions {
+  maxScrollbackBytes?: number;
+}
+
+export interface PtyScrollbackDiagnostics {
+  activeSessions: number;
+  maxScrollbackBytes: number;
+  totalScrollbackBytes: number;
+  totalDroppedScrollbackBytes: number;
+  totalDroppedScrollbackChunks: number;
+  truncatedSessionCount: number;
+  sessions: Array<{
+    agentSessionId: string;
+    scrollbackBytes: number;
+    scrollbackChunks: number;
+    droppedScrollbackBytes: number;
+    droppedScrollbackChunks: number;
+  }>;
+}
+
+export interface PtyScrollbackState {
   scrollback: string[];
   scrollbackBytes: number;
+  droppedScrollbackBytes: number;
+  droppedScrollbackChunks: number;
+}
+
+interface PtyHandle extends PtyScrollbackState {
+  ptyProcess: pty.IPty;
+  dataListeners: Set<PtyDataListener>;
+}
+
+export function appendPtyScrollback(
+  state: PtyScrollbackState,
+  data: string,
+  maxScrollbackBytes: number,
+): void {
+  state.scrollback.push(data);
+  state.scrollbackBytes += Buffer.byteLength(data, "utf8");
+
+  while (
+    state.scrollbackBytes > maxScrollbackBytes &&
+    state.scrollback.length > 1
+  ) {
+    const removed = state.scrollback.shift()!;
+    const removedBytes = Buffer.byteLength(removed, "utf8");
+    state.scrollbackBytes -= removedBytes;
+    state.droppedScrollbackBytes += removedBytes;
+    state.droppedScrollbackChunks += 1;
+  }
 }
 export { sanitizeReplayForTerminal } from "./terminal-control-filter.js";
 
@@ -132,8 +177,15 @@ function buildLocalSpawnPlan(
 
 export class PtyRuntimeManager {
   private readonly handles = new Map<string, PtyHandle>();
+  private readonly maxScrollbackBytes: number;
 
-  constructor(private readonly registry: AgentSessionRegistry) {}
+  constructor(
+    private readonly registry: AgentSessionRegistry,
+    options: PtyRuntimeManagerOptions = {},
+  ) {
+    this.maxScrollbackBytes =
+      options.maxScrollbackBytes ?? DEFAULT_TERMINAL_SCROLLBACK_BYTES;
+  }
 
   launch(input: LaunchLocalAgentInput): AgentSessionRecord {
     const shell = resolvePreferredShell();
@@ -170,12 +222,7 @@ export class PtyRuntimeManager {
       },
     });
 
-    const handle: PtyHandle = {
-      ptyProcess,
-      dataListeners: new Set(),
-      scrollback: [],
-      scrollbackBytes: 0,
-    };
+    const handle = this.createHandle(ptyProcess);
 
     this.handles.set(agentSession.id, handle);
 
@@ -252,12 +299,7 @@ export class PtyRuntimeManager {
       remoteCommand: input.remoteCommand,
     });
 
-    const handle: PtyHandle = {
-      ptyProcess,
-      dataListeners: new Set(),
-      scrollback: [],
-      scrollbackBytes: 0,
-    };
+    const handle = this.createHandle(ptyProcess);
 
     this.handles.set(agentSession.id, handle);
 
@@ -385,12 +427,7 @@ export class PtyRuntimeManager {
       env: buildPtyEnv(),
     });
 
-    const handle: PtyHandle = {
-      ptyProcess,
-      dataListeners: new Set(),
-      scrollback: [],
-      scrollbackBytes: 0,
-    };
+    const handle = this.createHandle(ptyProcess);
     this.handles.set(agentSessionId, handle);
 
     this.registry.updateSession(agentSessionId, {
@@ -453,12 +490,7 @@ export class PtyRuntimeManager {
       env: spawnPlan.env,
     });
 
-    const handle: PtyHandle = {
-      ptyProcess,
-      dataListeners: new Set(),
-      scrollback: [],
-      scrollbackBytes: 0,
-    };
+    const handle = this.createHandle(ptyProcess);
     this.handles.set(agentSessionId, handle);
 
     this.registry.updateSession(agentSessionId, {
@@ -504,16 +536,51 @@ export class PtyRuntimeManager {
     return this.registry.get(agentSessionId);
   }
 
-  private appendScrollback(handle: PtyHandle, data: string): void {
-    handle.scrollback.push(data);
-    handle.scrollbackBytes += data.length;
+  getScrollbackDiagnostics(): PtyScrollbackDiagnostics {
+    const sessions = [...this.handles.entries()].map(
+      ([agentSessionId, handle]) => ({
+        agentSessionId,
+        droppedScrollbackBytes: handle.droppedScrollbackBytes,
+        droppedScrollbackChunks: handle.droppedScrollbackChunks,
+        scrollbackBytes: handle.scrollbackBytes,
+        scrollbackChunks: handle.scrollback.length,
+      }),
+    );
 
-    while (
-      handle.scrollbackBytes > MAX_SCROLLBACK_BYTES &&
-      handle.scrollback.length > 1
-    ) {
-      const removed = handle.scrollback.shift()!;
-      handle.scrollbackBytes -= removed.length;
-    }
+    return {
+      activeSessions: sessions.length,
+      maxScrollbackBytes: this.maxScrollbackBytes,
+      sessions,
+      totalDroppedScrollbackBytes: sessions.reduce(
+        (sum, session) => sum + session.droppedScrollbackBytes,
+        0,
+      ),
+      totalDroppedScrollbackChunks: sessions.reduce(
+        (sum, session) => sum + session.droppedScrollbackChunks,
+        0,
+      ),
+      totalScrollbackBytes: sessions.reduce(
+        (sum, session) => sum + session.scrollbackBytes,
+        0,
+      ),
+      truncatedSessionCount: sessions.filter(
+        (session) => session.droppedScrollbackChunks > 0,
+      ).length,
+    };
+  }
+
+  private createHandle(ptyProcess: pty.IPty): PtyHandle {
+    return {
+      ptyProcess,
+      dataListeners: new Set(),
+      droppedScrollbackBytes: 0,
+      droppedScrollbackChunks: 0,
+      scrollback: [],
+      scrollbackBytes: 0,
+    };
+  }
+
+  private appendScrollback(handle: PtyHandle, data: string): void {
+    appendPtyScrollback(handle, data, this.maxScrollbackBytes);
   }
 }

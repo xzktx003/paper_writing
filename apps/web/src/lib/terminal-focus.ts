@@ -27,6 +27,17 @@ interface ExternalFocusPromotionOptions {
   targetIsHovered: boolean;
 }
 
+interface TerminalPanePointerActivationOptions {
+  button: number;
+  pointerType: string;
+}
+
+export function shouldActivateTerminalPaneFromPointer(
+  options: TerminalPanePointerActivationOptions,
+): boolean {
+  return options.pointerType !== "mouse" || options.button === 0;
+}
+
 export function hasIntentionalExternalFocus(
   options: IntentionalExternalFocusOptions,
 ): boolean {

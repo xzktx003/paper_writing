@@ -1,4 +1,7 @@
-import type { VsCodeWebProxyDiagnosticsResponse } from "@agent-orchestrator/shared";
+import type {
+  TerminalHistoryDiagnosticsResponse,
+  VsCodeWebProxyDiagnosticsResponse,
+} from "@agent-orchestrator/shared";
 
 const RATE_WINDOW_MS = 5_000;
 
@@ -347,10 +350,12 @@ export function getResourceDiagnosticsSnapshot(
 
 export function classifyResourcePressure({
   snapshot,
+  terminalHistoryDiagnostics,
   useLightweightTerminalPreview,
   vscodeProxyDiagnostics,
 }: {
   snapshot: ResourceDiagnosticsSnapshot;
+  terminalHistoryDiagnostics?: TerminalHistoryDiagnosticsResponse | null;
   useLightweightTerminalPreview: boolean;
   vscodeProxyDiagnostics?: VsCodeWebProxyDiagnosticsResponse | null;
 }): string[] {
@@ -373,6 +378,15 @@ export function classifyResourcePressure({
       vscodeProxyDiagnostics!.websocket.messagesPerSecond >= 50 ||
       vscodeProxyHttpKilobytesPerSecond >= 512 ||
       vscodeProxyDiagnostics!.http.requestsPerSecond >= 5);
+  const hasTerminalHistoryTruncation =
+    Boolean(terminalHistoryDiagnostics) &&
+    terminalHistoryDiagnostics!.pty.truncatedSessionCount > 0;
+
+  if (hasTerminalHistoryTruncation) {
+    findings.push(
+      "终端历史缓冲已发生裁剪；重开、切换或刷新终端后，早期长输出可能无法完整恢复。",
+    );
+  }
 
   if (
     !useLightweightTerminalPreview &&
@@ -463,6 +477,7 @@ export function classifyResourcePressure({
     snapshot.dom.vscodeHiddenIframeCount === 0 &&
     snapshot.mainThread.blockedMillisecondsPerSecond < 80 &&
     snapshot.mainThread.longTasksPerSecond < 1 &&
+    !hasTerminalHistoryTruncation &&
     !hasVsCodeProxyPressure &&
     (snapshot.dom.vscodeIframeCount === 0 || Boolean(vscodeProxyDiagnostics))
   ) {
