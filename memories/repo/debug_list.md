@@ -25,6 +25,7 @@
 - 文件浏览器在 A 会话折叠后，切到 B 会话再切回 A 会自动展开：折叠状态存在全局 UI 状态里，且 `sidePanelOpen=false` 时被 effect 清零；修复为把左右分栏折叠状态放进每个 `agentSession` 的侧栏状态，切换会话不再重置。
 - 多屏聚焦视图切换输入终端时文件系统/VS Code 跟随规则错误：active slot 和 App 级 `focusedSession` 总是强绑定；修复为只有侧栏工具已打开时才同步 focused session 并把当前工具类型带到目标 session，未打开工具时只切多屏输入窗格。
 - 多屏中快速切换终端时，文件系统侧栏偶发出现、消失或未加载到对应终端路径。根因是每个会话各自保留 `activeTool`，切换时又通过 active slot effect 和 focused session 派生侧栏开关，多个旧会话状态会抢当前抽屉归属。修复为在 App 层维护全局单一 `openSidePanelTool`，切换终端时只把该工具独占写入当前输入终端，并清空其他会话的 `activeTool`。
+- 进一步排查发现，`onActiveTerminalSessionChange` 的 React effect 也参与侧栏 retarget，会和用户点击 pane 时的同步 `onSwitchFocus` 路径竞争，导致快速切换时最终目标偶发被较晚提交的 effect 覆盖。修复为 effect 只记录当前 active terminal id，文件系统/VS Code 跟随只由用户激活 pane 的同步路径执行，并补快速 A/B/A/B 切换回归。
 - 服务端构建在文件下载路由处报 `archiver` 没有导出 `ZipArchive`，改默认导入后 Node ESM 又报 no default export：根因是 `archiver` v8 运行时导出 `ZipArchive`，但当前类型声明仍按旧 `export = archiver` 函数形态暴露；修复为 namespace runtime import，并在类型层显式声明 `ZipArchive` 构造器。
 - StrictMode 下 WebSocket cleanup 造成假断开提示：CONNECTING 阶段过早 close；修复为等到 `onopen` 后再关闭。
 - Playwright 只复用前端导致坏后端环境被误复用：修复为前后端分别做健康检查。

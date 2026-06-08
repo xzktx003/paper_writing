@@ -701,6 +701,67 @@ test("file browser stays mounted and retargets during repeated monitor terminal 
   }
 });
 
+test("file browser final target remains stable after rapid monitor terminal switches", async ({
+  page,
+  request,
+}) => {
+  const fixtureA = setupFixture();
+  const fixtureB = setupFixture();
+  const sessionAName = `file-browser-rapid-a-${Date.now()}`;
+  const sessionBName = `file-browser-rapid-b-${Date.now()}`;
+  let sessionAId: string | undefined;
+  let sessionBId: string | undefined;
+
+  try {
+    sessionAId = await launchMockSession(
+      request,
+      sessionAName,
+      fixtureA.rootDir,
+    );
+    sessionBId = await launchMockSession(
+      request,
+      sessionBName,
+      fixtureB.rootDir,
+    );
+
+    await focusSession(page, sessionAName);
+    await page.getByRole("button", { name: /屏幕布局/ }).click();
+    await page.getByRole("menuitemradio", { name: /左右双屏/ }).click();
+
+    await openFileBrowserForFocusedSession(page);
+
+    const firstTerminal = page
+      .locator('[data-terminal-pane-slot="terminal-monitor-slot-1"]')
+      .locator(".terminal-view");
+    const secondPane = page.locator(
+      '[data-terminal-pane-slot="terminal-monitor-slot-2"]',
+    );
+    const secondTerminal = secondPane.locator(".terminal-view");
+    await secondPane
+      .getByRole("combobox", { name: "选择第 2 个监控终端" })
+      .selectOption(sessionBId!);
+
+    await secondTerminal.click();
+    await firstTerminal.click();
+    await secondTerminal.click();
+
+    await expect(page.locator(".focus-main-name")).toContainText(sessionBName);
+    const drawer = page.getByTestId("file-browser-drawer");
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator(".file-browser-path-input")).toHaveValue(
+      fixtureB.rootDir,
+    );
+    await expect(drawer.getByTestId("file-entry-note.txt")).toBeVisible();
+  } finally {
+    await deleteSessionIfPresent(request, sessionAId);
+    await deleteSessionIfPresent(request, sessionBId);
+    rmSync(fixtureA.rootDir, { recursive: true, force: true });
+    rmSync(fixtureA.uploadFilePath, { force: true });
+    rmSync(fixtureB.rootDir, { recursive: true, force: true });
+    rmSync(fixtureB.uploadFilePath, { force: true });
+  }
+});
+
 test("monitor terminal switching does not change the focused side-panel session when no side panel is open", async ({
   page,
   request,

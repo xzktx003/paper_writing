@@ -626,29 +626,9 @@ export default function App() {
     setActiveTerminalSessionId(id);
   }
 
-  const handleActiveTerminalSessionChange = useCallback(
-    (id: string | null) => {
-      if (!id) {
-        setActiveTerminalSessionId(null);
-        return;
-      }
-
-      setActiveTerminalSessionId(id);
-
-      if (!openSidePanelTool) {
-        return;
-      }
-
-      const targetSession = sessions.find((session) => session.id === id);
-      if (!targetSession) {
-        return;
-      }
-
-      setExclusiveSidePanelToolForSession(targetSession, openSidePanelTool);
-      setFocusedId(id);
-    },
-    [openSidePanelTool, sessions, sshHosts],
-  );
+  const handleActiveTerminalSessionChange = useCallback((id: string | null) => {
+    setActiveTerminalSessionId(id);
+  }, []);
 
   const handleMobileSwitchSession = useCallback((id: string) => {
     setFocusedId(id);
