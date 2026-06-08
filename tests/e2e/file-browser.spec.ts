@@ -611,6 +611,68 @@ test("file browser follows the active monitor terminal when the side panel is op
   }
 });
 
+test("open file browser retargets to a monitor terminal that never opened files before", async ({
+  page,
+  request,
+}) => {
+  const fixtureA = setupFixture();
+  const fixtureB = setupFixture();
+  const sessionAName = `file-browser-unopened-a-${Date.now()}`;
+  const sessionBName = `file-browser-unopened-b-${Date.now()}`;
+  let sessionAId: string | undefined;
+  let sessionBId: string | undefined;
+
+  try {
+    sessionAId = await launchMockSession(
+      request,
+      sessionAName,
+      fixtureA.rootDir,
+    );
+    sessionBId = await launchMockSession(
+      request,
+      sessionBName,
+      fixtureB.rootDir,
+    );
+
+    await focusSession(page, sessionAName);
+    await page.getByRole("button", { name: /屏幕布局/ }).click();
+    await page.getByRole("menuitemradio", { name: /左右双屏/ }).click();
+
+    const firstPane = page.locator(
+      '[data-terminal-pane-slot="terminal-monitor-slot-1"]',
+    );
+    const secondPane = page.locator(
+      '[data-terminal-pane-slot="terminal-monitor-slot-2"]',
+    );
+    await secondPane
+      .getByRole("combobox", { name: "选择第 2 个监控终端" })
+      .selectOption(sessionBId!);
+    await firstPane.locator(".terminal-view").click();
+    await expect(page.locator(".focus-main-name")).toContainText(sessionAName);
+
+    const drawerA = await openFileBrowserForFocusedSession(page);
+    await expect(drawerA.locator(".file-browser-path-input")).toHaveValue(
+      fixtureA.rootDir,
+    );
+
+    await secondPane.locator(".terminal-view").click();
+    await expect(page.locator(".focus-main-name")).toContainText(sessionBName);
+    const drawerB = page.getByTestId("file-browser-drawer");
+    await expect(drawerB).toBeVisible();
+    await expect(drawerB.locator(".file-browser-path-input")).toHaveValue(
+      fixtureB.rootDir,
+    );
+    await expect(drawerB.getByTestId("file-entry-note.txt")).toBeVisible();
+  } finally {
+    await deleteSessionIfPresent(request, sessionAId);
+    await deleteSessionIfPresent(request, sessionBId);
+    rmSync(fixtureA.rootDir, { recursive: true, force: true });
+    rmSync(fixtureA.uploadFilePath, { force: true });
+    rmSync(fixtureB.rootDir, { recursive: true, force: true });
+    rmSync(fixtureB.uploadFilePath, { force: true });
+  }
+});
+
 test("file browser stays mounted and retargets during repeated monitor terminal switches", async ({
   page,
   request,
