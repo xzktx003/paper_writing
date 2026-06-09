@@ -59,6 +59,12 @@
 
 ## 开发环境与测试基础设施
 
+- Paper Writer 前端打开后不稳定或打不开。根因是临时加入 `dist/index.html` 的自动同步脚本每 2 秒枚举并 HEAD 轮询所有已加载资源，真实浏览器会持续制造大量请求并可能触发 reload/卡顿。修复为移除当前运行入口里的轮询脚本，让静态页面恢复为只加载主 JS 和 CSS；后续热同步应放到受控开发模式实现。
+- Paper Writer 进入任意编辑器页后显示 `Something went wrong / missing ) after argument list`。根因是手改当前运行构建产物新增预览翻译 hook 时，多写了一个闭合大括号，`EditorPage` 懒加载模块在 Chromium 中解析失败。修复为删除多余 `}`，并用 Playwright 直接动态 import `EditorPage` 与打开 `/editor/moe_prune` 做回归验证。
+- Paper Writer 预览翻译点击后报 `ENOENT ... conversations/<project>/preview-translate-*.json`。根因是前端把随机生成的临时字符串当作 conversation id 传给 `/api/ai/send`，但后端会按该 id 读取已有会话 JSON。修复为翻译前优先复用当前会话；没有当前会话时先通过 `/api/conversations/:projectId` 创建真实 `Preview Translate` 会话，再把返回的 id 传给 AI 接口。
+- Paper Writer 8787 服务停掉后无法重启，导致前端完全打不开。根因是当前运行目录里的 `app/apps/backend/src` 和 ESM `package.json` 缺失，且本地 LLM 配置没有落到后端会读取的 `.env`，服务启动时先遇到源码缺失/语法恢复噪音，随后因空 API key 直接退出。修复为从覆盖率产物恢复后端源码、清理 Istanbul 标记、补回 backend ESM package 声明，并把本机 Paper Writer 配置同步到被 git 忽略的 `app/apps/backend/.env` 后用 `setsid` 后台启动。
+- Paper Writer 项目页侧栏同时显示 `所有项目`、`我的项目`、`已归档`、`回收站`，分类过多且 `所有项目` 与 `我的项目` 在常规场景含义重叠。修复为当前运行构建产物只展示 `开放项目` 和 `归档项目` 两类；开放项目过滤 `!archived && !trashed`，归档项目过滤 `archived && !trashed`。
+- `papers/paper-agent` 投稿目录同时保留了最终上传文件和一份重复的源码工作副本，容易让人误以为需要上传散乱的 `sec/`、`main.tex`、`references.bib`。修复为只保留三个实际投稿文件 `cover-letter.pdf`、`main.pdf`、`paper-agent-spe-latex-source.zip`，删除重复源码树，并把 `README.md` 改成投稿清单。
 - Playwright 只复用前端 Vite 服务时，可能在 `/api` 代理已经坏掉的情况下误以为测试环境可用。修复为前后端分别做健康检查，避免复用损坏环境。
 - Ubuntu 主机缺少 Playwright Chromium 运行库时，浏览器测试无法启动。现有 workaround 是下载所需 `.deb`、提取到本地目录，并通过 `LD_LIBRARY_PATH` 注入依赖。
 - `pnpm -r test` 全部断言通过后仍不退出。根因是多个服务级 idle timer 没有 `.unref()`，导致 Node event loop 一直存活。修复为所有仅用于空闲清理的 timer 创建后立即 `.unref()`，并补 `hasRef() === false` 回归。

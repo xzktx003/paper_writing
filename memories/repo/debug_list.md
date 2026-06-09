@@ -54,3 +54,9 @@
 - 手机浏览器查看 Codex 长上下文终端时，终端区域下拉会触发浏览器下拉刷新，或只滑动页面不滑动 xterm 历史：根因是桌面页面滚动结构没有锁住根滚动链路；首版 touch 监听在冒泡阶段，遇到 xterm viewport/浏览器手势竞争时拦截不够早，且桌面聚焦页没有启用手机触控模式。修复为新增 `/mobile` 手机终端页锁定 `html/body/#root` 滚动，并让 `TerminalView` 手机触控模式用捕获阶段的非 passive `touchstart/touchmove` 接管单指滑动、滚动 xterm 历史，双指缩放字号；触屏设备的桌面聚焦页也启用同一逻辑。
 - 手机访问 `/mobile` 进不去或 404：根因是部分运行入口只暴露根页面或只启动后端，history route 依赖前端服务提供 SPA fallback。修复为手机端按钮改用 `/?view=mobile` 根路径 query 入口，并保留 `/mobile`、`/m`、`#/mobile` 兼容解析。
 - 手机端 Tab、Esc、Ctrl+C、方向键等快捷键在部分会话里会变成“控制键 + Enter”或不能作为真实按键送入 Codex：根因是手机端快捷键走已有 stdin 路由，旧的非 PTY runtime 会给任意输入追加换行，tmux 控制路径也把输入按行拆分并总是补 Enter。修复为对 stdin payload 做控制字符识别，普通文本仍可补换行提交，Tab/Esc/Ctrl/方向键和多行粘贴按原始输入转发；tmux 接入路径只转换通用控制字符，不增加 tmux 专用快捷键按钮。
+- `papers/paper-agent` 投稿目录混入重复源码工作副本，容易误导上传范围：根因是最终投稿三件套生成后仍保留外层 `main.tex`、`references.bib`、`sec/` 副本。修复为只保留 `cover-letter.pdf`、`main.pdf`、`paper-agent-spe-latex-source.zip`、`README.md` 和应用识别用 `project.json`，源码以 zip 内内容为准。
+- Paper Writer 项目页侧栏分类过多：`所有项目`、`我的项目`、`已归档`、`回收站` 同时出现，其中开放项目视角与“我的项目”语义重叠。修复为当前运行构建产物只保留 `开放项目` 与 `归档项目`，分别对应未归档未回收、已归档未回收的项目。
+- Paper Writer 前端打开后不稳定或打不开：根因是临时加入 `dist/index.html` 的自动同步脚本每 2 秒对所有已加载静态资源做 HEAD 轮询，容易造成大量请求、reload 或卡顿；修复为移除当前运行入口的轮询脚本，恢复只加载主 JS/CSS。
+- Paper Writer 进入编辑器页时报 `Something went wrong / missing ) after argument list`：根因是手改构建产物新增预览翻译 hook 时多了一个闭合大括号，导致 `EditorPage` 懒加载模块在 Chromium 中解析失败；修复为删除多余 `}`，并用浏览器动态 import 与 `/editor/moe_prune` smoke 验证。
+- Paper Writer 预览翻译时报 `ENOENT ... preview-translate-*.json`：根因是前端把随机临时字符串当成 conversation id 传给 `/api/ai/send`，后端按该 id 读取会话文件时找不到 JSON；修复为复用当前会话，或先创建真实 `Preview Translate` 会话再调用 AI 接口。
+- Paper Writer 8787 服务停掉后无法重启，前端完全打不开：根因是当前运行目录缺失 `app/apps/backend/src` 与 ESM `package.json`，且 LLM 配置未落到后端读取的本地 `.env`，服务启动时先因源码缺失/恢复噪音失败，随后因空 API key 退出；修复为从 coverage 产物恢复后端源码、清理 Istanbul 标记、补 backend ESM package，并把本机配置同步到被 git 忽略的 `app/apps/backend/.env` 后后台启动。
