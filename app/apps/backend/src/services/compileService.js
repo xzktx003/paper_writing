@@ -49,7 +49,7 @@ function buildCommand(engine, outDir, mainFile) {
     case 'latexmk':
       return { cmd: 'latexmk', args: ['-pdf', '-interaction=nonstopmode', '-synctex=1', `-outdir=${outDir}`, mainFile] };
     case 'tectonic':
-      return { cmd: 'tectonic', args: ['--outdir', outDir, mainFile] };
+      return { cmd: 'tectonic', args: ['--synctex', '--outdir', outDir, mainFile] };
     default:
       return null;
   }

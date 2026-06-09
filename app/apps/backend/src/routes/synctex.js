@@ -2,71 +2,123 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { getProjectRoot } from '../services/projectService.js';
- 
+
+async function findSynctexFile(projectRoot) {
+  const buildRoot = path.join(projectRoot, '.compile');
+  
+  // First check .compile/output/ (persistent location)
+  const outputPath = path.join(buildRoot, 'output');
+  try {
+    const files = await fs.readdir(outputPath);
+    const stx = files.find(f => f.endsWith('.synctex.gz'));
+    if (stx) return path.join(outputPath, stx);
+  } catch {}
+  
+  // Fallback: check .compile/<uuid>/ (temporary build dirs)
+  try {
+    const dirs = await fs.readdir(buildRoot);
+    const sorted = dirs.sort().reverse();
+    for (const dir of sorted) {
+      if (dir === 'output') continue;
+      const candidate = path.join(buildRoot, dir);
+      const stat = await fs.stat(candidate).catch(() => null);
+      if (!stat || !stat.isDirectory()) continue;
+      const files = await fs.readdir(candidate);
+      const stx = files.find(f => f.endsWith('.synctex.gz'));
+      if (stx) return path.join(candidate, stx);
+    }
+  } catch {}
+  
+  return null;
+}
+
 /**
  * Parse a .synctex.gz file into a structured mapping.
- * The synctex format is a text-based format with sections like:
- *   Input:<line>:<col>:<file>
- *   Page:<page>
- *   x:<x>,y:<y>,w:<w>,h:<h>
- *   ...
- *   !
+ * SyncTeX format:
+ *   Input:file_num:file_path
+ *   Content:
+ *   {page_num
+ *   [file_num,line,col,x,y,w,h  (box entry - maps to source)
+ *   (file_num,line,col,x,y,w,h  (node entry - sets context)
+ *   )
+ *   }
+ * 
+ * Coordinates are in scaled points (1 inch = 72.27 tex points * 65536)
  */
 function parseSynctexRaw(text) {
   const result = {
-    sourceToPdf: [],   // [{file, line, page, x, y, w, h}]
-    pdfToSource: [],   // [{page, x, y, w, h, file, line}]
+    sourceToPdf: [],
+    pdfToSource: [],
+    inputFiles: {},
   };
  
   const lines = text.split('\n');
-  let currentInput = null;
   let currentPage = null;
-  let i = 0;
  
-  while (i < lines.length) {
-    const line = lines[i].trim();
+  for (const line of lines) {
+    const trimmed = line.trim();
  
-    // Input section: "Input:line:col:file"
-    const inputMatch = line.match(/^Input:(\d+):(\d+):(.+)$/);
+    // Input section: "Input:file_num:file_path"
+    const inputMatch = trimmed.match(/^Input:(\d+):(.+)$/);
     if (inputMatch) {
-      currentInput = {
-        line: parseInt(inputMatch[1], 10),
-        col: parseInt(inputMatch[2], 10),
-        file: inputMatch[3],
-      };
-      i++;
+      const fileNum = parseInt(inputMatch[1], 10);
+      const filePath = inputMatch[2];
+      if (filePath) {
+        result.inputFiles[fileNum] = filePath;
+      }
       continue;
     }
  
-    // Page section: "Page:<page>"
-    const pageMatch = line.match(/^Page:(\d+)$/);
+    // Page start: "{page_num"
+    const pageMatch = trimmed.match(/^\{(\d+)$/);
     if (pageMatch) {
       currentPage = parseInt(pageMatch[1], 10);
-      i++;
       continue;
     }
  
-    // Box entry: "x:<x>,y:<y>,w:<w>,h:<h>"
-    const boxMatch = line.match(/^([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)$/);
-    if (boxMatch && currentInput && currentPage !== null) {
-      const entry = {
-        file: currentInput.file,
-        line: currentInput.line,
-        page: currentPage,
-        x: parseFloat(boxMatch[1]),
-        y: parseFloat(boxMatch[2]),
-        w: parseFloat(boxMatch[3]),
-        h: parseFloat(boxMatch[4]),
-      };
-      result.sourceToPdf.push(entry);
-      result.pdfToSource.push(entry);
+    // Page end: "}"
+    if (trimmed === '}') {
+      currentPage = null;
+      continue;
     }
  
-    i++;
+    if (currentPage === null) continue;
+ 
+    // Box entry: "[file_num,line,col,x,y,w,h"
+    // Split by : and , to get 7 parts
+    if (trimmed.startsWith('[')) {
+      const parts = trimmed.slice(1).replace(/:/g, ',').split(',');
+      if (parts.length >= 7) {
+        const fileNum = parseInt(parts[0], 10);
+        const file = result.inputFiles[fileNum] || null;
+        if (file) {
+          const lineNum = parseInt(parts[1], 10);
+          // Convert from scaled points to PDF points
+          const x = parseInt(parts[3], 10) / 65536;
+          const y = parseInt(parts[4], 10) / 65536;
+          const w = parseInt(parts[5], 10) / 65536;
+          const h = parseInt(parts[6], 10) / 65536;
+ 
+          const entry = {
+            file: file,
+            line: lineNum,
+            page: currentPage,
+            x: x,
+            y: y,
+            w: w,
+            h: Math.max(h, 10), // Minimum height for click detection
+          };
+          result.sourceToPdf.push(entry);
+          result.pdfToSource.push(entry);
+        }
+      }
+      continue;
+    }
+ 
+    // Node entries ( and other entries - skip
   }
  
   // Build lookup indexes
-  // For sourceToPdf: group by file+line, keep first match per line
   result.sourceToPdfMap = {};
   for (const entry of result.sourceToPdf) {
     const key = `${entry.file}:${entry.line}`;
@@ -75,17 +127,12 @@ function parseSynctexRaw(text) {
     }
   }
  
-  // For pdfToSource: build a simple grid for point-in-box lookup
-  // We'll use a brute-force approach for now (fast enough for typical papers)
   result.pdfToSourceEntries = result.pdfToSource;
  
   return result;
 }
- 
+
 export function registerSyncTeXRoutes(fastify) {
-  // Store parsed synctex data per project (in-memory cache)
-  const synctexCache = new Map();
- 
   fastify.post('/api/projects/:projectId/synctex/source-to-pdf', async (req) => {
     const { projectId } = req.params;
     const { file, line } = req.body || {};
@@ -96,48 +143,23 @@ export function registerSyncTeXRoutes(fastify) {
  
     try {
       const projectRoot = await getProjectRoot(projectId);
-      const buildRoot = path.join(projectRoot, '.compile');
- 
-      // Find latest synctex.gz
-      let synctexFile = null;
-      try {
-        const dirs = await fs.readdir(buildRoot);
-        // Sort by time, newest first
-        const sorted = dirs.sort().reverse();
-        for (const dir of sorted) {
-          const candidate = path.join(buildRoot, dir);
-          const stat = await fs.stat(candidate).catch(() => null);
-          if (!stat || !stat.isDirectory()) continue;
-          const files = await fs.readdir(candidate);
-          const stx = files.find(f => f.endsWith('.synctex.gz'));
-          if (stx) {
-            synctexFile = path.join(candidate, stx);
-            break;
-          }
-        }
-      } catch {
-        return { ok: false, error: 'No compiled output found. Compile first.' };
-      }
- 
+      const synctexFile = await findSynctexFile(projectRoot);
       if (!synctexFile) {
-        return { ok: false, error: 'No .synctex.gz found. Compile with pdflatex/xelatex/lualatex.' };
+        return { ok: false, error: 'No .synctex.gz found. Compile first.' };
       }
  
-      // Parse synctex
       const gzBuffer = await fs.readFile(synctexFile);
       const text = zlib.gunzipSync(gzBuffer).toString('utf8');
       const parsed = parseSynctexRaw(text);
  
       // Look up source line
       const normalizedFile = path.resolve(projectRoot, file);
-      // Try exact match and relative match
       let key = `${normalizedFile}:${line}`;
       let match = parsed.sourceToPdfMap[key];
  
       if (!match) {
-        // Try without absolute path prefix
         for (const [k, v] of Object.entries(parsed.sourceToPdfMap)) {
-          if (k.endsWith(`/${file}:${line}`) || k.endsWith(`:${file}:${line}`)) {
+          if (k.endsWith(`/${file}:${line}`) || k === `${file}:${line}`) {
             match = v;
             break;
           }
@@ -171,27 +193,7 @@ export function registerSyncTeXRoutes(fastify) {
  
     try {
       const projectRoot = await getProjectRoot(projectId);
-      const buildRoot = path.join(projectRoot, '.compile');
- 
-      let synctexFile = null;
-      try {
-        const dirs = await fs.readdir(buildRoot);
-        const sorted = dirs.sort().reverse();
-        for (const dir of sorted) {
-          const candidate = path.join(buildRoot, dir);
-          const stat = await fs.stat(candidate).catch(() => null);
-          if (!stat || !stat.isDirectory()) continue;
-          const files = await fs.readdir(candidate);
-          const stx = files.find(f => f.endsWith('.synctex.gz'));
-          if (stx) {
-            synctexFile = path.join(candidate, stx);
-            break;
-          }
-        }
-      } catch {
-        return { ok: false, error: 'No compiled output found.' };
-      }
- 
+      const synctexFile = await findSynctexFile(projectRoot);
       if (!synctexFile) {
         return { ok: false, error: 'No .synctex.gz found.' };
       }
@@ -205,7 +207,7 @@ export function registerSyncTeXRoutes(fastify) {
       let bestDist = Infinity;
       for (const entry of parsed.pdfToSourceEntries) {
         if (entry.page !== page) continue;
-        // Check if point is inside box
+        // Check if point is inside or near box
         const cx = entry.x + entry.w / 2;
         const cy = entry.y + entry.h / 2;
         const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
@@ -229,4 +231,3 @@ export function registerSyncTeXRoutes(fastify) {
     }
   });
 }
- 

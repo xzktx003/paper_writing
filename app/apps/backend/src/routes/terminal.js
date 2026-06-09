@@ -71,7 +71,7 @@ function appendToBuffer(entry, data) {
  
 export function registerTerminalRoutes(fastify) {
   fastify.get('/api/terminal/ws', { websocket: true }, async (connection, request) => {
-    const ws = connection.socket;
+    const ws = connection;
     const cwd = await resolveCwd(request.query.cwd);
     const cols = parseInt(request.query.cols) || 80;
     const rows = parseInt(request.query.rows) || 24;
@@ -102,7 +102,7 @@ export function registerTerminalRoutes(fastify) {
       } catch (error) {
         const message = 'Terminal backend unavailable: node-pty native module failed to load.';
         fastify.log.error({ err: error }, message);
-        try { ws.send(JSON.stringify({ type: 'error', error: message })); } catch (e) {}
+        try { if (ws && ws.readyState <= 1) ws.send(JSON.stringify({ type: 'error', error: message })); } catch (e) {}
         try { ws.close(1011, message); } catch (e) {}
         return;
       }
@@ -118,7 +118,7 @@ export function registerTerminalRoutes(fastify) {
       };
       sessionPool.set(sessionName, entry);
  
-      ws.send(JSON.stringify({ type: 'id', session: sessionName, backend: 'tmux', resumed: false }));
+      if (ws && ws.readyState <= 1) { ws.send(JSON.stringify({ type: 'id', session: sessionName, backend: 'tmux', resumed: false })); }
  
       ptyProcess.onData((data) => {
         appendToBuffer(entry, data);
@@ -129,7 +129,7 @@ export function registerTerminalRoutes(fastify) {
  
       ptyProcess.onExit(({ exitCode }) => {
         if (entry.ws && entry.ws.readyState === 1) {
-          try { entry.ws.send(JSON.stringify({ type: 'exit', code: exitCode })); } catch (e) {}
+          try { if (entry.ws && entry.ws.readyState <= 1) entry.ws.send(JSON.stringify({ type: 'exit', code: exitCode })); } catch (e) {}
         }
         if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
         sessionPool.delete(sessionName);

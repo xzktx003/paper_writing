@@ -5,7 +5,7 @@ const projectClients = new Map();
  
 export function registerWsRoutes(fastify) {
   fastify.get('/api/ws/watch', { websocket: true }, (connection, request) => {
-    const ws = connection.socket;
+    const ws = connection;
     const projectPath = request.query.projectPath;
  
     if (!projectPath) {
