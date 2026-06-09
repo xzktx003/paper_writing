@@ -85,14 +85,14 @@ test("ensureSession starts remote code-server targets for SSH sessions", async (
     }),
     {
       requestHost: "10.30.0.22",
-      requestProtocol: "https",
+      requestProtocol: "http",
     },
   );
 
   assert.equal(response.provider, "code-server");
   assert.equal(
     response.url,
-    "https://10.30.0.22/vscode/?folder=%2Fsrv%2Fremote-project",
+    "http://10.30.0.22/vscode/?folder=%2Fsrv%2Fremote-project",
   );
   assert.equal(response.reused, false);
   assert.equal(response.workingDirectory, "/srv/remote-project");
@@ -171,7 +171,7 @@ test("ensureSession resolves ssh aliases before launching configless remote vsco
     }),
     {
       requestHost: "10.30.0.22",
-      requestProtocol: "https",
+      requestProtocol: "http",
     },
   );
 

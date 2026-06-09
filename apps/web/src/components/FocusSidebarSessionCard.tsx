@@ -13,6 +13,7 @@ interface FocusSidebarSessionCardProps {
     sessionId: string,
     event: React.DragEvent<HTMLDivElement>,
   ) => void;
+  onDragEnd?: () => void;
   onContextMenu?: (
     session: AgentSessionRecord,
     event: React.MouseEvent<HTMLDivElement>,
@@ -33,6 +34,7 @@ export function FocusSidebarSessionCard({
   onSwitchFocus,
   onRename,
   onDragStart,
+  onDragEnd,
   onContextMenu,
   useLightweightTerminalPreview = true,
 }: FocusSidebarSessionCardProps) {
@@ -43,6 +45,7 @@ export function FocusSidebarSessionCard({
       data-session-id={session.id}
       draggable={Boolean(onDragStart)}
       onContextMenu={(event) => onContextMenu?.(session, event)}
+      onDragEnd={onDragEnd}
       onDragStart={(event) => onDragStart?.(session.id, event)}
       onDoubleClick={() => onSwitchFocus(session.id)}
     >

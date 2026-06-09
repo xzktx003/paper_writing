@@ -406,6 +406,83 @@ test("file browser create dialog supports creating an empty file", async ({
   }
 });
 
+test("file browser context menu copies file and directory paths without clipboard API", async ({
+  page,
+  request,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+
+    const copiedPaths: string[] = [];
+    Object.defineProperty(window, "__fileBrowserCopiedPaths", {
+      configurable: true,
+      value: copiedPaths,
+    });
+
+    const originalExecCommand = document.execCommand.bind(document);
+    document.execCommand = (command: string) => {
+      if (command === "copy") {
+        const activeElement = document.activeElement;
+        copiedPaths.push(
+          activeElement instanceof HTMLTextAreaElement
+            ? activeElement.value
+            : "",
+        );
+        return true;
+      }
+
+      return originalExecCommand(command);
+    };
+  });
+
+  const fixture = setupFixture();
+  const displayName = `file-browser-copy-path-${Date.now()}`;
+  let sessionId: string | undefined;
+
+  try {
+    sessionId = await launchMockSession(request, displayName, fixture.rootDir);
+    await focusSession(page, displayName);
+    const drawer = await openFileBrowserForFocusedSession(page);
+
+    await drawer
+      .getByTestId("file-entry-note.txt")
+      .click({ button: "right" });
+    await page
+      .locator(".file-browser-context-menu")
+      .getByRole("button", { name: "复制路径" })
+      .click();
+
+    await drawer.getByTestId("file-entry-nested").click({ button: "right" });
+    await page
+      .locator(".file-browser-context-menu")
+      .getByRole("button", { name: "复制路径" })
+      .click();
+
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (
+              window as Window & {
+                __fileBrowserCopiedPaths?: string[];
+              }
+            ).__fileBrowserCopiedPaths ?? [],
+        ),
+      )
+      .toEqual([
+        path.join(fixture.rootDir, "note.txt"),
+        path.join(fixture.rootDir, "nested"),
+      ]);
+  } finally {
+    await deleteSessionIfPresent(request, sessionId);
+    rmSync(fixture.rootDir, { recursive: true, force: true });
+    rmSync(fixture.uploadFilePath, { force: true });
+  }
+});
+
 test("file browser editor keeps focus instead of the terminal stealing it back", async ({
   page,
   request,

@@ -34,23 +34,45 @@ import type {
 import { recordAgentSnapshotFrame } from "./resource-diagnostics";
 
 const viteEnv = import.meta.env ?? {};
-const apiBaseUrl = viteEnv.VITE_API_BASE_URL ?? "";
+const rawApiBaseUrl = viteEnv.VITE_API_BASE_URL ?? "";
+
+function normalizeHttpBaseUrl(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const url = new URL(value, window.location.origin);
+  url.protocol = "http:";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
+function normalizeWsBaseUrl(value: string): string {
+  const withoutAgentSessions = value.replace(/\/ws\/agent-sessions\/?$/, "");
+  const url = new URL(withoutAgentSessions, window.location.origin);
+  url.protocol = "ws:";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
+const apiBaseUrl = normalizeHttpBaseUrl(rawApiBaseUrl);
 
 function wsBase(): string {
   if (viteEnv.VITE_API_WS_URL) {
-    return viteEnv.VITE_API_WS_URL.replace(/\/ws\/agent-sessions\/?$/, "");
+    return normalizeWsBaseUrl(viteEnv.VITE_API_WS_URL);
   }
 
   if (apiBaseUrl) {
     const httpUrl = new URL(apiBaseUrl, window.location.origin);
-    httpUrl.protocol = httpUrl.protocol === "https:" ? "wss:" : "ws:";
+    httpUrl.protocol = "ws:";
     httpUrl.search = "";
     httpUrl.hash = "";
     return httpUrl.toString().replace(/\/$/, "");
   }
 
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}`;
+  return `ws://${window.location.host}`;
 }
 
 function buildWebSocketUrl(): string {

@@ -1,30 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-
-import { resolveWebDevConfig } from './src/lib/dev-server-config';
-
-function readHttpsConfig(env: Record<string, string | undefined>) {
-  if (env.VITE_DEV_HTTPS !== '1') {
-    return undefined;
-  }
-
-  const certPath = env.VITE_DEV_HTTPS_CERT;
-  const keyPath = env.VITE_DEV_HTTPS_KEY;
-
-  if (!certPath || !keyPath) {
-    throw new Error(
-      'VITE_DEV_HTTPS=1 requires VITE_DEV_HTTPS_CERT and VITE_DEV_HTTPS_KEY',
-    );
-  }
-
-  return {
-    cert: readFileSync(certPath),
-    key: readFileSync(keyPath),
-  };
-}
 
 // Backend host:port is looked up from .env (WEB_BACKEND_HOST / WEB_BACKEND_PORT)
 // so users can redirect API/WebSocket traffic without editing source code.
@@ -50,7 +27,6 @@ export default defineConfig(({ mode }) => {
     server: {
       host: WEB_HOST,
       port: WEB_PORT,
-      https: readHttpsConfig(env),
       proxy: {
         '/api': HTTP_BACKEND,
         '/vscode': {

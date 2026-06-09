@@ -49,7 +49,7 @@ describe("vscode-web-state", () => {
 
   it("persists and reloads the last successful vscode web response for a session", () => {
     const response = buildResponse(
-      "https://localhost:3000/vscode/?folder=%2Ftmp",
+      "http://localhost:3000/vscode/?folder=%2Ftmp",
     );
 
     saveCachedVsCodeWebState("session-a", response);
@@ -60,11 +60,11 @@ describe("vscode-web-state", () => {
   it("keeps each session cache isolated", () => {
     saveCachedVsCodeWebState(
       "session-a",
-      buildResponse("https://localhost:3000/vscode/?folder=%2Fa"),
+      buildResponse("http://localhost:3000/vscode/?folder=%2Fa"),
     );
     saveCachedVsCodeWebState(
       "session-b",
-      buildResponse("https://localhost:3000/vscode/?folder=%2Fb"),
+      buildResponse("http://localhost:3000/vscode/?folder=%2Fb"),
     );
 
     assert.match(
@@ -80,7 +80,7 @@ describe("vscode-web-state", () => {
   it("clears a cached session entry", () => {
     saveCachedVsCodeWebState(
       "session-a",
-      buildResponse("https://localhost:3000/vscode/?folder=%2Ftmp"),
+      buildResponse("http://localhost:3000/vscode/?folder=%2Ftmp"),
     );
 
     clearCachedVsCodeWebState("session-a");

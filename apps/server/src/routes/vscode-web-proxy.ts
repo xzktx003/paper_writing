@@ -1,5 +1,4 @@
 import { request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -269,7 +268,8 @@ function resolveProxyTarget(
     return null;
   }
 
-  return new URL(targetUrl);
+  const parsed = new URL(targetUrl);
+  return parsed.protocol === "http:" ? parsed : null;
 }
 
 function serializeProxyBody(body: unknown): Buffer | null {
@@ -403,9 +403,7 @@ async function proxyHttpRequest(
   const serializedBody = serializeProxyBody(request.body);
   const finishDiagnostics = beginVsCodeProxyHttpRequest();
   reply.hijack();
-  const proxyRequest = (
-    targetUrl.protocol === "https:" ? httpsRequest : httpRequest
-  )(
+  const proxyRequest = httpRequest(
     targetUrl,
     {
       headers: buildProxyRequestHeaders(request, serializedBody?.byteLength),
@@ -469,9 +467,8 @@ function proxyWebSocketConnection(
   }
 
   const finishDiagnostics = beginVsCodeProxyWebSocket();
-  const targetProtocol = targetBaseUrl.protocol === "https:" ? "wss:" : "ws:";
   const upstream = new WebSocket(
-    `${targetProtocol}//${targetBaseUrl.host}${rewriteProxyPath(
+    `ws://${targetBaseUrl.host}${rewriteProxyPath(
       request.raw.url ?? request.url,
     )}`,
   );

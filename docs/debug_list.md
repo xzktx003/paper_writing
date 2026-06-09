@@ -4,6 +4,9 @@
 
 ## 焦点与输入
 
+- 文件浏览器右键文件或文件夹后点击“复制路径”在局域网 HTTP 页面会失败。根因是代码直接调用 `navigator.clipboard.writeText`，而 Clipboard API 在非安全上下文或权限受限时不可用。修复为增加剪贴板 helper，优先使用 Clipboard API，不可用或被拒绝时回退到隐藏 textarea + `execCommand('copy')`，并补右键文件/目录复制路径回归测试。
+- 多屏聚焦视图中，选中不同终端后顶部标题栏和“改名”按钮仍指向最初进入聚焦页的终端。根因是标题栏直接读取 App 层 `focusedSession`，而多屏切换输入窗格在侧栏工具未打开时不会同步外层 focused session。修复为标题、状态、改名和重连按钮优先使用当前 active monitor slot 对应的 session，找不到时再回退到 `focusedSession`。
+- 多屏聚焦视图从“其他会话”拖入屏幕时，浏览器拖拽缩影会混入多个其他会话预览。根因是未显式设置 drag image，浏览器默认截图包含终端预览的侧栏卡片时容易把相邻缩影一起带入拖影。修复为拖拽开始时创建只包含当前会话名称和少量输出的专用单会话拖影，拖拽结束或 drop 后清理。
 - 聚焦视图静态区域点击后，Copilot CLI 会出现“界面还在但无法继续输入”或首字符重复。根因是 `AgentFocusView` 过度依赖 `keydown` 阶段补发事件，且把按钮/链接当作输入控件。修复为在静态区域 `pointerdown` 直接把焦点还给 xterm，并避免重复转发首字符。
 - 分栏模式下，从终端点击回 VS Code iframe 后，终端会把焦点抢回。根因是 `TerminalView` 只把原生表单控件视为“有意外部焦点”。修复为把 `iframe` 纳入允许外部焦点的白名单。
 - 分栏模式下，从终端切到文件浏览器编辑器或 VS Code 后，输入过程中焦点仍可能被终端抢走。根因是终端只看当前 `document.activeElement`，在 blur/focus 交接瞬间看到 `body` 就误判需要抢焦点；同时 VS Code 抽屉把 `reused` 变化当成新实例。修复为增加外部输入焦点保护窗口，并忽略 `reused` 单独变化带来的 iframe 重载。
@@ -48,14 +51,15 @@
 
 ## VS Code Web 与 WebSocket 生命周期
 
-- kanban 里的内嵌 VS Code Web 在自签 HTTPS 下会出现 PNG 预览 / webview 打不开。根因不是 PNG 本身，而是 code-server 的 webview / 预览链路依赖 service worker；浏览器虽然允许你“继续访问”自签页面，但仍会因为证书不受信任而拒绝给 `/vscode/.../service-worker.js` 注册 service worker。修复为让 `restart-dev.sh` 在本机装有 `mkcert` 时优先生成浏览器信任的本地证书，并在只能回退到 OpenSSL 自签证书时明确告警。
+- kanban 里的内嵌 VS Code Web 曾在自签 HTTPS 下出现 PNG 预览 / webview 打不开。根因是 code-server 的 webview / 预览链路依赖 service worker，而浏览器不会为不受信任证书注册 service worker。旧的 mkcert/OpenSSL 证书方案已废弃，现修复为前端开发服务只使用 HTTP，`restart-dev.sh` 不再生成或读取证书。
 - React StrictMode 下，CONNECTING 阶段的 WebSocket 在 effect cleanup 中被关闭，会制造“连接尚未建立就关闭”的假断开提示。修复为在 dev-only 清理路径上延后关闭，等到 `onopen` 后再真正回收。
 - SSH 远端会话打开 VS Code Web 时总被判定为“不支持”。根因是 `VsCodeWebManager` 之前只实现了本地 editor 生命周期。修复为补充 SSH 远端 `code-server` 的启动/复用、健康检查，以及 `/vscode/` 代理目标切换，先支持像 `10.30.0.24` 这类可被后端直连的远端主机。
 - `10.30.0.24` 上 SSH 远端会话虽然能返回 VS Code URL，但 iframe 仍然只显示 404：根因有三层叠加——tunnel helper 继承了 ssh config 里的 `RemoteForward 18888`、远端优先复用了 `.vscode-server/.../code-server` 这类返回 404 的 agent binary、而旧错误进程还持续占着 `13338` 端口。修复为让 VS Code tunnel 使用 configless ssh、远端只启动 standalone `code-server`、并在健康检查失败时先清理目标端口上的陈旧监听进程，再拉起新实例。
 - SSH 远端会话在前端里依然打不开 VS Code，只剩文件浏览器可用。根因是 `App.tsx` 仍把 `vscodeAvailable` 写成了“仅本地会话可用”的布尔门禁，导致即便后端远端 `/vscode-web` 已经打通，SSH session 的 VS Code 按钮也会被禁掉。修复为让聚焦态 SSH 会话同样允许打开 VS Code Web，并同步修正文案。
 - `10.30.0.23` / `10.30.0.21_host` 这类远端主机仍然打不开 VS Code：一层根因是部分机器根本没装 standalone `code-server`；另一层根因是 remote VS Code 的 configless tunnel 只规避了 ssh config 里的 `RemoteForward` 污染，却没有先解析 ssh config 里的 alias / port / identity，于是 `10.30.0.21_host` 这类别名和 `10.30.0.23` 这类靠 ssh config 改端口的主机都会把 tunnel 连错。修复为在目标机补装 standalone `code-server`，并让 tunnel 在 `ssh -F /dev/null` 前先通过 `ssh -G` 解析出真实 `hostname/port/identityfile` 再发起连接。
-- 看板通过本地 `/vscode` 代理打开 VS Code Web 时，HTTPS 页面里的图片预览仍可能加载失败。根因是代理层之前只把后端看到的 `request.protocol/host` 原样转发给上游 `code-server`；当前端开发页经由 HTTPS 访问、后端实际走本地 HTTP 代理时，上游收到的却是错误的 `http + 本地端口`，从而生成了错误的预览资源来源。修复为让 `/vscode` 代理和 `/api/agent-sessions/:id/vscode-web` 一样，优先从浏览器的 `Origin/Referer` 或现有转发头推导公开 `host/protocol`，再转发给上游。
-- 本地 HTTPS 开发证书已经回退到 OpenSSL 自签时，VS Code Web 的 webview / 图片预览仍会报 `Could not register service worker ... An SSL certificate error occurred`。根因是浏览器不会为不受信任的自签证书注册 service worker，而旧脚本在“复用现有证书”路径上既不会持续告警，也不会在后续装上 `mkcert` 后自动升级证书。修复为：1）修正现有证书 SAN 匹配，避免 IP SAN 误判导致行为漂移；2）为脚本生成的证书写入 metadata，复用 OpenSSL 自签证书时持续输出 VS Code 预览受限告警；3）一旦检测到 `mkcert` 已可用，自动淘汰旧自签证书并重签为受信任证书。
+- 看板通过本地 `/vscode` 代理打开 VS Code Web 时，HTTPS 页面里的图片预览曾可能加载失败。根因是前端 HTTPS、后端 HTTP 和 code-server 公开来源推断不一致。现修复为开发入口统一 HTTP，`/vscode` 代理和 `/api/agent-sessions/:id/vscode-web` 对浏览器来源只保留 host，公开 protocol 固定为 HTTP。
+- 本地 HTTPS 开发证书回退到 OpenSSL 自签时，VS Code Web 的 webview / 图片预览曾报 `Could not register service worker ... An SSL certificate error occurred`。证书修复路径已废弃，现移除开发证书脚本和 `WEB_HTTPS` / `VITE_DEV_HTTPS` 配置，避免继续维护自签证书分支。
+- 看板开发服务从 HTTPS 默认切换为 HTTP-only：根因是当前内网联调和 VS Code Web 代理不再需要证书分支，保留 HTTPS 配置会让启动、文档和调试记录分叉。修复为移除 Vite HTTPS 配置、restart-dev 证书流程和证书脚本，并把规则、README、项目概览、测试 fixture 与 debug 记录统一到 HTTP。
 
 ## 开发环境与测试基础设施
 

@@ -36,9 +36,11 @@ async function installTrackingWebSocket(page: Page): Promise<void> {
 
     const trackedWindow = window as Window & {
       __allWebSocketUrls?: string[];
+      __disableTerminalMonitorDragImageForTest?: boolean;
       __terminalWebSocketUrls?: string[];
     };
     trackedWindow.__allWebSocketUrls = [];
+    trackedWindow.__disableTerminalMonitorDragImageForTest = true;
     trackedWindow.__terminalWebSocketUrls = [];
 
     class MockWebSocket extends EventTarget {
@@ -326,4 +328,166 @@ test("focus monitor panes accept dragged sidebar sessions and swap dragged panes
     "data-terminal-pane-session",
     "gamma-session",
   );
+});
+
+test("focus header follows the active monitor terminal session", async ({
+  page,
+}) => {
+  await mockSessions(page, [
+    makeSession({
+      id: "alpha-session",
+      displayName: "Alpha Session",
+      outputPreview: "alpha ready",
+    }),
+    makeSession({
+      id: "beta-session",
+      displayName: "Beta Session",
+      outputPreview: "beta ready",
+    }),
+  ]);
+
+  await page.goto("/");
+
+  await page
+    .locator(".grid-card", {
+      has: page.locator(".grid-card-name", { hasText: "Alpha Session" }),
+    })
+    .dblclick();
+  await page.getByRole("button", { name: /屏幕布局/ }).click();
+  await page.getByRole("menuitemradio", { name: /左右双屏/ }).click();
+
+  await expect(page.locator(".focus-main-name")).toHaveText("Alpha Session");
+
+  const secondPane = page.locator(
+    '[data-terminal-pane-slot="terminal-monitor-slot-2"]',
+  );
+  await secondPane.getByRole("button", { name: "设为输入" }).click();
+
+  await expect(page.locator(".focus-main-name")).toHaveText("Beta Session");
+
+  let renameDefaultValue = "";
+  page.once("dialog", async (dialog) => {
+    renameDefaultValue = dialog.defaultValue();
+    await dialog.dismiss();
+  });
+  await page.locator(".focus-rename-btn").click({ force: true });
+  await expect.poll(() => renameDefaultValue).toBe("Beta Session");
+});
+
+test("focus sidebar drag uses a single preview for the dragged session", async ({
+  page,
+}) => {
+  await mockSessions(page, [
+    makeSession({
+      id: "alpha-session",
+      displayName: "Alpha Session",
+      outputPreview: "alpha ready",
+    }),
+    makeSession({
+      id: "beta-session",
+      displayName: "Beta Session",
+      outputPreview: "beta ready",
+    }),
+    makeSession({
+      id: "gamma-session",
+      displayName: "Gamma Session",
+      outputPreview: "gamma line 1\ngamma line 2\ngamma line 3",
+    }),
+  ]);
+
+  await page.goto("/");
+
+  await page
+    .locator(".grid-card", {
+      has: page.locator(".grid-card-name", { hasText: "Alpha Session" }),
+    })
+    .dblclick();
+  await page.getByRole("button", { name: /屏幕布局/ }).click();
+  await page.getByRole("menuitemradio", { name: /左右双屏/ }).click();
+
+  await page.evaluate(() => {
+    const trackedWindow = window as Window & {
+      __forceTerminalMonitorDragImageForTest?: boolean;
+      __terminalMonitorDragImages?: Array<{
+        height: number;
+        previewKind: string | undefined;
+        sessionId: string | undefined;
+        tagName: string;
+        width: number;
+        x: number;
+        y: number;
+      }>;
+      __terminalMonitorDragImagePatched?: boolean;
+    };
+    trackedWindow.__terminalMonitorDragImages = [];
+    trackedWindow.__forceTerminalMonitorDragImageForTest = true;
+    if (trackedWindow.__terminalMonitorDragImagePatched) {
+      return;
+    }
+
+    const originalSetDragImage = DataTransfer.prototype.setDragImage;
+    DataTransfer.prototype.setDragImage = function (
+      image: Element,
+      x: number,
+      y: number,
+    ) {
+      const element = image as HTMLElement;
+      const canvas = image as HTMLCanvasElement;
+      trackedWindow.__terminalMonitorDragImages?.push({
+        height: canvas.height,
+        previewKind: element.dataset.previewKind,
+        sessionId: element.dataset.sessionId,
+        tagName: element.tagName,
+        width: canvas.width,
+        x,
+        y,
+      });
+      return originalSetDragImage.call(this, image, x, y);
+    };
+    trackedWindow.__terminalMonitorDragImagePatched = true;
+  });
+
+  const draggedCard = page.locator(".focus-sidebar-card", {
+    hasText: "Gamma Session",
+  });
+  await draggedCard.evaluate((element) => {
+    const event = new DragEvent("dragstart", {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: new DataTransfer(),
+    });
+    element.dispatchEvent(event);
+  });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        return (
+          (
+            window as Window & {
+              __terminalMonitorDragImages?: unknown[];
+            }
+          ).__terminalMonitorDragImages ?? []
+        );
+      }),
+    )
+    .toEqual([
+      expect.objectContaining({
+        previewKind: "terminal-monitor-session",
+        sessionId: "gamma-session",
+        tagName: "CANVAS",
+        x: 132,
+        y: 44,
+      }),
+    ]);
+  await expect(
+    page.locator('canvas[data-preview-kind="terminal-monitor-session"]'),
+  ).toHaveAttribute("data-session-id", "gamma-session");
+
+  await draggedCard.evaluate((element) => {
+    element.dispatchEvent(new DragEvent("dragend", { bubbles: true }));
+  });
+  await expect(
+    page.locator('canvas[data-preview-kind="terminal-monitor-session"]'),
+  ).toHaveCount(0);
 });

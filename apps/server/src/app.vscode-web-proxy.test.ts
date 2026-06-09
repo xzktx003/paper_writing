@@ -73,7 +73,7 @@ test("GET /vscode/* proxies HTTP requests to the active VS Code Web target", asy
   }
 });
 
-test("GET /vscode/* prefers browser origin when forwarding host and protocol to the upstream VS Code Web server", async () => {
+test("GET /vscode/* prefers browser origin host but forwards HTTP protocol to the upstream VS Code Web server", async () => {
   let receivedForwardedHost = "";
   let receivedForwardedProto = "";
   const upstream = createServer((request, response) => {
@@ -106,7 +106,7 @@ test("GET /vscode/* prefers browser origin when forwarding host and protocol to 
 
     assert.equal(response.status, 204);
     assert.equal(receivedForwardedHost, "127.0.0.1:3000");
-    assert.equal(receivedForwardedProto, "https");
+    assert.equal(receivedForwardedProto, "http");
   } finally {
     await app.close();
     await new Promise<void>((resolve, reject) => {

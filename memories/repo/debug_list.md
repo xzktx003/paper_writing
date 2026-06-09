@@ -1,5 +1,8 @@
 # 仓库 bug 修复记录
 
+- 文件浏览器右键“复制路径”在局域网 HTTP 页面失效：代码直接调用 `navigator.clipboard.writeText`，非安全上下文或权限受限时不可用；修复为新增剪贴板 helper，Clipboard API 不可用或被拒绝时回退隐藏 textarea + `execCommand('copy')`，并补文件/目录右键复制路径回归测试。
+- 多屏聚焦视图中选中不同终端后顶部标题和“改名”仍指向初始终端：标题栏直接读 App 层 `focusedSession`，而多屏切换输入窗格在侧栏未打开时不会同步 focused session；修复为标题、状态、改名和重连优先使用当前 active monitor slot 的 session。
+- 多屏聚焦视图从“其他会话”拖入屏幕时，拖拽缩影会混入多个其他会话预览：未设置专用 drag image，浏览器默认截图侧栏卡片时容易带上相邻缩影；修复为拖拽开始创建单会话拖影，结束或 drop 后清理。
 - 聚焦视图静态区域点击后输入失效或首字符重复：`AgentFocusView` 过度依赖 `keydown` 补发，且把按钮/链接当作输入控件；修复为在 `pointerdown` 直接归还终端焦点并避免重复转发。
 - 从终端切回 VS Code iframe 后焦点被终端抢回：`TerminalView` 未把 `iframe` 视为有意外部焦点；修复为把 `HTMLIFrameElement` 加入允许列表。
 - 从终端切到文件浏览器编辑器或 VS Code 后，输入过程中焦点仍会被终端抢走：终端只看当前 `activeElement`，交接瞬间看到 `body` 就误抢；同时 VS Code 抽屉把 `reused` 变化当成新实例；修复为增加外部输入焦点保护窗口，并忽略 `reused` 单独变化。
@@ -37,7 +40,7 @@
 - `awaiting_input` 单测在高负载下偶发超时：修复策略是收紧测试 override，而不是改全局默认值。
 - `awaiting-input timer retries when the first idle check fires early` 测试在 timer `.unref()` 纪律下失败：测试 mock 的 `setTimeout` 返回数字句柄，没有实现生产代码需要的 `unref()`；修复为假 timeout 提供并断言 `unref()`，继续覆盖早触发重试逻辑。
 - `launch does not surface npm config warnings before local Copilot starts` 单测稳定超时：测试依赖当前机器真实 `copilot` 启动文案，没有显式使用仓库 `.playwright-bin/copilot` stub；修复为测试内启用 `PLAYWRIGHT_TEST=1` 并把 stub 目录加入 `PATH`，只断言启动输出不含 `Unknown env config`。
-- kanban 里的内嵌 VS Code Web 在自签 HTTPS 下会出现 PNG 预览 / webview 打不开：根因是 code-server 的 webview / 图片预览链路依赖 service worker，而浏览器不会为不受信任的自签证书注册这些 service worker。修复为让 `restart-dev.sh` 在可用时优先用 `mkcert` 生成受信任本地证书，并在回退到 OpenSSL 自签证书时输出明确告警。
+- kanban 里的内嵌 VS Code Web 曾在自签 HTTPS 下出现 PNG 预览 / webview 打不开：根因是 code-server 的 webview / 图片预览链路依赖 service worker，而浏览器不会为不受信任证书注册 service worker。旧 mkcert/OpenSSL 证书方案已废弃，现改为前端开发服务只使用 HTTP，`restart-dev.sh` 不再生成或读取证书。
 - shell 逻辑默认依赖 zsh 导致兼容性问题：修复为优先 `SHELL`，再回退到 `bash -> zsh -> sh`。
 - tmux 路径只支持单一路径导致不同机器行为不稳：修复为支持 `TMUX_BINARY`、Homebrew 常见路径和 `PATH` 自动探测。
 - 端口与代理硬编码导致切换环境易错连：修复为统一改成 env 驱动。
@@ -45,8 +48,9 @@
 - `10.30.0.24` 上 SSH 远端会话已经能返回 VS Code URL，但 iframe 仍只显示 404。根因是三层叠加：VS Code tunnel 继承了 ssh config 里的 `RemoteForward 18888`、远端错误复用了 `.vscode-server/.../code-server` 这类 agent binary、旧错误进程还长期占用 `13338` 端口。修复为让 tunnel 走 configless ssh、远端只用 standalone `code-server`，并在健康检查失败时先清理目标端口上的陈旧监听进程，再启动新实例。
 - SSH 远端会话在前端里依然打不开 VS Code，只剩文件浏览器可用。根因是 `App.tsx` 里的 `vscodeAvailable` 仍保留“仅本地会话可用”的布尔门禁；后端远端 `/vscode-web` 已经正常 200，但前端压根不让 SSH session 打开 VS Code。修复为让聚焦态 SSH 会话同样允许打开 VS Code Web，并同步修正文案。
 - `10.30.0.23` / `10.30.0.21_host` 这类远端主机仍然打不开 VS Code。根因分两层：一是部分机器没装 standalone `code-server`；二是 remote VS Code 的 configless tunnel 虽然避开了 ssh config 里的 `RemoteForward` 污染，却没有先解析 ssh config 的 alias / port / identity，导致 alias 主机和“IP 但靠 ssh config 改端口”的主机都把 tunnel 连错。修复为在目标机补装 standalone `code-server`，并让 tunnel 在 `ssh -F /dev/null` 前先通过 `ssh -G` 解析真实 `hostname/port/identityfile` 再连接。
-- 看板通过本地 `/vscode` 代理打开 VS Code Web 时，HTTPS 页面里的图片预览仍可能加载失败。根因是代理层只把后端看到的 `request.protocol/host` 转发给上游 `code-server`；当前端页面是 HTTPS、后端却是本地 HTTP 代理时，上游会误以为公开入口仍是 `http + 本地端口`，进而生成错误的预览资源来源。修复为让 `/vscode` 代理也优先根据浏览器 `Origin/Referer` 或既有转发头推导公开 `host/protocol`，再透传给上游。
-- 本地 HTTPS 已回退到 OpenSSL 自签证书时，VS Code Web 的 webview / 图片预览会继续报 service worker 的 SSL 证书错误。根因是浏览器不会为不受信任的证书注册 service worker，而旧脚本在“复用已有证书”路径上没有持续告警，也不会在之后装好 `mkcert` 时自动升级掉旧自签证书。修复为修正 IP SAN 匹配、为脚本生成的证书记录 generator metadata，并在复用 OpenSSL 自签证书时持续警告；检测到 `mkcert` 后则自动重签为受信任证书。
+- 看板通过本地 `/vscode` 代理打开 VS Code Web 时，HTTPS 页面里的图片预览曾可能加载失败：根因是前端 HTTPS、后端 HTTP 和 code-server 公开来源推断不一致。现改为开发入口统一 HTTP，代理只保留浏览器来源 host，公开 protocol 固定为 HTTP。
+- 本地 HTTPS 回退到 OpenSSL 自签证书时，VS Code Web 的 webview / 图片预览曾报 service worker SSL 证书错误：证书修复路径已废弃，现移除开发证书脚本和 `WEB_HTTPS` / `VITE_DEV_HTTPS` 配置。
+- 看板开发服务从 HTTPS 默认切换为 HTTP-only：保留 HTTPS 配置让启动、文档和调试记录分叉。修复为移除 Vite HTTPS 配置、restart-dev 证书流程和证书脚本，并把规则、README、项目概览、测试 fixture 与 debug 记录统一到 HTTP。
 - commit `fc57a80` 引入的终端焦点保留修复过度：`rememberExternalPointerIntent` 仅对受保护目标记录意图，导致点击非保护元素时终端抢回焦点；`hasIntentionalExternalFocus` 对非保护、非 body 元素直接返回 false 加剧了问题。修复为 pointerdown 统一记录意图 + 纯时间戳比较，不再区分 active element 类型。
 - VS Code Web 与终端来回切换两轮后，点击 VS Code iframe 内部无法重新输入：上一版只依赖父文档 `pointerdown` 记录外部意图，但 iframe 内点击不稳定冒到父页面。修复为在父窗口 `blur` 和被动终端聚焦前，根据当前 `document.activeElement` 将 hovered iframe 补记为用户外部焦点意图，并补 VS Code -> 终端 -> VS Code round-trip e2e 回归。
 - 轻量预览下浏览器内存和网络仍持续增长：资源诊断显示 `/ws/agent-sessions` 全量快照达到数百 msg/s、数 MB/s；根因是每个终端输出帧都触发一次全量 snapshot，前端持续 JSON 解析和 React 更新。修复为后端对输出触发的 snapshot 做 trailing 合并广播，结构性操作仍即时刷新，并避免 observe-only 会话输出时创建无效 awaiting_input timer。

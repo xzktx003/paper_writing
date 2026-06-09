@@ -42,7 +42,7 @@ export function resolveReadmeUrls(env) {
   const { webPort, serverPort } = resolvePortDefaults(env);
 
   return {
-    baseUrl: env.README_BASE_URL ?? `https://localhost:${webPort}`,
+    baseUrl: env.README_BASE_URL ?? `http://localhost:${webPort}`,
     apiBaseUrl: env.README_API_URL ?? `http://127.0.0.1:${serverPort}`,
   };
 }

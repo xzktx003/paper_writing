@@ -134,7 +134,7 @@
 
 ### 环境变量与端口可配置性纪律
 
-- `HOST`、`PORT`、`WEB_HOST`、`WEB_PORT`、`WEB_BACKEND_HOST`、`WEB_BACKEND_PORT`、`WEB_HTTPS`、`FILE_BROWSER_DEFAULT_LOCAL_PATH`、`VSCODE_WEB_*` 等“用户会选择/机器相关”的配置，**严禁硬编码到源码**。新增此类配置时：
+- `HOST`、`PORT`、`WEB_HOST`、`WEB_PORT`、`WEB_BACKEND_HOST`、`WEB_BACKEND_PORT`、`FILE_BROWSER_DEFAULT_LOCAL_PATH`、`VSCODE_WEB_*` 等“用户会选择/机器相关”的配置，**严禁硬编码到源码**。新增此类配置时：
   1. 在 `apps/server/src/*` 或 `apps/web/vite.config.ts` 中通过 `process.env.XXX ?? 默认值` 读取；
   2. 在 `.env.example` 里新增一行带注释的模板；
   3. 在 `scripts/restart-dev.sh` 里如果有对应的 shell 变量，使用 `${VAR:-${ENV_VAR:-默认值}}` 的方式从 env 中 fallback。
@@ -163,12 +163,12 @@
 
 1. 前端地址必须局域网可见
 - 前端开发服务必须绑定 `0.0.0.0`，禁止只绑定 `127.0.0.1` 或 `localhost`。
-- 对外说明、联调、截图、测试记录中，优先使用局域网可访问地址，例如 `https://10.30.0.22:3100`。
+- 对外说明、联调、截图、测试记录中，优先使用局域网可访问地址，例如 `http://10.30.0.22:3100`。
 - 如果同网段设备无法访问该地址，则视为联调准备未完成。
 
-2. 前端默认使用 HTTPS
-- 开发环境优先使用 HTTPS 地址，例如 `https://10.30.0.22:3100`。
-- 任何涉及回调、跨域、Cookie、WebSocket 的验证，都不能只在 `http://localhost` 场景下验收。
+2. 前端使用 HTTP
+- 开发环境使用 HTTP 地址，例如 `http://10.30.0.22:3100`。
+- 不再使用 HTTPS，无需配置证书。
 
 3. 变更范围必须受控
 - 新功能代码必须写入本项目约定目录，例如 `apps/web`、`apps/server`、`packages/*`。
@@ -203,5 +203,5 @@
 
 ## 推荐执行习惯
 
-- 在文档、注释和 PR 描述中明确写出“局域网访问地址 + 端口 + 协议（HTTPS）”。
+- 在文档、注释和 PR 描述中明确写出“局域网访问地址 + 端口 + 协议（HTTP）”。
 - 任何需要协作联调的前端改动，默认附上可复现的访问方式，包括示例地址、启动命令和验证步骤。

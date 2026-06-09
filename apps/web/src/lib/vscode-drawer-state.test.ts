@@ -13,7 +13,7 @@ function buildResponse(): OpenVsCodeWebResponse {
   return {
     provider: "code-server",
     reused: true,
-    url: "https://localhost:3000/vscode/?workspace=%2Ftmp%2Fproject.code-workspace",
+    url: "http://localhost:3000/vscode/?workspace=%2Ftmp%2Fproject.code-workspace",
     workingDirectory: "/tmp/project",
   };
 }

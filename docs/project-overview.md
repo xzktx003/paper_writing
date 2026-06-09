@@ -303,16 +303,13 @@ pnpm install
 
 - 清理默认端口监听。
 - 启动后端和前端。
-- 默认开启 HTTPS。
-- 生成或复用 `.dev-runtime/certs/` 下的自签证书。
+- 前端使用 HTTP 协议。
 - 写日志到 `.dev-runtime/server.log` 和 `.dev-runtime/web.log`。
 
 常用变量：
 
 ```bash
 WEB_PORT=3100 SERVER_PORT=4100 ./scripts/restart-dev.sh
-WEB_HTTPS=0 ./scripts/restart-dev.sh
-WEB_HTTPS_SAN='DNS:localhost,IP:127.0.0.1,IP:10.30.0.22' ./scripts/restart-dev.sh
 ```
 
 ### 手动启动
@@ -333,7 +330,7 @@ pnpm --dir apps/server dev
 
 - 前端默认端口 3100，后端默认端口 3200。
 - 手动启动前端默认是 HTTP，访问 `http://10.30.0.22:3100/`。
-- 不要用 `https://10.30.0.22:3100/` 访问一个 HTTP dev server。
+- 前端使用 HTTP 协议，地址为 `http://10.30.0.22:3100/`。
 - 如果只启动前端，页面会打开，但 API、WebSocket、tmux、文件浏览器、VS Code Web 都不可用。
 - Vite 前端代理 `/api` 到 `http://localhost:3200`，代理 `/ws` 到 `ws://localhost:3200`。
 
@@ -354,8 +351,7 @@ curl http://127.0.0.1:3200/api/health
 ### 前端
 
 - `VITE_API_BASE_URL`：覆盖 API 基础地址。默认空字符串，使用同源代理。
-- `VITE_DEV_HTTPS=1`：前端 dev server 使用 HTTPS。
-- `VITE_DEV_HTTPS_CERT`、`VITE_DEV_HTTPS_KEY`：HTTPS 证书路径。
+- 前端 dev server 使用 HTTP，不需要 HTTPS 证书配置。
 
 ### 后端
 
@@ -505,7 +501,7 @@ UI 和 API 应围绕 `AgentSessionRecord` 工作。不要让 terminal id、tmux 
 - 扩展默认复用当前用户的 `~/.vscode-server/extensions`；如果需要单独目录，可设置 `VSCODE_WEB_EXTENSIONS_DIR`。
 - 启动时会清理继承的 `VSCODE_IPC_HOOK_CLI`，避免从 VS Code 终端拉起时误连到已有实例。
 - SSH 远端模式依赖后端到目标主机的 SSH 本地转发能力，不要求远端额外暴露 HTTP 端口。
-- HTTPS 前端嵌入 HTTP code-server 时可能遇到浏览器混合内容限制；内网调试时优先统一协议或使用 HTTP 前端。
+- 前端和 code-server 均使用 HTTP 协议，无混合内容限制。
 
 ### 文件浏览器
 
@@ -538,7 +534,7 @@ curl http://127.0.0.1:3200/api/health
 pnpm --dir apps/server dev
 ```
 
-### 访问 `https://10.30.0.22:3100` 没内容
+### 访问前端没有内容
 
 手动 `pnpm --dir apps/web dev` 默认是 HTTP。应访问：
 
@@ -546,7 +542,7 @@ pnpm --dir apps/server dev
 http://10.30.0.22:3100/
 ```
 
-要 HTTPS，请用 `scripts/restart-dev.sh` 或配置 `VITE_DEV_HTTPS`、证书路径。
+确保后端也已启动。
 
 ### VS Code 每次都像重新配置
 

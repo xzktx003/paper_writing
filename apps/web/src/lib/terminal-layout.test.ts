@@ -396,3 +396,84 @@ describe("terminal monitor layout", () => {
     );
   });
 });
+
+it("moves a session from sidebar to an empty slot without leaving stale references", () => {
+  const slots = placeTerminalMonitorSlotSession(
+    [
+      { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+      { id: "terminal-monitor-slot-2", sessionId: null },
+    ],
+    "terminal-monitor-slot-2",
+    "agent-3",
+  );
+
+  assert.deepEqual(slots, [
+    { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+    { id: "terminal-monitor-slot-2", sessionId: "agent-3" },
+  ]);
+});
+
+it("swaps when dragging a pane onto another pane via explicit source slot", () => {
+  const slots = placeTerminalMonitorSlotSession(
+    [
+      { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+      { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+      { id: "terminal-monitor-slot-3", sessionId: "agent-3" },
+    ],
+    "terminal-monitor-slot-3",
+    "agent-1",
+    "terminal-monitor-slot-1",
+  );
+
+  assert.deepEqual(slots, [
+    { id: "terminal-monitor-slot-1", sessionId: "agent-3" },
+    { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+    { id: "terminal-monitor-slot-3", sessionId: "agent-1" },
+  ]);
+});
+
+it("no-ops when dropping a pane session onto its own slot", () => {
+  const slots = placeTerminalMonitorSlotSession(
+    [
+      { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+      { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+    ],
+    "terminal-monitor-slot-1",
+    "agent-1",
+    "terminal-monitor-slot-1",
+  );
+
+  assert.deepEqual(slots, [
+    { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+    { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+  ]);
+});
+
+it("returns existing slots unchanged when target slot does not exist", () => {
+  const original = [{ id: "terminal-monitor-slot-1", sessionId: "agent-1" }];
+  const slots = placeTerminalMonitorSlotSession(
+    original,
+    "terminal-monitor-slot-99",
+    "agent-2",
+  );
+
+  assert.strictEqual(slots, original);
+});
+
+it("swaps when a sidebar drag payload matches a session already displayed in a pane", () => {
+  // Simulates dragging from sidebar a session that is currently in slot-1.
+  // sourceSlot is resolved by sessionId lookup since no sourceSlotId is given.
+  const slots = placeTerminalMonitorSlotSession(
+    [
+      { id: "terminal-monitor-slot-1", sessionId: "agent-1" },
+      { id: "terminal-monitor-slot-2", sessionId: "agent-2" },
+    ],
+    "terminal-monitor-slot-2",
+    "agent-1",
+  );
+
+  assert.deepEqual(slots, [
+    { id: "terminal-monitor-slot-1", sessionId: "agent-2" },
+    { id: "terminal-monitor-slot-2", sessionId: "agent-1" },
+  ]);
+});

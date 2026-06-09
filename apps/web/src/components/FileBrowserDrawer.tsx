@@ -7,6 +7,7 @@ import type {
 
 import { previewFile } from "../lib/api";
 import { useFileBrowser } from "../lib/use-file-browser";
+import { copyTextToClipboard } from "../lib/clipboard";
 
 import { HostDropdown, type SelectedHost } from "./HostDropdown";
 
@@ -829,9 +830,10 @@ export function FileBrowserDrawer({
             删除
           </button>
           <button
-            onClick={() =>
-              navigator.clipboard.writeText(contextMenu.entry.path)
-            }
+            onClick={async () => {
+              await copyTextToClipboard(contextMenu.entry.path);
+              setContextMenu(null);
+            }}
             type="button"
           >
             复制路径

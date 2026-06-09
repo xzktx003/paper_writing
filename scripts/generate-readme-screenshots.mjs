@@ -252,7 +252,6 @@ async function main() {
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1100 },
-      ignoreHTTPSErrors: true,
     });
     const page = await context.newPage();
 

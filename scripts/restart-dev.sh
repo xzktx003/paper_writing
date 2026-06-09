@@ -33,10 +33,6 @@ SERVER_BIND_HOST="${SERVER_BIND_HOST:-${HOST:-0.0.0.0}}"
 SERVER_PUBLIC_HOST="${SERVER_PUBLIC_HOST:-127.0.0.1}"
 
 WEB_HOST="${WEB_HOST:-0.0.0.0}"
-WEB_HTTPS="${WEB_HTTPS:-1}"
-WEB_HTTPS_CERT="${WEB_HTTPS_CERT:-${RUNTIME_DIR}/certs/dev-cert.pem}"
-WEB_HTTPS_KEY="${WEB_HTTPS_KEY:-${RUNTIME_DIR}/certs/dev-key.pem}"
-WEB_HTTPS_SAN="${WEB_HTTPS_SAN:-}"
 TERMINAL_SCROLLBACK_BYTES="${TERMINAL_SCROLLBACK_BYTES:-4194304}"
 TERMINAL_TMUX_CAPTURE_LINES="${TERMINAL_TMUX_CAPTURE_LINES:-5000}"
 TERMINAL_REGISTRY_OUTPUT_ENTRIES="${TERMINAL_REGISTRY_OUTPUT_ENTRIES:-1000}"
@@ -108,10 +104,6 @@ wait_for_http() {
   local attempts="${3:-60}"
   local curl_args=(--noproxy '*' -fsS)
 
-  if [[ "$url" == https://* ]]; then
-    curl_args=(--noproxy '*' -k -fsS)
-  fi
-
   for ((i = 1; i <= attempts; i += 1)); do
     if curl "${curl_args[@]}" "$url" >/dev/null 2>&1; then
       return 0
@@ -175,38 +167,7 @@ show_log_tail() {
   fi
 }
 
-build_default_https_san() {
-  local san_entries=("DNS:localhost" "IP:127.0.0.1")
-  local host_name
-  local ip
-
-  host_name="$(hostname -s 2>/dev/null || hostname 2>/dev/null || true)"
-  if [[ -n "$host_name" && "$host_name" != "localhost" ]]; then
-    san_entries+=("DNS:${host_name}")
-  fi
-
-  for ip in $(hostname -I 2>/dev/null || true); do
-    if [[ -z "$ip" || "$ip" == 127.* || "$ip" == "::1" ]]; then
-      continue
-    fi
-
-    san_entries+=("IP:${ip}")
-  done
-
-  local IFS=,
-  printf '%s\n' "${san_entries[*]}"
-}
-
-if [[ -z "$WEB_HTTPS_SAN" ]]; then
-  WEB_HTTPS_SAN="$(build_default_https_san)"
-fi
-
 mkdir -p "$RUNTIME_DIR"
-
-if ! WEB_HTTPS="$WEB_HTTPS" WEB_HTTPS_CERT="$WEB_HTTPS_CERT" WEB_HTTPS_KEY="$WEB_HTTPS_KEY" WEB_HTTPS_SAN="$WEB_HTTPS_SAN" \
-  node "${ROOT_DIR}/scripts/ensure-dev-https-cert.mjs"; then
-  exit 1
-fi
 
 kill_from_pid_file backend "$SERVER_PID_FILE"
 kill_from_pid_file frontend "$WEB_PID_FILE"
@@ -236,17 +197,9 @@ if ! wait_for_http backend "$SERVER_HEALTH_URL"; then
 fi
 log "Backend ready ✓"
 
-log "Starting frontend on ${WEB_HOST}:${WEB_PORT}"
-if [[ "$WEB_HTTPS" == "1" ]]; then
-  log "Frontend HTTPS enabled"
-  nohup env -u VSCODE_IPC_HOOK_CLI PATH="$RUNTIME_PATH" VITE_DEV_HTTPS=1 VITE_DEV_HTTPS_CERT="$WEB_HTTPS_CERT" VITE_DEV_HTTPS_KEY="$WEB_HTTPS_KEY" \
-    VITE_TERMINAL_SCROLLBACK_LINES="$VITE_TERMINAL_SCROLLBACK_LINES" \
-    pnpm --dir "$WEB_APP_DIR" exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
-    >"$WEB_LOG" 2>&1 &
-else
-  nohup env -u VSCODE_IPC_HOOK_CLI PATH="$RUNTIME_PATH" VITE_TERMINAL_SCROLLBACK_LINES="$VITE_TERMINAL_SCROLLBACK_LINES" pnpm --dir "$WEB_APP_DIR" exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
-    >"$WEB_LOG" 2>&1 &
-fi
+log "Starting frontend on ${WEB_HOST}:${WEB_PORT} (HTTP)"
+nohup env -u VSCODE_IPC_HOOK_CLI PATH="$RUNTIME_PATH" VITE_TERMINAL_SCROLLBACK_LINES="$VITE_TERMINAL_SCROLLBACK_LINES" pnpm --dir "$WEB_APP_DIR" exec vite --host "$WEB_HOST" --port "$WEB_PORT" \
+  >"$WEB_LOG" 2>&1 &
 echo $! >"$WEB_PID_FILE"
 
 (

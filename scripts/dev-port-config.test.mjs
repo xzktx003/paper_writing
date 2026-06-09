@@ -33,7 +33,7 @@ test('builds README URLs from the shared port defaults', () => {
       SERVER_PORT: '7200',
     }),
     {
-      baseUrl: 'https://localhost:7100',
+      baseUrl: 'http://localhost:7100',
       apiBaseUrl: 'http://127.0.0.1:7200',
     },
   );
@@ -44,11 +44,11 @@ test('respects explicit README_BASE_URL and README_API_URL overrides', () => {
     resolveReadmeUrls({
       WEB_PORT: '7100',
       SERVER_PORT: '7200',
-      README_BASE_URL: 'https://custom.example.com:9000',
+      README_BASE_URL: 'http://custom.example.com:9000',
       README_API_URL: 'http://api.example.com:9100',
     }),
     {
-      baseUrl: 'https://custom.example.com:9000',
+      baseUrl: 'http://custom.example.com:9000',
       apiBaseUrl: 'http://api.example.com:9100',
     },
   );

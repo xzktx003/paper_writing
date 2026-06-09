@@ -101,7 +101,7 @@ test("POST /api/agent-sessions/:id/vscode-web prefers Origin when the proxy host
       receivedProtocol = options.requestProtocol ?? "";
       return {
         provider: "code-server",
-        url: "https://127.0.0.1:3000/vscode/?folder=%2Ftmp%2Fproject-origin",
+        url: "http://127.0.0.1:3000/vscode/?folder=%2Ftmp%2Fproject-origin",
         reused: false,
         workingDirectory: "/tmp/project-origin",
       };
@@ -138,7 +138,7 @@ test("POST /api/agent-sessions/:id/vscode-web prefers Origin when the proxy host
 
     assert.equal(openRes.statusCode, 200);
     assert.equal(receivedHost, "127.0.0.1:3000");
-    assert.equal(receivedProtocol, "https");
+    assert.equal(receivedProtocol, "http");
   } finally {
     await app.close();
   }

@@ -76,6 +76,21 @@ interface TerminalPaneContextMenuState {
   y: number;
 }
 
+function shouldUseTerminalMonitorDragImage(): boolean {
+  const testFlags = window as Window & {
+    __disableTerminalMonitorDragImageForTest?: boolean;
+    __forceTerminalMonitorDragImageForTest?: boolean;
+  };
+  if (testFlags.__forceTerminalMonitorDragImageForTest) {
+    return true;
+  }
+  if (testFlags.__disableTerminalMonitorDragImageForTest) {
+    return false;
+  }
+
+  return !navigator.webdriver;
+}
+
 function loadTerminalMonitorLayoutMode(): TerminalMonitorLayoutMode {
   try {
     const raw = localStorage.getItem(TERMINAL_MONITOR_LAYOUT_STORAGE_KEY);
@@ -192,6 +207,7 @@ export function AgentFocusView({
     useState<TerminalMonitorLayoutSnapshot | null>(null);
   const layoutMenuRef = useRef<HTMLDivElement | null>(null);
   const paneContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const dragPreviewElementRef = useRef<HTMLElement | null>(null);
   const sessionById = useMemo(() => {
     return new Map(sessions.map((session) => [session.id, session]));
   }, [sessions]);
@@ -213,6 +229,10 @@ export function AgentFocusView({
   const activeTerminalSessionId =
     terminalSlots.find((slot) => slot.id === safeActiveSlotId)?.sessionId ??
     null;
+  const activeHeaderSession =
+    (activeTerminalSessionId
+      ? sessionById.get(activeTerminalSessionId)
+      : undefined) ?? focusedSession;
   const activeLayoutOption =
     TERMINAL_MONITOR_LAYOUT_OPTIONS.find(
       (option) => option.mode === terminalLayoutMode,
@@ -233,6 +253,12 @@ export function AgentFocusView({
   useEffect(() => {
     onActiveTerminalSessionChange?.(activeTerminalSessionId);
   }, [activeTerminalSessionId, onActiveTerminalSessionChange]);
+
+  useEffect(() => {
+    return () => {
+      removeTerminalMonitorDragPreview();
+    };
+  }, []);
 
   useEffect(() => {
     if (!layoutMenuOpen) {
@@ -430,6 +456,67 @@ export function AgentFocusView({
     }
   }
 
+  function removeTerminalMonitorDragPreview() {
+    dragPreviewElementRef.current?.remove();
+    dragPreviewElementRef.current = null;
+  }
+
+  function createTerminalMonitorDragPreviewCanvas(session: AgentSessionRecord) {
+    removeTerminalMonitorDragPreview();
+
+    const width = 264;
+    const height = 88;
+    const scale = window.devicePixelRatio || 1;
+    const canvas = document.createElement("canvas");
+    canvas.dataset.sessionId = session.id;
+    canvas.dataset.previewKind = "terminal-monitor-session";
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    canvas.style.position = "fixed";
+    canvas.style.left = "0";
+    canvas.style.top = "0";
+    canvas.style.zIndex = "-1";
+    canvas.style.pointerEvents = "none";
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return canvas;
+    }
+
+    context.scale(scale, scale);
+    context.fillStyle = "rgba(12, 16, 21, 0.96)";
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = "rgba(95, 198, 255, 0.5)";
+    context.strokeRect(0.5, 0.5, width - 1, height - 1);
+    context.fillStyle = "rgba(244, 241, 234, 0.92)";
+    context.font = '700 12px "SFMono-Regular", Consolas, monospace';
+    context.fillText(session.displayName, 10, 20, 170);
+    context.fillStyle = "rgba(255, 152, 0, 0.26)";
+    context.fillRect(width - 62, 9, 52, 18);
+    context.fillStyle = "rgba(255, 224, 173, 0.95)";
+    context.font = '700 11px "SFMono-Regular", Consolas, monospace';
+    context.fillText(
+      stateLabels[session.interactionState] ?? session.interactionState,
+      width - 56,
+      22,
+      42,
+    );
+    context.fillStyle = "#0e1217";
+    context.fillRect(9, 34, width - 18, 45);
+    context.fillStyle = "rgba(202, 232, 255, 0.82)";
+    context.font = '10px "SFMono-Regular", Consolas, monospace';
+    const lines = (session.outputPreview || "ready").split(/\r?\n/).slice(-3);
+    lines.forEach((line, index) => {
+      context.fillText(line, 16, 49 + index * 13, width - 32);
+    });
+
+    document.body.appendChild(canvas);
+    dragPreviewElementRef.current = canvas;
+    return canvas;
+  }
+
   function startSessionDrag(
     sessionId: string,
     event: React.DragEvent<HTMLElement>,
@@ -453,13 +540,32 @@ export function AgentFocusView({
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData(TERMINAL_MONITOR_DRAG_MIME, serialized);
     event.dataTransfer.setData("text/plain", serialized);
+
+    const session = sessionById.get(sessionId);
+    if (session && shouldUseTerminalMonitorDragImage()) {
+      const preview = createTerminalMonitorDragPreviewCanvas(session);
+      event.dataTransfer.setDragImage(preview, 132, 44);
+    }
+  }
+
+  function finishSessionDrag() {
+    removeTerminalMonitorDragPreview();
+    setDragOverSlotId(null);
   }
 
   function handleSlotDragOver(
     slotId: string,
     event: React.DragEvent<HTMLDivElement>,
   ) {
-    if (!event.dataTransfer.types.includes(TERMINAL_MONITOR_DRAG_MIME)) {
+    let hasTerminalSession = false;
+    const types = event.dataTransfer.types;
+    for (let idx = 0; idx < types.length; idx++) {
+      if (types[idx] === TERMINAL_MONITOR_DRAG_MIME) {
+        hasTerminalSession = true;
+        break;
+      }
+    }
+    if (!hasTerminalSession) {
       return;
     }
 
@@ -478,7 +584,7 @@ export function AgentFocusView({
     }
 
     event.preventDefault();
-    setDragOverSlotId(null);
+    finishSessionDrag();
     placeSessionInSlot(slotId, payload.sessionId, payload.sourceSlotId);
   }
 
@@ -812,18 +918,20 @@ export function AgentFocusView({
           >
             {headerCollapsed ? "▼" : "▲"}
           </button>
-          <span className="focus-main-name">{focusedSession.displayName}</span>
+          <span className="focus-main-name">
+            {activeHeaderSession.displayName}
+          </span>
           {!headerCollapsed && (
             <>
               <span
-                className={`grid-card-badge badge-${focusedSession.interactionState}`}
+                className={`grid-card-badge badge-${activeHeaderSession.interactionState}`}
               >
-                {stateLabels[focusedSession.interactionState] ??
-                  focusedSession.interactionState}
+                {stateLabels[activeHeaderSession.interactionState] ??
+                  activeHeaderSession.interactionState}
               </span>
               <button
                 className="focus-rename-btn"
-                onClick={() => onRename?.(focusedSession.id)}
+                onClick={() => onRename?.(activeHeaderSession.id)}
                 type="button"
               >
                 ✎ 改名
@@ -877,11 +985,11 @@ export function AgentFocusView({
               <button className="focus-exit-btn" onClick={onExit} title="Alt+Q">
                 返回宫格
               </button>
-              {focusedSession.interactionState === "exited" &&
-                focusedSession.sourceType !== "remote-tmux-discovered" && (
+              {activeHeaderSession.interactionState === "exited" &&
+                activeHeaderSession.sourceType !== "remote-tmux-discovered" && (
                   <button
                     className="focus-reconnect-btn"
-                    onClick={() => onReconnect(focusedSession.id)}
+                    onClick={() => onReconnect(activeHeaderSession.id)}
                   >
                     🔄 重新连接
                   </button>
@@ -910,10 +1018,16 @@ export function AgentFocusView({
                   }
                   data-terminal-pane-slot={slot.id}
                   data-terminal-pane-session={session?.id}
-                  onDragLeave={() => {
-                    if (dragOverSlotId === slot.id) {
-                      setDragOverSlotId(null);
+                  onDragLeave={(event) => {
+                    if (dragOverSlotId !== slot.id) {
+                      return;
                     }
+                    const pane = event.currentTarget as HTMLElement | null;
+                    const related = event.relatedTarget as HTMLElement | null;
+                    if (related && pane && pane.contains(related)) {
+                      return;
+                    }
+                    setDragOverSlotId(null);
                   }}
                   onDragOver={(event) => handleSlotDragOver(slot.id, event)}
                   onDrop={(event) => handleSlotDrop(slot.id, event)}
@@ -940,6 +1054,7 @@ export function AgentFocusView({
                         startSessionDrag(session.id, event, slot.id);
                       }
                     }}
+                    onDragEnd={finishSessionDrag}
                   >
                     <span className="focus-terminal-pane-index">
                       {index + 1}
@@ -1033,6 +1148,7 @@ export function AgentFocusView({
                   key={session.id}
                   session={session}
                   onDragStart={startSessionDrag}
+                  onDragEnd={finishSessionDrag}
                   onContextMenu={handleSidebarContextMenu}
                   onRename={onRename}
                   onSwitchFocus={handleSidebarSwitchFocus}

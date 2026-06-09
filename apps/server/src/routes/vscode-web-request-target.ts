@@ -10,7 +10,7 @@ function firstForwardedValue(value: string | undefined): string | undefined {
 
 function parseHeaderUrl(
   value: string | string[] | undefined,
-): { host: string; protocol: "http" | "https" } | null {
+): { host: string } | null {
   const rawValue = firstForwardedValue(firstHeaderValue(value));
   if (!rawValue) {
     return null;
@@ -20,7 +20,6 @@ function parseHeaderUrl(
     const parsed = new URL(rawValue);
     return {
       host: parsed.host,
-      protocol: parsed.protocol === "https:" ? "https" : "http",
     };
   } catch {
     return null;
@@ -30,18 +29,14 @@ function parseHeaderUrl(
 export function resolveVsCodeWebRequestTarget(request: {
   headers: Record<string, string | string[] | undefined>;
   protocol: string;
-}): { requestHost?: string; requestProtocol: "http" | "https" } {
+}): { requestHost?: string; requestProtocol: "http" } {
   const forwardedHost = firstForwardedValue(
     firstHeaderValue(request.headers["x-forwarded-host"]),
   );
-  const forwardedProtocol = firstForwardedValue(
-    firstHeaderValue(request.headers["x-forwarded-proto"]),
-  );
-
   if (forwardedHost) {
     return {
       requestHost: forwardedHost,
-      requestProtocol: forwardedProtocol === "https" ? "https" : "http",
+      requestProtocol: "http",
     };
   }
 
@@ -51,12 +46,12 @@ export function resolveVsCodeWebRequestTarget(request: {
   if (browserOrigin) {
     return {
       requestHost: browserOrigin.host,
-      requestProtocol: browserOrigin.protocol,
+      requestProtocol: "http",
     };
   }
 
   return {
     requestHost: firstForwardedValue(firstHeaderValue(request.headers.host)),
-    requestProtocol: request.protocol === "https" ? "https" : "http",
+    requestProtocol: "http",
   };
 }
