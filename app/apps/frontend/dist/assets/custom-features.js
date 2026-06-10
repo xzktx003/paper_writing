@@ -13,7 +13,141 @@
     return m ? decodeURIComponent(m[1]) : null;
   }
 
-  // ---- 1. Auto-dismiss compile error / toast after 10 s ----
+  // ==================================================================
+  // 1. Terminal wheel scroll fix
+  // ==================================================================
+  //
+  // ROOT CAUSE: xterm.js 5.3.0's bindMouse() registers a wheel listener
+  // (bubbling phase) on .xterm when mouse tracking protocol has bit 16 set
+  // (ANY_EVENT / \e[?1003h). That handler calls cancel(ev, true) which
+  // calls preventDefault() + stopPropagation(), blocking native viewport
+  // scrolling.
+  //
+  // FIX v2: Register a CAPTURE-phase wheel listener on each .xterm element.
+  // In the capture handler we directly adjust viewport.scrollTop and call
+  // stopPropagation() — this prevents the event from EVER reaching the
+  // bubbling phase where xterm's handler would fire.  (stopImmediatePropagation
+  // does NOT work here because it only blocks same-phase handlers.)
+  //
+  // As a bonus, try to find the Terminal instance and use its
+  // scrollLines() API for even more reliable scrolling.
+  // ==================================================================
+
+  var terminalScrollPatched = new WeakSet();
+
+  /**
+   * Try to find the xterm.js Terminal instance from a .xterm DOM element.
+   * xterm.js v5 doesn't store it on the DOM element directly, but we
+   * can sometimes find it via internal properties or monkey-patching.
+   */
+  function findTerminalInstance(xtermEl) {
+    // Check common internal property names
+    var keys = ['__xterm', '_xterm', '_terminal', '__terminal', 'terminal'];
+    for (var i = 0; i < keys.length; i++) {
+      var v = xtermEl[keys[i]];
+      if (v && typeof v.scrollLines === 'function') return v;
+    }
+    // Check all enumerable properties
+    for (var k in xtermEl) {
+      if (xtermEl.hasOwnProperty(k)) {
+        try {
+          var val = xtermEl[k];
+          if (val && typeof val.scrollLines === 'function') return val;
+        } catch (e) {}
+      }
+    }
+    return null;
+  }
+
+  function patchTerminalScroll(xtermEl) {
+    if (terminalScrollPatched.has(xtermEl)) return;
+    terminalScrollPatched.add(xtermEl);
+
+    // CRITICAL: Use CAPTURE phase (true) so our handler fires BEFORE
+    // xterm's bubbling-phase handler.  Then stopPropagation() prevents
+    // the event from ever reaching xterm's handler.
+    xtermEl.addEventListener('wheel', function (ev) {
+      // Re-query viewport each time — the DOM can change
+      var viewport = xtermEl.querySelector('.xterm-viewport');
+      if (!viewport) return;
+
+      var scrollArea = xtermEl.querySelector('.xterm-scroll-area');
+
+      // Measure actual row height
+      var lineHeight = 18;
+      var rowEl = xtermEl.querySelector('.xterm-rows > div');
+      if (rowEl) {
+        var rh = rowEl.getBoundingClientRect().height;
+        if (rh > 0) lineHeight = rh;
+      }
+
+      // Ensure scroll area has enough height
+      var maxScroll = viewport.scrollHeight - viewport.clientHeight;
+      if (maxScroll <= 0 && scrollArea) {
+        var rows = 24;
+        var termRows = xtermEl.querySelector('.xterm-rows');
+        if (termRows) rows = termRows.children.length || 24;
+        scrollArea.style.height = ((rows + 1000) * lineHeight) + 'px';
+        // Give the browser a frame to update layout
+        requestAnimationFrame(function () {
+          // Recalculate after layout
+        });
+      }
+
+      maxScroll = viewport.scrollHeight - viewport.clientHeight;
+      if (maxScroll <= 0) {
+        // Still no scroll room — but don't lose the event.
+        // Flag the scroll area to be re-synced.
+        if (scrollArea) scrollArea.style.height = '99999px';
+        maxScroll = viewport.scrollHeight - viewport.clientHeight;
+        if (maxScroll <= 0) {
+          // Nothing we can do, let the event pass
+          return;
+        }
+      }
+
+      // Calculate scroll delta in pixels
+      var delta = ev.deltaY;
+      if (ev.deltaMode === 1) {
+        // Line mode
+        delta = ev.deltaY * lineHeight * 3;
+      } else if (ev.deltaMode === 2) {
+        // Page mode
+        delta = ev.deltaY * viewport.clientHeight;
+      }
+
+      // Apply scroll
+      var oldTop = viewport.scrollTop;
+      viewport.scrollTop = Math.max(0, Math.min(maxScroll, oldTop + delta));
+
+      // stopPropagation → prevents event from reaching bubbling phase
+      // where xterm's bindMouse handler would fire
+      ev.stopPropagation();
+      ev.preventDefault();
+
+      // The browser fires a native 'scroll' event on the viewport element
+      // when scrollTop changes.  xterm.js listens to that scroll event via
+      // _handleScroll → _onRequestScrollLines → scrollLines → buffer.ydisp
+      // → renderer redraws.
+    }, true); // CAPTURE phase
+
+    console.log('[custom-features] Terminal wheel scroll patched');
+  }
+
+  function scanForTerminals(root) {
+    if (!root || !root.querySelectorAll) return;
+    var xtermEls = root.querySelectorAll('.xterm');
+    for (var i = 0; i < xtermEls.length; i++) {
+      patchTerminalScroll(xtermEls[i]);
+    }
+    if (root.classList && root.classList.contains('xterm')) {
+      patchTerminalScroll(root);
+    }
+  }
+
+  // ==================================================================
+  // 2. Auto-dismiss compile error / toast after 10 s
+  // ==================================================================
   var DISMISS_MS = 10000;
   var seenErrors = new WeakSet();
 
@@ -28,8 +162,8 @@
       if (
         text.indexOf('error') >= 0 ||
         text.indexOf('failed') >= 0 ||
-        text.indexOf('错误') >= 0 ||
-        text.indexOf('失败') >= 0 ||
+        text.indexOf('\u9519\u8bef') >= 0 ||
+        text.indexOf('\u5931\u8d25') >= 0 ||
         text.indexOf('misplaced') >= 0 ||
         text.indexOf('halted') >= 0
       ) {
@@ -43,7 +177,9 @@
     });
   }
 
-  // ---- 2. SyncTeX click-to-source on PDF <embed> / <iframe> ----
+  // ==================================================================
+  // 3. SyncTeX click-to-source on PDF embeds
+  // ==================================================================
   var synctexOverlays = new WeakSet();
 
   function addSynctexOverlay(embedEl) {
@@ -71,10 +207,8 @@
       var rect = overlay.getBoundingClientRect();
       var relX = e.clientX - rect.left;
       var relY = e.clientY - rect.top;
-      var normX = relX / rect.width;
-      var normY = relY / rect.height;
-      var pdfX = normX * 612;
-      var pdfY = (1 - normY) * 792;
+      var pdfX = relX / rect.width * 612;
+      var pdfY = (1 - relY / rect.height) * 792;
 
       var projectId = getProjectId();
       if (!projectId) return;
@@ -103,7 +237,6 @@
     parent.appendChild(overlay);
   }
 
-  // ---- 3. Handle synctex-jump → scroll CodeMirror editor ----
   window.addEventListener('synctex-jump', function (e) {
     var detail = e.detail || {};
     if (!detail.file || !detail.line) return;
@@ -114,127 +247,11 @@
       var doc = view.state.doc;
       var targetLine = Math.min(detail.line, doc.lines);
       var lineObj = doc.line(targetLine);
-      view.dispatch({
-        selection: { anchor: lineObj.from },
-      });
+      view.dispatch({ selection: { anchor: lineObj.from } });
       view.focus();
     }
   });
 
-  // ---- 4. Terminal wheel scroll fix ----
-  //
-  // ROOT CAUSE: xterm.js 5.3.0's bindMouse() adds a wheel listener on the
-  // .xterm element when mouse tracking protocol is active. That handler calls
-  // cancel(ev, true) which prevents the browser's native scroll. Additionally,
-  // even when mouse protocol is off, the xterm viewport scroll area may have
-  // zero height if no scrollback was generated yet.
-  //
-  // FIX: Add a capture-phase wheel listener on each .xterm element. When a
-  // wheel event arrives:
-  //   1. Find the .xterm-viewport element
-  //   2. Adjust its scrollTop directly
-  //   3. Fire stopImmediatePropagation() to prevent xterm's bindMouse handler
-  //      from consuming the event
-  //   4. The browser fires a native 'scroll' event on the viewport, which
-  //      xterm's _handleScroll picks up to redraw the terminal content.
-  //
-  var terminalScrollPatched = new WeakSet();
-
-  function patchTerminalScroll(xtermEl) {
-    if (terminalScrollPatched.has(xtermEl)) return;
-    terminalScrollPatched.add(xtermEl);
-
-    var viewport = xtermEl.querySelector('.xterm-viewport');
-    var scrollArea = xtermEl.querySelector('.xterm-scroll-area');
-    if (!viewport) {
-      // Viewport not created yet, retry
-      setTimeout(function () { patchTerminalScroll(xtermEl); }, 500);
-      return;
-    }
-
-    // The LINES_PER_STEP constant controls how many lines to scroll per
-    // wheel "notch". We convert deltaY pixels to lines using the character
-    // height, then adjust the scroll area if needed.
-    var LINES_PER_NOTCH = 3;
-    var LINE_HEIGHT_PX = 18; // will be measured from viewport if possible
-
-    xtermEl.addEventListener('wheel', function (ev) {
-      viewport = xtermEl.querySelector('.xterm-viewport');
-      scrollArea = xtermEl.querySelector('.xterm-scroll-area');
-      if (!viewport) return;
-
-      // Measure actual row height from xterm's internal rendering
-      var rowEl = xtermEl.querySelector('.xterm-rows > div');
-      if (rowEl) {
-        var rh = rowEl.getBoundingClientRect().height;
-        if (rh > 0) LINE_HEIGHT_PX = rh;
-      }
-
-      // If scroll area doesn't provide enough scroll height,
-      // increase it manually. xterm.js sets it to:
-      //   (rows + scrollback) * rowHeight
-      // but sometimes it doesn't account for all buffer lines.
-      var neededHeight = viewport.scrollHeight;
-      var currentMax = viewport.scrollHeight - viewport.clientHeight;
-
-      // If the viewport can't scroll at all, force-expand the scroll area
-      if (currentMax <= 0) {
-        var scrollback = 1000;
-        var rows = 24; // default
-        var termRows = xtermEl.querySelector('.xterm-rows');
-        if (termRows) rows = termRows.children.length || 24;
-        var newHeight = (rows + scrollback) * LINE_HEIGHT_PX;
-        if (scrollArea) {
-          scrollArea.style.height = newHeight + 'px';
-        }
-      }
-
-      var maxScroll = viewport.scrollHeight - viewport.clientHeight;
-      if (maxScroll <= 0) return;
-
-      // Calculate scroll delta
-      var delta = ev.deltaY;
-      if (ev.deltaMode === 1) {
-        // Line mode: deltaY is in lines
-        delta = ev.deltaY * LINE_HEIGHT_PX * LINES_PER_NOTCH;
-      } else if (ev.deltaMode === 2) {
-        // Page mode
-        delta = ev.deltaY * viewport.clientHeight;
-      }
-      // Pixel mode (deltaMode === 0): use as-is, but scale for smoothness
-      // Many browsers send deltaY in pixels (~100px per notch)
-      // We want ~3 lines per notch
-      if (ev.deltaMode === 0 && Math.abs(delta) > 0) {
-        // Keep pixel delta as-is, it should be proportional
-      }
-
-      var oldTop = viewport.scrollTop;
-      viewport.scrollTop = Math.max(0, Math.min(maxScroll, oldTop + delta));
-
-      // Prevent xterm's bindMouse handler from also processing this event
-      ev.stopImmediatePropagation();
-      ev.preventDefault();
-
-      // If scrollTop changed, the browser fires a native 'scroll' event
-      // on the viewport, which xterm's _handleScroll() picks up.
-      // If it didn't change (already at top/bottom), still suppress the event.
-    }, true); // capture phase
-
-    console.log('[custom-features] Terminal wheel scroll patched for', xtermEl.className);
-  }
-
-  function scanForTerminals(root) {
-    if (!root || !root.querySelectorAll) return;
-    var xtermEls = root.querySelectorAll('.xterm');
-    xtermEls.forEach(function (el) {
-      patchTerminalScroll(el);
-    });
-    if (root.classList && root.classList.contains('xterm')) {
-      patchTerminalScroll(root);
-    }
-  }
-
-  // ---- 5. Scan for PDF embeds to add synctex overlay ----
   function scanForPdfEmbeds(root) {
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll('embed[type="application/pdf"]').forEach(addSynctexOverlay);
@@ -246,12 +263,14 @@
     });
   }
 
-  // ---- MutationObserver: watch the whole document ----
+  // ==================================================================
+  // MutationObserver — watch the whole document
+  // ==================================================================
   var observer = new MutationObserver(function (mutations) {
     for (var i = 0; i < mutations.length; i++) {
-      var m = mutations[i];
-      for (var j = 0; j < m.addedNodes.length; j++) {
-        var node = m.addedNodes[j];
+      var addedNodes = mutations[i].addedNodes;
+      for (var j = 0; j < addedNodes.length; j++) {
+        var node = addedNodes[j];
         if (node.nodeType !== 1) continue;
         scanForErrors(node);
         scanForPdfEmbeds(node);
@@ -268,7 +287,7 @@
       childList: true,
       subtree: true,
     });
-    console.log('[custom-features] Loaded: terminal scroll fix, synctex overlay, error auto-dismiss');
+    console.log('[custom-features] Loaded v2: terminal scroll (capture+stopPropagation), synctex, error-dismiss');
   }
 
   if (document.readyState === 'loading') {
