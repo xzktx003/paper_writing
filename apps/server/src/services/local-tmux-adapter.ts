@@ -52,13 +52,132 @@ const CSI_KEY_MAP = new Map<string, string>([
   ["\x1b[B", "Down"],
   ["\x1b[C", "Right"],
   ["\x1b[D", "Left"],
+  ["\x1b[H", "Home"],
+  ["\x1b[F", "End"],
+  ["\x1b[Z", "BTab"],
   ["\x1bOA", "Up"],
   ["\x1bOB", "Down"],
   ["\x1bOC", "Right"],
   ["\x1bOD", "Left"],
+  ["\x1bOH", "Home"],
+  ["\x1bOF", "End"],
+  ["\x1bOP", "F1"],
+  ["\x1bOQ", "F2"],
+  ["\x1bOR", "F3"],
+  ["\x1bOS", "F4"],
 ]);
 
 const BRACKETED_PASTE_DELIMITER_PATTERN = /\x1b\[(?:200|201)~/g;
+
+const MODIFIED_CURSOR_KEY_PATTERN = /^\x1b\[1;([2-8])([ABCDHF])/;
+const TILDE_KEY_PATTERN =
+  /^\x1b\[(1|2|3|4|5|6|7|8|11|12|13|14|15|17|18|19|20|21|23|24)(?:;([2-8]))?~/;
+
+const CSI_CURSOR_KEY_MAP = new Map<string, string>([
+  ["A", "Up"],
+  ["B", "Down"],
+  ["C", "Right"],
+  ["D", "Left"],
+  ["H", "Home"],
+  ["F", "End"],
+]);
+
+const TILDE_KEY_MAP = new Map<string, string>([
+  ["1", "Home"],
+  ["2", "IC"],
+  ["3", "DC"],
+  ["4", "End"],
+  ["5", "PPage"],
+  ["6", "NPage"],
+  ["7", "Home"],
+  ["8", "End"],
+  ["11", "F1"],
+  ["12", "F2"],
+  ["13", "F3"],
+  ["14", "F4"],
+  ["15", "F5"],
+  ["17", "F6"],
+  ["18", "F7"],
+  ["19", "F8"],
+  ["20", "F9"],
+  ["21", "F10"],
+  ["23", "F11"],
+  ["24", "F12"],
+]);
+
+interface ParsedTmuxKeySequence {
+  key: string;
+  length: number;
+}
+
+function applyXtermModifier(baseKey: string, modifierValue?: string): string {
+  if (!modifierValue) {
+    return baseKey;
+  }
+
+  const modifierFlags = Number.parseInt(modifierValue, 10) - 1;
+  const prefixes: string[] = [];
+
+  if ((modifierFlags & 4) !== 0) {
+    prefixes.push("C");
+  }
+
+  if ((modifierFlags & 2) !== 0) {
+    prefixes.push("M");
+  }
+
+  if ((modifierFlags & 1) !== 0) {
+    prefixes.push("S");
+  }
+
+  return prefixes.length > 0 ? `${prefixes.join("-")}-${baseKey}` : baseKey;
+}
+
+function readTmuxKeySequence(
+  input: string,
+  index: number,
+): ParsedTmuxKeySequence | null {
+  const fixedSequence = input.slice(index, index + 3);
+  const fixedKey = CSI_KEY_MAP.get(fixedSequence);
+
+  if (fixedKey) {
+    return {
+      key: fixedKey,
+      length: fixedSequence.length,
+    };
+  }
+
+  const sequenceTail = input.slice(index);
+  const modifiedCursorMatch = MODIFIED_CURSOR_KEY_PATTERN.exec(sequenceTail);
+
+  if (modifiedCursorMatch) {
+    const [, modifierValue, finalByte] = modifiedCursorMatch;
+    const baseKey = CSI_CURSOR_KEY_MAP.get(finalByte);
+
+    if (baseKey) {
+      return {
+        key: applyXtermModifier(baseKey, modifierValue),
+        length: modifiedCursorMatch[0].length,
+      };
+    }
+  }
+
+  const tildeKeyMatch = TILDE_KEY_PATTERN.exec(sequenceTail);
+
+  if (tildeKeyMatch) {
+    const [, keyCode, modifierValue] = tildeKeyMatch;
+    const baseKey = TILDE_KEY_MAP.get(keyCode);
+
+    if (baseKey) {
+      return {
+        key: applyXtermModifier(baseKey, modifierValue),
+        length: tildeKeyMatch[0].length,
+      };
+    }
+  }
+
+  return null;
+}
 
 function appendKeyStep(steps: TmuxSendKeyStep[], key: string): void {
   const lastStep = steps.at(-1);
@@ -86,13 +205,12 @@ export function buildTmuxSendKeySteps(input: string): TmuxSendKeyStep[] {
   }
 
   for (let index = 0; index < normalizedInput.length; ) {
-    const arrowSequence = normalizedInput.slice(index, index + 3);
-    const arrowKey = CSI_KEY_MAP.get(arrowSequence);
+    const keySequence = readTmuxKeySequence(normalizedInput, index);
 
-    if (arrowKey) {
+    if (keySequence) {
       flushLiteral();
-      appendKeyStep(steps, arrowKey);
-      index += arrowSequence.length;
+      appendKeyStep(steps, keySequence.key);
+      index += keySequence.length;
       continue;
     }
 

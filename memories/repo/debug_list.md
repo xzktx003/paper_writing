@@ -83,3 +83,4 @@
 - `restart-dev.sh` 默认值漂移会让服务重启到 HTTPS/3100：脚本、`.env.example`、Vite dev proxy 必须统一 HTTP/8484 + backend 4000；`scripts/*.test.mjs` 要纳入根 `pnpm test`，否则脚本默认值回归不会被全量测试发现。
 - 多屏 sidebar 双击替换 Codex tmux pane 时出现 `[I` 且替换反弹：本地 tmux 路径不要把 `ESC [ I/O` focus report 写进 attached PTY 或 send-keys，应直接丢弃；sidebar 卡片不能同时立即处理 click 和 dblclick，需让双击取消延迟单击，避免第一次点击替换后第二次点击命中新换出的旧会话。
 - 当前终端右键粘贴后出现 `[200~` / `[201~`：xterm bracketed paste 包装符经本地 tmux `send-keys` 路径被拆成 Escape + 字面文本。修复点是 `LocalTmuxAdapter.buildTmuxSendKeySteps` 在 send-keys 前剥离 `ESC[200~` / `ESC[201~`，同时保留正文、Enter/方向键等既有映射；回归覆盖单元解析和 WebSocket 注入到真实 tmux pane。
+- `Shift+Left` 等修饰键组合在本地 tmux 终端里变成 `[1;2D` / `D`：xterm 发出 `ESC[1;2D`，但 `buildTmuxSendKeySteps` 只识别普通箭头，导致 send-keys 路径把 ESC 和字面量拆开注入 pane。修复为将 xterm modified cursor/navigation CSI 序列映射成 tmux key name（如 `S-Left`、`C-Right`、`C-S-Down`、`S-PPage`），并保护前后端过滤层继续原样转发这些键序列。

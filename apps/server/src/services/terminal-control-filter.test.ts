@@ -30,6 +30,12 @@ test("keep normal keyboard escape sequences intact", () => {
   assert.equal(sanitized, "\u001b[A");
 });
 
+test("keep modified keyboard escape sequences intact", () => {
+  assert.equal(stripTerminalResponsePayload("\u001b[1;2D"), "\u001b[1;2D");
+  assert.equal(stripTerminalResponsePayload("\u001b[1;5C"), "\u001b[1;5C");
+  assert.equal(stripTerminalResponsePayload("\u001b[3;2~"), "\u001b[3;2~");
+});
+
 test("keep application-cursor keyboard escape sequences intact", () => {
   assert.equal(stripTerminalResponsePayload("\u001bOA"), "\u001bOA");
   assert.equal(stripTerminalResponsePayload("\u001bOB"), "\u001bOB");

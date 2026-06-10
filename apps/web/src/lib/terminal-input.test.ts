@@ -15,6 +15,12 @@ describe("stripTerminalResponsePayload", () => {
     assert.equal(stripTerminalResponsePayload("\u001b[A"), "\u001b[A");
   });
 
+  it("keeps modified keyboard escape sequences intact", () => {
+    assert.equal(stripTerminalResponsePayload("\u001b[1;2D"), "\u001b[1;2D");
+    assert.equal(stripTerminalResponsePayload("\u001b[1;5C"), "\u001b[1;5C");
+    assert.equal(stripTerminalResponsePayload("\u001b[3;2~"), "\u001b[3;2~");
+  });
+
   it("keeps application-cursor arrow-key input intact", () => {
     assert.equal(stripTerminalResponsePayload("\u001bOA"), "\u001bOA");
     assert.equal(stripTerminalResponsePayload("\u001bOB"), "\u001bOB");

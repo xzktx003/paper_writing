@@ -109,6 +109,44 @@ test("buildTmuxSendKeySteps maps application-cursor arrow keys without literal i
   ]);
 });
 
+test("buildTmuxSendKeySteps maps modified xterm cursor keys without literal input", () => {
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[1;2D"), [
+    { kind: "keys", keys: ["S-Left"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[1;5C"), [
+    { kind: "keys", keys: ["C-Right"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[1;3A"), [
+    { kind: "keys", keys: ["M-Up"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[1;6B"), [
+    { kind: "keys", keys: ["C-S-Down"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("a\x1b[1;8Db"), [
+    { kind: "literal", value: "a" },
+    { kind: "keys", keys: ["C-M-S-Left"] },
+    { kind: "literal", value: "b" },
+  ]);
+});
+
+test("buildTmuxSendKeySteps maps xterm navigation keys without literal input", () => {
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[H\x1b[F\x1bOH\x1bOF"), [
+    { kind: "keys", keys: ["Home", "End", "Home", "End"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[Z"), [
+    { kind: "keys", keys: ["BTab"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[3~\x1b[2~"), [
+    { kind: "keys", keys: ["DC", "IC"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[5;2~\x1b[6;5~"), [
+    { kind: "keys", keys: ["S-PPage", "C-NPage"] },
+  ]);
+  assert.deepEqual(buildTmuxSendKeySteps("\x1b[1;2H\x1b[1;5F"), [
+    { kind: "keys", keys: ["S-Home", "C-End"] },
+  ]);
+});
+
 test("buildTmuxSendKeySteps strips bracketed paste delimiters for tmux send-keys", () => {
   assert.deepEqual(buildTmuxSendKeySteps("\x1b[200~hello codex\x1b[201~"), [
     { kind: "literal", value: "hello codex" },
