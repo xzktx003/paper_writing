@@ -55,6 +55,8 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
       vscodeCacheReleaseAvailable: false,
       useLightweightTerminalPreview: true,
       terminalFontSize: 16,
+      agentCompletionNotificationsEnabled: false,
+      agentCompletionNotificationPermission: "default",
       onToggleCollapsed: () => {},
       onToggleFileBrowser: () => {},
       onToggleVsCode: () => {},
@@ -62,6 +64,7 @@ function renderTopBar(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
       onReleaseVsCodeIframeCache: () => {},
       onToggleTerminalPreviewMode: () => {},
       onTerminalFontSizeChange: () => {},
+      onToggleAgentCompletionNotifications: () => {},
       onOpenNewSession: () => {},
       onScanTmux: () => {},
       onScanApps: () => {},
@@ -80,6 +83,7 @@ describe("TopBar", () => {
     assert.match(markup, /data-testid="new-session-toggle"/);
     assert.match(markup, /data-testid="scan-menu-toggle"/);
     assert.match(markup, /data-testid="tools-menu-toggle"/);
+    assert.doesNotMatch(markup, /完成通知/);
     assert.match(markup, /data-testid="resource-tuning-menu-toggle"/);
     assert.match(markup, /data-testid="terminal-font-size-slider"/);
     assert.match(markup, /aria-label="终端字号"/);
@@ -101,5 +105,17 @@ describe("TopBar", () => {
 
     assert.doesNotMatch(markup, /stat-awaiting/);
     assert.doesNotMatch(markup, /等待输入/);
+  });
+
+  it("keeps agent completion notification controls inside the tools menu", () => {
+    const markup = renderTopBar({
+      agentCompletionNotificationsEnabled: true,
+    });
+
+    assert.match(markup, /data-testid="tools-menu-toggle"/);
+    assert.doesNotMatch(
+      markup,
+      /data-testid="agent-completion-notification-toggle"/,
+    );
   });
 });

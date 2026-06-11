@@ -22,6 +22,7 @@ import {
   MAX_TERMINAL_FONT_SIZE,
   MIN_TERMINAL_FONT_SIZE,
 } from "../lib/terminal-font-size";
+import type { AgentCompletionNotificationPermission } from "../lib/agent-completion-notifications";
 import { TERMINAL_SCROLLBACK_LINES } from "../lib/terminal-history-config";
 import { focusActiveTerminalTextarea } from "../lib/terminal-focus";
 import type { VsCodeIframeCacheMode } from "../lib/vscode-cache";
@@ -167,6 +168,8 @@ interface TopBarProps {
   vscodeCacheReleaseAvailable: boolean;
   useLightweightTerminalPreview: boolean;
   terminalFontSize: number;
+  agentCompletionNotificationsEnabled: boolean;
+  agentCompletionNotificationPermission: AgentCompletionNotificationPermission;
   onToggleCollapsed: () => void;
   onToggleFileBrowser: () => void;
   onToggleVsCode: () => void;
@@ -174,6 +177,7 @@ interface TopBarProps {
   onReleaseVsCodeIframeCache: () => void;
   onToggleTerminalPreviewMode: () => void;
   onTerminalFontSizeChange: (fontSize: number) => void;
+  onToggleAgentCompletionNotifications: () => void;
   onOpenNewSession: (host: SelectedHost) => void;
   onScanTmux: (host: SelectedHost) => void;
   onScanApps: (host: SelectedHost) => void;
@@ -191,6 +195,8 @@ export function TopBar({
   vscodeCacheReleaseAvailable,
   useLightweightTerminalPreview,
   terminalFontSize,
+  agentCompletionNotificationsEnabled,
+  agentCompletionNotificationPermission,
   onToggleCollapsed,
   onToggleFileBrowser,
   onToggleVsCode,
@@ -198,6 +204,7 @@ export function TopBar({
   onReleaseVsCodeIframeCache,
   onToggleTerminalPreviewMode,
   onTerminalFontSizeChange,
+  onToggleAgentCompletionNotifications,
   onOpenNewSession,
   onScanTmux,
   onScanApps,
@@ -243,6 +250,17 @@ export function TopBar({
   const hintsPopoverId = "operation-hints-popover";
   const diagnosticsPopoverId = "resource-diagnostics-popover";
   const totalCount = sessions.length;
+  const notificationUnsupported =
+    agentCompletionNotificationPermission === "unsupported";
+  const notificationDenied =
+    agentCompletionNotificationPermission === "denied";
+  const notificationStatusLabel = notificationUnsupported
+    ? "浏览器不支持"
+    : notificationDenied
+      ? "权限已拒绝"
+      : agentCompletionNotificationsEnabled
+        ? "完成通知：开"
+        : "完成通知：关";
   const resourceFindings = classifyResourcePressure({
     snapshot: diagnosticsSnapshot,
     terminalHistoryDiagnostics,
@@ -560,6 +578,23 @@ export function TopBar({
                 >
                   <span>操作提示</span>
                   <small>快捷键和基础操作</small>
+                </button>
+                <button
+                  className={`top-bar-menu-item${agentCompletionNotificationsEnabled ? " top-bar-menu-item--active" : ""}`}
+                  data-testid="agent-completion-notification-toggle"
+                  disabled={notificationUnsupported || notificationDenied}
+                  onClick={onToggleAgentCompletionNotifications}
+                  title={
+                    notificationUnsupported
+                      ? "当前浏览器不支持系统通知"
+                      : notificationDenied
+                        ? "浏览器已拒绝通知权限，请在浏览器设置中开启"
+                        : "Agent 从运行中进入空闲或退出时发送浏览器通知"
+                  }
+                  type="button"
+                >
+                  <span>{notificationStatusLabel}</span>
+                  <small>Agent 完成后提醒查看</small>
                 </button>
               </div>
             )}

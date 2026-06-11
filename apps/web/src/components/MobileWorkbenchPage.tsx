@@ -2,6 +2,7 @@ import { Suspense, useLayoutEffect, useMemo, useState } from "react";
 
 import type { AgentSessionRecord } from "@agent-orchestrator/shared";
 
+import type { AgentCompletionNotificationPermission } from "../lib/agent-completion-notifications";
 import { sendAgentInput } from "../lib/api";
 import { LazyTerminalView } from "./LazyTerminalView";
 import { MobileAgentComposer } from "./MobileAgentComposer";
@@ -12,8 +13,11 @@ interface MobileWorkbenchPageProps {
   isLoading: boolean;
   sessions: AgentSessionRecord[];
   terminalFontSize?: number;
+  agentCompletionNotificationsEnabled?: boolean;
+  agentCompletionNotificationPermission?: AgentCompletionNotificationPermission;
   onSwitchSession: (id: string) => void;
   onTerminalFontSizeChange?: (fontSize: number) => void;
+  onToggleAgentCompletionNotifications?: () => void;
 }
 
 const stateLabels: Record<string, string> = {
@@ -29,8 +33,11 @@ export function MobileWorkbenchPage({
   isLoading,
   sessions,
   terminalFontSize,
+  agentCompletionNotificationsEnabled = false,
+  agentCompletionNotificationPermission = "unsupported",
   onSwitchSession,
   onTerminalFontSizeChange,
+  onToggleAgentCompletionNotifications,
 }: MobileWorkbenchPageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sendingInput, setSendingInput] = useState(false);
@@ -44,6 +51,17 @@ export function MobileWorkbenchPage({
       visibleSessions[0],
     [activeSessionId, visibleSessions],
   );
+  const notificationUnsupported =
+    agentCompletionNotificationPermission === "unsupported";
+  const notificationDenied =
+    agentCompletionNotificationPermission === "denied";
+  const notificationStatusLabel = notificationUnsupported
+    ? "通知不可用"
+    : notificationDenied
+      ? "通知被拒"
+      : agentCompletionNotificationsEnabled
+        ? "通知开"
+        : "通知关";
 
   useLayoutEffect(() => {
     document.documentElement.classList.add("mobile-terminal-route");
@@ -86,6 +104,24 @@ export function MobileWorkbenchPage({
           <a className="mobile-workbench-desktop-link" href="/">
             电脑端 Coding Kanban
           </a>
+          {onToggleAgentCompletionNotifications && (
+            <button
+              className={`mobile-workbench-notification-toggle${agentCompletionNotificationsEnabled ? " mobile-workbench-notification-toggle--active" : ""}`}
+              data-testid="mobile-agent-completion-notification-toggle"
+              disabled={notificationUnsupported || notificationDenied}
+              onClick={onToggleAgentCompletionNotifications}
+              title={
+                notificationUnsupported
+                  ? "当前浏览器不支持系统通知"
+                  : notificationDenied
+                    ? "浏览器已拒绝通知权限，请在浏览器设置中开启"
+                    : "Agent 完成后发送浏览器通知"
+              }
+              type="button"
+            >
+              {notificationStatusLabel}
+            </button>
+          )}
         </div>
         <label className="mobile-session-switcher">
           <span>会话</span>

@@ -34,12 +34,19 @@ describe("MobileWorkbenchPage", () => {
         activeSessionId: null,
         isLoading: false,
         sessions: [],
+        agentCompletionNotificationPermission: "default",
         onSwitchSession: () => {},
+        onToggleAgentCompletionNotifications: () => {},
       }),
     );
 
     assert.match(markup, /手机端 Coding Kanban/);
     assert.match(markup, /电脑端 Coding Kanban/);
     assert.match(markup, /href="\/"/);
+    assert.match(
+      markup,
+      /data-testid="mobile-agent-completion-notification-toggle"/,
+    );
+    assert.match(markup, /通知关/);
   });
 });

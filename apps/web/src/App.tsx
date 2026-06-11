@@ -29,6 +29,15 @@ import { SidePanelView } from "./components/SidePanelView";
 import { TopBar } from "./components/TopBar";
 import { VSCodeDrawer } from "./components/VSCodeDrawer";
 import {
+  collectAgentCompletionNotificationEvents,
+  dispatchAgentCompletionNotification,
+  getAgentCompletionNotificationPermission,
+  loadAgentCompletionNotificationsEnabled,
+  requestAgentCompletionNotificationPermission,
+  saveAgentCompletionNotificationsEnabled,
+  type AgentCompletionNotificationPermission,
+} from "./lib/agent-completion-notifications";
+import {
   addDiscoveredTmux,
   deleteAgentSession,
   focusAgentSession,
@@ -369,6 +378,16 @@ export default function App() {
     useState(loadTerminalPreviewLightweightMode);
   const [terminalFontSize, setTerminalFontSize] =
     useState(loadTerminalFontSize);
+  const [
+    agentCompletionNotificationsEnabled,
+    setAgentCompletionNotificationsEnabled,
+  ] = useState(loadAgentCompletionNotificationsEnabled);
+  const [
+    agentCompletionNotificationPermission,
+    setAgentCompletionNotificationPermission,
+  ] = useState<AgentCompletionNotificationPermission>(
+    getAgentCompletionNotificationPermission,
+  );
   const [vscodeIframeCacheMode, setVscodeIframeCacheMode] =
     useState<VsCodeIframeCacheMode>(loadVsCodeIframeCacheMode);
   const [mobileTerminalTouchMode, setMobileTerminalTouchMode] = useState(
@@ -379,6 +398,9 @@ export default function App() {
     startX: number;
     startWidth: number;
   } | null>(null);
+  const previousNotificationSessionsRef = useRef<AgentSessionRecord[] | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -445,6 +467,31 @@ export default function App() {
   useEffect(() => {
     saveTerminalFontSize(terminalFontSize);
   }, [terminalFontSize]);
+
+  useEffect(() => {
+    const currentSessions = snapshot?.items;
+    if (!currentSessions) {
+      return;
+    }
+
+    const previousSessions = previousNotificationSessionsRef.current;
+    if (
+      previousSessions &&
+      agentCompletionNotificationsEnabled &&
+      agentCompletionNotificationPermission === "granted"
+    ) {
+      collectAgentCompletionNotificationEvents(
+        previousSessions,
+        currentSessions,
+      ).forEach(dispatchAgentCompletionNotification);
+    }
+
+    previousNotificationSessionsRef.current = currentSessions;
+  }, [
+    agentCompletionNotificationPermission,
+    agentCompletionNotificationsEnabled,
+    snapshot,
+  ]);
 
   useEffect(() => {
     saveVsCodeIframeCacheMode(vscodeIframeCacheMode);
@@ -626,6 +673,23 @@ export default function App() {
       .then(setSnapshot)
       .catch(() => {});
   }, []);
+
+  const handleToggleAgentCompletionNotifications = useCallback(async () => {
+    if (agentCompletionNotificationsEnabled) {
+      saveAgentCompletionNotificationsEnabled(false);
+      setAgentCompletionNotificationsEnabled(false);
+      setAgentCompletionNotificationPermission(
+        getAgentCompletionNotificationPermission(),
+      );
+      return;
+    }
+
+    const permission = await requestAgentCompletionNotificationPermission();
+    setAgentCompletionNotificationPermission(permission);
+    const enabled = permission === "granted";
+    saveAgentCompletionNotificationsEnabled(enabled);
+    setAgentCompletionNotificationsEnabled(enabled);
+  }, [agentCompletionNotificationsEnabled]);
 
   function handleLaunched() {
     listAgentSessions()
@@ -995,8 +1059,17 @@ export default function App() {
         isLoading={isLoading}
         sessions={sessions}
         terminalFontSize={terminalFontSize}
+        agentCompletionNotificationsEnabled={
+          agentCompletionNotificationsEnabled
+        }
+        agentCompletionNotificationPermission={
+          agentCompletionNotificationPermission
+        }
         onSwitchSession={handleMobileSwitchSession}
         onTerminalFontSizeChange={handleTerminalFontSizeChange}
+        onToggleAgentCompletionNotifications={
+          handleToggleAgentCompletionNotifications
+        }
       />
     );
   }
@@ -1015,6 +1088,12 @@ export default function App() {
         vscodeCacheReleaseAvailable={vscodeCacheReleaseAvailable}
         useLightweightTerminalPreview={useLightweightTerminalPreview}
         terminalFontSize={terminalFontSize}
+        agentCompletionNotificationsEnabled={
+          agentCompletionNotificationsEnabled
+        }
+        agentCompletionNotificationPermission={
+          agentCompletionNotificationPermission
+        }
         onToggleCollapsed={() =>
           updateLayout({ topbarCollapsed: !layoutState.topbarCollapsed })
         }
@@ -1066,6 +1145,9 @@ export default function App() {
           setUseLightweightTerminalPreview((current) => !current)
         }
         onTerminalFontSizeChange={handleTerminalFontSizeChange}
+        onToggleAgentCompletionNotifications={
+          handleToggleAgentCompletionNotifications
+        }
         onOpenNewSession={setNewSessionHost}
         onScanTmux={handleScanTmux}
         onScanApps={handleScanApps}
