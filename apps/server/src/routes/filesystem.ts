@@ -19,6 +19,7 @@ import type {
 
 import { LocalFsService } from "../services/local-fs-service.js";
 import { SftpService } from "../services/sftp-service.js";
+import { assertSafeFilesystemPath } from "../services/file-system-utils.js";
 
 interface FilesystemRouteOptions {
   localFsService: LocalFsService;
@@ -313,7 +314,11 @@ export async function registerFilesystemRoutes(
           } else if (part.fieldname === "sshTarget") {
             sshTarget = parseMaybeSshTarget(String(part.value));
           } else if (part.fieldname === "relativePaths") {
-            relativePaths = JSON.parse(String(part.value));
+            const parsed = JSON.parse(String(part.value)) as string[];
+            relativePaths = parsed.map((p) => {
+              assertSafeFilesystemPath(p, "relativePaths entry");
+              return p;
+            });
           }
           continue;
         }

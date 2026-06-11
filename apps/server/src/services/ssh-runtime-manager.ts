@@ -10,6 +10,8 @@ import { AgentSessionRegistry } from "./agent-session-registry.js";
 import { buildSshArgs, formatSshDestination } from "./ssh-command.js";
 import { normalizeStdinPayload } from "./stdin-payload.js";
 
+const UNSAFE_SHELL_PATTERN = /[\x00-\x1f\x7f`$\\!"\\]/;
+
 function quoteForPosixShell(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
@@ -19,6 +21,12 @@ function buildRemoteCommand(input: LaunchRemoteAgentInput): string {
 
   if (input.workingDirectory) {
     remoteCommands.push(`cd ${quoteForPosixShell(input.workingDirectory)}`);
+  }
+
+  if (UNSAFE_SHELL_PATTERN.test(input.command)) {
+    throw new Error(
+      "Command contains unsafe shell characters and cannot be executed",
+    );
   }
 
   remoteCommands.push(input.command);

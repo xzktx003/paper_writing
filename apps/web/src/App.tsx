@@ -76,6 +76,7 @@ import {
   touchVsCodeCacheSessionIds,
   type VsCodeIframeCacheMode,
 } from "./lib/vscode-cache";
+import { copyTextToClipboard } from "./lib/clipboard";
 import "./app.css";
 
 type ViewMode = "grid" | "focus";
@@ -673,7 +674,7 @@ export default function App() {
     const session = sessions.find((s) => s.id === id);
     if (session?.transportRef?.tmuxSession) {
       const cmd = `tmux attach -t ${session.transportRef.tmuxSession}`;
-      navigator.clipboard.writeText(cmd).catch(() => {});
+      copyTextToClipboard(cmd).catch(() => {});
     }
   }
 

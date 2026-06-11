@@ -57,7 +57,7 @@ test("LocalFsService creates, renames, chmods, and removes files", async () => {
     const nextPath = await service.rename(originalPath, renamedPath);
     assert.equal(nextPath, renamedPath);
 
-    await service.chmod(renamedPath, "640");
+    await service.chmod(renamedPath, "0640");
     const afterChmod = await service.list(rootDir, true);
     const entry = afterChmod.entries.find(
       (candidate) => candidate.name === "final.txt",
