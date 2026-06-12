@@ -37,3 +37,5 @@ papers/*
 # Test temp dirs
 app/.tmp-test-home/
 app/.tmp-v8-coverage/
+
+papers/
