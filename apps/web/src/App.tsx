@@ -51,6 +51,7 @@ import {
   subscribeAgentSessions,
   unhideAgentSession,
   updateAgentSession,
+  type ConnectionStatus,
 } from "./lib/api";
 import {
   deriveLayoutMode,
@@ -58,6 +59,22 @@ import {
   saveLayoutState,
   type LayoutState,
 } from "./lib/layout-store";
+import {
+  defaultFocusViewState,
+  parseFocusViewState,
+  type FocusViewState,
+  type ViewMode,
+} from "./lib/focus-view-state";
+import {
+  FILE_BROWSER_MIN_WIDTH,
+  parseFileBrowserUiState,
+  type FileBrowserUiState,
+} from "./lib/file-browser-ui-state";
+import {
+  parseInitialSidePanelTool,
+  parseSidePanelSessionStates,
+  type FileBrowserSessionState,
+} from "./lib/side-panel-session-state";
 import {
   buildDirectLaunchCommand,
   buildRemoteDirectLaunchCommand,
@@ -88,7 +105,6 @@ import {
 import { copyTextToClipboard } from "./lib/clipboard";
 import "./app.css";
 
-type ViewMode = "grid" | "focus";
 type SidePanelTool = "files" | "vscode";
 
 const FILE_BROWSER_UI_STORAGE_KEY = "file-browser-ui-state";
@@ -103,42 +119,14 @@ function readMobileTerminalTouchMode(): boolean {
   });
 }
 
-interface FileBrowserUiState {
-  width: number;
-  mainCollapsed: boolean;
-  sideCollapsed: boolean;
-}
-
-interface FileBrowserSessionState {
-  selectedHost: SelectedHost;
-}
-
-interface FocusViewState {
-  focusedId: string | null;
-  viewMode: ViewMode;
-}
-
 function loadInitialSidePanelTool(
   focusedId: string | null,
 ): SidePanelTool | null {
-  if (!focusedId) {
-    return null;
-  }
-
   try {
-    const raw = localStorage.getItem(SIDE_PANEL_SESSION_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Record<
-      string,
-      Partial<{ activeTool: SidePanelTool | null }>
-    >;
-    const activeTool = parsed[focusedId]?.activeTool;
-    return activeTool === "files" || activeTool === "vscode"
-      ? activeTool
-      : null;
+    return parseInitialSidePanelTool(
+      localStorage.getItem(SIDE_PANEL_SESSION_STORAGE_KEY),
+      focusedId,
+    );
   } catch {
     return null;
   }
@@ -195,30 +183,11 @@ function buildDefaultSidePanelState(
 
 function loadFileBrowserUiState(): FileBrowserUiState {
   try {
-    const raw = localStorage.getItem(FILE_BROWSER_UI_STORAGE_KEY);
-    if (!raw) {
-      return {
-        mainCollapsed: false,
-        sideCollapsed: false,
-        width: 540,
-      };
-    }
-
-    const parsed = JSON.parse(raw) as Partial<FileBrowserUiState>;
-    return {
-      mainCollapsed: Boolean(parsed.mainCollapsed),
-      sideCollapsed: Boolean(parsed.sideCollapsed),
-      width:
-        typeof parsed.width === "number" && Number.isFinite(parsed.width)
-          ? parsed.width
-          : 540,
-    };
+    return parseFileBrowserUiState(
+      localStorage.getItem(FILE_BROWSER_UI_STORAGE_KEY),
+    );
   } catch {
-    return {
-      mainCollapsed: false,
-      sideCollapsed: false,
-      width: 540,
-    };
+    return parseFileBrowserUiState(null);
   }
 }
 
@@ -232,33 +201,8 @@ function saveFileBrowserUiState(state: FileBrowserUiState) {
 
 function loadSidePanelSessionStates(): Record<string, FileBrowserSessionState> {
   try {
-    const raw = localStorage.getItem(SIDE_PANEL_SESSION_STORAGE_KEY);
-    if (!raw) {
-      return {};
-    }
-
-    const parsed = JSON.parse(raw) as Record<
-      string,
-      Partial<FileBrowserSessionState>
-    >;
-
-    return Object.fromEntries(
-      Object.entries(parsed).map(([sessionId, value]) => {
-        const selectedHost =
-          value.selectedHost?.type === "ssh" && value.selectedHost.preset
-            ? {
-                type: "ssh" as const,
-                preset: value.selectedHost.preset,
-              }
-            : { type: "local" as const };
-
-        return [
-          sessionId,
-          {
-            selectedHost,
-          },
-        ];
-      }),
+    return parseSidePanelSessionStates(
+      localStorage.getItem(SIDE_PANEL_SESSION_STORAGE_KEY),
     );
   } catch {
     return {};
@@ -277,27 +221,9 @@ function saveSidePanelSessionStates(
 
 function loadFocusViewState(): FocusViewState {
   try {
-    const raw = localStorage.getItem(FOCUS_VIEW_STORAGE_KEY);
-    if (!raw) {
-      return {
-        focusedId: null,
-        viewMode: "grid",
-      };
-    }
-
-    const parsed = JSON.parse(raw) as Partial<FocusViewState>;
-    return {
-      focusedId:
-        typeof parsed.focusedId === "string" && parsed.focusedId.trim()
-          ? parsed.focusedId
-          : null,
-      viewMode: parsed.viewMode === "focus" ? "focus" : "grid",
-    };
+    return parseFocusViewState(localStorage.getItem(FOCUS_VIEW_STORAGE_KEY));
   } catch {
-    return {
-      focusedId: null,
-      viewMode: "grid",
-    };
+    return defaultFocusViewState();
   }
 }
 
@@ -368,6 +294,7 @@ export default function App() {
     host: SelectedHost;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [filters, setFilters] = useState<FilterState>({
     host: null,
     kind: null,
@@ -437,10 +364,18 @@ export default function App() {
       })
       .catch(() => {});
 
-    const unsubscribe = subscribeAgentSessions((data) => {
-      setSnapshot(data);
-      setIsLoading(false);
-    });
+    const unsubscribe = subscribeAgentSessions(
+      (data) => {
+        setSnapshot(data);
+        setIsLoading(false);
+      },
+      (status) => {
+        setConnectionStatus(status);
+        if (status === "connected") {
+          setIsLoading(false);
+        }
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -918,7 +853,7 @@ export default function App() {
     const maxWidth = Math.max(420, mainLayout.clientWidth - 320);
     const nextWidth = Math.min(
       maxWidth,
-      Math.max(360, resizeState.startWidth + delta),
+      Math.max(FILE_BROWSER_MIN_WIDTH, resizeState.startWidth + delta),
     );
 
     setFileBrowserUiState((current) => ({
@@ -1094,6 +1029,7 @@ export default function App() {
         agentCompletionNotificationPermission={
           agentCompletionNotificationPermission
         }
+        connectionStatus={connectionStatus}
         onToggleCollapsed={() =>
           updateLayout({ topbarCollapsed: !layoutState.topbarCollapsed })
         }
@@ -1259,7 +1195,8 @@ export default function App() {
           className={`main-content${mainPanelCollapsed ? " main-content--collapsed" : ""}`}
         >
           {isLoading ? (
-            <div className="grid-empty">
+            <div className="grid-empty loading-state">
+              <div className="loading-spinner" aria-label="加载中"></div>
               <p>正在加载...</p>
             </div>
           ) : viewMode === "focus" && focusedSession ? (
@@ -1292,6 +1229,14 @@ export default function App() {
               onHideSession={handleHideSession}
               onCopyConnectCommand={handleCopyConnectCommand}
               onKillTmux={handleKillTmux}
+              onNewSession={() => setNewSessionHost({ type: "local" })}
+              onScanTmux={() =>
+                setDiscoveryState({
+                  open: true,
+                  mode: "tmux",
+                  host: { type: "local" },
+                })
+              }
               hiddenCount={hiddenSessions.length}
               onShowHidden={() => setShowHiddenDrawer(true)}
               useLightweightTerminalPreview={useLightweightTerminalPreview}
