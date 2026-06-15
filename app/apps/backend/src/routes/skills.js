@@ -1,13 +1,15 @@
 import {
   listSkills,
-  getSkill,
+  getSkillForUI,
   loadSkills,
   importSkillFromGitHub,
   updateImportedSkill,
   getSkillPackageTree,
   runSkillTests,
   listImportedSkills,
-  removeImportedSkill
+  removeImportedSkill,
+  recommendSkills,
+  buildSkillNavigator
 } from '../services/skillEngine.js';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
@@ -23,11 +25,42 @@ export function registerSkillRoutes(fastify) {
   fastify.get('/api/skills', async () => {
     return listSkills();
   });
+
+  fastify.get('/api/skills/navigation', async (request) => {
+    const selectedSkill = request.query?.selectedSkill || '';
+    return {
+      navigator: buildSkillNavigator({ selectedSkill }),
+    };
+  });
+
+  fastify.post('/api/skills/navigation', async (request) => {
+    const { task, limit, projectState, selectedSkill } = request.body || {};
+    const recommendations = task && typeof task === 'string'
+      ? recommendSkills(task, { limit, projectState })
+      : [];
+    return {
+      navigator: buildSkillNavigator({
+        recommendations,
+        selectedSkill: selectedSkill || recommendations[0]?.skill?.name || '',
+      }),
+      recommendations,
+    };
+  });
  
   fastify.get('/api/skills/:name', async (request) => {
-    const skill = getSkill(request.params.name);
+    const skill = getSkillForUI(request.params.name);
     if (!skill) return { error: 'Skill not found' };
     return skill;
+  });
+
+  fastify.post('/api/skills/recommend', async (request) => {
+    const { task, limit, projectState } = request.body || {};
+    if (!task || typeof task !== 'string') {
+      return { recommendations: [] };
+    }
+    return {
+      recommendations: recommendSkills(task, { limit, projectState }),
+    };
   });
  
   fastify.post('/api/skills/reload', async (request) => {

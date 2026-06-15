@@ -1,0 +1,36 @@
+name: paper-planning
+display_name: "Paper Planning"
+description: "Plan paper structure, writing roadmap, storyline, contribution framing, experiment roadmap, and reviewer-risk checklist before drafting sections"
+type: planning
+trigger: manual
+tags: [planning, outline, storyline, roadmap]
+
+prompt: |
+  # Paper Planning
+
+  Turn a research idea, partial draft, or scattered notes into a paper-level plan before drafting individual sections.
+
+  ## Workflow
+  1. Identify the target venue, audience, current stage, and deadline.
+  2. Build a paper outline: title, abstract promise, introduction storyline, method, experiments, discussion, limitations, and appendix.
+  3. Map claims to required evidence, figures, tables, and experiments.
+  4. Produce a writing roadmap with concrete tasks, risks, dependencies, and review checkpoints.
+  5. List likely reviewer questions before drafting.
+
+  ## Must Preserve
+  - The author's actual claims, evidence, and constraints.
+  - Uncertainty about missing experiments, missing literature, and unsupported claims.
+
+  ## Must Avoid
+  - Inventing results, citations, deadlines, venue rules, or completed experiments.
+  - Treating an outline as final text.
+  - Automatically modifying source files.
+
+  ## Output
+  - Paper outline and section goals.
+  - Storyline and contribution map.
+  - Evidence/experiment dependency map.
+  - Writing roadmap and reviewer-risk checklist.
+
+  ## Language
+  Respond in the user's language. If Chinese, use Chinese headings and keep any provided English technical terms unchanged.

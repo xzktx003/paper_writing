@@ -15,3 +15,17 @@
 - VS Code 窗口观察：可把本地 VS Code 窗口作为观察卡片加入看板并跟踪活动状态。
 - SSH/环境适配：主机来自 `~/.ssh/config`，shell 与 tmux 路径自动探测，端口和代理由 env 驱动。
 - 布局持久化：顶栏、聚焦态、文件浏览器布局、侧边工具和 VS Code 缓存状态持久化到本地存储。
+- Paper Writer 论文规划入口：新增 `paper-planning` 论文规划 Skill 和“论文规划 / Outline”任务入口，覆盖写作计划、paper outline、idea 到 paper structure、故事线检查、写作 roadmap 和审稿风险预判；Skill 导航中文标题、标签、上下文筛选和悬停说明同步展示。
+- Paper Writer 目标 venue 风格改写：ACL/NeurIPS/ICML/ICLR 等风格改写请求归入 `writing-polish` 论文润色，保留事实、引用、数字和 LaTeX 结构，不再被裸“论文”误判为 `paper-planning`。
+- Paper Writer RAG/PDF 恢复入口：metadata-only、扫描 PDF 或需要人工摘录的文档卡主按钮可直接打开 OCR/人工摘录导入面板，复用 Markdown 文献笔记模板、前端质量预检和后端 dry-run。
+- Paper Writer 模式路由：贡献强度、baseline 差异、claim 支撑性、reviewer 视角挑刺和段落可采纳性检查进入 Agent 审查；纯解释保持 Chat；独立 RAG 词识别避免 `paragraph` 误触发 RAG 诊断。
+- Paper Writer 中后期任务路由：method 小节标题、appendix proof sketch、table/results paragraph、figure caption 检查、related work 重组、review 补实验计划和 fake citation 检查都有对应 Skill/入口，避免被 Abstract、论文规划、投稿材料或 Results 错抢。
+- Paper Writer 上下文缺口识别：任务文本里的文件名、Figure/Table 编号、Reviewer Comment 编号、Appendix 编号和当前选中内容可作为目标定位线索，减少重复询问目标章节。
+- Paper Writer 证据型写作路由：支持 claim 找论文、反例/negative evidence、逐句证据编号、缺引用检查、章节 claim 配 citation、Table/Figure 结论证据支撑、AI related work 合并前审查和 PDF novelty 证据提取都会进入 `evidence-review`；单句 citation/claim 检查保留轻量 Chat，章节级 citation mapping 进入 Agent 审查。
+- Paper Writer 返修/投稿高风险路由：`novelty weak`、`response table`、rebuttal 承诺 checklist、过度承诺和 revision summary 进入 `reviewer-response`；NeurIPS checklist 与 camera-ready/anonymous 规则冲突只要求 venue rules，具体 appendix/supplementary/artifact 材料仍要求目标材料；`latexmk` 编译请求进入 `latex-debugging` Tools 模式。
+- Paper Writer 图表/统计路由：CSV/ROC/matplotlib/plot.py/柱状图/折线图生成进入 `nature-figure` + Tools；Figure 流程图、caption、配色、表格排版、编号引用一致性进入 `nature-figure` + Agent；t-test、p-value、异常值、results.csv、mean±std 进入 `statistical-analysis`，confidence interval 解释保持 Chat。
+- Paper Writer 本地润色路由：`这段/这句` 翻译、逐句表达诊断、tense consistency、压缩 30%、降低 AI 痕迹、保留 citation/LaTeX 公式和 Figure caption 英文简化进入 `writing-polish`，不要求目标文件；写入或保存仍需 Agent 确认。
+- Paper Writer 摘要与投稿材料上下文：生成 title/keywords、压缩 abstract 只要求论文概要；plain `cover letter` 被视为投稿材料目标，只要求 venue rules，不再额外要求 `target_section_or_file`。
+- Paper Writer 后段交付物路由：slides/PPT/Beamer、poster、proposal/grant、camera-ready checklist、availability/ethics statement 进入 Agent 但不要求目标章节；Zotero/BibTeX 清理、未定义引用、arXiv anonymous 转换、benchmark paper 加证据库分别进入引用管理、投稿检查和学术检索。
+- Paper Writer metadata 语义：`PDF 只有 metadata / metadata-only` 进入 RAG 证据库修复；`PDF metadata 是否匿名` 进入投稿检查并要求 compiled PDF；supplementary/appendix 泄露作者信息仍要求目标材料。
+- Paper Writer 安全采纳包目标章节：adoption package 会从完整 Workbench context 的 `projectState.contextAnswers.target_section_or_file` 读取已确认目标章节，并在 API 响应中保持一致；仍只提供人工应用预览，不自动写论文文件。

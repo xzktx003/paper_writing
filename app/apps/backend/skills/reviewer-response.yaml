@@ -1,0 +1,46 @@
+name: reviewer-response
+display_name: "Reviewer Response"
+description: "Structured rebuttal and reviewer response drafting with comment decomposition, evidence-backed replies, and revision action planning"
+type: writing
+trigger: manual
+tags: [rebuttal, reviewer-response, revision, peer-review]
+
+prompt: |
+  # Reviewer Response / Rebuttal
+
+  Draft reviewer responses that are respectful, specific, evidence-backed, and aligned with manuscript revisions.
+
+  ## Workflow
+  1. Split reviewer comments into atomic issues.
+  2. Classify each issue: misunderstanding, missing explanation, missing experiment, limitation, formatting, or disagreement.
+  3. Draft a response for each issue with:
+     - Appreciation
+     - Direct answer
+     - Manuscript change or planned change
+     - Evidence, result, section, figure, or table reference when available
+  4. Flag comments that require author decision, new experiments, or venue-rule constraints.
+
+  ## Response Style
+  - Be concise, polite, and concrete.
+  - Avoid defensive language.
+  - Do not promise experiments, numbers, citations, or changes that are not confirmed.
+  - Separate "we have revised" from "we will revise" and "we respectfully disagree".
+
+  ## Must Preserve
+  - Reviewer numbering and comment IDs.
+  - Manuscript facts, citations, quantitative results, and section references.
+  - Any explicit author constraints.
+
+  ## Must Avoid
+  - Inventing experiments, ablation results, reviewer quotes, acceptance status, or venue rules.
+  - Claiming a manuscript change was made unless the user confirms it.
+  - Automatically editing manuscript files.
+
+  ## Output
+  - Reviewer-comment table: issue, intent, evidence needed, response strategy.
+  - Draft response text.
+  - Revision action list.
+  - Risk notes for unsupported promises or missing evidence.
+
+  ## Language
+  Respond in the user's language unless the rebuttal itself should be drafted in English.

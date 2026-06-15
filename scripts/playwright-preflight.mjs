@@ -1,4 +1,6 @@
 import { pathToFileURL } from "node:url";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 
 import { chromium } from "@playwright/test";
 
@@ -30,11 +32,43 @@ export async function runPlaywrightPreflight() {
   await browser.close();
 }
 
+export function buildPlaywrightPreflightState(result) {
+  const error = result?.error;
+  const message = error ? formatPlaywrightPreflightError(error) : "Playwright Chromium preflight passed.";
+  const missingLibrary = error
+    ? (error instanceof Error ? error.message : String(error)).match(missingLibraryPattern)?.[1] || ""
+    : "";
+  return {
+    status: error ? "failed" : "passed",
+    checkedAt: new Date().toISOString(),
+    command: "node scripts/playwright-preflight.mjs",
+    message,
+    missingLibrary,
+  };
+}
+
+export function getPlaywrightPreflightStatePath() {
+  if (process.env.PAPER_AGENT_PLAYWRIGHT_PREFLIGHT_STATE_PATH) {
+    return resolve(process.env.PAPER_AGENT_PLAYWRIGHT_PREFLIGHT_STATE_PATH);
+  }
+  return resolve(process.cwd(), ".paper-agent-runtime/playwright-preflight.json");
+}
+
+export async function writePlaywrightPreflightState(state, statePath = getPlaywrightPreflightStatePath()) {
+  await mkdir(dirname(statePath), { recursive: true });
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return statePath;
+}
+
 async function main() {
   try {
     await runPlaywrightPreflight();
+    await writePlaywrightPreflightState(buildPlaywrightPreflightState());
+    console.log("Playwright Chromium preflight passed.");
   } catch (error) {
-    console.error(formatPlaywrightPreflightError(error));
+    const state = buildPlaywrightPreflightState({ error });
+    await writePlaywrightPreflightState(state).catch(() => {});
+    console.error(state.message);
     process.exitCode = 1;
   }
 }

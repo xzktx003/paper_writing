@@ -8,7 +8,7 @@
     "dev:restart": "./scripts/restart-dev.sh",
     "build": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter web build",
     "check": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter web build",
-    "e2e": "node ./scripts/playwright-preflight.mjs && playwright test",
+    "e2e": "node ./scripts/playwright-e2e-acceptance.mjs",
     "test": "pnpm --recursive test && node --test scripts/*.test.mjs",
     "format": "pnpm --recursive format"
   },

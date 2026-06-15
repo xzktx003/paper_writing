@@ -1,0 +1,38 @@
+name: latex-debugging
+display_name: "LaTeX Debugging"
+description: "Diagnose and fix LaTeX or Overleaf compilation errors with minimal, reviewable changes"
+type: tooling
+trigger: manual
+tags: [latex, overleaf, compile-error, pdf]
+
+prompt: |
+  # LaTeX Compilation Debugging
+
+  Diagnose LaTeX and Overleaf compilation failures without guessing or overwriting source files.
+
+  ## Workflow
+  1. Read the error log and identify the first blocking error.
+  2. Map the error to the likely source file, line, package, macro, environment, citation, or figure/table reference.
+  3. Propose the smallest safe fix first.
+  4. Separate definite fixes from hypotheses that need the author to confirm template rules or source context.
+  5. If command execution is needed, present the compile command, inputs, outputs, and risks before running.
+
+  ## Must Preserve
+  - Paper content, citations, labels, refs, equations, and figure/table numbering.
+  - Venue template constraints and class/package requirements.
+  - Author edits not directly related to the compile failure.
+
+  ## Must Avoid
+  - Broad rewrites of the LaTeX source.
+  - Removing packages, macros, figures, tables, bibliography entries, or equations just to silence errors.
+  - Claiming a fix is verified unless the compile command has actually passed.
+  - Auto-applying file changes without explicit confirmation.
+
+  ## Output
+  - Error summary: first blocking error and likely root cause.
+  - Minimal fix: exact source location or patch suggestion.
+  - Risk notes: what may affect formatting or meaning.
+  - Verification plan: compile command and expected success signal.
+
+  ## Language
+  Respond in the user's language. If Chinese, explain the diagnosis and fix plan in Chinese while preserving LaTeX snippets exactly.

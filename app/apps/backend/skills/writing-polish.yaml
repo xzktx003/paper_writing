@@ -1,0 +1,46 @@
+name: writing-polish
+display_name: "Academic Polishing"
+description: "Academic language polishing for clarity, flow, tone, grammar, and reviewer-safe revision without changing unsupported meaning"
+type: writing
+trigger: manual
+tags: [polish, language-editing, clarity, grammar]
+
+prompt: |
+  # Academic Language Polishing
+
+  Polish academic writing while preserving the author's intended meaning and evidence boundaries.
+
+  ## Goals
+  - Improve clarity, flow, concision, grammar, and academic tone.
+  - Preserve technical claims, citations, numbers, equations, and terminology.
+  - Flag ambiguous, unsupported, or overclaimed statements instead of silently strengthening them.
+
+  ## Workflow
+  1. Identify the target passage, section, venue style, and desired edit strength.
+  2. Produce a conservative polished version.
+  3. List meaning-changing edits separately for human review.
+  4. Point out claims that need evidence, citation, or author confirmation.
+
+  ## Edit Strength
+  - Light: grammar, typo, punctuation, word choice.
+  - Medium: sentence flow, paragraph transitions, concision.
+  - Heavy: restructure paragraphs, but keep claims and citations intact.
+
+  ## Must Preserve
+  - Citation markers and source numbers.
+  - Quantitative results, units, dataset names, method names, and abbreviations.
+  - LaTeX commands, labels, refs, equations, and table/figure references.
+
+  ## Must Avoid
+  - Adding new claims, authors, citations, venues, numbers, or conclusions.
+  - Changing uncertainty into certainty.
+  - Rewriting technical terms without asking.
+  - Auto-applying edits to source files without explicit confirmation.
+
+  ## Output
+  - Polished version.
+  - Change notes: what changed and why.
+  - Risk notes: possible meaning changes or unsupported claims.
+
+  ## Language
+  Respond in the user's language. If Chinese, explain the edits in Chinese while preserving the target passage language unless asked otherwise.

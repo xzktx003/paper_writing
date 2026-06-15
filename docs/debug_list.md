@@ -2,6 +2,8 @@
 
 本文档根据现有仓库记忆整理历史 bug 修复记录。后续每次修复 bug，都应在本文件追加简短记录，说明现象、根因和关键修复点。
 
+- Paper Writer RAG 上传 PDF 后看似进入知识库，但实际只索引文件名、大小和 MIME 等 metadata，用户问 PDF 正文内容时检索不到真实证据。根因是 `/api/projects/:id/rag/upload` 对 PDF 只写一个 `.md` metadata sidecar，`indexProjectCorpus` 又会尝试把 PDF 文件当 UTF-8 文本读取。修复为 PDF 上传时抽取真实正文并写入 `*.extracted.md`，用 `*.rag.json` 记录解析状态，索引器只索引抽取文本，并在文档状态中暴露 `parsed` / `metadata-only` / `failed`。
+
 - `local-fs-service.test.ts` 中 chmod 测试使用 `640` 但 `validateChmodMode` 要求八进制模式必须以 `0` 开头（如 `0640`）。修复为更新测试值为 `0640`。
 - `relativePaths` 解析后直接用于 `path.join(targetDirectory, relativePaths[fileIndex])`，未校验 `..` 分段，可构造 `../../../etc/passwd` 实现目录穿越上传。修复为在解析后逐条调用 `assertSafeFilesystemPath` 校验路径条目。
 - `buildRemoteCommand` 对 `input.command` 仅做单引号包裹，未拦截反引号 `$() \"` 等危险 shell 元字符，攻击者可注入命令。修复为执行前用正则 `[\x00-\x1f\x7f`$\"\\]` 检测危险字符，超标则拒绝执行。
@@ -216,3 +218,132 @@
 - Copilot/Codex 类 TUI 启动时会发 DA/DSR 终端能力查询；旧路径依赖浏览器 xterm 订阅和前端时序，Playwright 串跑中 mock 会停在 `copilot-mock-handshake-timeout` 或 ready 后首轮输入无响应。修复为 PTY runtime 在服务端输出层直接识别 `ESC[c` / `ESC[6n` 并写回 `ESC[?1;2c` / `ESC[1;1R`，保证 TUI 能完成握手，并补服务端能力查询回归。
 - 焦点页终端在 WebSocket replay 尚未完成、LazyTerminalView 尚未挂载或按钮/body 暂时持有焦点时，快速键入会被 xterm/input gate 丢弃，Copilot mock 表现为没有收到 `hello`/`before`，或 focus-out 后首字母被丢成 `fter`。修复为 TerminalView 对 replay 前输入做 pending 缓冲并在冲刷前同步 focus-in，AgentFocusView 通过 session bridge 队列把非编辑 UI 上的按键交还活动终端，并补 bridge/键盘映射回归与 Copilot Playwright 场景。
 - 服务端已自动回答 PTY 能力查询后，浏览器端仍把 `ESC[6n` 写入 xterm 会触发 xterm 再生成一次 CPR，双击进入焦点视图时会话收到两次 cursor position reply 并退出。修复为前端渲染终端输出前剥离已由 PTY runtime 处理的 DA/DSR 查询序列，只显示可见输出，不再让浏览器生成重复协议回复。
+- Paper Writer RAG 的人工摘录 Markdown 模板如果还未填写，旧索引流程会把模板说明、占位字段和固定提示当成正文 chunk，导致用户以为扫描 PDF 已有可引用证据。修复为检测未填写的文献笔记模板并标记 `template-empty`，不生成 RAG chunk，不允许作为引用证据；工作台和上传诊断会显示“模板未填写”并引导用户补充人工核对过的事实、页码和来源信息。
+- Paper Writer 工作台真实入口 `/writing-workbench` 的默认静态 HTML 路径少退一级，会在生产式后端启动后查找 `app/apps/backend/frontend/public/paper-writer-workbench.html` 并返回 500。修复为指向 `app/apps/frontend/public/paper-writer-workbench.html`，并补不传自定义 `htmlPath` 的路由回归，确保真实入口能直接打开。
+- Paper Writer 生产可用性门禁原来直接平均 8 个维度分数，证据、上下文和引用安全都阻塞时仍可能显示 75/100，用户会误以为“基本可用”。修复为对硬阻塞分数封顶：任务缺失最高 25，证据/引用阻塞最高 45，上下文阻塞最高 65，保证 `blocked` 状态和分数表达一致。
+- Paper Writer RAG 只拦截几乎空白的人工摘录模板，用户如果随手填写少量标题或单行 Fact，仍可能生成 chunk 并被误当成引用证据。修复为新增 `manual-note-incomplete` 文本质量状态，要求人工笔记至少包含可核对的 Fact、Evidence text 和 Page/section；缺任一项都不生成 RAG chunk，并在工作台修复向导中提示补全文献笔记证据字段。
+- Paper Writer 模式路由把任务里的裸 `pdf` 关键词当成工具执行信号，用户只是想“检查 RAG 里 PDF 有没有读进去”也会被推荐 Tools，混合“检查 RAG + 写 related work”还会同时出现 Agent 和 Tools 理由。修复为移除裸 `pdf` 的工具触发，新增 RAG/PDF 证据库诊断识别；纯诊断走 Chat，诊断加写作走 Agent，LaTeX 编译和脚本运行仍走 Tools。
+- Paper Writer AI 输出审查只检查来源编号是否存在，单一来源证据也可能允许 AI 写“完整 related work/领域趋势/主流方案”等强综述结论。修复为把 evidencePack.coverage 接入审查：当证据覆盖为 single-source、concentrated 或 thin 时，若输出写成强综述结论则阻塞采纳，并要求补充不同来源证据或收窄为局部观点。
+- Paper Writer 单句证据检查只要 claim 和证据有任意关键词重合就算匹配，带 `[1]` 的“clinical diagnosis accuracy”或“autonomous driving dominates”等外推句也可能被标为 supported。修复为计算 claim 关键词覆盖率和 missingTerms，匹配过弱时新增 `weak-evidence-match` 阻塞项，要求改写为证据直接支持的局部事实或补充更直接证据。
+- Paper Writer 后端单句检查已返回 `coverage` 和 `missingTerms`，但工作台原型只显示匹配词，用户看不到 claim 哪些关键词没有被证据支持；离线 fallback 也仍按任意重合词放行弱匹配。修复为在匹配证据卡展示覆盖率和未覆盖关键词，并让本地 fallback 复用弱匹配阻塞规则。
+- Paper Writer AI 输出审查和单句证据检查直接用 `Number(item.rank)` 构造可引用编号集合，证据包若出现重复 rank 或非正整数 rank，同一个 `[1]` 可能指向多个片段或不可追溯来源。修复为统一解析正整数来源编号并校验证据 rank 唯一性，发现重复/无效编号时返回 `unstable-evidence-ranks` 阻塞项。
+- Paper Writer 后端已阻塞重复/非法证据编号，但工作台原型在审查接口失败时会走本地 fallback，本地 AI 输出审查、单句检查和待检查队列没有同步校验证据编号稳定性，可能让离线路径误以为 `[1]` 可追溯。修复为前端本地构造 evidence rank 索引，重复/非法编号统一生成 `unstable-evidence-ranks` 阻塞项，并给出“重新生成证据包”修订动作。
+- Skill 详情接口返回 `display_name_zh`，但 Skill 导航卡片只返回 `title_zh`，外部调用方按“中文标题 + 英文副标题”统一字段渲染时会拿不到中文名称。修复为导航卡保留 `title_zh` 的同时补充 `display_name_zh`，并测试 `subtitle_en` 一起返回。
+- Paper Writer 能识别扫描版 PDF 需要 OCR，但诊断只告诉用户“需要 OCR”，没有说明当前服务器是否具备 OCR 工具，也没有明确一键自动恢复尚未启用，用户容易误判是 RAG 坏了或系统会自动处理。修复为 recovery 增加 `ocrCapability`，上传诊断、文档可用性复制文本和前端恢复卡展示 OCRmyPDF/Tesseract 探测结果、自动恢复状态和下一步补救路径。
+- Paper Writer 人工文献笔记质量检查只接受 `Evidence text:` 和 `Page/section:` 同一行内的值，用户从 OCR 工具复制多行原文摘录或 Markdown 引用块时会被误判为空模板/字段不完整，导致本来可引用的证据无法进入 RAG。修复为先解析 Fact/Evidence/Page 字段，并允许字段值出现在后续几行或引用块中，同时保持空模板和缺字段笔记阻塞。
+- Paper Writer AI 输出审查只判断证据包里是否有任意年份/venue/DOI 信号，可能放行“Smith et al. 2024 ... [1]”这类由模型补全的文献信息，即使证据 [1] 本身没有作者或年份。修复为抽取输出中的具体作者 `et al.`、年份、DOI、arXiv 和常见 venue，并要求它们出现在对应来源编号的证据片段中；否则生成 `unsupported-bibliographic-details` 阻塞项，单句检查和前端本地 fallback 同步阻塞。
+- Paper Writer 全文审查已能用 `unsupported-bibliographic-details` reject 假引用细节，但待单句检查队列仍把这类句子按普通 bibliographic risk 处理，优先级不够高。修复为 claimCheckQueue 逐句复用同一检查，将未被对应证据片段支持的作者、年份、DOI、arXiv 或 venue 标成 high priority，并把具体缺失字段写入原因。
+- Paper Writer 待单句检查队列按句号切分 AI 输出时会在 `et al.` 后错误断句，把 `Smith et al. 2024 ... [1]` 变成 `2024 ... [1]`，导致队列里丢失作者 marker。修复为切分前保护 `et al.` 缩写，后端和前端本地 fallback 都保留完整作者年份句子。
+- Paper Writer 对证据支持的普通表述缺少量化细节防线，AI 可以把“improve related work drafting [1]”扩写成“improve by 15% [1]”，而证据片段没有任何百分比或指标结果。修复为抽取百分比、p-value、指标数值、提升幅度、样本量等量化 marker，并要求它们出现在对应来源编号的证据片段中；否则生成 `unsupported-quantitative-details` 阻塞项，全文审查、单句检查、待检查队列和前端 fallback 同步阻塞。
+- Paper Writer 单句证据检查只看关键词覆盖率，证据写 `do not improve related work drafting` 时，AI 输出 `improve related work drafting [1]` 关键词高度重合，可能被当作 supported。修复为新增保守的肯定/否定极性检查：claim 和对应证据片段共享足够关键词但 improve/support/help 等方向相反时，生成 `claim-contradicts-evidence` 阻塞项，并在待检查队列中 high priority 提示。
+- Paper Writer 全文审查会把整段中的所有来源编号合并后检查作者年份和量化结果，导致第一句引用 `[1]` 时可能偷用第二句 `[2]` 里的 `Smith et al. 2024` 或 `15%` 而未被全文阻塞。修复为全文审查按句子作用域检查文献信息、量化细节和结论方向；每句话只能使用自己引用的证据片段，前端本地 fallback 同步修复。
+- Paper Writer 修订提示词虽然会列出审查发现，但对模型来说仍偏通用，可能在第二版继续保留同一个未支持作者年份、未支持数字或反向结论。修复为在修订提示词中新增“必须满足的硬约束”：列出必须删除或替换的具体 marker，禁止跨来源借用元数据/数字，证据编号不稳定时要求先重建证据包，结论方向相反时要求按证据原文修正；前端 fallback 同步生成。
+- Paper Writer 多轮修订缺少进展对比，用户第二次审查时只能看到当前输出是否通过，不知道上一轮阻塞项是否已解决、是否重复卡住或是否引入新阻塞。修复为新增 `revisionProgress`，前端连续审查时自动传入上一轮 review，后端和本地 fallback 都会返回已解决/重复/新增阻塞项、`stuck` 状态、退出修订循环判断和可复制进展。
+- Paper Writer 对扫描版 PDF 或无法抽取正文的文档只能提示“上传 Markdown 文献笔记”，用户需要自己另存文件再走上传流程，修复链路不够顺手。修复为新增受控文本证据导入接口和前端“粘贴 OCR/摘录导入”按钮，用户可直接粘贴已核对 OCR/人工摘录文本；服务端仍执行空模板和不完整文献笔记拦截，只有包含 Fact、Evidence text 和 Page/section 的内容才进入可引用 RAG 证据。
+- Paper Writer 的 OCR/人工摘录导入最初使用浏览器 `prompt`，长 OCR 文本难编辑、看不到质量要求，误提交风险高。修复为页面内导入面板：包含文件名输入、长文本 textarea、质量门槛提示、提交和取消按钮；恢复提示只负责打开并预填面板，不再用 `window.prompt` 收集长文本。
+- Paper Writer OCR/人工摘录导入面板虽然替代了 prompt，但用户仍可能提交后才知道缺少 Fact、Evidence text 或 Page/section。修复为新增前端实时质量预检，编辑时直接显示三项门槛的有/缺状态，缺项时阻止提交并提示补齐；后端最终质量门槛仍保留。
+- Paper Writer OCR/人工摘录导入的前端实时预检和后端最终入库判定不是同源规则，长期可能漂移。修复为新增 `/rag/text-import/preview` dry-run 接口，复用后端质量门槛和上传诊断但不写文件；导入面板新增“后端预检”按钮，正式导入前即可看到最终同源判定。
+- Paper Writer 缺少不依赖浏览器的完整写作链路验证，单点测试无法证明“证据导入 -> 工作台 -> 草稿审查 -> 修订复审 -> 单句检查”能串起来。修复为新增 API 级 E2E 测试，使用临时项目和公开测试文本跑通该链路，并验证危险草稿被拒绝、修订稿清除阻塞、单句检查 supported 且仍禁止自动写入正文。
+- 当前机器 Playwright Chromium 仍因缺 `libatk-1.0.so.0` 无法启动，真实浏览器点击流暂时不能作为本地验证证据。补充工作台原型页面结构级回归，验证证据上传、文本证据导入、后端预检、AI 输出审查、单句检查和修订进展控件/函数存在，并防止导入链路退回 `window.prompt`；该测试降低静态页面回归风险，但不替代完整浏览器 E2E。
+- Paper Writer 扫描版 PDF 恢复诊断过去只能给一次性文字提示，用户关闭提示或继续写作后很难知道还有哪些文档没有可检索正文。修复为新增 OCR/摘录恢复队列，记录阻塞文档、服务器 OCR 能力和下一步动作；同一来源的已核对文本导入后自动把队列任务标记为完成，工作台也提供队列面板和刷新入口。
+- Paper Writer OCR/摘录恢复队列最初只能记录任务，服务器即使安装了 OCRmyPDF，用户仍必须离开工作台自己生成 OCR PDF 再上传。修复为新增受控 `/rag/ocr-jobs/run` 执行入口：只在用户显式触发时运行，输出新的 `.ocr.pdf` 证据文件，不覆盖原 PDF，并重新走抽取、上传诊断和 RAG 索引；无 OCR 工具或 OCR 失败时保持队列阻塞并提示改用人工摘录导入。
+- Paper Writer Skill 导航虽然已有中文标题、标签和 hover 详情，但新用户仍需要先理解 Skill 名称和分类，不能直接从“我要写 related work / introduction / 投稿检查”进入正确工作流。修复为新增任务意图诊断，把用户自然语言任务映射到中文论文任务意图、推荐 Skill、推荐任务入口、材料缺口和安全边界，并在工作台提供“一键使用推荐入口”。
+- Paper Writer Skill 导航风险筛选按钮使用不存在的 `item.key` 字段，材料筛选也把对象数组直接与字符串比较，导致部分筛选点击后没有效果。修复为风险筛选使用 `level`，材料筛选按 `requires_context[].key` 匹配。
+- Paper Writer 模式操作中心虽然会提示 Agent/Tools 需要人工确认，但写作提示词的“创建会话并发送”按钮仍会直接发起模型请求，用户可能误以为系统已经执行了“确认后再发送”的安全门槛。修复为后端返回结构化 `sendGate`，前端新增发送安全确认框；存在阻塞项时直接拦截发送，Agent/Tools 或需要确认的任务必须先勾选“不会自动写入/覆盖/运行命令”才会创建会话。
+- Paper Writer AI 输出审查通过后缺少安全采纳路径，用户只能复制草稿，容易绕过目标章节确认、来源编号复核和“不得自动写入”的最终门槛。修复为新增安全采纳包服务、接口和工作台面板：缺少目标章节或审查仍 reject 时阻塞，通过时只返回只读人工应用包、禁止动作和 `willWrite: false` 的手动 diff plan。
+- Paper Writer 安全采纳包接口如果信任客户端传入的 review，前端旧状态或伪造请求可能把未重新审查的 answer 包装成“可采纳”预览。修复为采纳包路由始终在服务端对当前 answer 重新运行 AI 输出审查，客户端 review 只作为上一轮进展参考；前端记录 review 对应的 answer 文本，生成采纳包前发现文本变化会先重新审查。
+- Paper Writer 后续审查接口没有透传当前 RAG 检索词，用户在工作台用 `evidenceQuery` 找到证据后，`review-answer`、`claim-review` 或 `adoption-package` 可能重新用任务文本检索，导致证据包为空并误报 `[1]` 是假引用。修复为三个接口都接收 `evidenceQuery` / `ragQuery` / `query`，前端审查、单句检查和采纳包请求统一发送当前 RAG 检索框内容。
+- Paper Writer 的生产可用性门禁没有显式纳入运行环境能力，服务器缺少 OCR 工具时，用户只能在扫描 PDF 诊断或测试日志中看到问题，容易误以为整体已生产就绪。修复为新增 `runtimeEnvironment` 和 `runtime-environment` readiness 维度：OCR 不完整但无阻塞 PDF 时显示非阻塞风险，存在需 OCR 的失败 PDF 且服务器无法自动 OCR 时作为生产阻塞项。
+- Paper Writer 生成草稿和审查草稿之间缺少证据包一致性检查；如果用户换了 RAG 检索词、重建索引或上传/删除证据，旧草稿中的 `[1]` 可能在审查时指向新的片段。修复为给证据包生成指纹，并在输出审查、单句检查和安全采纳包中检测指纹漂移；漂移时阻塞引用采纳，要求重新生成证据包和重新审查。
+- Paper Writer 前端最初发送“当前工作台”的证据包指纹，而不是“这条 AI 回复生成时”的证据包指纹；用户生成草稿后重新分析任务或换证据，旧 AI 回复仍可能用新指纹审查，削弱漂移检测。修复为 AI 回复成功返回时记录生成时的证据包指纹，输出审查和安全采纳包使用该指纹；从 AI claim 队列带出的单句继承该指纹，手动输入的 claim 则使用当前证据包指纹。
+- Paper Writer 后端审查失败时会走前端本地 fallback，但本地输出审查、单句检查和采纳包最初没有同步证据包指纹漂移检测，可能在离线路径误放行旧 `[1]`。修复为本地 fallback 也接收 expected evidence fingerprint，指纹不一致时生成阻塞项；本地采纳包会重新跑本地审查，不再直接信任旧 review。
+- Paper Writer 工作台 RAG 检索只更新页面上可见的证据列表，不更新正式工作台 `evidencePack`、证据包指纹、写作提示词和生产可用性门禁；用户看到新命中后继续生成或审查，实际可能仍使用旧证据包。修复为检索成功后自动用当前检索词重新加载工作台上下文，并补静态回归断言 `searchRagEvidence` 会调用 `loadWorkbench()`。
+- Paper Writer Skill 卡虽然已有中文标题和展开详情，但鼠标悬停时缺少原生摘要，用户需要先理解卡片结构才知道“这个 Skill 到底做什么”。修复为推荐卡和导航卡增加 `title` 摘要，按中文标题、英文副标题、中文分类和基本功能组织，并补页面结构回归。
+- Paper Writer 长链路测试会生成 `app/.tmp-test-home/`、`app/.tmp-v8-coverage/` 和 `app/.codegraph/`，但这些目录未被 `.gitignore` 覆盖，上传代码到 GitHub 时容易把 npm 缓存、临时会话、覆盖率 JSON 或本地 codegraph 数据库带上去。修复为把这些本地生成目录加入忽略规则，并用 `git check-ignore` 验证。
+- Paper Writer 工作台上下文已按 `evidenceQuery` 生成证据包，审查和采纳接口也会透传当前检索词，但真正发送给 AI 的 `aiDraftRequest.send.rag.query` 仍默认使用任务文本；用户刚用特定 query 刷新证据包后，模型生成阶段可能重新按另一组词检索，导致草稿来源和审查证据包分叉。修复为后端草稿请求绑定 `evidenceQuery`，前端发送时构造 `activeRagRequest` 并强制使用当前 RAG 检索框或证据包 query。
+- Paper Writer 工作台复制证据包、修订提示词或安全采纳包时，旧 textarea fallback 调用 `document.execCommand('copy')` 后没有检查返回值；在剪贴板被浏览器拒绝时也可能显示“已复制”，用户实际粘贴不到关键证据或采纳清单。修复为检查 `execCommand('copy')` 的布尔结果，失败时明确提示手动复制，并确保临时 textarea 一定移除。
+- Paper Writer 工作台重新加载上下文时只清掉 AI 输出审查对象，没有同步清理旧单句检查、旧安全采纳包、旧 AI 回复证据包指纹和旧 claim 指纹；上传/删除证据或换检索词后，用户仍可能复制旧采纳包或用旧指纹做单句检查。修复为新增 `resetDerivedReviewState()`，在 `render()` 时统一清理所有依赖旧证据上下文的派生状态和面板。
+- Paper Writer 工作台文案提示“生成或粘贴 AI 回复后审查”，但 AI 返回区不是可编辑控件，用户无法直接粘贴已有回复；如果未来手动改稿后仍保留旧审查，也会误导用户继续复制旧采纳包。修复为把 AI 返回区设为可编辑 textbox，并在 input 时调用 `invalidateAiReplyReviewState()` 清理旧审查和旧采纳包，提示重新审查。
+- Paper Writer 用户在分析任务后如果继续修改任务、目标章节、上下文笔记或 RAG 检索词，再直接发送/审查/单句检查/生成采纳包，旧 `currentWorkbench` 可能与新输入混用。修复为记录分析时的输入签名，并在高风险动作前校验签名；发现变更时要求先重新点击“分析任务”。
+- Paper Writer 的发送/审查门禁已能拦截旧 `currentWorkbench`，但复制写作提示词、证据包、完整工作包或修订提示词仍可能把旧证据包带到外部 Chat 继续写作。修复为高风险复制入口复用同一输入签名校验，输入变更后必须重新分析才能复制这些写作依据。
+- Paper Writer 用户修改任务或 RAG 检索词后，旧 AI 审查面板里的“使用修订提示词”和“放入单句检查”仍能把旧 review prompt / claim 队列塞回当前流程。修复为这些旧审查继续操作也复用输入签名校验，输入变更后必须重新分析。
+- Paper Writer 过去只在用户点击发送、审查或复制时才提示当前工作台已过期；用户编辑任务、上下文或 RAG 检索词后，页面仍展示旧提示词、旧工作包和旧审查面板，容易误以为它们对应新输入。修复为输入变化时立即标记 stale，清理旧派生状态，并让任务入口、模式提示、推荐检索词和澄清问题填入路径同步触发。
+- Paper Writer 输入变化后虽然清理了旧审查、提示词和工作包，但生产可用性、流程、Skill 决策、证据包和验收清单仍保留旧面板，视觉上仍像已经针对新输入完成分析。修复为新增统一过期渲染，输入变更后把核心分析面板全部恢复为未分析占位。
+- Paper Writer 切换项目和填入推荐 RAG 检索词会先触发 stale 清理，但随后状态栏被“已选择项目”或“已填入检索词”覆盖，用户看不到旧分析已失效。修复为这些成功文案也明确提示需要重新分析或重新检索。
+- Paper Writer 输入过期后核心面板会清空，但发送安全确认区域仍保留旧模式、旧阻塞项或旧确认文案，用户可能误以为发送门槛仍对应当前输入。修复为 stale 状态同步重置发送安全门槛，禁用确认框并要求重新分析。
+- Paper Writer “演示数据”按钮原来只调用 `render(demoData)`，不会同步项目、任务、上下文和 RAG 检索词输入框；如果用户之前填过真实任务，演示面板可能和输入框混用。修复为加载 demo 前先把左侧输入同步到演示任务状态。
+- Paper Writer 用户切换后端地址或 API Token 后，旧工作台分析仍保留，后续请求可能打到新后端/新身份却沿用旧证据包和模式门槛。修复为后端地址和 Token 输入变化也触发 stale 清理，要求重新分析。
+- Paper Writer 切换后端后加载项目列表如果失败，旧后端的项目选项仍留在下拉框，用户可能误选旧环境项目 ID。修复为加载项目开始时清空旧选项并显示加载中，失败时显示可手动填写项目 ID。
+- Paper Writer 保存或清除 API Token 会覆盖“旧分析已失效”的状态提示，用户只看到 Token 已保存/清除，容易继续使用旧身份下的分析结果。修复为 Token 保存和清除文案都明确要求重新分析。
+- Paper Writer 最近证据文档删除仍使用 `window.confirm`，原生弹窗无法展示项目、路径和删除后果，也没有先校验当前分析是否已过期；用户切换任务、项目、后端或身份后，可能从旧文档列表触发误删。修复为页面内确认条，删除入口和最终确认都复用输入签名门禁，并用静态回归禁止 `window.confirm` 回归。
+- Paper Writer 后端地址和 API Token 变化虽然会触发过期提示，但 `buildWorkbenchInputSignature()` 没有包含这两个输入；部分高风险动作再次调用 `ensureWorkbenchInputsFresh()` 时仍可能把旧分析判定为新鲜。修复为把 `apiBase` 和 Token 变化标记纳入工作台输入签名，并补静态回归，确保切换后端或身份后必须重新分析。
+- Paper Writer OCR/人工摘录导入面板打开后，用户如果修改任务、项目、后端地址或 Token，旧面板和旧 `sourceDocument` 仍可能保留；继续预检或导入会把旧文档摘录混入新上下文。修复为输入过期渲染时关闭导入面板并清空旧来源，同时在后端预检和正式导入前执行输入签名门禁。
+- Paper Writer 高风险动作的新鲜度门禁已经覆盖项目、后端地址和 API Token，但拦截文案仍只说“任务、上下文或 RAG 检索词已变更”，用户切换后端或身份后不知道为什么被要求重新分析。修复为把门禁提示同步为“项目、后端、身份、任务、上下文或 RAG 检索词已变更”，并补静态回归。
+- Paper Writer 保存或清除 API Token 时只更新状态文案“旧分析已失效”，但没有强制清理当前工作台分析；如果 Token 是通过保存按钮或密码管理器路径变化的，后续高风险门禁可能仍认为旧分析新鲜。修复为保存前规范化输入值，并用 `markWorkbenchInputsStale(..., { force: true })` 真实失效旧证据包、发送门槛和派生审查。
+- Paper Writer 加载项目列表会清空下拉选项，但不会强制清理旧工作台分析；用户切换后端或身份后点击“加载项目”，页面可能同时显示新环境项目列表和旧环境证据包/Skill/发送门槛。修复为 `loadProjects()` 开始时强制 stale，刷新项目列表前先清掉旧分析面板。
+- Paper Writer 请求头会对 API Token 执行 `trim()`，但工作台输入签名曾使用原始 Token 输入值；用户多输入一个首尾空格时，请求身份实际不变，页面却会误判身份变化并要求重新分析。修复为 `buildWorkbenchInputSignature()` 使用同源的 trimmed Token 标记。
+- Paper Writer RAG 检索成功后会先把独立搜索结果渲染到证据列表，再调用 `loadWorkbench()` 更新正式证据包；如果工作台刷新失败，用户会看到新检索结果和旧证据包/旧发送门槛混用。修复为检索阶段只保留命中计数，必须等 `loadWorkbench()` 成功后才由正式工作台响应渲染证据和门禁。
+- Paper Writer 上传证据文件时，如果文件已成功写入证据库但随后工作台刷新失败，旧逻辑会进入总 catch 并显示“上传失败”，同时旧分析面板可能继续保留。修复为上传循环完成后先展示上传诊断；只要存在成功上传，就强制旧分析失效，再刷新工作台；刷新失败时明确提示“上传已完成，但工作台刷新失败”。
+- Paper Writer 重建 RAG 索引或运行服务器 OCR 时，后端可能已经改变证据库，但后续 `loadWorkbench()` 失败会被笼统显示成“索引失败”或“服务器 OCR 失败”。修复为后端动作成功后先强制旧分析失效，再刷新工作台；刷新失败时明确提示索引/OCR 已完成但工作台刷新失败。
+- Paper Writer OCR/人工摘录文本证据导入成功后会继续刷新工作台和 OCR 队列；如果后续刷新失败，旧逻辑会把已写入证据库的导入误报为“文本证据导入失败”。修复为导入成功后先展示上传诊断并强制旧分析失效，刷新失败时提示“文本证据已导入，但工作台刷新失败”。
+- Paper Writer 删除证据文档成功后会继续刷新工作台；如果刷新失败，旧逻辑会把已删除的文档误报为“删除失败”，并可能保留旧证据包。修复为 DELETE 成功后先清空确认条、强制旧分析失效，再刷新工作台；刷新失败时提示“文档已删除，但工作台刷新失败”。
+- Paper Writer 多个两阶段动作已经写了“已完成但工作台刷新失败”的提示，但 `loadWorkbench()` 会吞掉刷新错误，外层上传、导入、索引、OCR、删除和检索流程无法真正进入刷新失败分支。修复为给 `loadWorkbench({ throwOnError: true })` 增加可选抛错模式，子流程统一使用该模式；检索也区分“检索失败”和“检索已完成但工作台刷新失败”。
+- Paper Writer OCR 恢复队列入口来自旧文档卡片，如果用户切换项目、后端地址、API Token、任务或 RAG 检索词后继续点击“加入 OCR/摘录队列”或“运行服务器 OCR”，可能把旧文档任务写入新上下文，或在错误身份/后端上执行 OCR。修复为队列创建和服务器 OCR 执行都先通过工作台输入签名门禁，旧分析状态下必须重新分析后才能继续。
+- Paper Writer 文本证据导入或工作台加载成功后会静默刷新 OCR 恢复队列；旧逻辑在静默刷新失败时仍会覆盖队列面板为“队列加载失败”，让用户误以为刚才的证据导入或分析失败。修复为静默刷新失败只记录 `lastSilentError` 并保留当前队列可见状态，只有用户主动刷新队列时才显示失败面板。
+- Paper Writer 工作台分析请求没有代际保护，用户连续点击“分析任务”、检索后刷新工作台，或在请求进行中修改任务/项目/RAG 检索词时，较慢的旧响应可能晚返回并覆盖新输入对应的证据包、模式门槛和写作提示词。修复为 `loadWorkbench()` 记录请求序号和输入签名，响应回来时只有仍是最新请求且输入未变才允许渲染；输入变化和加载 demo 会主动作废在途请求。
+- Paper Writer AI 输出审查、单句检查、安全采纳包和 AI 发送只在请求开始时检查一次新鲜度；如果用户在请求进行中改了 AI 回复、claim、目标章节或工作台输入，旧响应晚返回后仍可能渲染旧审查、旧采纳包或旧 AI 回复。修复为这些异步动作捕获请求开始时的文本、输入签名和证据包指纹，返回时不一致就丢弃旧结果并提示用户重新操作。
+- Paper Writer RAG 检索请求返回前如果用户修改检索词、任务、项目、后端或身份，旧检索结果仍会继续触发工作台刷新，导致“旧命中数”文案和新证据包混在一起。修复为检索开始时记录工作台输入签名，返回时签名变化则丢弃旧检索结果，不再刷新证据包。
+- Paper Writer 上传证据和重建 RAG 索引是有副作用的动作，但旧实现没有像删除/OCR 那样先校验工作台新鲜度；多文件上传过程中如果用户切换项目、后端或身份，剩余文件可能继续发往旧上下文，完成后还可能刷新新输入的工作台。修复为上传和索引入口先执行新鲜度门禁，上传过程中和上传完成后都检查输入签名变化，变化时停止剩余上传并跳过旧结果刷新；索引完成后若输入变化也只提示原上下文已完成，不渲染旧结果。
+- Paper Writer 后端已生成运行环境能力报告，但前端只在“生产可用性”综合维度里间接展示 OCR 工具缺失；真实用户容易看不到“扫描 PDF 自动 OCR 不可用/需要人工兜底”的生产验证缺口。修复为新增独立“运行环境能力”面板，展示 OCR 自动恢复、OCR 工具状态、需 OCR 文档和环境下一步，并把该报告纳入完整工作包和复制入口。
+- Paper Writer 的运行环境能力报告只覆盖 OCR，真实浏览器 E2E 预检仍只出现在测试日志中；用户在工作台里看不到“生产发布前必须运行 Playwright 预检和浏览器点击流”的验收门槛。修复为 `runtimeEnvironment` 新增 `browserE2eCapability`，运行环境面板、复制文本和完整工作包都会显示浏览器 E2E 未在工作台内验证、预检命令和依赖安装提示。
+- Paper Writer 虽然已经把浏览器 E2E 缺口放进运行环境报告，但 `agentReadiness` 仍可能在无阻塞项且平均分较高时显示 `production-ready`，让用户误以为可正式发布。修复为新增 `productionWarnings`：浏览器 E2E 未验证时不阻塞生成可审查草稿，但生产可用性状态降为 `needs-review`，复制报告和页面都会显示“生产验收警告”及 Playwright 预检动作。
+- Paper Writer 生产验收警告会生成 `run-browser-e2e-preflight` 动作，但前端通用队列按钮没有处理这个动作类型，用户点击后没有实际反馈。修复为该动作渲染成“复制浏览器 E2E 预检命令”按钮，并通过新鲜度门禁复制 `node scripts/playwright-preflight.mjs`，避免生产验收下一步成为无效按钮。
+- Paper Writer 的浏览器 E2E 下一步最初只复制单条 `node scripts/playwright-preflight.mjs`，但当前机器常见失败是缺 Chromium 系统依赖，用户仍需从日志中手动拼 `npx playwright install` 和 `sudo npx playwright install-deps`。修复为 `browserE2eCapability` 提供完整生产验收命令包，复制按钮直接包含预检、依赖安装和复检步骤。
+- Paper Writer 的 OCR 恢复路径只有安装提示文案，没有可复制的生产恢复命令包；用户遇到扫描 PDF 或缺 OCR 工具时仍要自己拼 `ocrmypdf`、`tesseract`、`pdftotext` 检查和系统依赖安装命令。修复为 `ocrCapability` 提供完整 OCR 生产恢复命令包，并让带 `commandPack` 的运行环境动作渲染成可复制命令包按钮。
+- Paper Writer 后端运行环境复制文本已包含 OCR 命令包，但前端演示/离线兜底数据的 `runtimeEnvironment.copyText` 只包含浏览器 E2E 命令包；用户在后端不可用或演示模式下复制运行环境能力时，仍拿不到扫描 PDF 恢复步骤。修复为 demo 复制文本同步加入 OCR 能力、OCR 恢复命令包和安装提示，并用静态回归锁定。
+- Paper Writer Skill 导航卡片已经展示中文标题、标签和悬停说明，但用户从分类/标签筛到某个 Skill 后只能查看或复制首问，不能像推荐卡片一样直接填入任务框开始；真实写作时“看懂了选哪个”到“开始执行”之间仍断了一步。修复为导航卡片使用 `hoverGuide.first_prompt_zh` 渲染“填入任务框”和“复制首问”按钮，并用静态回归锁定。
+- Paper Writer 证据包会展示“补证据计划”，后端动作列表也声明了 `copy-expansion-plan`，但前端没有渲染复制按钮，计划本身也没有独立 `copyText`；用户发现证据覆盖偏薄后，无法一键把建议检索词、缺失来源类型和使用边界带去继续检索或交给 Agent。修复为 `evidencePack.expansionPlan` 生成独立复制文本，前端显示“复制补证据计划”按钮，并复用工作台新鲜度门禁复制。
+- Paper Writer AI 输出审查会生成“待单句检查”队列，但每个候选句只显示句子和风险原因，没有就地展示该句引用或匹配的证据片段；用户逐句复核时必须回证据包手动查 [1]/[2]，容易漏看或看错证据边界。修复为队列项增加 `evidenceRefs`，优先展示显式引用的证据，未引用时展示最相关匹配片段；前端和复制队列都会显示关联证据摘要。
+- Paper Writer 安全采纳包只说明“人工复制到目标章节”和禁止自动写入，但没有给出可执行的人工应用步骤；用户拿到可采纳草稿后仍可能整段覆盖、漏做 diff、或改完引用事实后忘记重新审查。修复为采纳包新增 `manualApplicationGuide`，展示定位目标、保留快照、按最小人工 diff 应用、逐条核对来源和改后重审，并提供“复制人工应用指南”按钮。
+- Paper Writer 完整工作包聚合了上下文、Skill、证据、流程和提示词，但缺少一页式“交接指南”；接手的 Agent 或协作者需要自己从多个 section 里判断先处理什么、哪些材料可信、哪些动作禁止，容易跳过阻塞项或误读隐私边界。修复为 `workbenchBundle.handoffGuide` 汇总接手后先做、阻塞项、可信材料、禁止动作和继续条件，前端显示并提供“复制交接指南”。
+- Paper Writer 生产可用性报告会用摘要文字说明“可以生成可审查草稿，不能宣称生产就绪”，但没有结构化区分“可审查草稿级 / 人工采纳级 / 生产发布级”；用户容易只看分数，把草稿链路可用误判成发布级生产就绪。修复为 `agentReadiness.readinessTiers` 明确三层状态、允许做什么和必须满足什么，前端生产可用性面板与复制报告都会显示该分级。
+- Paper Writer 已经展示 OCR 和浏览器 E2E 缺口，但用户安装依赖后仍缺少一条明确的复验路径，不知道要重跑哪些命令、何时重新分析工作台、以及生产发布级何时才算解除阻塞。修复为 `runtimeEnvironment.recheckPlan` 生成“依赖修复后复验计划”，运行环境面板显示复验步骤、通过标准和复制按钮，复制报告也包含该计划。
+- Paper Writer 复验计划提示用户运行 Playwright 预检，但后端浏览器 E2E 状态仍是硬编码的 `not-verified-in-workbench`；即使用户修复依赖并重跑预检，重新分析工作台也无法反映 ready/failed 结果。修复为 `scripts/playwright-preflight.mjs` 写入被忽略的运行时状态文件，工作台读取该文件展示最近一次预检通过或失败，并据此解除或保留生产验收警告。
+- Paper Writer 把 Chromium 预检通过当成浏览器 E2E `ready`，但预检只证明浏览器能启动，不能证明真实页面点击流、上传/导入/删除、剪贴板和采纳包交互通过；用户可能在只跑预检后误判生产发布级已达标。修复为新增 `scripts/playwright-e2e-acceptance.mjs` 包装 `pnpm e2e`，写入完整 E2E 验收状态；工作台只有读到完整 E2E `passed` 才解除浏览器生产验收警告，预检通过只显示 `preflight-passed`。
+- Paper Writer 在完整浏览器 E2E 通过后，如果当前样例没有扫描 PDF，缺少 OCRmyPDF/Tesseract 仍可能不再作为生产验收警告；但论文写作工具的生产发布级必须能处理扫描 PDF 恢复或至少证明 OCR 兜底可用。修复为将 OCR 自动恢复能力纳入 `runtime-environment` 生产警告：缺 OCR 时仍允许可审查草稿和人工采纳级，但生产发布级保持 blocked，并展示 OCR 安装/验收命令包。
+- Paper Writer 的 OCR 生产恢复命令包要求 `pdftotext`，PDF 抽取链也优先调用 Poppler，但 `buildOcrCapability()` 只探测 OCRmyPDF/Tesseract；服务器缺少 `pdftotext` 时仍可能把 PDF/RAG 运行环境看作生产级。修复为把 `pdftotext` 纳入工具探测、能力报告和生产门禁：缺少 PDF 文本抽取工具时仍可草稿/人工采纳，但生产发布级保持 blocked。
+- Paper Writer 后端已把 `pdftotext` 纳入运行环境能力，但前端“运行环境能力”和文档恢复卡仍只展示 OCR 自动恢复/OCR 工具，用户看不到普通文本 PDF 抽取能力是否可用。修复为运行环境指标卡、OCR 能力提示和本地 fallback 都显示“PDF 文本抽取：可用/未验证”，并用静态回归锁定。
+- Paper Writer 会把 OCR、PDF 文本抽取和浏览器 E2E 缺口合并成一个 `runtime-environment` 生产警告；用户看到“1 个生产验收项”时仍要自己拆解到底差哪些 gate。修复为新增 `runtimeEnvironment.productionGates`，把服务器 OCR 自动恢复、PDF 文本抽取、真实浏览器 E2E 拆成独立生产 gate，前端逐项显示状态、要求、说明和对应动作，复制报告也包含 gate 明细。
+- Paper Writer 复验计划用 `ocrCapability.status !== 'ready'` 判断 OCR 是否仍需修复，但 OCR 能力的真实状态值是 `tool-available` / `partial-tooling` / `not-configured`；即使 OCR、PDF 文本抽取和完整浏览器 E2E 全部通过，复验计划仍会误报 `required-before-production`。修复为根据 `productionGates` 是否全 ready 和是否仍有待 OCR 文档判断，gate 全绿时显示 `ready-to-record`。
+- Paper Writer 运行环境顶层 `status` 只看 OCRmyPDF 是否可用；当 OCRmyPDF 可用但 PDF 文本抽取或完整浏览器 E2E 未通过时，顶部仍可能显示 `ready` / “运行环境可自动处理 OCR”，与下方生产 gate 矛盾。修复为顶层状态按生产 gate 聚合：硬阻塞为 `blocked`，任一 gate 未通过为 `needs-production-validation`，所有 gate 通过才是 `ready`。
+- Paper Writer 完整工作包的交接指南仍用“包含 OCR 和浏览器 E2E 的生产验证缺口”概括运行环境问题，没有把服务器 OCR 自动恢复、PDF 文本抽取、真实浏览器 E2E 三个生产 Gate 逐项写给接手者。修复为交接指南按 `runtimeEnvironment.productionGates` 汇总通过数量、未通过 Gate 名称和继续条件，前端 demo 兜底数据同步三项 Gate，并用后端/静态测试锁定。
+- Paper Writer Skill 推荐器会把 `p value` 拆成单字母 `p`，导致“PDF 读不出来 / RAG 不好用”里的 `PDF` 误命中统计分析；中文单字“写”也会让多个写作 Skill 同时加分，用户越不知道选哪个 Skill 越容易被带偏。修复为忽略过短拆分词，新增 RAG/PDF 诊断意图，优先引导用户查看证据库读取诊断和修复建议，而不是进入统计分析或不存在的任务入口。
+- Paper Writer 模式路由把裸“实验/统计/表格”等词直接当作工具执行信号，导致“帮我写实验部分”被升级成 Tools；同时“帮我改论文”没有命中“改写/润色”等正文修改词，会被留在 Chat，Skill 推荐还会因为裸“论文”误推文献综述。修复为正文修改识别加入“修改/改论文/改一下”，Tools 只在明确运行、编译、脚本、命令、统计检验、数据处理等执行信号出现时触发，并移除裸“论文”对文献综述的 RAG 加分。
+- Paper Writer 缺少面向“帮我润色/帮我改论文”的独立 Skill，真实用户最常见的语言编辑任务会被判成不明确，或者只能在 introduction/abstract 等章节 Skill 里绕路。修复为新增 `writing-polish` 论文润色 Skill、中文元数据和“论文润色 / 语言编辑”任务入口，并把 `target_section_or_file` 显示成“目标章节或段落”，避免机器字段名泄漏到用户下一步提示。
+- Paper Writer 把 “rebuttal / reviewer comments / 审稿意见回复” 路由到“会议投稿检查”或判为不明确，用户想写 response letter 时会看到投稿 checklist，而不是逐条回复审稿意见的工作流。修复为新增 `reviewer-response` 审稿回复 Skill、中文意图和“审稿回复 / Rebuttal”任务入口，要求补充 reviewer comments 和目标修改位置，并禁止承诺未确认的实验、数字或正文修改。
+- Paper Writer 后端新增 `writing-polish` 和 `reviewer-response` 后，前端演示/离线兜底数据仍只有 3 个任务入口，Skill 导航也只从 related work 推荐列表生成卡片；后端不可用或用户点击演示数据时，看不到“论文润色”和“审稿回复”，会误以为这些 Skill 不存在。修复为 demo 任务入口、分类计数、Skill Navigator 标签/材料筛选和离线卡片同步加入这两个 Skill，并用静态回归锁定。
+- Paper Writer 内置 Skill 中 `grant-proposal`、`nature-paper2ppt`、`poster-design` 没有中文 UI 元数据，Skill 导航会把它们以英文主标题展示，其中基金申请还会被归入“投稿”而不是独立项目申请场景。修复为补齐“基金申请 / 论文转演示 / 学术海报”的中文标题、英文副标题、分类、标签、任务模板、输入输出和推荐意图，并用 Skill 引擎回归锁定。
+- Paper Writer 真实论文任务“基金申请、论文汇报、学术海报”虽然已有 Skill 元数据，但工作台任务入口和演示兜底没有对应卡片；用户仍要从 Skill 列表里猜英文名，且 `conference talk` 会被“conference”误判为投稿检查。修复为新增三类任务入口、启动说明、上下文预填和演示导航卡片，并把演示汇报/海报意图放到投稿检查之前。
+- Paper Writer Skill 标签仍混用 YAML 原始英文标签和中文标题，用户看到 `Related Work / Survey / Research Gap / Language Editing` 等标签时仍像在读内部配置。修复为内置 Skill 标签中文优先，测试和演示数据同步改为“相关工作、综述、研究空白、润色、审稿意见”等用户可扫读标签。
+- Paper Writer 对若干常见论文任务仍会给出空入口或误路由：`conclusion` 和“统计显著性检验”能推荐 Skill 但没有 starter；“找最新相关工作”会被文献综述抢走；`cover letter / ethical statement / data availability` 会误进审稿回复或结论。修复为新增“检索最新相关工作 / Conclusion / 统计分析 / 投稿材料”入口和意图优先级，并让投稿材料只要求 venue 规则和目标声明材料，不再错误要求 compiled PDF。
+- Paper Writer 对投稿收尾材料仍有误路由：`limitations` 会被 `page limit` 相关投稿检查抢走，`acknowledgements/highlights/author contributions/supplementary material` 会被带到基金、引言或引用管理，`graphical abstract` 会被当成普通摘要。修复为将 limitations 路由到 Discussion，highlights 路由到 Abstract，graphical abstract 路由到图表规划，致谢/作者贡献/补充材料路由到投稿材料检查，并扩展投稿材料入口说明。
+- Paper Writer 返修阶段任务仍容易误路由：`response letter revision summary` 会进入摘要，`根据审稿意见修改 introduction` 会进入普通引言，`major/minor concerns` 会进入引用管理，`revision checklist` 会进入投稿 checklist，`rebuttal cover letter` 会进入普通投稿材料。修复为把 reviewer/revision/action item 关键词提升到审稿回复意图，并扩展“审稿回复 / Rebuttal”入口为 revision plan、正文修改矩阵和 action list 工作流。
+- Paper Writer 真实写作日常任务仍会误路由或无入口：翻译、语法时态、压缩段落、降低 AI 痕迹、Nature 风格英文会进入通用澄清或图表 Skill；LaTeX/Overleaf 编译报错会误进引用管理；普通 `LaTeX table` 又容易被当成编译修复。修复为扩展 `writing-polish` 的语言编辑意图，新增 `latex-debugging` 编译修复 Skill 和 `latex-debug` 入口，并用负向规则避免没有报错信号的 LaTeX 表格任务误进编译修复。
+- Paper Writer 后期写作任务仍存在低分并列误判：dataset/title/appendix 会因没有强意图落到基金申请或引用管理，`keyword list` 会被 `citation key` 抢走，`伪代码` 和 `LaTeX tabular` 会被裸“代码/LaTeX”升级到 Tools，theorem/proof 会被 LaTeX 编译修复抢走。修复为给 Results/Method/Abstract/Submission/Polish 增加后期写作强规则，并移除裸 LaTeX/代码的工具触发，只有明确编译、运行、脚本、统计检验、画图等执行动作才进 Tools。
+- Paper Writer 投稿安全和采纳场景仍会误导用户：PDF metadata 匿名检查会被 RAG/PDF 诊断抢走并要求上传文献证据；`reviewers common concerns` 和“是否需要补实验”会停在 Chat；幻觉引用、单句证据核对、AI 输出审查和安全采纳包没有明确 Skill 入口。修复为新增 `evidence-review` 输出审查 Skill 和任务入口，PDF metadata/double blind 归入投稿检查，返修 concern/补实验升级到 Agent，可见动作直接指向输出审查、单句证据检查或安全采纳包。
+- Paper Writer 论文项目级任务仍会让用户绕路或误路由：写作计划、paper outline、idea 到 paper structure、故事线检查和审稿前风险清单没有独立入口，ACL/NeurIPS 风格改写还会被裸“论文”带到 `paper-planning`。修复为新增 `paper-planning` 论文规划 Skill 和中文任务入口，并给目标 venue 风格改写增加 `writing-polish` 强规则和 `paper-planning` 负向规则。
+- Paper Writer RAG 文档卡虽然会提示 metadata-only、扫描 PDF 或解析失败文档需要补充 Markdown/OCR 摘录，但主动作仍偏向文件上传焦点，真实用户不知道可以直接在页面里粘贴 OCR/人工摘录并预检。修复为当文档恢复诊断带有 noteTemplate 时，文档卡主修复按钮直接打开 OCR/摘录导入面板。
+- Paper Writer 论文审查类任务仍有模式和意图误判：contribution 强度、baseline 差异、实验是否支撑 claim、reviewer 挑刺会停在 Chat；`paragraph` 因包含 `rag` 子串会误进 RAG 诊断；“解释这篇论文的方法”会被论文规划抢走；`abstract 是否缺贡献` 会被 contribution 抢到 Introduction。修复为显式识别独立 RAG 词、增强审查类 Agent 触发、提升方法解释和摘要级任务优先级。
+- Paper Writer 中后期任务仍有多处优先级错误：method 小节标题被 Abstract 标题抢走，table 结果转正文被论文规划抢走，figure caption 支撑性检查停在 Chat，review 补实验计划被 Results 抢走，fake citation 没进入输出审查，appendix proof sketch 被投稿材料抢走。修复为补充 Method/Results/Figure/Rebuttal/Evidence Review 的强规则和负向规则，并让相关任务进入可确认 Agent 流程。
+- Paper Writer 目标上下文缺口提示过度机械：用户已经在任务里写了 Figure 2、Table 4、Reviewer 2 Comment 1、Appendix A、cover-letter.md、main.tex 或 related_work.tex 时，系统仍要求“选择目标章节或文件”；同时 cover-letter.md 会被 reviewer response 抢走。修复为识别明确目标线索并解除 target_section_or_file 缺口，且让 cover-letter 文件进入投稿材料。
+- Paper Writer 证据型写作任务会被普通写作词抢走：`Table 2 的结论有没有证据支撑` 会进入 Conclusion，`找和方法相反的观点` 会进入 Method，`总结 PDF 里支持 novelty 的证据` 会因 PDF 标签误进 LaTeX Debug，逐句证据编号/缺引用检查会进入 Literature Review。修复为扩展 `evidence-review` 的反例、负证据、逐句引用、citation grounding 和 AI 合并前审查规则，并在非编译语境下降低 PDF 对 LaTeX Debug 的权重。
+- Paper Writer 单句与章节级证据任务边界不清：`这句话需要引用哪几篇论文` 不应要求目标文件，`给 introduction 每个 claim 配 citation` 又不应被单句 claim 检查降成 Chat 或重复要求选文件。修复为单句 citation/claim 检查放宽 `target_section_or_file`，章节级 citation mapping 保持 Agent 审查并识别已写出的章节名。
+- Paper Writer 返修任务仍会被规划、工具或普通写作抢走：`reviewer 说 novelty weak` 会进入论文规划并停在 Chat，`response table` 会因 table+生成误进 Tools，rebuttal 过度承诺和 revision summary 会要求不必要的目标文件。修复为扩展 reviewer/revision 意图、给 `reviewer-response` 增加 novelty weak/response table/过度承诺强规则，并把 response table 排除出工具执行触发。
+- Paper Writer 投稿材料上下文过度机械：NeurIPS checklist、匿名 appendix、camera-ready 与 anonymous 规则冲突会一律要求 compiled PDF，或者政策冲突类问题还要求目标章节。修复为区分 PDF metadata、纯 checklist/规则冲突和具体材料审查：只有 PDF metadata 要 compiled PDF，纯规则问题只要 venue rules，具体 appendix/supplementary/artifact 材料仍要求目标材料。
+- Paper Writer `latexmk` 编译请求未被识别为 LaTeX Debug：`运行 latexmk 编译 main.tex 看看错误` 会被普通润色或通用工具信号抢走。修复为把 `latexmk` 纳入 LaTeX 编译错误/工具执行识别，并要求 `latex_error_log` 后再定位最小修复。
+- Paper Writer 图表/统计任务会被错误入口抢走：ROC 画图会落到 Evidence Review 或 Chat，ablation 折线图被 Results 抢走，方法流程图被 Method 抢走，实验数据异常值和 mean±std 没进统计，LaTeX table 排版被 Reviewer Response 抢走，Figure 颜色被 Writing Polish 抢走。修复为新增图表与统计强意图、上下文缺口收窄和模式分流：生成/脚本/计算进 Tools，图表审查进 Agent，统计解释保留 Chat。
+- Paper Writer 本地润色任务仍有不必要的上下文阻塞：`这段` 翻译、逐句表达诊断、tense consistency、压缩 30%、降低 AI 痕迹和 Figure caption 英文简化会被要求选择目标章节，或被图表 Skill 抢走。修复为把本地语言编辑优先归入 `writing-polish`，解除 `target_section_or_file` 缺口，并保留写入/保存前的 Agent 确认。
+- Paper Writer 摘要级和投稿材料小任务仍过度追问目标文件：生成 title/keywords、压缩 abstract 会要求选择章节，plain `cover letter` 不会被当成明确投稿材料目标。修复为 title/keywords/abstract 只要求论文概要，`cover letter` 作为目标线索解除 `target_section_or_file`，投稿材料仍要求 venue rules。
+- Paper Writer 后段交付物任务仍误路由或停在 Chat：slides/PPT/Beamer、poster、proposal/grant、camera-ready checklist、data/code/ethics statement 会被当成解释任务或被要求选择目标章节；Zotero/BibTeX 清理误进润色，未定义引用误进 evidence-review，arXiv anonymous 版本误进学术检索，benchmark paper 加证据库误进论文规划。修复为补充对应强意图、Agent 模式触发和无目标章节的交付物边界。
+- Paper Writer RAG metadata 与投稿 metadata 混淆：`PDF 只有 metadata` 会被当成投稿匿名 metadata 检查，`PDF metadata 是否匿名` 又会要求目标章节；supplementary 泄露作者信息一度被错误放过目标材料。修复为区分 metadata-only 解析失败、PDF metadata 匿名检查和 supplementary/appendix 材料审查三类上下文要求。
+- Paper Writer 安全采纳包端到端链路会丢目标章节：`buildPaperWorkbenchContext` 把结构化回答放在 `projectState.contextAnswers`，但 `buildAnswerAdoptionPackage` 和 adoption-package 路由返回上下文只读顶层 `contextAnswers`，导致用户已选择 `chapters/related_work.tex` 后仍被判定缺少目标章节。修复为兼容完整 Workbench context 形状，并在 API 响应中回传一致的 `targetSection`。

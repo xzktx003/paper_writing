@@ -9,7 +9,12 @@ dist
 coverage
 *.log
 papers/
+app/.codegraph/
+app/.tmp-test-home/
+app/.tmp-v8-coverage/
 .dev-runtime
+.paper-agent-runtime/
+.openprism/
 apps/server/.turbo
 apps/web/.turbo
 vibe-kanban

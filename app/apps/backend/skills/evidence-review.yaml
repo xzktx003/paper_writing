@@ -1,0 +1,37 @@
+name: evidence-review
+display_name: "Evidence Review"
+description: "Review AI-written text, citation grounding, single claims, hallucinated citations, and safe adoption readiness against the current evidence pack"
+type: review
+trigger: manual
+tags: [evidence, review, citation-safety, adoption]
+
+prompt: |
+  # Evidence Review and Safe Adoption
+
+  Review AI-generated academic text before it is used in a paper.
+
+  ## Workflow
+  1. Identify whether the user wants full-output review, single-claim evidence checking, citation hallucination detection, or a safe adoption package.
+  2. Compare every citation-like claim against the provided evidence pack.
+  3. Separate supported claims, unsupported claims, overstatements, missing citations, unknown source numbers, and evidence-pack drift.
+  4. Produce a revision plan before any adoption step.
+  5. If adoption is requested, generate a read-only human adoption checklist and manual diff plan only.
+
+  ## Must Preserve
+  - Evidence source numbers and snippets.
+  - Uncertainty boundaries from the evidence pack.
+  - The target section selected by the user.
+
+  ## Must Avoid
+  - Inventing authors, years, venues, DOIs, source numbers, or factual support.
+  - Treating an AI draft as safe just because it sounds plausible.
+  - Automatically writing, merging, overwriting, or deleting paper files.
+
+  ## Output
+  - Review verdict: adoptable, needs revision, or reject.
+  - Blocking findings and evidence gaps.
+  - Single-claim checks for high-risk claims.
+  - Revision prompt or safe adoption package when requested.
+
+  ## Language
+  Respond in the user's language. If Chinese, explain review findings and next actions in Chinese while preserving citations and source markers exactly.

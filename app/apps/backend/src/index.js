@@ -38,6 +38,8 @@ import { registerPipelineV2Routes } from './routes/pipelineV2.js';
 import { registerCitationVerificationRoutes } from './routes/citationVerification.js';
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerPaperRagRoutes } from './routes/paperRag.js';
+import { registerPaperWorkbenchRoutes } from './routes/paperWorkbench.js';
+import { registerWorkbenchPrototypeRoutes } from './routes/workbenchPrototype.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { registerAuthHook } from './middleware/auth.js';
@@ -92,6 +94,8 @@ registerPipelineV2Routes(fastify);
 registerCitationVerificationRoutes(fastify);
 registerMcpRoutes(fastify);
 registerPaperRagRoutes(fastify);
+registerPaperWorkbenchRoutes(fastify);
+registerWorkbenchPrototypeRoutes(fastify);
  
 // Config endpoints
 fastify.get('/api/config', async () => publicAppConfig(appConfig));

@@ -9,6 +9,7 @@ import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
 import { getProjectRoot } from '../services/projectService.js';
 import { diffLines } from 'diff';
+import { buildRagEvidence, buildRagUsageGuidance } from '../services/paperRagService.js';
  
 export async function resolveProjectPath(projectPath) {
   if (projectPath && projectPath.startsWith('__paper_agent__:')) {
@@ -157,6 +158,58 @@ async function buildContextMessages(conv, resolvedPath, projectConfig) {
   }
   return ctx;
 }
+
+function shouldUseRag({ rag, projectConfig, userMessage }) {
+  if (rag?.enabled === true || projectConfig?.rag_enabled === true || projectConfig?.rag?.enabled === true) {
+    return true;
+  }
+  if (rag?.enabled === false || projectConfig?.rag_enabled === false || projectConfig?.rag?.enabled === false) {
+    return false;
+  }
+  return /rag|知识库|证据|文献|论文|pdf|引用|related work|literature/i.test(String(userMessage || ''));
+}
+
+export async function buildRagMessages(resolvedPath, userMessage, options = {}) {
+  if (!shouldUseRag({ rag: options.rag, projectConfig: options.projectConfig, userMessage })) {
+    return { messages: [], evidence: { query: '', context: '', results: [] }, usageGuidance: '' };
+  }
+  const query = String(options.rag?.query || userMessage || '').trim();
+  if (!query) return { messages: [], evidence: { query: '', context: '', results: [] }, usageGuidance: '' };
+  const evidence = await buildRagEvidence(resolvedPath, query, {
+    limit: options.rag?.limit || options.projectConfig?.rag?.limit || 5,
+  }).catch((error) => {
+    console.warn('RAG context retrieval failed:', error.message);
+    return { query, context: '', results: [], error: error.message };
+  });
+  const usageGuidance = buildRagUsageGuidance(evidence);
+  if (!evidence.context) {
+    return { messages: [], evidence, usageGuidance };
+  }
+  return {
+    evidence,
+    usageGuidance,
+    messages: [
+      {
+        role: 'user',
+        content: `[System: RAG evidence retrieved for the current question]\n${usageGuidance}\n\nRetrieved evidence:\n${evidence.context}`,
+      },
+      {
+        role: 'assistant',
+        content: 'I have read the retrieved RAG evidence and will cite only the provided evidence when relevant.',
+      },
+    ],
+  };
+}
+
+export function buildRagResponseFields(ragResult) {
+  const evidence = ragResult?.evidence || { query: '', context: '', results: [] };
+  if (!evidence.query && !evidence.context && !evidence.error) return {};
+  return {
+    ragContext: evidence.context || undefined,
+    ragEvidence: evidence,
+    ragUsageGuidance: ragResult?.usageGuidance || undefined,
+  };
+}
  
 function classifyAIError(err) {
   const status = err.status || err.statusCode;
@@ -182,7 +235,7 @@ function classifyAIError(err) {
 export function registerAIRoutes(fastify) {
   // ── SSE Streaming endpoint ──────────────────────────────
   fastify.post('/api/ai/stream', async (request, reply) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig, images } = request.body;
+    const { projectId, convId, projectPath, userMessage, projectConfig, images, rag } = request.body;
  
     const resolvedPath = await resolveProjectPath(projectPath);
     const conv = await getConversation(projectId, convId);
@@ -199,10 +252,11 @@ export function registerAIRoutes(fastify) {
  
     // Auto context injection: read current chapter / paper structure / references
     const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
+    const ragContext = await buildRagMessages(resolvedPath, userMessage, { rag, projectConfig });
  
     // Build user message with optional image attachments
     const userContent = buildUserMessageContent(userMessage, images);
-    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userContent }];
+    const messages = [...contextMessages, ...ragContext.messages, ...conv.history, { role: 'user', content: userContent }];
     const modelOverride = conv.model || undefined;
  
     // Set SSE headers
@@ -223,6 +277,9 @@ export function registerAIRoutes(fastify) {
     };
  
     try {
+      if (ragContext.evidence.context) {
+        sendEvent('rag_context', { evidence: ragContext.evidence });
+      }
       if (conv.mode === 'chat') {
         const result = await chatCompletionStream({
           systemPrompt, messages, model: modelOverride,
@@ -230,7 +287,7 @@ export function registerAIRoutes(fastify) {
           onToken: (text) => sendEvent('token', { text }),
         });
         await appendMessage(projectId, convId, { role: 'assistant', content: result.fullText });
-        sendEvent('done', { fullText: result.fullText });
+        sendEvent('done', { fullText: result.fullText, ...buildRagResponseFields(ragContext) });
       } else {
         // agent/tools mode with streaming
         let fullText = '';
@@ -247,7 +304,7 @@ export function registerAIRoutes(fastify) {
           },
         });
         await appendMessage(projectId, convId, { role: 'assistant', content: result.fullText });
-        sendEvent('done', { fullText: result.fullText });
+        sendEvent('done', { fullText: result.fullText, ...buildRagResponseFields(ragContext) });
       }
     } catch (err) {
       if (abortController.signal.aborted) return;
@@ -259,7 +316,7 @@ export function registerAIRoutes(fastify) {
  
   // ── Legacy non-streaming endpoint ────────────────────────
   fastify.post('/api/ai/send', async (request) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig, images } = request.body;
+    const { projectId, convId, projectPath, userMessage, projectConfig, images, rag } = request.body;
  
     const resolvedPath = await resolveProjectPath(projectPath);
     const conv = await getConversation(projectId, convId);
@@ -277,10 +334,11 @@ export function registerAIRoutes(fastify) {
  
     // Auto context injection
     const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
+    const ragContext = await buildRagMessages(resolvedPath, userMessage, { rag, projectConfig });
  
     // Build user message with optional image attachments
     const userContent = buildUserMessageContent(userMessage, images);
-    const messages = [...contextMessages, ...conv.history, { role: 'user', content: userContent }];
+    const messages = [...contextMessages, ...ragContext.messages, ...conv.history, { role: 'user', content: userContent }];
     const modelOverride = conv.model || undefined;
  
     try {
@@ -289,7 +347,7 @@ export function registerAIRoutes(fastify) {
         const textBlock = response.content.find(b => b.type === 'text');
         const assistantMsg = textBlock?.text || '';
         await appendMessage(projectId, convId, { role: 'assistant', content: assistantMsg });
-        return { reply: assistantMsg };
+        return { reply: assistantMsg, ...buildRagResponseFields(ragContext) };
       }
  
       if (conv.mode === 'tools' || conv.mode === 'agent') {
@@ -306,7 +364,7 @@ export function registerAIRoutes(fastify) {
         const textBlock = lastContent.find(b => b.type === 'text');
         const assistantMsg = textBlock?.text || '';
         await appendMessage(projectId, convId, { role: 'assistant', content: assistantMsg });
-        return { reply: assistantMsg };
+        return { reply: assistantMsg, ...buildRagResponseFields(ragContext) };
       }
  
       return { reply: 'Unknown mode' };
