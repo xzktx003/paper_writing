@@ -159,6 +159,11 @@ if (existsSync(frontendDist)) {
     root: frontendDist,
     prefix: '/',
     wildcard: true,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
   });
  
   fastify.setNotFoundHandler((req, reply) => {
