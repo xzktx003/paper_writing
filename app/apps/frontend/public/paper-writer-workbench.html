@@ -515,12 +515,14 @@
       border-radius: 6px;
       overflow: hidden;
     }
-    .editor-container.view-source .pdf-pane { display: none; }
-    .editor-container.view-source .source-pane { flex: 1; }
+    .editor-container.view-preview .pdf-pane { display: none; }
+    .editor-container.view-preview .source-pane { flex: 1; }
     .editor-container.view-rendered .source-pane { display: none; }
     .editor-container.view-rendered .pdf-pane { flex: 1; }
     .editor-container.view-split .source-pane { flex: 1; }
     .editor-container.view-split .pdf-pane { flex: 1; }
+    .editor-container.view-diff .source-pane { flex: 1; }
+    .editor-container.view-diff .pdf-pane { flex: 1; }
     .editor-pane {
       display: flex;
       flex-direction: column;
@@ -1089,9 +1091,10 @@
           <div class="panel-body">
             <div class="compile-controls">
               <div class="view-mode-tabs" id="viewModeTabs">
-                <button class="view-tab active" data-mode="source">Source</button>
-                <button class="view-tab" data-mode="split">Split</button>
-                <button class="view-tab" data-mode="rendered">Rendered</button>
+                <button class="view-tab active" data-mode="source">Preview</button>
+                <button class="view-tab" data-mode="split">翻译</button>
+                <button class="view-tab" data-mode="diff">Diff</button>
+                <button class="view-tab" data-mode="rendered">PDF</button>
               </div>
               <label class="auto-compile-toggle">
                 <input type="checkbox" id="autoCompileToggle" checked>
@@ -1100,7 +1103,7 @@
               <button id="compileNowBtn" class="btn" type="button">立即编译</button>
             </div>
             <div id="compileLog" class="compile-log-area" style="display:none;"></div>
-            <div id="editorContainer" class="editor-container view-source">
+            <div id="editorContainer" class="editor-container view-preview">
               <div id="sourcePane" class="editor-pane source-pane">
                 <div class="pane-header">
                   <span id="sourceEditorTitle">源码</span>
@@ -8404,7 +8407,7 @@ ${escapeHtml(ref.snippet || '')}</div>
     // ═══════════════════════════════════════════════════════
     (function initCompileSync() {
       const synctexState = {
-        viewMode: 'source',       // source | split | rendered
+        viewMode: 'preview',       // source | split | rendered
         autoCompile: true,
         pdfDoc: null,
         currentPage: 1,
@@ -8454,8 +8457,9 @@ ${escapeHtml(ref.snippet || '')}</div>
         synctexState.viewMode = mode;
         $viewTabs.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
         $container.className = 'editor-container view-' + mode;
-        if ((mode === 'split' || mode === 'rendered') && synctexState.pdfDoc) {
-          renderCurrentPage();
+        if ((mode === 'split' || mode === 'diff' || mode === 'rendered')) {
+          if (synctexState.pdfDoc) renderCurrentPage();
+          else if (synctexState.autoCompile && synctexState.currentFile) scheduleCompile();
         }
       });
 
