@@ -1,0 +1,348 @@
+{
+  "model": "qwen3.5-9b",
+  "n_layers_measured": 56,
+  "total_rho_samples": 279943,
+  "rho_bar": 0.03974419388739995,
+  "rho_sq_bar": 0.002830619949006478,
+  "rho_median": 0.030700957402586937,
+  "rho_p95": 0.10645816400647133,
+  "N_crossover": 353.2794999028361,
+  "layer_details": {
+    "model.layers.0.linear_attn.in_proj_qkv": {
+      "rho_mean": 0.04742026701569557,
+      "rho_std": 0.03883344680070877,
+      "rho_sq_mean": 0.003756416728720069,
+      "d": 4096
+    },
+    "model.layers.0.linear_attn.in_proj_z": {
+      "rho_mean": 0.04674782231450081,
+      "rho_std": 0.03744189813733101,
+      "rho_sq_mean": 0.003586974460631609,
+      "d": 4096
+    },
+    "model.layers.0.linear_attn.in_proj_b": {
+      "rho_mean": 0.04809557646512985,
+      "rho_std": 0.03988965228199959,
+      "rho_sq_mean": 0.0039040499832481146,
+      "d": 4096
+    },
+    "model.layers.0.linear_attn.in_proj_a": {
+      "rho_mean": 0.04668533429503441,
+      "rho_std": 0.03857101872563362,
+      "rho_sq_mean": 0.003666946664452553,
+      "d": 4096
+    },
+    "model.layers.0.linear_attn.out_proj": {
+      "rho_mean": 0.05561934411525726,
+      "rho_std": 0.06869851052761078,
+      "rho_sq_mean": 0.007812053430825472,
+      "d": 4096
+    },
+    "model.layers.0.mlp.gate_proj": {
+      "rho_mean": 0.043099407106637955,
+      "rho_std": 0.03431161493062973,
+      "rho_sq_mean": 0.00303461030125618,
+      "d": 4096
+    },
+    "model.layers.0.mlp.up_proj": {
+      "rho_mean": 0.04307682439684868,
+      "rho_std": 0.033993545919656754,
+      "rho_sq_mean": 0.0030109421350061893,
+      "d": 4096
+    },
+    "model.layers.0.mlp.down_proj": {
+      "rho_mean": 0.028150856494903564,
+      "rho_std": 0.030389735475182533,
+      "rho_sq_mean": 0.001715822028927505,
+      "d": 12288
+    },
+    "model.layers.1.linear_attn.in_proj_qkv": {
+      "rho_mean": 0.0429234504699707,
+      "rho_std": 0.03408531844615936,
+      "rho_sq_mean": 0.0030039993580430746,
+      "d": 4096
+    },
+    "model.layers.1.linear_attn.in_proj_z": {
+      "rho_mean": 0.04269061237573624,
+      "rho_std": 0.033571429550647736,
+      "rho_sq_mean": 0.002949303714558482,
+      "d": 4096
+    },
+    "model.layers.1.linear_attn.in_proj_b": {
+      "rho_mean": 0.042721863836050034,
+      "rho_std": 0.03306232765316963,
+      "rho_sq_mean": 0.0029180566780269146,
+      "d": 4096
+    },
+    "model.layers.1.linear_attn.in_proj_a": {
+      "rho_mean": 0.04261947423219681,
+      "rho_std": 0.0335691012442112,
+      "rho_sq_mean": 0.0029430785216391087,
+      "d": 4096
+    },
+    "model.layers.1.linear_attn.out_proj": {
+      "rho_mean": 0.025491507723927498,
+      "rho_std": 0.035850200802087784,
+      "rho_sq_mean": 0.0019347969209775329,
+      "d": 4096
+    },
+    "model.layers.1.mlp.gate_proj": {
+      "rho_mean": 0.039219439029693604,
+      "rho_std": 0.0319037064909935,
+      "rho_sq_mean": 0.0025558071210980415,
+      "d": 4096
+    },
+    "model.layers.1.mlp.up_proj": {
+      "rho_mean": 0.03956206142902374,
+      "rho_std": 0.03228624910116196,
+      "rho_sq_mean": 0.0026073495391756296,
+      "d": 4096
+    },
+    "model.layers.1.mlp.down_proj": {
+      "rho_mean": 0.027462143450975418,
+      "rho_std": 0.028289292007684708,
+      "rho_sq_mean": 0.0015542934415861964,
+      "d": 12288
+    },
+    "model.layers.2.linear_attn.in_proj_qkv": {
+      "rho_mean": 0.04035791754722595,
+      "rho_std": 0.032257553189992905,
+      "rho_sq_mean": 0.002669103443622589,
+      "d": 4096
+    },
+    "model.layers.2.linear_attn.in_proj_z": {
+      "rho_mean": 0.0401645265519619,
+      "rho_std": 0.03228311240673065,
+      "rho_sq_mean": 0.0026551801711320877,
+      "d": 4096
+    },
+    "model.layers.2.linear_attn.in_proj_b": {
+      "rho_mean": 0.04027145728468895,
+      "rho_std": 0.0319662019610405,
+      "rho_sq_mean": 0.0026434240862727165,
+      "d": 4096
+    },
+    "model.layers.2.linear_attn.in_proj_a": {
+      "rho_mean": 0.041292838752269745,
+      "rho_std": 0.032115429639816284,
+      "rho_sq_mean": 0.002736293012276292,
+      "d": 4096
+    },
+    "model.layers.2.linear_attn.out_proj": {
+      "rho_mean": 0.026216650381684303,
+      "rho_std": 0.03460637107491493,
+      "rho_sq_mean": 0.0018846740713343024,
+      "d": 4096
+    },
+    "model.layers.2.mlp.gate_proj": {
+      "rho_mean": 0.04273408651351929,
+      "rho_std": 0.03380732238292694,
+      "rho_sq_mean": 0.002968908753246069,
+      "d": 4096
+    },
+    "model.layers.2.mlp.up_proj": {
+      "rho_mean": 0.041463177651166916,
+      "rho_std": 0.03296685591340065,
+      "rho_sq_mean": 0.0028057913295924664,
+      "d": 4096
+    },
+    "model.layers.2.mlp.down_proj": {
+      "rho_mean": 0.03315281122922897,
+      "rho_std": 0.03521574288606644,
+      "rho_sq_mean": 0.0023390091955661774,
+      "d": 12288
+    },
+    "model.layers.3.self_attn.q_proj": {
+      "rho_mean": 0.041335783898830414,
+      "rho_std": 0.032552167773246765,
+      "rho_sq_mean": 0.0027680788189172745,
+      "d": 4096
+    },
+    "model.layers.3.self_attn.k_proj": {
+      "rho_mean": 0.040294405072927475,
+      "rho_std": 0.03200354054570198,
+      "rho_sq_mean": 0.002647660905495286,
+      "d": 4096
+    },
+    "model.layers.3.self_attn.v_proj": {
+      "rho_mean": 0.04090195521712303,
+      "rho_std": 0.032108113169670105,
+      "rho_sq_mean": 0.002703694626688957,
+      "d": 4096
+    },
+    "model.layers.3.self_attn.o_proj": {
+      "rho_mean": 0.04796580970287323,
+      "rho_std": 0.048134662210941315,
+      "rho_sq_mean": 0.004617201164364815,
+      "d": 4096
+    },
+    "model.layers.3.mlp.gate_proj": {
+      "rho_mean": 0.05014393851161003,
+      "rho_std": 0.03997878357768059,
+      "rho_sq_mean": 0.004112397786229849,
+      "d": 4096
+    },
+    "model.layers.3.mlp.up_proj": {
+      "rho_mean": 0.05058862268924713,
+      "rho_std": 0.0412629172205925,
+      "rho_sq_mean": 0.004261495545506477,
+      "d": 4096
+    },
+    "model.layers.3.mlp.down_proj": {
+      "rho_mean": 0.033789731562137604,
+      "rho_std": 0.032735567539930344,
+      "rho_sq_mean": 0.0022131488658487797,
+      "d": 12288
+    },
+    "model.layers.4.linear_attn.in_proj_qkv": {
+      "rho_mean": 0.046060044318437576,
+      "rho_std": 0.037137556821107864,
+      "rho_sq_mean": 0.0035004497040063143,
+      "d": 4096
+    },
+    "model.layers.4.linear_attn.in_proj_z": {
+      "rho_mean": 0.04595714807510376,
+      "rho_std": 0.03714713826775551,
+      "rho_sq_mean": 0.0034916929434984922,
+      "d": 4096
+    },
+    "model.layers.4.linear_attn.in_proj_b": {
+      "rho_mean": 0.044909533113241196,
+      "rho_std": 0.035941775888204575,
+      "rho_sq_mean": 0.003308419371023774,
+      "d": 4096
+    },
+    "model.layers.4.linear_attn.in_proj_a": {
+      "rho_mean": 0.04534163326025009,
+      "rho_std": 0.0371171198785305,
+      "rho_sq_mean": 0.0034332687500864267,
+      "d": 4096
+    },
+    "model.layers.4.linear_attn.out_proj": {
+      "rho_mean": 0.027202831581234932,
+      "rho_std": 0.03748277202248573,
+      "rho_sq_mean": 0.0021446712780743837,
+      "d": 4096
+    },
+    "model.layers.4.mlp.gate_proj": {
+      "rho_mean": 0.044595710933208466,
+      "rho_std": 0.03526788949966431,
+      "rho_sq_mean": 0.003232352901250124,
+      "d": 4096
+    },
+    "model.layers.4.mlp.up_proj": {
+      "rho_mean": 0.044404029846191406,
+      "rho_std": 0.0350760817527771,
+      "rho_sq_mean": 0.003201803658157587,
+      "d": 4096
+    },
+    "model.layers.4.mlp.down_proj": {
+      "rho_mean": 0.031779609620571136,
+      "rho_std": 0.028646040707826614,
+      "rho_sq_mean": 0.0018303749384358525,
+      "d": 12288
+    },
+    "model.layers.5.linear_attn.in_proj_qkv": {
+      "rho_mean": 0.04151758551597595,
+      "rho_std": 0.03385322540998459,
+      "rho_sq_mean": 0.002869521966204047,
+      "d": 4096
+    },
+    "model.layers.5.linear_attn.in_proj_z": {
+      "rho_mean": 0.04264361038804054,
+      "rho_std": 0.034046463668346405,
+      "rho_sq_mean": 0.002977407071739435,
+      "d": 4096
+    },
+    "model.layers.5.linear_attn.in_proj_b": {
+      "rho_mean": 0.04153721034526825,
+      "rho_std": 0.033520087599754333,
+      "rho_sq_mean": 0.0028487113304436207,
+      "d": 4096
+    },
+    "model.layers.5.linear_attn.in_proj_a": {
+      "rho_mean": 0.042486343532800674,
+      "rho_std": 0.033748526126146317,
+      "rho_sq_mean": 0.0029438247438520193,
+      "d": 4096
+    },
+    "model.layers.5.linear_attn.out_proj": {
+      "rho_mean": 0.02397470921278,
+      "rho_std": 0.028616171330213547,
+      "rho_sq_mean": 0.0013935081660747528,
+      "d": 4096
+    },
+    "model.layers.5.mlp.gate_proj": {
+      "rho_mean": 0.03958093747496605,
+      "rho_std": 0.0312783382833004,
+      "rho_sq_mean": 0.002544789109379053,
+      "d": 4096
+    },
+    "model.layers.5.mlp.up_proj": {
+      "rho_mean": 0.03827829286456108,
+      "rho_std": 0.030343417078256607,
+      "rho_sq_mean": 0.002385766478255391,
+      "d": 4096
+    },
+    "model.layers.5.mlp.down_proj": {
+      "rho_mean": 0.027035614475607872,
+      "rho_std": 0.024391228333115578,
+      "rho_sq_mean": 0.00132573745213449,
+      "d": 12288
+    },
+    "model.layers.6.linear_attn.in_proj_qkv": {
+      "rho_mean": 0.0380287766456604,
+      "rho_std": 0.02965020202100277,
+      "rho_sq_mean": 0.002325146459043026,
+      "d": 4096
+    },
+    "model.layers.6.linear_attn.in_proj_z": {
+      "rho_mean": 0.03740767762064934,
+      "rho_std": 0.03015316277742386,
+      "rho_sq_mean": 0.0023083656560629606,
+      "d": 4096
+    },
+    "model.layers.6.linear_attn.in_proj_b": {
+      "rho_mean": 0.03769551217556,
+      "rho_std": 0.029737066477537155,
+      "rho_sq_mean": 0.0023050683084875345,
+      "d": 4096
+    },
+    "model.layers.6.linear_attn.in_proj_a": {
+      "rho_mean": 0.03722637519240379,
+      "rho_std": 0.02971077337861061,
+      "rho_sq_mean": 0.0022683567367494106,
+      "d": 4096
+    },
+    "model.layers.6.linear_attn.out_proj": {
+      "rho_mean": 0.029246311634778976,
+      "rho_std": 0.03195185586810112,
+      "rho_sq_mean": 0.0018760637613013387,
+      "d": 4096
+    },
+    "model.layers.6.mlp.gate_proj": {
+      "rho_mean": 0.03948359191417694,
+      "rho_std": 0.03118249773979187,
+      "rho_sq_mean": 0.002531107747927308,
+      "d": 4096
+    },
+    "model.layers.6.mlp.up_proj": {
+      "rho_mean": 0.03905947878956795,
+      "rho_std": 0.03115423582494259,
+      "rho_sq_mean": 0.002496035536751151,
+      "d": 4096
+    },
+    "model.layers.6.mlp.down_proj": {
+      "rho_mean": 0.027064785361289978,
+      "rho_std": 0.02363673597574234,
+      "rho_sq_mean": 0.0012910861987620592,
+      "d": 12288
+    },
+    "model.layers.7.self_attn.q_proj": {
+      "rho_mean": 0.04092710465192795,
+      "rho_std": 0.03207052871584892,
+      "rho_sq_mean": 0.002703340956941247,
+      "d": 4096
+    }
+  }
+}
