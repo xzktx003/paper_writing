@@ -230,6 +230,9 @@ class UnifiedAdaptiveQuantizer:
         # 分层量化
         if self.config.use_hierarchical and variance_ratio >= 0.1:
             if self.hierarchical_quantizer is not None:
+                # Ensure float dtype for hierarchical quantizer
+                if quantized.dtype != torch.float32:
+                    quantized = quantized.float()
                 hier_result = self.hierarchical_quantizer.quantize_layer(
                     quantized,
                     hessian_diagonal=hessian_diagonal,

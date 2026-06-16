@@ -333,7 +333,7 @@ class DynamicCodebookMixer:
             temperature = self.config.interpolation_temperature
         
         # 检查缓存
-        cache_key = round(sparsity, 3)
+        cache_key = round(float(sparsity), 3)
         if self._cache_enabled and cache_key in self._modulated_cache:
             return self._modulated_cache[cache_key]
         
@@ -363,7 +363,8 @@ class DynamicCodebookMixer:
         
         # 压缩非零级别
         # 保持零级别不变
-        cb[nonzero_mask] = nonzero_vals * compression
+        compression_np = float(compression) if hasattr(compression, 'item') else compression
+        cb[nonzero_mask] = nonzero_vals * compression_np
         
         # 归一化到原始范围
         new_range = np.max(np.abs(cb[nonzero_mask]))
