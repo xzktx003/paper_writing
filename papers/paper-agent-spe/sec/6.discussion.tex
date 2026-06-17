@@ -1,0 +1,136 @@
+\section{Discussion and Lessons Learned}
+\label{sec:discussion}
+
+\subsection{Treating Writing as Document Engineering}
+
+The central insight from building \software{} is that AI-assisted academic
+writing benefits fundamentally from being treated as a document engineering
+problem rather than a text generation problem. When the system understands
+manuscript structure---chapter boundaries, citation graphs, compilation
+dependencies, and file hierarchies---it can provide context-aware assistance
+that general-purpose chat interfaces cannot:
+
+\begin{itemize}
+  \item \textbf{Automatic context injection:} The system injects relevant
+  chapter content and bibliography into AI context without manual copy-paste.
+  A single ``review this chapter'' request automatically includes the chapter
+  source, the abstract, and related chapter summaries.
+  \item \textbf{Verification-driven generation:} Generated citations can be
+  verified against scholarly databases in real-time, preventing hallucinated
+  references from entering the manuscript.
+  \item \textbf{Compilation-aware editing:} Edits can be validated by
+  attempting compilation and surfacing errors. This catches missing packages,
+  undefined references, and broken cross-references.
+\end{itemize}
+
+This engineering mindset also affects how we think about AI quality. A
+generated paragraph that reads fluently but cites a non-existent paper or
+introduces an undefined \LaTeX{} label is a document engineering failure,
+regardless of its textual quality. By centering the system around project
+structure rather than text streams, \software{} makes these failures visible
+and actionable.
+
+\subsection{The Value of Permission Boundaries}
+
+The three-mode permission model (Chat, Agent, Tools) introduced in
+Section~\ref{sec:design} proved to be among the more consequential design
+decisions. Based on feedback from five early adopters
+(Table~\ref{tab:early-users}), each mode creates a distinct mental model
+for the user:
+
+\begin{itemize}
+  \item \textbf{Chat mode} became the ``safe space'' for brainstorming,
+  discussing reviewer comments, or exploring alternative phrasings. Users
+  reported that knowing the AI could not make any changes encouraged more
+  exploratory and creative use.
+  \item \textbf{Agent mode} became the ``proposal desk.'' Users could see
+  exactly what would change before committing. The inline diff visualization
+  built trust in the AI's suggestions, even as the scope of edits grew.
+  \item \textbf{Tools mode} became the ``workshop'' for operations that span
+  multiple steps, such as ``find all passive voice constructions across all
+  sections and suggest rewrites.''
+\end{itemize}
+
+This separation reduced anxiety about unintended modifications and
+encouraged more frequent and more ambitious AI
+assistance. Users who were reluctant to use AI in ``auto-edit'' systems
+reported comfort with the gated approval workflow.
+
+\subsection{Pipelines as Process Documentation}
+
+An unexpected benefit of the pipeline engine is that executed pipelines serve
+as process documentation. Each completed pipeline records:
+\begin{itemize}
+  \item Which AI stages were run and with what parameters.
+  \item What human feedback was provided at each checkpoint.
+  \item Whether compilation succeeded or failed and what errors occurred.
+  \item The final artifact (PDF) and intermediate outputs.
+\end{itemize}
+This audit trail is valuable for understanding how a manuscript evolved over
+time, for onboarding new collaborators, and for research on writing workflows.
+In future versions, this could be formalized as an explicit provenance
+subsystem exportable as supplementary material.
+
+\subsection{Local-First as a Practical Advantage}
+
+The local-first architecture provided tangible benefits beyond the philosophical
+appeal of data ownership. Manuscripts remain ordinary directories that can be
+backed up via rsync, versioned with git, and shared via cloud storage or
+USB---all without depending on \software{}. Configuration in \texttt{.env}
+files means that different projects can use different LLM providers (OpenAI,
+Anthropic, local models via Ollama~\cite{ollama}) without changing application code.
+
+The ability to use external tools (git diff, grep, shell scripts) alongside
+\software{} reduced the pressure to implement every conceivable feature within
+the application. For example, global search-and-replace across multiple files
+is more efficiently performed with \texttt{sed} or VS Code's search feature
+than through a custom UI.
+
+\subsection{MCP as an Enabling Standard}
+
+The MCP interoperability layer described in Sections~\ref{sec:design}
+and~\ref{sec:implementation} validated the decision to adopt an emerging standard
+rather than design a custom API. During testing, Claude Desktop and Cursor discovered
+and invoked \software{} tools (paper search, citation verification, \LaTeX{}
+compilation) through MCP within minutes of configuration (see the concrete use cases
+in Section~\ref{sec:implementation}). In the citation-verification use case, MCP
+reduced a 30--45 minute manual cross-referencing task to a 12-second single-command
+operation. In the compilation-diagnosis use case, MCP replaced a 3--5 minute
+edit--compile--debug cycle with an 8-second tool invocation and structured error
+report. These results demonstrate that standards-based interoperability can
+significantly reduce integration costs and improve researcher productivity for
+repetitive document-engineering tasks. We recommend that new scholarly tools consider
+MCP adoption as a lightweight path to AI ecosystem integration.
+
+\subsection{Open Challenges for the Community}
+\label{sec:open-challenges}
+
+Three broader challenges emerged from our development experience that merit
+attention from the research software community:
+
+\begin{itemize}
+  \item \textbf{Evaluation methodology for AI-assisted writing tools.}
+  Standard metrics for evaluating AI-assisted writing platforms remain absent.
+  Existing work focuses on text quality (perplexity, BLEU, ROUGE), but these
+  metrics do not capture workflow integration, user trust, or citation accuracy.
+  Developing evaluation frameworks that encompass the full document engineering
+  lifecycle---from draft to compilable, citation-verified manuscript---is an
+  open problem that the community should address.
+
+  \item \textbf{Trust calibration in AI-augmented workflows.}
+  How should users calibrate their trust in AI-generated changes? The
+  permission mode system helps, but users may still over-rely on AI
+  verification for citations or under-rely on AI suggestions for structure.
+  Research on human-AI trust dynamics in document engineering---as distinct
+  from general-purpose chat---would inform better interface design.
+
+  \item \textbf{Long-document coherence under AI assistance.}
+  For manuscripts exceeding 50 pages (e.g., PhD theses or monographs),
+  maintaining global coherence across independently generated or revised
+  sections remains challenging, even with project-level context injection.
+  This problem is likely to grow as AI-assisted writing scales to book-length
+  projects.
+\end{itemize}
+
+We discuss \software{}-specific limitations and future development plans in
+Section~\ref{sec:limitations}.

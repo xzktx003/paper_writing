@@ -1,0 +1,136 @@
+\documentclass[number]{USG}
+
+% subcaption loaded by USG.cls
+\usepackage{listings}
+\usepackage[numbers]{NJDnatbib}
+\setcitestyle{numbers,square}
+\graphicspath{{./figures/}{./wiley/images/}}
+
+% Code listings configuration
+\lstdefinelanguage{JavaScript}{
+  morekeywords={const,let,var,function,return,if,else,throw,new},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]"
+}
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  keywordstyle=\bfseries\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  aboveskip=3pt,
+  belowskip=3pt
+}
+
+% Custom column type
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% Custom commands
+\newcommand{\softwarename}{Paper Agent}
+\newcommand{\software}{\textit{\softwarename}}
+\newcommand{\repo}{\url{https://github.com/xzktx003/paper_wrighting}}
+
+% ===========================================================================
+% Metadata
+% ===========================================================================
+\journal{Software: Practice and Experience}
+\articletype{Original Article}
+
+\title{\software{}: A Local-First Human-in-the-Loop Agentic Workspace for Controllable Academic Writing}
+
+\author[1]{ZuKang Xu}[https://orcid.org/0009-0008-5899-3865]
+
+\authormark{Xu}
+
+\address[1]{\orgname{Houmo AI, }\orgaddress{\state{Jiangsu, }\country{China}}}
+
+\corres{ZuKang Xu, \email{zukang.xu@houmo.ai}}
+
+% Production metadata such as received/revised/accepted dates and DOI are
+% assigned by the journal and should not contain template placeholders.
+
+\keywords{academic writing \sep large language models \sep human-in-the-loop \sep document engineering \sep \LaTeX \sep software architecture \sep agentic workflow}
+
+% ===========================================================================
+% DOCUMENT
+% ===========================================================================
+\begin{document}
+
+% ===========================================================================
+% ABSTRACT (must come before \maketitle in USG.cls)
+% ===========================================================================
+\abstract[ABSTRACT]{Large language models (LLMs) are increasingly used to assist academic writing,
+yet general-purpose chat interfaces disconnect model output from the scholarly
+artifacts---\LaTeX{} source files, bibliographic databases, figures, compiler
+logs, and reviewer feedback---that constitute a real manuscript. We present
+\textit{Paper Agent}, a local-first, human-in-the-loop software platform that treats
+each manuscript as a filesystem-backed project and integrates AI assistance
+into a complete document engineering workflow. The system combines a
+React/Vite frontend with a Fastify/Node.js backend and provides
+permission-aware AI interaction modes (Chat, Agent, Tools), typed workflow
+pipelines with human checkpoints, citation verification against scholarly
+databases (CrossRef, Semantic Scholar, OpenAlex), \LaTeX{} compilation via
+multiple engines, Model Context Protocol (MCP) interoperability, and an
+integrated tmux terminal. We describe the design rationale, architecture, and
+implementation of \textit{Paper Agent}, report on practical experience from developing
+and using the system, and discuss lessons learned about building controllable
+AI-assisted writing environments. The implementation comprises approximately
+10,600 lines of backend JavaScript and 12,500 lines of frontend TypeScript/JSX,
+validated by a 32-file Vitest suite containing 227 automated tests plus a
+Playwright end-to-end scenario. We argue that treating manuscript writing as a
+verifiable document engineering pipeline---rather than an isolated
+text-generation task---enables researchers to retain control over AI-generated
+edits while benefiting from language model assistance.}
+
+\maketitle
+
+\input{sec/1.introduction}
+
+% ===========================================================================
+% 2. RELATED WORK
+% ===========================================================================
+\input{sec/2.related-work}
+
+% ===========================================================================
+% 3. SYSTEM DESIGN AND ARCHITECTURE
+% ===========================================================================
+\input{sec/3.design}
+
+% ===========================================================================
+% 4. IMPLEMENTATION
+% ===========================================================================
+\input{sec/4.implementation}
+
+% ===========================================================================
+% 5. EVALUATION AND EXPERIENCE
+% ===========================================================================
+\input{sec/5.evaluation}
+
+% ===========================================================================
+% 6. DISCUSSION AND LESSONS LEARNED
+% ===========================================================================
+\input{sec/6.discussion}
+
+% ===========================================================================
+% 7. LIMITATIONS AND FUTURE WORK
+% ===========================================================================
+\input{sec/7.limitations}
+
+% ===========================================================================
+% 8. CONCLUSION
+% ===========================================================================
+\input{sec/8.conclusion}
+
+% ===========================================================================
+% BIBLIOGRAPHY
+% ===========================================================================
+\bibliographystyle{wiley/wileyNJD-Chicago-lastoo}
+\bibliography{references}
+
+\end{document}

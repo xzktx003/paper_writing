@@ -1,0 +1,116 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper has presented \software{}, a local-first, human-in-the-loop
+platform that reframes AI-assisted academic writing as a document engineering
+problem. By grounding AI assistance in a filesystem-backed project model with
+permission-aware interaction, typed workflow pipelines, and multi-API citation
+verification, the system addresses three practical problems---context
+fragmentation, unaudited edits, and unverifiable artifacts---that general-purpose
+chat interfaces leave unresolved.
+
+The implementation comprises approximately 23,100 lines of application source
+code across a monorepo with a React/Vite frontend and Fastify/Node.js backend,
+validated by a 32-file Vitest suite containing 227 automated tests and a
+Playwright end-to-end scenario.
+
+Our experience building and using \software{} suggests three broader lessons
+for the design of AI-assisted writing tools:
+
+\begin{enumerate}
+  \item \textbf{Project-level awareness of manuscript structure enables
+  capabilities that text-level tools cannot provide.} When the system
+  understands chapters, citations, and compilation dependencies, it can
+  provide context-aware assistance, verify generated references, and validate
+  edits through compilation---all without additional user effort.
+
+  \item \textbf{Explicit permission boundaries increase user trust and
+  encourage more exploratory AI use.} Separating AI interaction into Chat,
+  Agent, and Tools modes creates clear mental models and reduces anxiety about
+  unintended changes. Users who were reluctant to use AI in ``auto-edit''
+  modes became comfortable with the gated approval workflow.
+
+  \item \textbf{Local-first architectures provide practical advantages in
+  tool compatibility, data ownership, and configuration flexibility.}
+  Manuscripts remain ordinary git repositories, external tools work
+  naturally, and different projects can use different LLM providers without
+  application changes.
+\end{enumerate}
+
+Three directions merit immediate attention. First, controlled user studies
+comparing document-engineering-aware AI assistance against chat-only or
+Overleaf-only workflows would provide the quantitative evidence that our
+current evaluation lacks. Second, scaling the filesystem-backed model to
+institutional deployments with hundreds of concurrent users requires a metadata
+indexing layer while preserving local-first benefits. Third, LLM-based compile
+error repair---feeding compilation logs back to the model for automatic
+correction---would close the loop between verification and remediation.
+
+\software{} is available as open-source software under the MIT license.
+The source code, documentation, and demonstration projects are accessible at
+\repo{}. We invite contributions from the research software community and look
+forward to collaborating on controlled user studies to further validate the
+design claims in this paper.
+
+% ===========================================================================
+% DATA AVAILABILITY
+% ===========================================================================
+\section*{Data Availability}
+
+The software repository includes a minimal redistributable demonstration paper
+project under \texttt{examples/demo-paper/}. No private manuscript data or user
+data is included. Performance data reported in this paper (citation
+verification latency, compilation times) were collected from the production
+APIs and development environment described in Section~\ref{sec:evaluation} and
+are reproducible using the open-source codebase.
+
+% ===========================================================================
+% ACKNOWLEDGEMENTS
+% ===========================================================================
+\section*{Acknowledgements}
+
+The authors thank the maintainers of the open-source tools and scholarly
+infrastructure used by \software{}, including Node.js, React, Vite, Fastify,
+CodeMirror, KaTeX, \TeX{} Live, CrossRef, Semantic Scholar, OpenAlex,
+and the Model Context Protocol communities.
+
+We also thank the early adopters who provided valuable feedback during the
+development of \software{}, particularly those who tested the permission mode
+system and pipeline workflows and contributed usability insights that shaped
+the final design.
+
+% ===========================================================================
+% FUNDING
+% ===========================================================================
+\section*{Funding}
+
+The author received no specific grant from any funding agency in the public,
+commercial, or not-for-profit sectors to support this work.
+
+% ===========================================================================
+% COMPETING INTERESTS
+% ===========================================================================
+\section*{Competing Interests}
+
+The author declares no competing interests related to this work.
+
+% ===========================================================================
+% CRediT AUTHOR CONTRIBUTION
+% ===========================================================================
+\section*{Author Contributions}
+
+\textbf{ZuKang Xu:} Conceptualization, Software, Investigation, Writing ---
+original draft, Writing --- review \& editing, Visualization.
+
+% ===========================================================================
+% AI ASSISTANCE DISCLOSURE (Wiley policy requirement)
+% ===========================================================================
+\section*{AI Assistance Disclosure}
+
+During the preparation of this manuscript, the author used large language
+model (LLM) tools (OpenAI GPT-4o and Anthropic Claude) for language
+polishing, grammar correction, and rephrasing of selected passages. The
+author has reviewed and edited all AI-generated content and takes full
+responsibility for the final manuscript. These tools were not used for
+generating research ideas, experimental designs, data analysis, or core
+argumentation. No AI tool is listed as an author.

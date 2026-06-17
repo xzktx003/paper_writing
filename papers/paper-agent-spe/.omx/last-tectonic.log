@@ -1,0 +1,90 @@
+note: Running TeX ...
+warning: algorithm.sty:11: 
+Invalid UTF-8 byte or sequence at line 11 replaced by U+FFFD.
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/1.introduction:25: Overfull \vbox (50.72444pt too high) has occurred while \output is active
+warning: sec/2.related-work:21: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: sec/3.design:11: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/3.design:73: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: sec/3.design:116: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/4.implementation:12: Underfull \hbox (badness 10000) detected at line 12
+warning: sec/4.implementation:31: Underfull \hbox (badness 10000) in alignment at lines 31--31
+warning: sec/4.implementation:52: Underfull \hbox (badness 10000) detected at line 52
+warning: sec/4.implementation:103: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: sec/4.implementation:183: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/4.implementation:246: Underfull \hbox (badness 10000) in alignment at lines 246--246
+warning: sec/5.evaluation:13: Underfull \hbox (badness 10000) detected at line 13
+warning: sec/5.evaluation:26: Underfull \hbox (badness 10000) in alignment at lines 26--26
+warning: sec/5.evaluation:44: Underfull \hbox (badness 10000) detected at line 44
+warning: sec/5.evaluation:58: Underfull \hbox (badness 10000) in alignment at lines 58--58
+warning: sec/5.evaluation:66: Underfull \hbox (badness 10000) detected at line 66
+warning: sec/5.evaluation:76: Underfull \hbox (badness 10000) in alignment at lines 76--76
+warning: sec/5.evaluation:121: Underfull \hbox (badness 10000) detected at line 121
+warning: sec/5.evaluation:132: Underfull \hbox (badness 10000) in alignment at lines 132--132
+warning: sec/5.evaluation:148: Underfull \hbox (badness 10000) detected at line 148
+warning: sec/5.evaluation:160: Underfull \hbox (badness 10000) in alignment at lines 160--160
+warning: sec/5.evaluation:254: Underfull \hbox (badness 10000) detected at line 254
+warning: sec/5.evaluation:266: Underfull \hbox (badness 10000) in alignment at lines 266--266
+warning: sec/5.evaluation:351: Underfull \hbox (badness 10000) in alignment at lines 351--351
+warning: sec/7.limitations:65: Underfull \hbox (badness 1354) in paragraph at lines 55--65
+note: Running BibTeX on main.aux ...
+warning: errors were issued by BibTeX, but were ignored; use --print and/or --keep-logs for details.
+note: Rerunning TeX because bibtex was run ...
+warning: algorithm.sty:11: 
+Invalid UTF-8 byte or sequence at line 11 replaced by U+FFFD.
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/1.introduction:25: Overfull \vbox (50.72444pt too high) has occurred while \output is active
+warning: sec/2.related-work:21: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: sec/3.design:11: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/3.design:73: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: sec/3.design:116: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/4.implementation:12: Underfull \hbox (badness 10000) detected at line 12
+warning: sec/4.implementation:31: Underfull \hbox (badness 10000) in alignment at lines 31--31
+warning: sec/4.implementation:52: Underfull \hbox (badness 10000) detected at line 52
+warning: sec/4.implementation:103: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: sec/4.implementation:183: Underfull \vbox (badness 10000) has occurred while \output is active
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: sec/4.implementation:246: Underfull \hbox (badness 10000) in alignment at lines 246--246
+warning: sec/5.evaluation:13: Underfull \hbox (badness 10000) detected at line 13
+warning: sec/5.evaluation:26: Underfull \hbox (badness 10000) in alignment at lines 26--26
+warning: sec/5.evaluation:44: Underfull \hbox (badness 10000) detected at line 44
+warning: sec/5.evaluation:58: Underfull \hbox (badness 10000) in alignment at lines 58--58
+warning: sec/5.evaluation:66: Underfull \hbox (badness 10000) detected at line 66
+warning: sec/5.evaluation:76: Underfull \hbox (badness 10000) in alignment at lines 76--76
+warning: sec/5.evaluation:121: Underfull \hbox (badness 10000) detected at line 121
+warning: sec/5.evaluation:132: Underfull \hbox (badness 10000) in alignment at lines 132--132
+warning: sec/5.evaluation:148: Underfull \hbox (badness 10000) detected at line 148
+warning: sec/5.evaluation:160: Underfull \hbox (badness 10000) in alignment at lines 160--160
+warning: sec/5.evaluation:254: Underfull \hbox (badness 10000) detected at line 254
+warning: sec/5.evaluation:266: Underfull \hbox (badness 10000) in alignment at lines 266--266
+warning: sec/5.evaluation:351: Underfull \hbox (badness 10000) in alignment at lines 351--351
+warning: sec/7.limitations:65: Underfull \hbox (badness 1354) in paragraph at lines 55--65
+warning: warnings were issued by the TeX engine; use --print and/or --keep-logs for details.
+note: Running xdvipdfmx ...
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+warning: Trying to include PDF file with version (1.7), which is newer than current output PDF setting (1.5).
+note: Writing `main.pag` (23 B)
+note: Writing `main.aux` (19.23 KiB)
+note: Writing `main.pdf` (569.84 KiB)
+note: Writing `main.log` (52.49 KiB)
+note: Writing `main.blg` (219 B)
+note: Not writing `main.bbl`: it would be empty.

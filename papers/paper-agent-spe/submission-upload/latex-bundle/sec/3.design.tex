@@ -1,0 +1,199 @@
+\section{System Design and Architecture}
+\label{sec:design}
+
+\subsection{Design Goals}
+
+\software{} was designed to satisfy six key requirements distilled from the
+experience of the authors and feedback from early users in the research
+software community:
+
+\begin{description}
+  \item[RG1: Local-first project model.] Manuscript content must reside on the
+  researcher's local filesystem as ordinary directories and files, compatible
+  with version control (git), external tools (grep, diff), and manual
+  inspection. The system should augment---not replace---existing file-based
+  workflows.
+
+  \item[RG2: Permission-aware AI interaction.] AI assistance must be separated
+  into distinguishable modes with clear boundaries: read-only discussion,
+  reviewable edit proposals with inline diff visualization, and controlled tool
+  execution. Users must be able to inspect and approve every file change before
+  it is applied.
+
+  \item[RG3: Verifiable artifact production.] The system must integrate
+  citation verification and \LaTeX{} compilation so that generated manuscripts
+  can be checked for reference accuracy and build correctness, not just text
+  fluency.
+
+  \item[RG4: Auditable workflow pipelines.] Multi-stage writing workflows must
+  be executable with human checkpoints at decision points, producing a record
+  of what AI stages were executed, what human feedback was provided, and what
+  artifacts were produced at each stage.
+
+  \item[RG5: Interoperability.] The system must expose core capabilities
+  through standard protocols so that external tools and MCP-compatible clients
+  can integrate with the platform.
+
+  \item[RG6: Privacy and configuration safety.] API keys and sensitive
+  configuration must be stored in local environment files, never exposed to the
+  browser, and masked in API responses.
+\end{description}
+
+Figure~\ref{fig:workspace-screenshot} highlights the implemented workspace
+features that distinguish \software{} from a general-purpose editor or chatbot.
+The left pane keeps the filesystem-backed project visible as the source of
+truth, the center pane couples \LaTeX{} source editing with compiled PDF
+feedback, and the right pane exposes AI assistance and typed pipeline controls
+inside the same local project context.
+
+\begin{figure*}[!b]
+  \centering
+  \includegraphics[width=\textwidth]{fig-workspace-screenshot.pdf}
+  \caption{Paper Agent workspace during manuscript editing, emphasizing the
+  system's main differentiators: a filesystem-backed project tree, synchronized
+  source/PDF editing, local manuscript artifacts, and typed Pipeline 2.0 stages
+  for reviewable AI-assisted workflows. The screenshot shows these capabilities
+  co-located rather than separated across a standalone chatbot, editor, and build
+  tool.}
+  \label{fig:workspace-screenshot}
+\end{figure*}
+
+\subsection{Architecture Overview}
+
+\software{} follows a client-server architecture with a filesystem-backed
+project model. Figure~\ref{fig:architecture} provides a high-level overview of
+the system components and their interactions.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{fig-architecture.pdf}
+  \caption{System architecture overview. The system follows a client-server
+  model with four layers: presentation (React/Vite), application
+  (Fastify/Node.js), service (AI providers, citation APIs, \LaTeX{} engines),
+  and storage (local filesystem). External MCP clients can invoke registered
+  tools through the JSON-RPC/SSE transport.}
+  \label{fig:architecture}
+\end{figure}
+
+The system comprises four main layers:
+
+\textbf{Presentation layer} (React 18 / Vite / TypeScript). A three-panel
+browser interface provides a project file tree, a multi-mode editor (source,
+split, rendered) with CodeMirror 6, \LaTeX{} preview via KaTeX, PDF viewing
+via the browser's native PDF viewer, and a right panel with tabs for AI Chat, Skills (40+ writing
+plugins), Review, Anti-AI detection, and Pipeline 2.0 controls.
+
+\textbf{Application layer} (Fastify / Node.js). REST API endpoints serve
+project management, file operations, AI conversation streaming (via SSE),
+citation verification, \LaTeX{} compilation, pipeline orchestration, and MCP
+tool exposure. The application layer also manages tmux terminal sessions for
+integrated shell access.
+
+\textbf{Service layer.} Backend services encapsulate AI provider integration
+(OpenAI/Anthropic-compatible), citation verification (CrossRef REST API,
+Semantic Scholar API, OpenAlex API), \LaTeX{} compilation engines (pdflatex,
+xelatex, lualatex, latexmk, tectonic), tmux terminal management, and pipeline
+stage execution.
+
+\textbf{Storage layer.} Manuscript projects are stored as directories under a
+configurable \texttt{papers/} path. Each project contains \LaTeX{} source
+files, a \texttt{project.json} metadata file, and optional subdirectories
+(\texttt{fig/}, \texttt{docs/}, \texttt{code/}). Configuration lives in a
+repository-root \texttt{.env} file, loaded at startup and writable through the
+API with masked-key responses.
+
+\subsection{Key Design Decisions}
+
+\subsubsection{Filesystem as the Source of Truth}
+
+We deliberately chose a filesystem-backed project model over a database-backed
+one. This decision means that projects are ordinary directories---they can be
+versioned with git, edited with external tools (VS Code, TeXstudio, vim),
+backed up with standard file operations, and shared without depending on
+\software{}. The tradeoff is that the backend must handle concurrent
+filesystem access and cannot rely on database transactions for consistency. We
+mitigate this by using atomic file writes (write to temporary file, then
+rename), validating file state before operations, and operating under the
+assumption that manuscript editing is inherently sequential at the project
+level.
+
+\subsubsection{Separation of AI Permission Modes}
+
+Rather than a binary ``AI on/off'' toggle, we designed three modes with
+escalating capabilities, illustrated in Figure~\ref{fig:ai-modes}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{fig-ai-modes.pdf}
+  \caption{Permission-aware AI interaction modes. Chat mode provides read-only
+  discussion with no file modifications. Agent mode generates unified diff
+  proposals that require explicit user approval before application. Tools mode
+  enables multi-step operations constrained to the project code directory with
+  full audit logging.}
+  \label{fig:ai-modes}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{Chat mode:} Read-only discussion. The AI receives the
+  manuscript context (chapter content, references) but no file-writing or
+  code-execution tools. Output is plain text responses, and no state change
+  occurs outside the conversation.
+  \item \textbf{Agent mode:} Can propose edits as unified diffs with inline
+  color-coded visualization. The frontend renders add/del lines side by side
+  with Accept/Reject buttons. No change is applied without user approval.
+  \item \textbf{Tools mode:} Full multi-step tool execution, constrained to
+  the project's \texttt{code/} directory. All tool calls and results are
+  displayed in the conversation for audit. This mode is designed for
+  operations such as running experiments, generating figures, or formatting
+  bibliographies.
+\end{itemize}
+
+This design emerged from early development experience showing that researchers
+wanted to discuss ideas freely (Chat) before committing to specific changes.
+Research on human-in-the-loop machine learning~\cite{hitl_survey} has
+identified lack of control over AI-generated changes as a top concern across
+AI-assisted tasks, confirming our design direction.
+
+\subsubsection{Pipeline as Typed Stages with Human Gates}
+
+Early versions of \software{} used a linear pipeline model where stages
+executed sequentially. We found that different stages require fundamentally
+different execution models: AI stages need LLM context management and
+streaming, compute stages need shell timeout and error handling, citation
+stages need API rate limiting with exponential backoff, and compile stages
+need error parsing with log analysis. Figure~\ref{fig:pipeline} illustrates
+the stage orchestration.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{fig-pipeline.pdf}
+  \caption{Pipeline 2.0 typed stage system. Five stage types (AI, Compute,
+  Human, Citation, Compile) are orchestrated with human checkpoints as
+  first-class gates. Failed compile stages route back to AI for revision, while
+  successful stages produce verified PDF artifacts.}
+  \label{fig:pipeline}
+\end{figure}
+
+Pipeline 2.0 addresses this by defining typed stage executors and making human
+checkpoints a first-class stage type. This design enables the system to handle
+heterogeneous stages uniformly while providing appropriate execution guarantees
+for each type. Five preset pipeline templates are provided:
+\begin{itemize}
+  \item \textbf{Writing Flow:} Outline $\to$ Draft $\to$ Polish $\to$ Review
+  \item \textbf{Paper Pipeline:} Polish $\to$ Review $\to$ Revise $\to$
+  Citation Check $\to$ Compile
+  \item \textbf{Quick Review:} Review $\to$ Revise
+  \item \textbf{Citation Pipeline:} Verify $\to$ Deduplicate $\to$ Discover
+  \item \textbf{Executable Paper:} Run Code $\to$ Generate Figures $\to$ Compile
+\end{itemize}
+
+\subsubsection{MCP as the Interoperability Boundary}
+
+Rather than designing a custom API for external integration, we adopted the
+Model Context Protocol~\cite{modelcontextprotocol2024}---an open standard from
+Anthropic for tool-exposing servers. The MCP server is implemented as a
+JSON-RPC 2.0~\cite{jsonrpc} endpoint over SSE transport, registering tools
+for paper search, citation verification, \LaTeX{} compilation, file reading,
+and AI operations. This decision means that \software{} tools are immediately
+usable from any MCP-compatible client (Claude Desktop, Cursor, GitHub Copilot)
+without additional integration work.

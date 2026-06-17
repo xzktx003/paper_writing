@@ -1,0 +1,8 @@
+{
+  "id": "paper-agent-spe",
+  "name": "Paper Agent SPE Paper",
+  "template": "plain",
+  "createdAt": "2026-06-01T17:20:00.000Z",
+  "updatedAt": "2026-06-01T17:20:00.000Z",
+  "description": "Paper Agent manuscript for Software: Practice and Experience (SPE) submission. Describes the design, architecture, implementation, and lessons learned from building a local-first human-in-the-loop agentic workspace for controllable academic writing."
+}

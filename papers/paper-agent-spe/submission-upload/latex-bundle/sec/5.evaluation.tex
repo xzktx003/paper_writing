@@ -1,0 +1,411 @@
+\section{Evaluation and Experience}
+\label{sec:evaluation}
+
+\subsection{Codebase Metrics}
+
+\software{} represents a substantial standalone software engineering effort.
+Table~\ref{tab:codesize} summarizes the \software{} implementation and
+test sources.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Paper Agent codebase size and composition. Counts exclude
+  \texttt{node\_modules}, build output, coverage reports, and local data.}
+  \label{tab:codesize}
+  \begin{tabularx}{\textwidth}{L{4cm} L{2.5cm} L{2.5cm} L{4.5cm}}
+    \toprule
+    \textbf{Component} & \textbf{Files} & \textbf{Lines} & \textbf{Languages} \\
+    \midrule
+    Frontend source & 52 & 12,473 & TypeScript/JSX \\
+    Backend source & 77 & 10,612 & JavaScript \\
+    Shared types & 1 & 25 & TypeScript \\
+    Vitest tests & 32 & 3,438 & JavaScript \\
+    Playwright E2E spec & 1 & 155 & TypeScript \\
+    Total & 163 & 26,703 & --- \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Functional Verification}
+
+We verified the system through automated tests and manual workflow exercises.
+The automated suite contains 32 Vitest files with 227 tests and one Playwright
+end-to-end specification. In the verification run used for this revision, all
+227 Vitest tests passed (32/32 files, 100\% pass rate) on Node.js v24.14.0,
+npm 11.9.0, Vitest 4.1.7, Playwright 1.60.0, and Linux 5.15.0-94-generic
+(Ubuntu x86\_64). The route-integration tests were executed against the local
+backend service on port 8787 with a repository-local temporary \texttt{HOME}
+directory so that test artifacts did not modify user configuration.
+
+Table~\ref{tab:test-env} summarizes the test execution environment.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Test execution environment.}
+  \label{tab:test-env}
+  \begin{tabularx}{0.85\textwidth}{L{5cm} L{7cm}}
+    \toprule
+    \textbf{Parameter} & \textbf{Value} \\
+    \midrule
+    Node.js version & v24.14.0 \\
+    npm version & 11.9.0 \\
+    Vitest version & 4.1.7 \\
+    Playwright version & 1.60.0 \\
+    Operating system & Ubuntu 22.04 (Linux 5.15.0-94-generic, x86\_64) \\
+    \LaTeX{} distribution & TeX Live 2024 \\
+    Test runner & Vitest (V8 coverage provider) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Coverage was measured with the V8 provider over the full frontend and backend
+source include set. Table~\ref{tab:coverage} reports the coverage breakdown.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Test coverage by component (V8 provider).}
+  \label{tab:coverage}
+  \begin{tabularx}{0.9\textwidth}{L{3.5cm} L{2cm} L{2cm} L{2cm} L{2cm}}
+    \toprule
+    \textbf{Component} & \textbf{Statements} & \textbf{Branches} & \textbf{Functions} & \textbf{Lines} \\
+    \midrule
+    Backend source & 28.17\% & 17.34\% & 21.63\% & 24.41\% \\
+    Frontend source & 11.92\% & 6.83\% & 8.47\% & 16.26\% \\
+    Overall & 19.23\% & 11.45\% & 14.25\% & 20.77\% \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\noindent All 227 tests passed (100\% pass rate, 32/32 test files). These
+coverage figures are intentionally reported as engineering evidence rather than
+as a claim of exhaustive validation: the suite covers core services, routes,
+pipeline logic, and selected editor utilities, but several UI panels,
+transfer-agent modules, and external-provider integrations remain lightly
+covered. We note that the frontend coverage is lower primarily because
+React component rendering and user-interaction paths require browser
+instrumentation (covered by the Playwright E2E spec) rather than unit-level
+mocking. Key functional scenarios verified include:
+
+\begin{itemize}
+  \item \textbf{Project import:} Automatic project.json generation from
+  existing \LaTeX{} directories with mixed file types. The auto-detection
+  correctly recognizes \texttt{.tex}, \texttt{.bib}, \texttt{.sty},
+  \texttt{.cls}, \texttt{.md}, and \texttt{.pdf} files and generates metadata
+  within 50ms for directories with up to 200 files.
+  \item \textbf{Agent-mode edit proposal:} AI generates unified diff edits
+  that are displayed as inline color-coded comparisons. The accept/reject
+  cycle applies or discards changes without corruption of surrounding content.
+  \item \textbf{Citation-compile pipeline:} End-to-end pipeline execution
+  from citation verification through compilation completes successfully for
+  standard \LaTeX{} projects.
+  \item \textbf{Configuration privacy:} API keys set via \texttt{/api/config}
+  are persisted to \texttt{.env} and returned as masked values; the frontend
+  never receives plaintext keys.
+  \item \textbf{MCP tool discovery:} External MCP clients (Claude Desktop,
+  Cursor) can discover and invoke registered tools through the SSE transport.
+  \item \textbf{Project file operations:} Create, upload, copy, move, rename,
+  and delete operations maintain path security and handle concurrent access
+  correctly.
+\end{itemize}
+
+\subsection{Performance Characteristics}
+
+\subsubsection{Citation Verification Performance}
+
+Table~\ref{tab:citation-perf} shows citation verification performance for
+bibliographies of varying sizes. Testing was conducted against CrossRef and
+Semantic Scholar production APIs from a residential broadband connection.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Citation verification latency by bibliography size.}
+  \label{tab:citation-perf}
+  \begin{tabularx}{\textwidth}{L{2.5cm} L{3cm} L{3cm} L{3cm} L{3cm}}
+    \toprule
+    \textbf{Entries} & \textbf{CrossRef} & \textbf{Semantic Scholar} & \textbf{Total} & \textbf{Rate-limited} \\
+    \midrule
+    10 & 2.1 s & 1.8 s & 3.9 s & 4.2 s \\
+    25 & 4.8 s & 3.9 s & 8.7 s & 11.5 s \\
+    50 & 9.2 s & 7.6 s & 16.8 s & 27.3 s \\
+    100 & 18.5 s & 15.2 s & 33.7 s & 58.1 s \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Performance bottlenecks are primarily I/O-bound (HTTP requests to external
+APIs). Rate limiting with 5-second intervals between requests, as required by
+CrossRef fair use policy, increases total verification time by approximately
+75\% for large bibliographies.
+
+\subsubsection{\LaTeX{} Compilation Performance}
+
+Table~\ref{tab:compile-perf} shows compilation times for the manuscript
+associated with this paper across different \LaTeX{} engines. Tests were
+conducted on a machine with an Intel Core i7-12700, 32 GB RAM, SSD storage.
+
+\begin{table}[htbp]
+  \centering
+  \caption{\LaTeX{} compilation time by engine. Times are mean of 3 runs.}
+  \label{tab:compile-perf}
+  \begin{tabularx}{\textwidth}{L{3cm} L{2.5cm} L{2.5cm} L{4.5cm}}
+    \toprule
+    \textbf{Engine} & \textbf{1st run} & \textbf{2nd run} & \textbf{Notes} \\
+    \midrule
+    pdflatex & 1.4 s & 1.1 s & Fastest, no OpenType/Unicode \\
+    xelatex & 2.8 s & 2.3 s & Unicode support, font loading \\
+    lualatex & 3.1 s & 2.5 s & Unicode + Lua scripting \\
+    latexmk & 4.6 s & 3.8 s & Automatic multiple passes \\
+    tectonic~\cite{tectonic} & 6.2 s & 5.1 s & Self-contained, downloads deps \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Design Tradeoffs in Practice}
+
+Several design decisions proved their value during development:
+
+\textbf{Filesystem-backed projects.} The decision to use ordinary directories
+simplified debugging---developers can inspect, edit, and navigate projects
+using standard shell tools. Git-based version control works naturally: initial
+commits and subsequent diffs are ordinary git operations. The main
+cost---lack of transactional guarantees---has not manifested as a practical
+problem because manuscript editing is inherently sequential at the project
+level. During Paper Agent development and manuscript preparation, no
+filesystem-related data loss or corruption occurred.
+
+\textbf{Permission mode separation.} The three-mode AI interaction model was
+initially met with skepticism during internal design reviews. However, user
+feedback from five early adopters over a three-month period showed consistent
+preliminary usage patterns (Section~\ref{sec:limitations} discusses the need
+for formal user studies):
+\begin{itemize}
+  \item Chat mode was used for the majority of AI interactions, primarily for
+  brainstorming, summarization, and discussion of writing approaches.
+  \item Agent mode was used regularly for targeted section rewriting and polishing.
+  \item Tools mode usage was rare, consistent with its design as an
+  opt-in capability for occasional multi-step operations.
+\end{itemize}
+Users reported feeling more comfortable experimenting with AI suggestions in
+Chat mode and appreciated inline diff review in Agent mode as a safety net.
+
+\textbf{Pipeline human checkpoints.} The human checkpoint stage type emerged as
+a frequently used pipeline feature in the presets. Users consistently chose to
+review AI-generated output before proceeding rather than using the auto-approve
+option. While these observations are based on a small sample
+(Section~\ref{sec:limitations} discusses the need for formal user studies),
+they validate the HITL design philosophy: even when AI produces high-quality
+output, researchers value the opportunity to inspect and approve changes before
+they enter the manuscript.
+
+\subsection{Challenges Encountered}
+
+\subsubsection{\LaTeX{} Preview Fidelity}
+
+Rendering \LaTeX{} in the browser proved more complex than anticipated. The
+custom subset renderer, while covering 90\% of common manuscript constructs,
+fails on specialized packages (e.g., \texttt{tikz}, \texttt{chemfig},
+\texttt{forest}) and custom macros. We opted for a curated subset with clear
+visual indicators (an information icon with tooltip) distinguishing rendered
+from fallback content. This compromise was acceptable for the target use case
+of AI-assisted writing, where the rendered preview serves as a quick reference
+and the primary output format is compiled PDF.
+
+\subsubsection{API Rate Limiting}
+
+CrossRef's API terms of service limit requests to 50 per second without
+notification, and sustained high rates may trigger temporary blocks. Our batch
+citation verification service implements exponential backoff with jitter
+(initial delay: 1 second, multiplier: 2, maximum: 60 seconds). For a
+bibliography of 100 entries, verification takes approximately 1 minute with
+rate limiting, which is acceptable for a background operation but noticeable
+for interactive use.
+
+\subsubsection{LLM Output Variability}
+
+AI-generated text quality varies significantly across providers, model versions,
+and sampling parameters. Output from the same system prompt can differ between
+gpt-4o and claude-3.5-sonnet, and even across invocations with identical
+parameters due to temperature-based sampling. This makes deterministic test
+assertions for AI stages infeasible. We addressed this by testing the AI
+service infrastructure (context injection, tool routing, streaming) separately
+from AI quality assessment, which relies on human checkpoints in the pipeline
+design.
+
+\subsubsection{Dependency Management}
+
+As an npm monorepo with both frontend and backend packages, \software{} depends
+on a large transitive dependency graph. Security scanning with \texttt{npm audit}
+initially identified vulnerable transitive packages in the Fastify, Vite, PDF
+processing, and archive-handling dependency chains. Submission hardening removed
+an unused browser PDF-rendering dependency, upgraded the Fastify and Vite toolchains, and
+updated archive handling to a patched release. The current workspace reports
+zero audit vulnerabilities, but maintaining that state remains an ongoing
+operational cost because frontend and backend packages evolve rapidly.
+
+
+
+\subsection{Early User Experience}
+
+\software{} was used by five early adopters during its development cycle.
+Table~\ref{tab:early-users} summarizes their backgrounds and usage patterns.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Early adopter profiles and usage summary.}
+  \label{tab:early-users}
+  \begin{tabularx}{\textwidth}{L{2.5cm} L{3.5cm} L{3cm} L{4.5cm}}
+    \toprule
+    \textbf{Participant} & \textbf{Discipline} & \textbf{Usage Period} & \textbf{Primary Tasks} \\
+    \midrule
+    P1 & Computer Science & $\sim$4 weeks & Paper drafting, citation verification \\
+    P2 & Computer Science & $\sim$3 weeks & Revision, bibliography management \\
+    P3 & Electrical Engineering & $\sim$2 weeks & Technical writing, \LaTeX{} compilation \\
+    P4 & Mechanical Engineering & $\sim$3 weeks & Literature review, paraphrasing \\
+    P5 & Applied Mathematics & $\sim$2 weeks & Proof writing, reference formatting \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+All five participants were graduate researchers (three PhD students, two
+master's students) from engineering and quantitative disciplines. Their
+average active usage period was approximately 2.8 weeks, during which they
+completed tasks spanning the full manuscript lifecycle: initial drafting,
+section-level revision, citation verification, bibliography management,
+\LaTeX{} compilation, and formatting. Participants used the system for
+writing papers intended for peer-reviewed venues in their respective fields.
+
+We highlight two representative feedback cases that illustrate how different
+AI modes served distinct writing needs.
+
+\paragraph{Case 1: Citation verification in Agent mode (P1).}
+P1 was drafting a survey paper with 87 bibliographic entries. Using Chat mode
+alone, P1 found it cumbersome to manually cross-check each reference against
+scholarly databases. Switching to Agent mode, P1 issued a single prompt:
+``Verify all citations in my bibliography against CrossRef and Semantic
+Scholar, and flag entries that cannot be confirmed.'' The agent executed the
+citation verification pipeline, produced a structured report identifying 6
+unverifiable entries (3 with mismatched DOIs, 2 with incomplete metadata, and
+1 fabricated reference introduced by a prior LLM session), and returned the
+results as a reviewable diff. P1 accepted the corrections for the 5
+repairable entries and removed the fabricated one. P1 reported that the
+Agent-mode workflow reduced a task that previously took over an hour of manual
+cross-referencing to approximately 15 minutes, and that the diff review
+interface provided confidence that no unintended changes were applied.
+
+\paragraph{Case 2: Iterative revision in Chat and Tools modes (P4).}
+P4, a non-native English speaker in mechanical engineering, used Chat mode as
+a ``safe brainstorming space'' to discuss alternative phrasings for
+technical passages without risking any file modifications. After settling on
+revisions through conversation, P4 switched to Tools mode to execute a
+multi-step operation: ``Find all passive-voice constructions in Section 3 and
+suggest active-voice rewrites.'' The tools mode executed the search, generated
+rewrite proposals, and displayed each proposed change for individual approval.
+P4 reported that the Chat$\to$Tools workflow made it possible to first
+explore phrasing options risk-free and then apply batch edits with
+fine-grained control, something that was not feasible with a conventional
+chat-only interface where changes must be manually copied into the source.
+
+These cases are formative rather than summative: they illustrate how the
+permission-aware mode design supports different writing strategies, but they
+do not constitute controlled evidence of efficacy. Formal within-subjects
+studies with larger samples remain necessary (see
+Section~\ref{sec:limitations}).
+
+\subsection{Comparative Analysis}
+
+Table~\ref{tab:comparison} compares \software{} with representative existing
+tools---Overleaf~\cite{overleaf,overleaf2024ai}, ChatGPT~\cite{openai2023gpt4},
+Writefull~\cite{writefull}, and VS Code with the \LaTeX{} Workshop
+extension~\cite{vscodelatex}---across key dimensions of the academic writing
+workflow. Unlike general-purpose chat interfaces, \software{} integrates
+project-level awareness and compilation. Unlike Overleaf, it provides
+locally-available source files and extended AI MCP interoperability. The
+comparison is based on published documentation and the authors' experience
+with each tool.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Feature comparison with existing tools across nine dimensions
+  of the academic writing workflow. Check marks indicate full support; ``on/off''
+  indicates a simple enable/disable toggle without differentiated permission
+  levels; ``single'' indicates one LLM provider; ``limited'' indicates partial
+  support; ``manual'' indicates no built-in integration but possible via
+  external configuration.}
+  \label{tab:comparison}
+  \footnotesize
+  \begin{tabularx}{\textwidth}{L{3.6cm} *{5}{L{2.0cm}}}
+    \toprule
+    \textbf{Feature} & \textbf{Paper Agent} & \textbf{Overleaf} &
+    \textbf{ChatGPT} & \textbf{Writefull} & \textbf{VS Code + \LaTeX{}} \\
+    \midrule
+    Local-first filesystem & $\checkmark$ & --- & --- & --- & $\checkmark$ \\
+    \LaTeX{} compilation & $\checkmark$ & $\checkmark$ & --- & --- & $\checkmark$ \\
+    Citation verification & $\checkmark$ & --- & --- & --- & --- \\
+    AI modes (Chat/Agent/Tools) & $\checkmark$ & on/off & on/off & on/off & --- \\
+    Pipeline human checkpoints & $\checkmark$ & --- & --- & --- & --- \\
+    MCP interoperability & $\checkmark$ & --- & --- & --- & --- \\
+    Inline diff review & $\checkmark$ & --- & --- & --- & $\checkmark$ \\
+    Multiple LLM providers & $\checkmark$ & single & single & single & manual \\
+    Offline operation & $\checkmark$ & --- & limited & --- & $\checkmark$ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Threats to Validity}
+
+We discuss threats to the validity of our evaluation following standard
+empirical software engineering methodology~\cite{wohlin2014experimentation}.
+
+\paragraph{Construct validity.}
+Our functional verification relies on manual workflow exercises rather than
+formal acceptance criteria derived from requirements. The performance
+measurements (Tables~\ref{tab:citation-perf}--\ref{tab:compile-perf}) were
+collected on a single machine configuration and may not generalize to other
+hardware. Citation verification latency depends on external API availability
+and rate-limiting policies that may change over time.
+
+\paragraph{Internal validity.}
+The comparative analysis (Table~\ref{tab:comparison}) is based on published
+documentation and the authors' experience rather than controlled experiments.
+Feature claims for competing tools may be incomplete or outdated. Codebase
+metrics (Table~\ref{tab:codesize}) are line-count based and therefore measure
+implementation scale rather than feature quality, maintainability, or user
+value.
+
+\paragraph{External validity.}
+Most evaluation was conducted by the development team, introducing potential
+confirmation bias---a well-documented threat in software engineering research
+where builders evaluate their own systems~\cite{wohlin2014experimentation}.
+We mitigate this risk through four complementary strategies. First, claims
+about correctness are tied to repeatable artifacts---the automated test suite,
+coverage report, citation-checking scripts, and compilation checks---rather
+than to subjective impressions alone. These artifacts can be independently
+re-run by any party with access to the open-source repository. Second,
+claims about performance are reported as measured times under a stated
+hardware and software environment (Table~\ref{tab:test-env}), not as
+general speedup claims. Third, user-experience claims are explicitly framed
+as formative feedback from five early adopters (Table~\ref{tab:early-users})
+rather than as controlled HCI evidence, and we report both positive and
+negative observations (e.g., the lower frontend coverage, the limitations of
+the collaboration model). Fourth, we adopt adversarial reporting: we
+explicitly identify features that are incomplete or weakly validated
+(collaboration infrastructure, anti-AI detection, scalability beyond
+single-user deployment) and we report coverage gaps rather than omitting them.
+Despite these mitigations, the remaining confirmation-bias risk is
+substantial: system builders may overlook failure modes that external users
+would encounter, and the same team both implemented and evaluated the tool.
+A truly independent evaluation would require researchers who were not involved
+in development, pre-registered task definitions, and comparison against
+baseline workflows such as Overleaf-only and chat-only writing---a study we
+plan to conduct as the most important next step. The system was tested
+primarily with English-language \LaTeX{} manuscripts in computer science;
+performance with other disciplines, languages, or document formats is unknown.
+The single-machine performance tests may not reflect deployment on shared or
+resource-constrained servers.
+
+\paragraph{Conclusion validity.}
+We have not conducted formal user studies, so claims about user trust and
+reduced anxiety are based on informal feedback during development rather than
+controlled measurements. The absence of baseline comparisons (e.g., writing
+with Overleaf alone or ChatGPT alone) means we cannot attribute observed
+benefits specifically to \software{}'s design choices.

@@ -1,0 +1,14 @@
+{
+  "sessions": {
+    "019e9ab3-465b-7360-af1f-c7e082f18363": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|是，**代码仓库已经是公开开源状态**。 我刚核对了两点： 1. 论文里写的仓库地址是： ```tex \\newcommand{\\repo}{\\url{https://github.com/xzktx003/paper_wrighting}} ``` 这个 github 仓库当前可访问，并且是 **public**。 2. 仓库根目录有 mit 许可证文件： [license](/data01/home/xuzk/workspace/ai_agent/paper_wrighting/license:1) 内容开头是： ```text mit license copyright (c) 2026 xuzk and paper agent contributors ``` 所以论文里这句话是成立的： ```tex \\software{} is available as open-source software under the mit license. the source code, documentation, and demonstration projects are accessible at \\repo{}. ``` 但有一个重要注意点：**本地工作区现在有不少未提交/未推送的改动**，包括 app 代码、readme、测试文件等。也就是说： - “代码已经开源”这个说法成立； - 但“论文中描述的最新版本/最新修复是否都已经公开在 github 上”，要看你有没有把这些本地改动 commit 并 push。 如果投稿前要更严谨，我建议至少做一件事：把和论文当前描述一致的代码、文档、测试、demo 状态提交并推到 github。否则审稿人点开仓库时，可能看到的是旧版本，和论文里的 pipeline 2.0、rag、截图或测试数字不完全一致。 现在论文投稿材料里可以继续保留“open-source under the mit license”。但如果你还没准备 push 当前代码，data availability 里的措辞最好从强断言改保守一点，比如： ```text the software repository is publicly available under the mit license at ... ``` 这句话仍然准确；关键是不要暗示所有最新本地改动都已经公开，除非你确实 push 了。",
+        "first_seen_at": "2026-06-06T03:54:35.097Z",
+        "last_seen_at": "2026-06-06T03:54:35.097Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e9b10-bee9-70d1-95a8-d852dc229894",
+        "last_thread_id": null
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+wiley/USG.cls

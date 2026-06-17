@@ -1,0 +1,182 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{AI-Assisted Academic Writing}
+
+Recent advances in large language models~\cite{openai2023gpt4,anthropic2024claude}
+have spurred interest in AI-assisted scholarly writing. General-purpose chat
+interfaces such as ChatGPT, Claude, and Gemini provide text generation
+capabilities but lack project-level awareness of manuscript structure, citation
+databases, and compilation requirements.
+
+Specialized tools address specific aspects of the writing process.
+Writefull~\cite{writefull} provides language polishing and grammar checking
+for academic text through a dedicated interface. Paperpal~\cite{paperpal} offers
+comprehensive manuscript preparation assistance, including language checks and
+reference formatting. Trinka~\cite{trinka} specializes in technical and academic
+language correction. However, these tools operate on individual passages rather
+than managing complete manuscript projects with source files, bibliographies,
+and compilation.
+
+Research on LLM-assisted writing has explored prompt engineering for academic
+genres, fine-tuning for scientific domains, and evaluation of generated text
+quality. Liang et al.~\cite{liang2024llmwriting} conducted a systematic survey
+of LLM use across the academic writing pipeline, identifying tasks ranging from
+ideation to revision. They found that while LLMs are widely used for drafting
+and editing, systematic integration with document engineering infrastructure
+remains limited. These studies evaluate text quality
+in isolation rather than the end-to-end workflow of producing compilable,
+verifiable scholarly documents---a gap that \software{} aims to fill.
+A further challenge is that preprint repositories such as arXiv assign DOIs
+(\texttt{10.48550/arXiv.\ldots}) that CrossRef does not index, requiring
+dedicated API integration that current writing tools do not provide.
+
+\subsection{Collaborative \LaTeX{} Editing}
+
+Online \LaTeX{} editing platforms dominate collaborative scholarly writing.
+Overleaf~\cite{overleaf} provides real-time collaboration, version history,
+and integrated compilation, serving over 10 million users globally.
+Overleaf has recently introduced AI-assisted features~\cite{overleaf2024ai},
+including grammar suggestions and summarization. Yet its cloud-centric
+architecture means manuscripts reside on remote servers, and AI integration is
+constrained by the platform's service model. Researchers concerned about data
+privacy or requiring offline access must seek alternatives.
+
+Local \LaTeX{} editors such as TeXstudio~\cite{texstudio}, VS Code with the
+\LaTeX{} Workshop extension, and Emacs with AUCTeX provide powerful editing
+environments with syntax highlighting, code completion, and local compilation.
+While cloud platforms offer real-time collaboration out of the box, local
+setups provide superior compilation performance, offline availability, and
+full control over \TeX{} distributions---at the cost of manual environment
+configuration. These tools increasingly support AI integration through
+extensions, but none provide a unified, project-aware AI workspace with built-in
+verification and workflow orchestration.
+
+Modern reproducible-authoring tools address a related but distinct problem.
+R Markdown~\cite{rmarkdown} and Quarto~\cite{quarto} combine prose, executable
+code cells, citations, and multi-format rendering, making them strong choices
+for computational notebooks, statistical reports, and literate data analysis.
+Their primary abstraction is the executable document: code and narrative are
+woven into HTML, PDF, Word, or presentation outputs. Quarto, the successor to
+R Markdown, provides a unified authoring format that targets multiple output
+engines---\LaTeX{}, Typst, and revealjs---and integrates with version control,
+project-level metadata (\texttt{\_quarto.yml}), and CI/CD pipelines. RStudio
+(also from Posit, the Quarto developer) provides an IDE that tightly couples
+code execution, notebook preview, and package management for R and Python
+workflows.
+
+\software{} differs from Quarto and RStudio Markdown in three fundamental ways.
+First, the primary artifact: Quarto and R Markdown treat the \texttt{.qmd}/\texttt{.Rmd}
+source file as the unit of authoring, while \software{} treats the manuscript
+directory itself as the primary artifact, preserving ordinary \LaTeX{} project
+structure with separate \texttt{.tex}, \texttt{.bib}, and \texttt{.sty} files.
+Second, the role of AI: Quarto and RStudio do not provide built-in AI
+assistance with permission-aware interaction modes; AI integration in these
+ecosystems typically relies on external extensions (e.g., GitHub Copilot in
+RStudio) that operate at the text-buffer level without project-level awareness
+of citation databases or compilation state. \software{} places AI assistance
+behind explicit permission modes (Chat, Agent, Tools) and integrates it with
+project-level services such as citation verification and compilation. Third,
+the verification model: Quarto focuses on reproducible rendering from code
+chunks, while \software{} focuses on verifying that AI-generated edits preserve
+compilability, citation accuracy, and document integrity. Thus, Quarto and
+R Markdown emphasize reproducible publishing from code-rich documents, whereas
+\software{} emphasizes controlled AI assistance, citation verification, and
+project-level document engineering for existing \LaTeX{} manuscript workflows.
+These approaches are complementary rather than competing: a researcher could
+use Quarto for computational reproducibility and \software{} for AI-assisted
+manuscript engineering within the same project.
+
+\subsection{Agent-Based Writing Systems}
+
+The concept of AI agents---systems that can plan, use tools, and execute
+multi-step tasks---has been applied to writing. Microsoft's Research
+Copilot~\cite{microsoft2024researchcopilot} and related tools augment
+research workflows with AI capabilities, including literature review,
+data analysis, and writing assistance. LangChain~\cite{langchain},
+AutoGen~\cite{autogen}, CrewAI~\cite{crewai}, and
+LangGraph~\cite{langgraph} enable tool-using or multi-agent workflows where
+different agents handle planning, drafting, reviewing, and execution.
+
+However, these systems typically operate on plain text and lack direct
+integration with \LaTeX{} project structures, citation databases, and
+compilation pipelines. Their abstractions are general-purpose chains, agents,
+tools, and conversations; the manuscript-specific responsibilities---preserving
+cross-references, checking BibTeX keys, compiling \LaTeX{}, and deciding whether
+an edit should enter the source tree---must be assembled by the application
+developer.
+
+LangChain provides composable chains and agent executors that can orchestrate
+multi-step LLM interactions with tool use. In an academic writing scenario, one
+could build a LangChain agent that drafts sections, verifies citations via
+custom tools, and compiles \LaTeX{} documents. However, LangChain's default
+agent loop applies tool outputs automatically and continues execution without
+mandatory human approval gates. The researcher becomes a post-hoc reviewer of
+fully generated output rather than an active decision-maker at each step.
+AutoGen extends this model by enabling multi-agent conversations where
+different agents (e.g., a ``writer,'' a ``reviewer,'' an ``editor'') collaborate
+autonomously. While this architecture can produce sophisticated outputs through
+agent deliberation, it further reduces the human role: the researcher observes
+agent-to-agent dialogue and intervenes only when the autonomous loop completes
+or stalls. CrewAI adopts a role-based orchestration pattern where agents are
+assigned specialized roles and goals, executing tasks in sequence or parallel.
+All three frameworks share a common design philosophy: AI as an autonomous
+executor that minimizes human intervention, with the human serving primarily as
+a supervisor or approver of final results.
+
+\software{} takes the opposite approach: \emph{AI as a proposer rather than a
+replacement author.} Chat mode cannot modify files, Agent mode returns
+reviewable diffs that require explicit accept/reject actions, and Tools mode is
+explicitly scoped to the project directory with full audit logging. This
+``proposer-not-replacer'' philosophy differs fundamentally from the
+``autonomous executor'' paradigm of LangChain, AutoGen, and CrewAI in three
+ways: (1) every file modification requires a deliberate human action; (2) the
+system never auto-applies AI-generated changes and never continues execution
+past a human checkpoint without explicit approval; and (3) the audit trail
+records not only what the AI proposed but also whether the human accepted or
+rejected each change. This design keeps scholarly authorship and final editorial
+authority with the researcher while still allowing agentic tooling to assist
+with bounded document engineering tasks. The tradeoff is reduced automation:
+tasks that LangChain or AutoGen could complete autonomously (e.g., ``revise all
+sections for clarity and recompile'') require human interaction at each
+checkpoint in \software{}. We argue that this tradeoff is appropriate for
+scholarly writing, where authorial accountability cannot be delegated to an
+autonomous agent.
+
+\subsection{Human-in-the-Loop AI Systems}
+
+Human-in-the-loop (HITL) approaches have been extensively studied in machine
+learning~\cite{hitl_survey}, where human feedback guides model training and
+decision-making. In writing tools, HITL principles suggest that AI should
+propose rather than impose changes, and that humans should retain decision
+authority at key junctures.
+
+Grammarly~\cite{grammarly} exemplifies HITL in writing tools: it highlights
+issues and suggests changes, but the user applies them manually. GitHub
+Copilot~\cite{copilot} applies similar principles for code generation---it shows
+completions in-line, and the developer decides whether to accept. \software{}
+generalizes this principle across the entire academic writing workflow: the
+Chat mode enables free-form discussion without risk of changes, the Agent mode
+shows proposed edits as inline diffs for review, and the Tools mode provides
+controlled execution for multi-step operations within a sandboxed directory.
+
+\subsection{Software Tools for Research Software Engineering}
+
+Software: Practice and Experience has a tradition of publishing papers on
+research software tools and platforms that emphasize practical engineering
+contributions. Notable examples include
+Jupyter~\cite{jupyter2015software} for interactive computing, the Git
+ecosystem for version control~\cite{git}, and continuous integration
+platforms for research software~\cite{githubactions}. These contributions share a
+common emphasis on practical software engineering: tools designed for real
+workflows, validated through use, and documented with attention to
+implementation tradeoffs.
+
+\software{} contributes to this tradition by providing a practical software
+platform for AI-assisted scholarly writing, with emphasis on real-world design
+decisions, implementation experience, and lessons learned from building a system
+that bridges LLMs and document engineering. The paper follows the SPE
+convention of reporting on an implemented system with attention to architecture,
+testing methodology, performance characteristics, and deployment
+considerations---rather than positioning the contribution primarily as a
+theoretical advance or a user study.

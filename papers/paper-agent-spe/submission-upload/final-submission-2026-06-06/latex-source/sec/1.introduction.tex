@@ -1,0 +1,94 @@
+\section{Introduction}
+
+Academic writing is a complex document engineering process. In disciplines that
+use \LaTeX{}, a manuscript is not merely a linear text document: it is a
+project composed of source files, bibliographic databases, figures, style
+templates, experimental code, compiler logs, reviewer feedback, and final PDF
+artifacts. Researchers must coordinate editing, citation management, compilation,
+revision tracking, and collaboration across these interconnected components.
+
+The emergence of large language models (LLMs)~\cite{openai2023gpt4,
+anthropic2024claude, openai2024gpt4o} has introduced new possibilities for
+AI-assisted writing. Tools such as ChatGPT, Claude, Gemini, and specialized
+academic assistants can generate, paraphrase, summarize, and critique scholarly
+text. However, general-purpose chat interfaces treat writing as an isolated
+text-generation task. They separate model output from the project context in
+which scholarly artifacts must be edited, cited, compiled, and reviewed. This
+separation creates three practical problems:
+
+\begin{enumerate}
+  \item \textbf{Context fragmentation.} Researchers must repeatedly copy
+  manuscript sections into the assistant, increasing friction and the risk of
+  stale or incomplete prompts. When the manuscript changes, chat context
+  diverges from source truth.
+
+  \item \textbf{Unaudited edits.} When assistants can directly modify files, or
+  when changes are manually copied into a source tree, it becomes difficult to
+  track what was changed, by whom, and why. This undermines the audit trail
+  essential for scholarly integrity.
+
+  \item \textbf{Unverifiable artifacts.} Generated text may introduce
+  hallucinated references, missing citation keys, or \LaTeX{} changes that fail
+  to compile. Liang et al.~\cite{liang2024llmwriting} documented widespread
+  use of LLMs in scientific manuscripts and highlighted significant risks of
+  hallucinated references, underscoring the verification gap. These
+  are document engineering failures that text-generation quality metrics do not
+  capture.
+\end{enumerate}
+
+Existing solutions address parts of this problem---Overleaf~\cite{overleaf}
+provides collaborative \LaTeX{} editing with recently introduced AI
+features~\cite{overleaf2024ai}; citation managers such as Zotero and Mendeley
+handle references; and AI chat interfaces generate text. Yet no existing
+system integrates these capabilities into a unified, controllable, local-first
+workspace designed for the full manuscript lifecycle.
+
+We present \software{}, a local-first, human-in-the-loop software platform
+that addresses this gap by treating academic writing as a software-backed
+document engineering workflow. The system is designed and implemented
+following practical software engineering principles: a modular monorepo
+architecture, comprehensive automated testing across 32 test files, secure
+configuration management with masked credentials, and careful attention to
+real-world deployment concerns such as API rate limiting, error recovery,
+and dependency management. The system represents each paper as a
+filesystem-backed project and provides an integrated workspace for editing,
+preview, compilation, citation verification, AI assistance, human checkpoints,
+and workflow orchestration. AI interaction is separated into three
+permission-aware modes to give researchers fine-grained control over how and
+when model output enters their manuscript.
+
+This paper makes the following contributions:
+
+\begin{itemize}
+  \item \textbf{System architecture.} We describe the design and architecture
+  of \software{}, a local-first platform integrating AI-assisted writing with
+  project-level document management, citation verification against multiple
+  scholarly databases, \LaTeX{} compilation, and tmux-based terminal
+  management. The implementation comprises approximately 23,100 lines of application
+  source code across a monorepo with React/Vite frontend and Fastify/Node.js backend.
+
+  \item \textbf{Permission-aware interaction model.} We present a
+  three-mode AI interaction model (Chat, Agent, Tools) that separates read-only
+  discussion, reviewable edit proposals with inline diff display, and
+  controlled tool execution. This design emerged from iterative user feedback
+  during development and is designed to reduce anxiety about unintended
+  manuscript changes and promote exploratory AI use.
+
+  \item \textbf{Typed workflow pipelines.} We report on Pipeline 2.0, a
+  system of typed pipeline stages (AI, Compute, Human, Citation, Compile) with
+  human checkpoints as first-class execution gates, enabling auditable
+  multi-stage writing processes.
+
+  \item \textbf{Practical experience.} We share lessons learned from building
+  and using the system across multiple development iterations,
+  including design tradeoffs, testing strategies, the challenges of LLM
+  integration, and validation through a 32-file automated test suite.
+\end{itemize}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related}
+reviews related work. Section~\ref{sec:design} presents the system design and
+architecture. Section~\ref{sec:implementation} describes implementation
+details. Section~\ref{sec:evaluation} reports evaluation results and practical
+experience. Section~\ref{sec:discussion} discusses lessons learned.
+Section~\ref{sec:limitations} outlines limitations, and Section~\ref{sec:conclusion}
+concludes.

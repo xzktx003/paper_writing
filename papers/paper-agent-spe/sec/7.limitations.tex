@@ -1,0 +1,100 @@
+\section{Limitations and Future Work}
+\label{sec:limitations}
+
+Despite its contributions, \software{} has limitations that suggest
+directions for future development:
+
+\paragraph{\LaTeX{} rendering coverage.} The browser-side preview renderer
+supports a curated subset of \LaTeX{} constructs. Specialized packages
+(\texttt{tikz} for diagrams, \texttt{chemfig} for chemical structures,
+\texttt{forest} for linguistic trees) and custom macros are rendered as
+fallback source text rather than compiled output. Full \LaTeX{} rendering in
+the browser would require integrating a complete \TeX{} engine via
+WebAssembly~\cite{webassembly2017} (e.g., SwiftLaTeX~\cite{swiftlatex} or a
+WebAssembly-compiled TeX Live~\cite{texlive}), which
+would increase the frontend bundle size by approximately 30--50 MB. A hybrid
+approach---server-side full rendering with client-side caching for the
+curated subset---is a promising middle ground that we plan to explore.
+
+\paragraph{Citation database coverage.} Citation verification depends on
+CrossRef, Semantic Scholar, and OpenAlex. While these databases cover a large
+fraction of published research, they have gaps in coverage for non-English
+publications, preprints, conference proceedings in niche venues, and gray
+literature (technical reports, working papers, theses). Integrating additional
+sources such as dblp (computer science bibliography), PubMed (biomedical
+literature), and arXiv (preprints) would improve verification coverage.
+Citation verification also does not detect fabricated-but-plausible references
+that match real paper titles but are cited for non-existent claims---a more
+subtle form of hallucination.
+
+\paragraph{User studies.} We have not conducted formal controlled user studies
+comparing \software{} against alternative writing workflows (Overleaf only,
+ChatGPT-only, manual editing). A rigorous within-subjects or between-subjects
+experiment measuring writing speed, citation accuracy, compilation success
+rate, user satisfaction, and perceived control would provide quantitative
+evidence for the design claims made in this paper. We consider this the most
+important direction for future work and invite collaboration with HCI
+researchers.
+
+\paragraph{Collaboration support.} The current system is designed for
+single-user workflows with optional token-based project sharing. Real-time
+collaboration similar to Overleaf (multiple simultaneous editors, cursor
+presence, operational conflict resolution) would require operational transform
+or CRDT-based synchronization~\cite{crdt2011}, which introduces significant engineering
+complexity. We have built a preliminary collaboration infrastructure
+(WebSocket-based merge, token authorization, debounced flush), but full
+real-time collaborative editing remains future work.
+
+\paragraph{Scalability.} The filesystem-backed project model works well for
+individual manuscripts but would need enhancement for institutional deployment
+with hundreds of projects and users. A hybrid model---filesystem storage for
+manuscript content with a metadata index in SQLite or PostgreSQL for search
+and discovery---could address this while preserving local-first benefits.
+
+
+\paragraph{Evaluation scope.} All evaluation was conducted by the development
+team using the authors' own manuscripts and workflows. This introduces
+confirmation bias and limits external validity: researchers in other
+subdisciplines, working styles, or career stages may encounter friction points
+that the authors did not observe. The system was tested primarily with
+English-language computer science manuscripts in \LaTeX{}; performance with
+humanities, social science, or natural science writing conventions---which may
+rely on different packages, citation styles, or document structures---is
+unknown. Future evaluation should involve researchers external to the
+development team and span multiple disciplines.
+
+\paragraph{LLM provider dependency.} \software{} delegates text generation,
+review, and polishing to external LLM providers (OpenAI, Anthropic, or
+locally hosted models via Ollama~\cite{ollama}). The quality and cost of AI
+assistance therefore depend on the provider's pricing, rate limits, and model
+capabilities, which change frequently and are outside the system's control.
+While the multi-provider architecture mitigates single-vendor lock-in, it does
+not insulate users from API cost escalation or service disruption. Offline
+operation via local models is possible but requires non-trivial hardware and
+configuration, placing it beyond the reach of many researchers.
+
+\paragraph{Compile error repair.} When \LaTeX{} compilation fails, the system
+currently reports errors and warnings in a structured format but does not
+attempt automatic repair. LLM-based error diagnosis and fix suggestion is a
+promising direction: the compilation log could be fed to the LLM with the
+offending source lines, and the AI could suggest corrections. This aligns
+directly with the document engineering philosophy---treating broken
+compilation as a system-level error that the system should help resolve, not
+just report.
+
+\paragraph{Anti-AI detection.} The system includes a writing-pattern analysis
+panel (Section~\ref{sec:implementation}) that examines surface-level features
+such as perplexity scores, burstiness, and repetition patterns. We emphasize
+three critical limitations. First, the effectiveness of AI detection tools
+against modern LLMs is contested: Liang et al.~\cite{liang2024llmwriting}
+documented significant rates of both false positives (flagging human-written
+text as AI-generated) and false negatives (failing to detect AI-generated
+text), particularly for non-native English writers. Second, this feature must
+\emph{not} be used as a tool for evading academic-integrity checks or
+institutional AI-use policies; doing so would undermine scholarly integrity.
+Third, the writing-pattern metrics are heuristics derived from limited
+baseline corpora and are discipline-dependent, language-dependent, and
+model-dependent. We view this feature as strictly experimental and recommend
+that users treat its output as one data point for self-review---never as proof
+that text passes or fails AI detection. The interface displays explicit
+warnings to this effect (Section~\ref{sec:implementation}).
