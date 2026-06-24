@@ -8,10 +8,11 @@ import { AntiAiPanel } from './AntiAiPanel';
 import { PipelinePanelV2 } from './PipelinePanelV2';
 import { CitationVerificationPanel } from './CitationVerificationPanel';
 import { PaperRagPanel } from './PaperRagPanel';
+import DrawPanel from './DrawPanel';
 import { ConversationSummary, Conversation, structuredReview, detectAntiAi, detectAntiAiDeep, detectAntiAiGPTZero, verifyTexCitations, crossCheckCitations } from '../api/conversationApi';
 import { PendingEdit } from '../hooks/useConversations';
 
-type TabType = 'chat' | 'skills' | 'rag' | 'review' | 'anti-ai' | 'pipeline' | 'citations';
+type TabType = 'chat' | 'skills' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations';
 
 interface AttachedFile {
   id: string;
@@ -224,6 +225,7 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
           { key: 'chat', label: '💬 Chat' },
           { key: 'skills', label: '🧩 Skills' },
           { key: 'rag', label: '🔎 RAG' },
+          { key: 'draw', label: '🖼️ Draw' },
           { key: 'review', label: '📋 Review' },
           { key: 'citations', label: '📚 Citations' },
           { key: 'anti-ai', label: '🔍 Anti-AI' },
@@ -485,6 +487,10 @@ export function RightPanel({ conversations, activeConv, loading, chapters, skill
       ) : activeTab === 'rag' ? (
         <div style={{ flex: 1, overflow: 'auto' }}>
           <PaperRagPanel projectPath={projectPath} />
+        </div>
+      ) : activeTab === 'draw' ? (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <DrawPanel projectPath={projectPath} chapters={chapters} />
         </div>
       ) : activeTab === 'review' ? (
         <div style={{ flex: 1, overflow: 'auto' }}>

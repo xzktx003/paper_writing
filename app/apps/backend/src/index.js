@@ -40,6 +40,7 @@ import { registerMcpRoutes } from './routes/mcp.js';
 import { registerPaperRagRoutes } from './routes/paperRag.js';
 import { registerPaperWorkbenchRoutes } from './routes/paperWorkbench.js';
 import { registerWorkbenchPrototypeRoutes } from './routes/workbenchPrototype.js';
+import { registerDrawRoutes } from './routes/draw.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { registerAuthHook } from './middleware/auth.js';
@@ -96,7 +97,8 @@ registerMcpRoutes(fastify);
 registerPaperRagRoutes(fastify);
 registerPaperWorkbenchRoutes(fastify);
 registerWorkbenchPrototypeRoutes(fastify);
- 
+registerDrawRoutes(fastify, { appConfig });
+
 // Config endpoints
 fastify.get('/api/config', async () => publicAppConfig(appConfig));
 fastify.put('/api/config', async (request) => {
