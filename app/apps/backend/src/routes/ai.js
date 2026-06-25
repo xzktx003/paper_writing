@@ -259,8 +259,9 @@ function classifyAIError(err) {
 export function registerAIRoutes(fastify) {
   // ── SSE Streaming endpoint ──────────────────────────────
   fastify.post('/api/ai/stream', async (request, reply) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig, files, rag } = request.body;
- 
+    const { projectId, convId, projectPath, userMessage, projectConfig, files, rag, model } = request.body;
+    const modelOverride = model || undefined;
+
     const resolvedPath = await resolveProjectPath(projectPath);
     const conv = await getConversation(projectId, convId);
     await appendMessage(projectId, convId, { role: 'user', content: userMessage });
@@ -300,6 +301,15 @@ export function registerAIRoutes(fastify) {
       if (ragContext.evidence.context) {
         sendEvent('rag_context', { evidence: ragContext.evidence });
       }
+      // Build messages with conversation history + RAG context + current user message
+      const messages = [...contextMessages, ...(ragContext.messages || []), { role: 'user', content: userContent }];
+      
+      // DEBUG: log what we're sending to the LLM
+      console.log('[AI DEBUG] systemPrompt:', JSON.stringify(systemPrompt));
+      console.log('[AI DEBUG] messages count:', messages.length);
+      console.log('[AI DEBUG] user message:', JSON.stringify(userContent).slice(0, 200));
+      console.log('[AI DEBUG] rag context:', ragContext.evidence.context ? 'YES' : 'NO (empty)');
+      
       if (conv.mode === 'chat') {
         const result = await chatCompletionStream({
           systemPrompt, messages, model: modelOverride,
@@ -336,7 +346,8 @@ export function registerAIRoutes(fastify) {
  
   // ── Legacy non-streaming endpoint ────────────────────────
   fastify.post('/api/ai/send', async (request) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig, files, rag } = request.body;
+    const { projectId, convId, projectPath, userMessage, projectConfig, files, rag, model } = request.body;
+    const modelOverride = model || undefined;
 
     const resolvedPath = await resolveProjectPath(projectPath);
     const conv = await getConversation(projectId, convId);
@@ -358,7 +369,9 @@ export function registerAIRoutes(fastify) {
 
     // Build user message with optional file attachments
     const userContent = buildUserMessageContent(userMessage, files);
- 
+    // Build messages with conversation history + RAG context + current user message
+    const messages = [...contextMessages, ...(ragContext.messages || []), { role: 'user', content: userContent }];
+
     try {
       if (conv.mode === 'chat') {
         const response = await chatCompletion({ systemPrompt, messages, model: modelOverride });

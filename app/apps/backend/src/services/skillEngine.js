@@ -2231,7 +2231,14 @@ function inferTargetReferenceFromTask(query = '') {
 }
  
 export function assemblePrompt({ globalSkills, chapterSkills, manualSkill }) {
-  const parts = ['You are an academic writing assistant.'];
+  const parts = [];
+  const hasAnySkill = (globalSkills?.length || chapterSkills?.length || manualSkill);
+  
+  // Only force academic writing assistant role when skills are actually selected
+  if (hasAnySkill) {
+    parts.push('You are an academic writing assistant.');
+  }
+  
   for (const name of globalSkills || []) {
     const skill = skillRegistry.get(name);
     if (skill) parts.push(`[Global Rule - ${skill.display_name}]\n${skill.prompt}`);
