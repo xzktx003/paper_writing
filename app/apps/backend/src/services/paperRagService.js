@@ -1419,24 +1419,126 @@ async function extractPdfTextWithPdftotext(pdfPath) {
 }
 
 async function extractPdfTextWithPython(pdfPath) {
+  // Enhanced Python script with better CJK and Unicode support
   const script = `
-import json, sys
+import json, sys, os, re
 path = sys.argv[1]
-try:
+
+def clean_text(text):
+    """Clean and normalize extracted text"""
+    if not text:
+        return ""
+    # Remove null characters
+    text = text.replace('\\x00', '')
+    # Fix common PDF encoding issues
+    text = re.sub(r'[\\x80-\\xff]+', lambda m: m.group(0).encode('latin1').decode('utf-8', errors='replace'), text)
+    # Normalize whitespace
+    text = re.sub(r'[ \\t]+', ' ', text)
+    text = re.sub(r'\\n{3,}', '\\n\\n', text)
+    # Remove BOM
+    text = text.replace('\\ufeff', '')
+    return text.strip()
+
+def extract_with_fitz(path):
+    """Extract using PyMuPDF with Unicode support"""
+    import fitz
+    doc = fitz.open(path)
+    texts = []
+    for page in doc:
+        # Try different text extraction options
+        text = page.get_text("text", flags=fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_PRESERVE_IMAGES)
+        if not text or len(text.strip()) < 10:
+            # Try blocks as fallback
+            blocks = page.get_text("blocks")
+            text = "\\n".join(b[4] for b in blocks if b[4].strip())
+        texts.append(text or "")
+    return {
+        "parser": "python-fitz",
+        "pages": len(doc),
+        "text": "\\n\\n".join(texts)
+    }
+
+def extract_with_pdfplumber(path):
+    """Extract using pdfplumber - better for tables and complex layouts"""
+    import pdfplumber
+    texts = []
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            # Extract text with layout preserved
+            text = page.extract_text(layout=True)
+            if not text:
+                text = page.extract_text()
+            # Also try to extract words for better coverage
+            words = page.extract_words()
+            if words and (not text or len(text.strip()) < 10):
+                text = " ".join(w["text"] for w in words)
+            texts.append(text or "")
+    return {
+        "parser": "python-pdfplumber",
+        "pages": len(pdf.pages),
+        "text": "\\n\\n".join(texts)
+    }
+
+def extract_with_pypdf(path):
+    """Extract using pypdf with encoding fallbacks"""
     import pypdf
     reader = pypdf.PdfReader(path)
     texts = []
     for page in reader.pages:
-        texts.append(page.extract_text() or "")
-    print(json.dumps({"parser": "python-pypdf", "pages": len(reader.pages), "text": "\\n\\n".join(texts)}))
-except Exception as first:
-    try:
-        import fitz
-        doc = fitz.open(path)
-        texts = [page.get_text("text") for page in doc]
-        print(json.dumps({"parser": "python-fitz", "pages": len(doc), "text": "\\n\\n".join(texts)}))
-    except Exception as second:
-        raise RuntimeError(f"python PDF extraction failed: {first}; {second}")
+        text = page.extract_text()
+        if not text:
+            # Try to get text from annotations
+            if "/Annots" in page:
+                annot_texts = []
+                for annot in page["/Annots"]:
+                    obj = annot.get_object()
+                    if "/Contents" in obj:
+                        annot_texts.append(str(obj["/Contents"]))
+                text = "\\n".join(annot_texts)
+        texts.append(text or "")
+    return {
+        "parser": "python-pypdf",
+        "pages": len(reader.pages),
+        "text": "\\n\\n".join(texts)
+    }
+
+# Try different extractors in order of preference
+errors = []
+
+# 1. Try PyMuPDF first (best Unicode support)
+try:
+    result = extract_with_fitz(path)
+    if result["text"].strip():
+        result["text"] = clean_text(result["text"])
+        print(json.dumps(result))
+        sys.exit(0)
+except Exception as e:
+    errors.append(f"fitz: {e}")
+
+# 2. Try pdfplumber (good for complex layouts)
+try:
+    result = extract_with_pdfplumber(path)
+    if result["text"].strip():
+        result["text"] = clean_text(result["text"])
+        result["parser"] = result["parser"] + "-fallback"
+        print(json.dumps(result))
+        sys.exit(0)
+except Exception as e:
+    errors.append(f"pdfplumber: {e}")
+
+# 3. Try pypdf as fallback
+try:
+    result = extract_with_pypdf(path)
+    if result["text"].strip():
+        result["text"] = clean_text(result["text"])
+        result["parser"] = result["parser"] + "-fallback"
+        print(json.dumps(result))
+        sys.exit(0)
+except Exception as e:
+    errors.append(f"pypdf: {e}")
+
+# All failed
+raise RuntimeError(f"All PDF extractors failed: {'; '.join(errors)}")
 `;
   const { stdout } = await execFileAsync('python3', ['-c', script, pdfPath], {
     timeout: 60_000,
@@ -1446,19 +1548,107 @@ except Exception as first:
 }
 
 async function extractPdfTextNaively(pdfPath) {
-  const buffer = await readFile(pdfPath);
-  const raw = buffer.toString('latin1');
-  const strings = [];
-  const literalPattern = /\((?:\\.|[^\\)]){2,}\)/g;
-  let match;
-  while ((match = literalPattern.exec(raw)) !== null) {
-    strings.push(decodePdfLiteral(match[0].slice(1, -1)));
+  // Enhanced naive parser with Python-based multi-encoding support
+  const script = `
+import sys, re, struct
+
+def try_decode(bytes_data, encodings):
+    """Try to decode bytes with multiple encodings"""
+    for enc in encodings:
+        try:
+            text = bytes_data.decode(enc)
+            # Check if contains printable characters (Chinese, English, numbers, punctuation)
+            printable_ratio = sum(1 for c in text if c.isprintable() or '\\u4e00' <= c <= '\\u9fff') / max(len(text), 1)
+            if printable_ratio > 0.7 and len(text.strip()) > 2:
+                return text
+        except:
+            pass
+    return None
+
+def extract_text_from_stream(stream_data):
+    """Extract text from PDF stream content"""
+    texts = []
+    encodings = ['utf-8', 'gbk', 'gb2312', 'gb18030', 'latin1', 'cp1252', 'iso-8859-1']
+    
+    # Try to find text in BT...ET blocks
+    bt_blocks = re.findall(rb'BT\\s*(.*?)\\s*ET', stream_data, re.DOTALL)
+    for block in bt_blocks:
+        # Find Tj and TJ operators
+        strings = re.findall(rb'\\(([^)]*)\\) Tj', block)
+        for s in strings:
+            decoded = try_decode(s, encodings)
+            if decoded:
+                texts.append(decoded)
+        
+        # Find TJ arrays
+        arrays = re.findall(rb'\\[([^\\]]*)\\]\\s*TJ', block)
+        for arr in arrays:
+            parts = re.findall(rb'\\(([^)]*)\\)', arr)
+            for p in parts:
+                decoded = try_decode(p, encodings)
+                if decoded:
+                    texts.append(decoded)
+    
+    return texts
+
+def main(path):
+    with open(path, 'rb') as f:
+        data = f.read()
+    
+    # Extract from raw content (skip xref and trailer)
+    # Find stream...endstream blocks
+    streams = re.findall(rb'stream\\s*(.*?)\\s*endstream', data, re.DOTALL)
+    
+    all_texts = []
+    for stream in streams:
+        # Clean stream boundaries
+        if stream.startswith(b'\\r\\n'):
+            stream = stream[2:]
+        elif stream.startswith(b'\\n'):
+            stream = stream[1:]
+        
+        texts = extract_text_from_stream(stream)
+        all_texts.extend(texts)
+    
+    # If no text found, try raw string extraction with multiple encodings
+    if not all_texts:
+        raw_strings = re.findall(rb'\\(([\\x20-\\x7e\\xa0-\\xff]+)\\)', data)
+        for rs in raw_strings:
+            decoded = try_decode(rs, ['gbk', 'gb2312', 'gb18030', 'utf-16be', 'utf-8', 'latin1'])
+            if decoded:
+                all_texts.append(decoded)
+    
+    return '\\n'.join(all_texts)
+
+print(main(sys.argv[1]))
+`;
+  
+  try {
+    const { stdout } = await execFileAsync('python3', ['-c', script, pdfPath], {
+      timeout: 30_000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return {
+      parser: 'naive-pdf-stream',
+      text: stdout.trim(),
+      warnings: [],
+    };
+  } catch (e) {
+    // Fallback to simple extraction
+    const buffer = await readFile(pdfPath);
+    const raw = buffer.toString('latin1');
+    const strings = [];
+    const literalPattern = /\((?:\\.|[^\\)]){2,}\)/g;
+    let match;
+    while ((match = literalPattern.exec(raw)) !== null) {
+      strings.push(decodePdfLiteral(match[0].slice(1, -1)));
+    }
+    return {
+      parser: 'naive-pdf-literals',
+      text: strings.join(' '),
+      warnings: ['Fallback parser - limited extraction'],
+    };
   }
-  return {
-    parser: 'naive-pdf-literals',
-    text: strings.join(' '),
-    warnings: ['Fallback parser only extracts simple PDF literal strings'],
-  };
 }
 
 function decodePdfLiteral(value) {
