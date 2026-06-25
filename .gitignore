@@ -31,5 +31,5 @@ apps/server/.codex
 apps/server/.codex/
 .omx/
 .worktrees/
-.app/apps/frontend/dist/
+app/apps/frontend/dist/
 .dist/
