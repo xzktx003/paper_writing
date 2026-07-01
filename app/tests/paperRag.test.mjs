@@ -9,6 +9,7 @@ import {
   listCorpusDocuments,
   searchCorpus,
 } from '../apps/backend/src/services/paperRagService.js';
+import { buildRagMessages } from '../apps/backend/src/routes/ai.js';
 
 describe('Paper RAG service', () => {
   it('indexes project corpus files and returns cited snippets for queries', async () => {
@@ -54,6 +55,39 @@ describe('Paper RAG service', () => {
 
       const results = await searchCorpus(projectRoot, 'page anchors claim audit', { limit: 1 });
       expect(results[0].source.path).toBe('research_corpus/claim-audit.md');
+    } finally {
+      await rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('retrieves only selected conversation documents and disables RAG after deselection', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'paper-rag-selected-'));
+    try {
+      await addCorpusDocument(projectRoot, {
+        filename: 'spectral.md',
+        content: 'Transformer pruning calibration uses a spectral reconstruction objective.',
+      });
+      await addCorpusDocument(projectRoot, {
+        filename: 'random.md',
+        content: 'Transformer pruning calibration uses a random reconstruction baseline.',
+      });
+
+      const selected = await buildRagMessages(projectRoot, '请解读random量化方法', {
+        rag: { enabled: true, docPaths: ['research_corpus/random.md'], limit: 5 },
+      });
+      expect(selected.evidence.context).toContain('random reconstruction baseline');
+      expect(selected.evidence.context).not.toContain('spectral reconstruction objective');
+
+      const fallback = await buildRagMessages(projectRoot, '你能看到我选中的RAG文档吗？', {
+        rag: { enabled: true, docPaths: ['research_corpus/random.md'], limit: 5 },
+      });
+      expect(fallback.evidence.context).toContain('random reconstruction baseline');
+
+      const deselected = await buildRagMessages(projectRoot, '这篇论文的校准方法是什么？', {
+        rag: { enabled: false, docPaths: [] },
+      });
+      expect(deselected.evidence.context).toBe('');
+      expect(deselected.messages).toEqual([]);
     } finally {
       await rm(projectRoot, { recursive: true, force: true });
     }

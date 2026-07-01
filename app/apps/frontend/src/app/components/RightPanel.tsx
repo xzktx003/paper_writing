@@ -12,8 +12,7 @@ import { PaperRagPanel } from './PaperRagPanel';
 import DrawPanel from './DrawPanel';
 import { ConversationSummary, Conversation, structuredReview, detectAntiAi, detectAntiAiDeep, detectAntiAiGPTZero, verifyTexCitations, crossCheckCitations } from '../api/conversationApi';
 import { PendingEdit } from '../hooks/useConversations';
-import { RagDocumentSelector, fetchRagContextForDocuments } from './RagDocumentSelector';
-import { getPaperAgentProjectId } from '../api/paperRagApi';
+import { RagDocumentSelector } from './RagDocumentSelector';
 
 type TabType = 'chat' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations';
 
@@ -48,6 +47,7 @@ interface Props {
     onProgress?: (percent: number) => void
   ) => Promise<{ id: string; name: string }>;
   onRemoveAttachment: (attachmentId: string) => Promise<void>;
+  onSetRagDocuments: (documentPaths: string[]) => Promise<void>;
   onRename?: (id: string, newName: string) => void;
   globalSkills?: string[];
   chapterSkills?: string[];
@@ -59,7 +59,7 @@ interface Props {
   onRejectEdit?: (editId: string) => void;
 }
 
-export function RightPanel({ conversations, activeConv, loading, uploadProgress, chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onUploadAttachment, onRemoveAttachment, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function RightPanel({ conversations, activeConv, loading, uploadProgress, chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onUploadAttachment, onRemoveAttachment, onSetRagDocuments, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -77,11 +77,9 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
-  const [selectedRagDocs, setSelectedRagDocs] = useState<string[]>([]);
-  const [ragContext, setRagContext] = useState('');
-  const [ragSearching, setRagSearching] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedRagDocs = activeConv?.rag_documents || [];
 
   // Clear selected skills when switching tabs
   useEffect(() => {
@@ -135,24 +133,6 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
     if (attachedFiles.some(file => ['reading', 'uploading', 'error'].includes(file.readStatus || ''))) return;
     
     let messageToSend = inputValue.trim();
-    
-    // If RAG documents are selected, fetch context and prepend to message
-    if (selectedRagDocs.length > 0 && projectPath) {
-      const projectId = getPaperAgentProjectId(projectPath);
-      if (projectId) {
-        setRagSearching(true);
-        try {
-          const { context } = await fetchRagContextForDocuments(projectId, selectedRagDocs, inputValue.trim(), 5);
-          if (context && context.trim()) {
-            const ragHeader = `\n\n📚 **已选文档上下文:**\n---\n${context}\n---\n\n**我的问题:** ${inputValue.trim()}`;
-            messageToSend = ragHeader;
-          }
-        } catch (e) {
-          console.error('Failed to fetch RAG context:', e);
-        }
-        setRagSearching(false);
-      }
-    }
     
     const transientFiles = attachedFiles.filter(file => !file.attachmentId);
     if (!messageToSend && attachedFiles.some(file => file.attachmentId)) {
@@ -269,6 +249,12 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
     setAttachedFiles(prev => prev.filter(file => file.attachmentId !== attachmentId));
   };
 
+  const updateRagDocuments = (documentPaths: string[]) => {
+    onSetRagDocuments(documentPaths).catch(error => {
+      console.error('Failed to update conversation RAG documents:', error);
+    });
+  };
+
   /** Format file size for display */
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -374,8 +360,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                   <RagDocumentSelector
                     projectPath={projectPath}
                     selectedDocs={selectedRagDocs}
-                    onChange={setSelectedRagDocs}
-                    onSearching={setRagSearching}
+                    onChange={updateRagDocuments}
                   />
                   {/* Skills selector with categories */}
                   <InlineSkillsSelector
@@ -395,6 +380,23 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                           <button
                             onClick={() => removePersistedAttachment(attachment.id)}
                             title="从对话上下文移除"
+                            style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedRagDocs.length > 0 && (
+                  <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-strong)', marginBottom: 5 }}>本对话持续检索的 RAG 文档</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {selectedRagDocs.map(documentPath => (
+                        <span key={documentPath} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 6, background: 'var(--paper)', fontSize: 10, color: 'var(--text)' }}>
+                          📚 {documentPath.split('/').pop() || documentPath}
+                          <button
+                            onClick={() => updateRagDocuments(selectedRagDocs.filter(path => path !== documentPath))}
+                            title="停止在本对话中检索此文档"
                             style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
                           >×</button>
                         </span>

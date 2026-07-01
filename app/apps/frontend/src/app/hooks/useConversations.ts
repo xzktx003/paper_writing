@@ -98,6 +98,18 @@ export function useConversations(projectId: string | null) {
     } : null);
   }, [projectId, activeConv?.id]);
 
+  const setRagDocuments = useCallback(async (documentPaths: string[]) => {
+    if (!projectId || !activeConv) return;
+    const previous = activeConv.rag_documents || [];
+    setActiveConv(prev => prev ? { ...prev, rag_documents: documentPaths } : null);
+    try {
+      await updateConversation(projectId, activeConv.id, { rag_documents: documentPaths });
+    } catch (error) {
+      setActiveConv(prev => prev ? { ...prev, rag_documents: previous } : null);
+      throw error;
+    }
+  }, [projectId, activeConv?.id, activeConv?.rag_documents]);
+
   /** Non-streaming send (fallback) */
   const sendRaw = useCallback(async (message: string, projectPath: string, projectConfig: any, files?: AttachedFileData[], skipUserMessage = false) => {
     if (!projectId || !activeConv) return;
@@ -239,6 +251,6 @@ export function useConversations(projectId: string | null) {
   return {
     conversations, activeConv, loading, uploadProgress, pendingEdits,
     refresh, select, create, remove, rename, send,
-    uploadAttachment, removeAttachment, acceptEdit, rejectEdit,
+    uploadAttachment, removeAttachment, setRagDocuments, acceptEdit, rejectEdit,
   };
 }

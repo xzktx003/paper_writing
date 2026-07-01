@@ -19,6 +19,7 @@ export interface Conversation {
   model?: string;
   history: { role: string; content: string }[];
   attachments: ConversationAttachment[];
+  rag_documents: string[];
 }
 
 export interface ConversationAttachment {
@@ -56,7 +57,7 @@ export async function createConversation(projectId: string, data: {
   return apiPost(`${BASE}/conversations/${projectId}`, data);
 }
 
-export async function updateConversation(projectId: string, convId: string, updates: Partial<{ name: string; active_skills: string[]; mode: string }>): Promise<Conversation> {
+export async function updateConversation(projectId: string, convId: string, updates: Partial<{ name: string; active_skills: string[]; mode: string; rag_documents: string[] }>): Promise<Conversation> {
   return apiPut(`${BASE}/conversations/${projectId}/${convId}`, updates);
 }
 

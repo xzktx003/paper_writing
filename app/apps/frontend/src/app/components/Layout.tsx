@@ -160,6 +160,7 @@ export function Layout() {
                 onSend={app.sendMessage}
                 onUploadAttachment={app.uploadConversationAttachment}
                 onRemoveAttachment={app.removeConversationAttachment}
+                onSetRagDocuments={app.setConversationRagDocuments}
                 onRename={app.renameConversation}
                 globalSkills={app.project.config?.global_skills || []}
                 chapterSkills={currentChapterSkills}

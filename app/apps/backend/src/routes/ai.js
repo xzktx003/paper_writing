@@ -240,12 +240,9 @@ async function buildContextMessages(conv, resolvedPath, projectConfig) {
 }
 
 function shouldUseRag({ rag, projectConfig, userMessage }) {
-  if (rag?.enabled === true || projectConfig?.rag_enabled === true || projectConfig?.rag?.enabled === true) {
-    return true;
-  }
-  if (rag?.enabled === false || projectConfig?.rag_enabled === false || projectConfig?.rag?.enabled === false) {
-    return false;
-  }
+  if (typeof rag?.enabled === 'boolean') return rag.enabled;
+  if (typeof projectConfig?.rag_enabled === 'boolean') return projectConfig.rag_enabled;
+  if (typeof projectConfig?.rag?.enabled === 'boolean') return projectConfig.rag.enabled;
   return /rag|知识库|证据|文献|论文|pdf|引用|related work|literature/i.test(String(userMessage || ''));
 }
 
@@ -257,6 +254,8 @@ export async function buildRagMessages(resolvedPath, userMessage, options = {}) 
   if (!query) return { messages: [], evidence: { query: '', context: '', results: [] }, usageGuidance: '' };
   const evidence = await buildRagEvidence(resolvedPath, query, {
     limit: options.rag?.limit || options.projectConfig?.rag?.limit || 5,
+    docPaths: options.rag?.docPaths,
+    fallbackToSelected: Array.isArray(options.rag?.docPaths) && options.rag.docPaths.length > 0,
   }).catch((error) => {
     console.warn('RAG context retrieval failed:', error.message);
     return { query, context: '', results: [], error: error.message };
@@ -333,7 +332,11 @@ export function registerAIRoutes(fastify) {
  
     // Auto context injection: read current chapter / paper structure / references
     const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
-    const ragContext = await buildRagMessages(resolvedPath, userMessage, { rag, projectConfig });
+    const selectedRagDocuments = Array.isArray(conv.rag_documents) ? conv.rag_documents : [];
+    const ragContext = await buildRagMessages(resolvedPath, userMessage, {
+      rag: { ...(rag || {}), enabled: selectedRagDocuments.length > 0, docPaths: selectedRagDocuments },
+      projectConfig,
+    });
     const attachmentMessages = buildConversationAttachmentMessages(conv);
     const conversationHistory = buildConversationHistory(conv);
 
@@ -429,7 +432,11 @@ export function registerAIRoutes(fastify) {
 
     // Auto context injection
     const contextMessages = await buildContextMessages(conv, resolvedPath, projectConfig);
-    const ragContext = await buildRagMessages(resolvedPath, userMessage, { rag, projectConfig });
+    const selectedRagDocuments = Array.isArray(conv.rag_documents) ? conv.rag_documents : [];
+    const ragContext = await buildRagMessages(resolvedPath, userMessage, {
+      rag: { ...(rag || {}), enabled: selectedRagDocuments.length > 0, docPaths: selectedRagDocuments },
+      projectConfig,
+    });
     const attachmentMessages = buildConversationAttachmentMessages(conv);
     const conversationHistory = buildConversationHistory(conv);
 

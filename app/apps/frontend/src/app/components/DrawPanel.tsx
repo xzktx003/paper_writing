@@ -33,6 +33,7 @@ interface DrawState {
   figureDescription: string;
   generatedPrompt: string;
   imageUrl: string | null;
+  savedPath: string | null;
   loading: boolean;
   loadingPrompt: boolean;
   error: string | null;
@@ -95,6 +96,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
         // Reset loading states on reload
         parsed.loading = false;
         parsed.loadingPrompt = false;
+        parsed.savedPath = parsed.savedPath || null;
         return parsed;
       }
     } catch (e) {}
@@ -103,6 +105,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       figureDescription: '',
       generatedPrompt: '',
       imageUrl: null,
+      savedPath: null,
       loading: false,
       loadingPrompt: false,
       error: null,
@@ -459,7 +462,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       return;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState(prev => ({ ...prev, loading: true, error: null, savedPath: null }));
 
     try {
       const response = await fetch('/api/draw/generate-image', {
@@ -482,6 +485,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       setState(prev => ({ 
         ...prev, 
         imageUrl: data.imageUrl,
+        savedPath: data.savedPath || null,
         loading: false 
       }));
 
@@ -791,6 +795,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     onClick={() => {
                       // Extract filename/path from imageUrl and switch to edit tab
                       // imageUrl format: /api/draw/images/filename.png?projectName=xxx
+                      if (!state.imageUrl) return;
                       const urlParts = state.imageUrl.split('/');
                       const filename = decodeURIComponent(urlParts.pop()?.split('?')[0] || '');
                       if (filename) {
@@ -813,6 +818,13 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     ✏️ Edit this image →
                   </button>
                 </div>
+                {state.savedPath && (
+                  <div style={{ marginBottom: 12, padding: '9px 11px', borderRadius: 7, background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.35)', color: 'var(--text)', fontSize: 12 }}>
+                    <span style={{ color: '#16a34a', fontWeight: 700 }}>Image saved to: </span>
+                    <code style={{ wordBreak: 'break-all' }}>{state.savedPath}</code>
+                    <div style={{ marginTop: 3, color: 'var(--muted)', fontSize: 10 }}>Project folder: draw/</div>
+                  </div>
+                )}
                 <img 
                   src={state.imageUrl + (papersProjectPath ? `?projectName=${encodeURIComponent(papersProjectPath)}` : '')} 
                   alt="Generated figure" 

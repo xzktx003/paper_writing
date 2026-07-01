@@ -8,6 +8,7 @@ import { extractPdfText } from '../services/pdfService.js';
 function publicConversation(conv) {
   return {
     ...conv,
+    rag_documents: Array.isArray(conv.rag_documents) ? conv.rag_documents : [],
     attachments: (conv.attachments || []).map(({ text, ...attachment }) => ({
       ...attachment,
       textLength: attachment.textLength || text?.length || 0,

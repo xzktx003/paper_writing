@@ -474,19 +474,21 @@ export async function searchCorpus(projectRoot, query, options = {}) {
   if (queryTerms.length === 0) return [];
   const limit = Math.min(Number(options.limit || 5), 20);
   
-  // Filter by document paths if specified
-  const docPaths = options.docPaths;
-  
-  return index.chunks
-    .map(chunk => ({ ...chunk, score: scoreChunk(chunk, queryTerms) }))
-    .filter(chunk => {
-      if (chunk.score <= 0) return false;
-      // If docPaths is specified, filter to only include chunks from those documents
-      if (docPaths && Array.isArray(docPaths) && docPaths.length > 0) {
-        return docPaths.some(dp => chunk.source?.path?.includes(dp));
-      }
-      return true;
-    })
+  const selectedPaths = new Set(
+    (Array.isArray(options.docPaths) ? options.docPaths : [])
+      .map(value => String(value || '').replace(/^\/+/, ''))
+      .filter(Boolean)
+  );
+  const scopedChunks = selectedPaths.size > 0
+    ? index.chunks.filter(chunk => selectedPaths.has(String(chunk.source?.path || '').replace(/^\/+/, '')))
+    : index.chunks;
+  const scoredChunks = scopedChunks.map(chunk => ({ ...chunk, score: scoreChunk(chunk, queryTerms) }));
+  const matchedChunks = scoredChunks.filter(chunk => chunk.score > 0);
+  const candidates = matchedChunks.length > 0
+    ? matchedChunks
+    : (options.fallbackToSelected && selectedPaths.size > 0 ? scoredChunks : []);
+
+  return candidates
     .sort((a, b) => b.score - a.score || a.source.path.localeCompare(b.source.path))
     .slice(0, limit)
     .map(({ terms, ...chunk }) => chunk);
@@ -1817,11 +1819,24 @@ function scoreChunk(chunk, queryTerms) {
 }
  
 function tokenize(text) {
-  return String(text)
+  const segments = String(text)
     .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, ' ')
-    .split(/\s+/)
-    .filter(token => token.length > 1);
+    .match(/[a-z0-9]+|[\u4e00-\u9fa5]+/g) || [];
+  const tokens = [];
+  for (const segment of segments) {
+    if (!/^[\u4e00-\u9fa5]+$/.test(segment)) {
+      if (segment.length > 1) tokens.push(segment);
+      continue;
+    }
+    if (segment.length <= 2) {
+      tokens.push(segment);
+      continue;
+    }
+    for (let index = 0; index < segment.length - 1; index += 1) {
+      tokens.push(segment.slice(index, index + 2));
+    }
+  }
+  return tokens;
 }
  
 function inferTitle(content, fallbackPath) {

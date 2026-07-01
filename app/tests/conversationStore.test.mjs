@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import {
-  createConversation, getConversation, listConversations, appendMessage, deleteConversation,
+  createConversation, getConversation, updateConversation, listConversations, appendMessage, deleteConversation,
   addConversationAttachment, removeConversationAttachment,
 } from '../apps/backend/src/services/conversationStore.js';
 
@@ -35,6 +35,7 @@ describe('Conversation Store', () => {
     expect(conv.mode).toBe('chat');
     expect(conv.history).toEqual([]);
     expect(conv.attachments).toEqual([]);
+    expect(conv.rag_documents).toEqual([]);
   });
 
   it('listConversations returns created conversations', async () => {
@@ -75,6 +76,20 @@ describe('Conversation Store', () => {
     expect(await removeConversationAttachment(projectId, convId, attachment.id)).toBe(true);
     conv = await getConversation(projectId, convId);
     expect(conv.attachments).toEqual([]);
+  });
+
+  it('persists selected RAG documents and clears them when deselected', async () => {
+    const list = await listConversations(projectId);
+    const convId = list[0].id;
+    await updateConversation(projectId, convId, {
+      rag_documents: ['research_corpus/a.pdf', 'research_corpus/b.md'],
+    });
+    let conv = await getConversation(projectId, convId);
+    expect(conv.rag_documents).toEqual(['research_corpus/a.pdf', 'research_corpus/b.md']);
+
+    await updateConversation(projectId, convId, { rag_documents: [] });
+    conv = await getConversation(projectId, convId);
+    expect(conv.rag_documents).toEqual([]);
   });
 
   it('deleteConversation removes conversation', async () => {

@@ -38,6 +38,7 @@ export async function createConversation(projectId, { name, context_scope, activ
     model: model || null,
     history: [],
     attachments: [],
+    rag_documents: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

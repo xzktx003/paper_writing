@@ -32,6 +32,7 @@ interface AppState {
     onProgress?: (percent: number) => void
   ) => Promise<any>;
   removeConversationAttachment: (attachmentId: string) => Promise<void>;
+  setConversationRagDocuments: (documentPaths: string[]) => Promise<void>;
   pendingEdits: any[];
   acceptEdit: (editId: string) => void;
   rejectEdit: (editId: string) => void;
@@ -224,6 +225,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     sendMessage,
     uploadConversationAttachment: convHook.uploadAttachment,
     removeConversationAttachment: convHook.removeAttachment,
+    setConversationRagDocuments: convHook.setRagDocuments,
     pendingEdits: convHook.pendingEdits,
     acceptEdit,
     rejectEdit: convHook.rejectEdit,
@@ -236,7 +238,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     updateFileContent, saveFile, closeFile,
     convHook.conversations, convHook.activeConv, convHook.loading, convHook.uploadProgress,
     convHook.refresh, convHook.select, convHook.create, convHook.remove,
-    convHook.rename, convHook.uploadAttachment, convHook.removeAttachment,
+    convHook.rename, convHook.uploadAttachment, convHook.removeAttachment, convHook.setRagDocuments,
     convHook.pendingEdits, convHook.rejectEdit,
     sendMessage, acceptEdit, skills, activateSkill, terminalVisible, toggleTerminal,
   ]);

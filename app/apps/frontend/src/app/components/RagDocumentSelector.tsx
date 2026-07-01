@@ -1,21 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { listRagDocuments, searchRagCorpus, buildRagContext, RagDocument, RagSearchResult, getPaperAgentProjectId } from '../api/paperRagApi';
+import { listRagDocuments, RagDocument, getPaperAgentProjectId } from '../api/paperRagApi';
 
 interface Props {
   projectPath?: string;
   selectedDocs: string[];
   onChange: (docPaths: string[]) => void;
-  onContextReady?: (context: string) => void;
-  onSearching?: (searching: boolean) => void;
 }
 
-export function RagDocumentSelector({ projectPath, selectedDocs, onChange, onContextReady, onSearching }: Props) {
+export function RagDocumentSelector({ projectPath, selectedDocs, onChange }: Props) {
   const projectId = getPaperAgentProjectId(projectPath);
   const [documents, setDocuments] = useState<RagDocument[]>([]);
-  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [searchResults, setSearchResults] = useState<RagSearchResult[]>([]);
-  const [ragContext, setRagContext] = useState('');
 
   useEffect(() => {
     if (!projectId) return;
@@ -47,16 +42,6 @@ export function RagDocumentSelector({ projectPath, selectedDocs, onChange, onCon
   const clearAll = () => {
     onChange([]);
   };
-
-  // When selected docs change, build context if needed
-  useEffect(() => {
-    if (selectedDocs.length === 0) {
-      setRagContext('');
-      onContextReady?.('');
-      return;
-    }
-    // Note: Full RAG context would need a query. For now, just indicate docs are selected.
-  }, [selectedDocs]);
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';
@@ -222,24 +207,4 @@ export function RagDocumentSelector({ projectPath, selectedDocs, onChange, onCon
       )}
     </div>
   );
-}
-
-// Helper function to fetch RAG context for selected documents
-export async function fetchRagContextForDocuments(
-  projectId: string,
-  docPaths: string[],
-  query: string,
-  limit = 5
-): Promise<{ context: string; results: RagSearchResult[] }> {
-  if (docPaths.length === 0) {
-    return { context: '', results: [] };
-  }
-
-  try {
-    const result = await buildRagContext(projectId, query, limit, docPaths);
-    return { context: result.context, results: [] };
-  } catch (e) {
-    console.error('Failed to fetch RAG context:', e);
-    return { context: '', results: [] };
-  }
 }

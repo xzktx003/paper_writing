@@ -265,13 +265,16 @@ export async function registerDrawRoutes(fastify, opts) {
         }
         
         fs.writeFileSync(outputPath, imgResponse.data);
+
+        const savedPath = `draw/${outputFilename}`;
         
         return { 
           success: true,
           imageUrl: `/api/draw/images/${outputFilename}`,
           prompt: fullPrompt,
           sourceUrl: imageUrl,
-          savedPath: outputFilename  // 返回相对路径文件名，方便前端使用
+          savedPath,
+          savedDirectory: 'draw'
         };
       } catch (apiError) {
         fastify.log.error('Image API error:', apiError.message);
