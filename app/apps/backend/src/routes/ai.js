@@ -95,7 +95,7 @@ export async function buildUserMessageContent(userMessage, files) {
 const TOOL_DEFINITIONS = [
   { name: 'read_chapter', description: 'Read a chapter file', input_schema: { type: 'object', properties: { filename: { type: 'string' } }, required: ['filename'] } },
   { name: 'list_chapters', description: 'List all chapter files', input_schema: { type: 'object', properties: {} } },
-  { name: 'propose_edit', description: 'Propose an edit to a chapter (returns diff for user confirmation)', input_schema: { type: 'object', properties: { filename: { type: 'string' }, new_content: { type: 'string' } }, required: ['filename', 'new_content'] } },
+  { name: 'propose_edit', description: 'Create a reviewable diff for an existing paper file. This does NOT write the file. new_content must contain the COMPLETE updated file, preserving all unchanged content. The user applies it only by clicking Accept in the Diff UI.', input_schema: { type: 'object', properties: { filename: { type: 'string', description: 'Existing project-relative paper file path.' }, new_content: { type: 'string', description: 'Complete contents of the file after the proposed edit, not only the changed paragraph.' } }, required: ['filename', 'new_content'] } },
   { name: 'list_code', description: 'List files and directories under code/ directory', input_schema: { type: 'object', properties: { path: { type: 'string' } } } },
   { name: 'read_code', description: 'Read a file from code/ directory', input_schema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } },
   { name: 'write_code', description: 'Write a file to code/ directory', input_schema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } },
@@ -118,7 +118,13 @@ export function getToolsForMode(mode) {
 export function appendModeGuidance(systemPrompt, mode) {
   const guidance = {
     chat: 'Mode: Chat. Discuss, explain, and reason only. Do not modify files or claim that files were changed.',
-    agent: 'Mode: Agent. Inspect context and propose paper edits for user confirmation. Use propose_edit for changes; do not directly write files, run code, or perform code-directory workflows.',
+    agent: [
+      'Mode: Agent. Inspect context and propose paper edits for user confirmation.',
+      'Use propose_edit for every requested file change, with the existing project-relative filename and the COMPLETE updated file content, preserving every unchanged section.',
+      'propose_edit never writes a file. After calling it, tell the user to review the Diff tab and click Accept or Reject.',
+      'Never claim that a file was changed, saved, submitted, or applied merely because propose_edit ran or because the user typed confirm/apply/accept in chat.',
+      'For safety, do not directly write files, run code, or perform code-directory workflows.',
+    ].join(' '),
     tools: 'Mode: Tools. Use available tools for multi-step tasks, including controlled code/ file work when the user asks for it. Report tool actions and results clearly.',
   }[mode] || 'Mode: Unknown. Ask the user to choose Chat, Agent, or Tools.';
   return [systemPrompt, guidance].filter(Boolean).join('\n\n');
@@ -397,6 +403,12 @@ export function registerAIRoutes(fastify) {
             return await executeTool(name, input, resolvedPath);
           },
           onToolResult: (name, result) => {
+            const editProposal = parseEditProposal(name, result);
+            if (editProposal) {
+              sendEvent('edit_proposal', editProposal);
+              sendEvent('tool_result', { name, result: `Edit proposal ready for ${editProposal.filename}` });
+              return;
+            }
             sendEvent('tool_result', { name, result: typeof result === 'string' ? result.slice(0, 2000) : String(result).slice(0, 2000) });
           },
         });
@@ -461,20 +473,24 @@ export function registerAIRoutes(fastify) {
       }
  
       if (conv.mode === 'tools' || conv.mode === 'agent') {
+        const editProposals = [];
         const result = await chatWithTools({
           systemPrompt,
           messages,
           tools: getToolsForMode(conv.mode),
           model: modelOverride,
           onToolUse: async (name, input) => {
-            return await executeTool(name, input, resolvedPath);
+            const toolResult = await executeTool(name, input, resolvedPath);
+            const editProposal = parseEditProposal(name, toolResult);
+            if (editProposal) editProposals.push(editProposal);
+            return toolResult;
           },
         });
         const lastContent = result.response.content;
         const textBlock = lastContent.find(b => b.type === 'text');
         const assistantMsg = textBlock?.text || '';
         await appendMessage(projectId, convId, { role: 'assistant', content: assistantMsg });
-        return { reply: assistantMsg, ...buildRagResponseFields(ragContext) };
+        return { reply: assistantMsg, editProposals, ...buildRagResponseFields(ragContext) };
       }
  
       return { reply: 'Unknown mode' };
@@ -508,23 +524,37 @@ export async function executeTool(name, input, projectPath) {
     }
     case 'propose_edit': {
       // Read original file content for diff calculation
-      const filename = String(input.filename || '').replace(/^\/+/, '');
-      let original = '';
-      for (const prefix of ['sec', 'chapters', '']) {
+      const requestedFilename = String(input.filename || '')
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')
+        .replace(/^\.\//, '');
+      if (!requestedFilename) throw new Error('propose_edit requires a project-relative filename.');
+      const candidates = requestedFilename.startsWith('sec/') || requestedFilename.startsWith('chapters/')
+        ? [requestedFilename]
+        : [`sec/${requestedFilename}`, `chapters/${requestedFilename}`, requestedFilename];
+      let original = null;
+      let filename = null;
+      for (const candidate of [...new Set(candidates)]) {
         try {
-          const p = prefix ? join(projectPath, prefix, filename) : join(projectPath, filename);
-          original = await readTextFile(p);
+          original = await readTextFile(safeJoin(projectPath, candidate));
+          filename = candidate;
           break;
         } catch {}
       }
-      const changes = diffLines(original, input.new_content);
+      if (original === null || !filename) {
+        throw new Error(`Cannot propose edit: file not found (${requestedFilename}).`);
+      }
+      const normalizedProposal = normalizeProposedFileContent(original, String(input.new_content ?? ''));
+      const changes = diffLines(original, normalizedProposal.content);
       const added = changes.filter(c => c.added).reduce((n, c) => n + (c.count || 0), 0);
       const removed = changes.filter(c => c.removed).reduce((n, c) => n + (c.count || 0), 0);
       return JSON.stringify({
-        filename: input.filename,
+        filename,
         original,
-        new_content: input.new_content,
+        new_content: normalizedProposal.content,
         stats: { added, removed },
+        auto_merged_partial: normalizedProposal.autoMerged,
+        merge_target: normalizedProposal.target || null,
         action: 'pending_approval'
       });
     }
@@ -548,6 +578,91 @@ export async function executeTool(name, input, projectPath) {
       return await readReferences(projectPath);
     default:
       return `Tool ${name} not implemented`;
+  }
+}
+
+function paragraphBlocks(content) {
+  const blocks = [];
+  const separator = /\n\s*\n/g;
+  let start = 0;
+  let match;
+  while ((match = separator.exec(content)) !== null) {
+    if (match.index > start) blocks.push({ start, end: match.index, text: content.slice(start, match.index) });
+    start = match.index + match[0].length;
+  }
+  if (start < content.length) blocks.push({ start, end: content.length, text: content.slice(start) });
+  return blocks;
+}
+
+function proseTokens(content) {
+  const stopwords = new Set(['the', 'and', 'that', 'this', 'with', 'from', 'into', 'their', 'which', 'such', 'must', 'across', 'these', 'they', 'have', 'been', 'were', 'are', 'for', 'not', 'but']);
+  const normalized = String(content || '')
+    .replace(/\\[a-zA-Z@]+\*?(?:\[[^\]]*\])?/g, ' ')
+    .replace(/[{}~\\]/g, ' ')
+    .toLowerCase();
+  return new Set((normalized.match(/[a-z][a-z-]{2,}/g) || []).filter(token => !stopwords.has(token)));
+}
+
+function tokenOverlap(left, right) {
+  const leftTokens = proseTokens(left);
+  const rightTokens = proseTokens(right);
+  if (leftTokens.size < 6 || rightTokens.size < 6) return 0;
+  let common = 0;
+  for (const token of leftTokens) if (rightTokens.has(token)) common += 1;
+  return common / Math.min(leftTokens.size, rightTokens.size);
+}
+
+export function normalizeProposedFileContent(original, proposed) {
+  const source = String(original || '');
+  const candidate = String(proposed || '');
+  if (!candidate.trim()) throw new Error('Partial-file proposal rejected: new_content is empty.');
+
+  const looksDestructivelyShort = source.length >= 500 && candidate.length < source.length * 0.7;
+  if (!looksDestructivelyShort) return { content: candidate, autoMerged: false, target: null };
+
+  const candidateBlocks = paragraphBlocks(candidate).filter(block => block.text.trim());
+  const hasStructuralLatex = /\\(?:documentclass|begin|end|section|subsection|subsubsection|bibliography|addbibresource)\b/.test(candidate);
+  if (candidateBlocks.length <= 2 && !hasStructuralLatex) {
+    const sourceBlocks = paragraphBlocks(source)
+      .filter(block => block.text.trim().length >= 100)
+      .filter(block => !/^\s*\\(?:begin|end|item)\b/.test(block.text));
+    const ranked = sourceBlocks
+      .map(block => ({ ...block, score: tokenOverlap(block.text, candidate) }))
+      .sort((a, b) => b.score - a.score);
+    const best = ranked[0];
+    const second = ranked[1];
+    if (best && best.score >= 0.28 && (!second || best.score - second.score >= 0.05)) {
+      return {
+        content: source.slice(0, best.start) + candidate.trim() + source.slice(best.end),
+        autoMerged: true,
+        target: { start: best.start, end: best.end, overlap: Number(best.score.toFixed(3)) },
+      };
+    }
+  }
+
+  throw new Error(
+    'Partial-file proposal rejected to prevent data loss: new_content is much shorter than the original file and could not be matched safely to one paragraph. Read the complete file and retry with the full updated content.'
+  );
+}
+
+export function parseEditProposal(name, result) {
+  if (name !== 'propose_edit') return null;
+  try {
+    const proposal = typeof result === 'string' ? JSON.parse(result) : result;
+    if (!proposal || typeof proposal.filename !== 'string' || typeof proposal.original !== 'string' || typeof proposal.new_content !== 'string') {
+      return null;
+    }
+    return {
+      filename: proposal.filename,
+      original: proposal.original,
+      new_content: proposal.new_content,
+      stats: {
+        added: Number(proposal.stats?.added) || 0,
+        removed: Number(proposal.stats?.removed) || 0,
+      },
+    };
+  } catch {
+    return null;
   }
 }
  

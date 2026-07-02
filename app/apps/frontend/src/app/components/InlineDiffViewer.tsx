@@ -40,9 +40,10 @@ interface Props {
   onAccept?: (newContent: string) => void;
   onReject?: () => void;
   compact?: boolean;
+  error?: string;
 }
 
-export function InlineDiffViewer({ original, proposed, filename, stats, onAccept, onReject, compact }: Props) {
+export function InlineDiffViewer({ original, proposed, filename, stats, onAccept, onReject, compact, error }: Props) {
   const [expanded, setExpanded] = useState(!compact);
   const lines = buildDiffLines(original, proposed);
 
@@ -75,6 +76,11 @@ export function InlineDiffViewer({ original, proposed, filename, stats, onAccept
           </div>
         )}
       </div>
+      {error && (
+        <div style={{ padding: '7px 12px', background: 'rgba(239,68,68,0.1)', borderBottom: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', fontFamily: 'sans-serif', fontSize: 11 }}>
+          {error}
+        </div>
+      )}
       {/* Diff lines */}
       <div style={{ maxHeight: compact ? 300 : 500, overflow: 'auto', background: 'var(--paper)' }}>
         {lines.map((line, i) => (

@@ -39,6 +39,13 @@ export interface AttachedFileData {
   size: number;
 }
 
+export interface EditProposalData {
+  filename: string;
+  original: string;
+  new_content: string;
+  stats: { added: number; removed: number };
+}
+
 export async function listConversations(projectId: string): Promise<ConversationSummary[]> {
   return apiFetch(`${BASE}/conversations/${projectId}`);
 }
@@ -115,6 +122,7 @@ export async function sendMessageStream(
     onToken: (text: string) => void;
     onToolUse?: (name: string, input: any) => void;
     onToolResult?: (name: string, result: string) => void;
+    onEditProposal?: (proposal: EditProposalData) => void;
     onDone: (fullText: string) => void;
     onError: (message: string) => void;
     onProgress?: (percent: number, stage: string) => void;
@@ -148,6 +156,7 @@ export async function sendMessageStream(
           case 'token': callbacks.onToken(data.text || ''); break;
           case 'tool_use': callbacks.onToolUse?.(data.name, data.input); break;
           case 'tool_result': callbacks.onToolResult?.(data.name, data.result || ''); break;
+          case 'edit_proposal': callbacks.onEditProposal?.(data); break;
           case 'done':
             finished = true;
             callbacks.onProgress?.(100, 'complete');

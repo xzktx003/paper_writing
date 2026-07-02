@@ -680,7 +680,7 @@ export function InlineSkillsSelector({ skills, selectedSkills, onChange, onOpenM
               cursor: 'pointer',
             }}
             onClick={() => handleDeselect(skillName)}
-            title={generateSkillDescription(skill, lang)}
+            title={skill ? generateSkillDescription(skill, lang) : skillName}
           >
             {skill ? getLocalizedDisplayName(skill, lang) : skillName} ×
           </span>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { MarkdownEditor } from './MarkdownEditor';
 import { RenderedPreviewPane } from './RenderedPreviewPane';
 import { DrawioEditor } from './DrawioEditor';
@@ -53,6 +53,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const [compileAllResult, setCompileAllResult] = useState<{ ok: boolean; log?: string; error?: string; mainFile?: string; generatedMain?: boolean; engine?: string; pdfUrl?: string; availableEngines?: string[] } | null>(null);
   const [compiledPdfUrl, setCompiledPdfUrl] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
+  const previousPendingEditCountRef = useRef(0);
   const [translating, setTranslating] = useState(false);
   const [translationResult, setTranslationResult] = useState<string>('');
   const [translationError, setTranslationError] = useState<string>('');
@@ -68,6 +69,12 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const activeIsDrawio = !!activeFile && isDrawioPath(activeFile.filename);
   const isChapterLike = activeFile?.type === 'chapter' || (activeFile?.type === 'other' && activeIsText);
   const showSource = isChapterLike && (editorViewMode === 'source' || editorViewMode === 'split');
+
+  useEffect(() => {
+    const pendingCount = pendingEdits.filter(edit => edit.status === 'pending').length;
+    if (pendingCount > previousPendingEditCountRef.current) setPreviewTab('diff');
+    previousPendingEditCountRef.current = pendingCount;
+  }, [pendingEdits]);
   const showPreview = activeFile?.type === 'chapter' && (editorViewMode === 'split' || editorViewMode === 'rendered');
 
   // SyncTeX: jump from source line to PDF position
@@ -477,26 +484,16 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                                 DIFF PREVIEW ({pendingEdits.filter(e => e.status === 'pending').length})
                               </div>
                               {pendingEdits.filter(e => e.status === 'pending').map(edit => (
-                                <div key={edit.id} style={{ border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
-                                  <div style={{ padding: '6px 10px', background: 'var(--panel-muted)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontSize: '11px', fontWeight: 600 }}>{edit.filename}</span>
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                      <button onClick={() => onAcceptEdit?.(edit.id)} style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', background: '#22c55e', color: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Apply</button>
-                                      <button onClick={() => onRejectEdit?.(edit.id)} style={{ padding: '3px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text)', fontSize: '11px', cursor: 'pointer' }}>Dismiss</button>
-                                    </div>
-                                  </div>
-                                  {/* Side-by-side diff */}
-                                  <div style={{ display: 'flex', fontSize: '11px', fontFamily: 'monospace' }}>
-                                    <div style={{ flex: 1, borderRight: '1px solid var(--border)', overflow: 'auto', maxHeight: '250px' }}>
-                                      <div style={{ padding: '4px 8px', background: 'rgba(239,68,68,0.08)', fontWeight: 600, fontSize: '10px', color: '#ef4444', borderBottom: '1px solid var(--border)' }}>BEFORE</div>
-                                      <pre style={{ margin: 0, padding: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text)', lineHeight: 1.5 }}>{edit.original.slice(0, 2000)}</pre>
-                                    </div>
-                                    <div style={{ flex: 1, overflow: 'auto', maxHeight: '250px' }}>
-                                      <div style={{ padding: '4px 8px', background: 'rgba(34,197,94,0.08)', fontWeight: 600, fontSize: '10px', color: '#22c55e', borderBottom: '1px solid var(--border)' }}>AFTER</div>
-                                      <pre style={{ margin: 0, padding: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text)', lineHeight: 1.5 }}>{edit.new_content.slice(0, 2000)}</pre>
-                                    </div>
-                                  </div>
-                                </div>
+                                <InlineDiffViewer
+                                  key={edit.id}
+                                  original={edit.original}
+                                  proposed={edit.new_content}
+                                  filename={edit.filename}
+                                  stats={edit.stats}
+                                  error={edit.error}
+                                  onAccept={() => onAcceptEdit?.(edit.id)}
+                                  onReject={() => onRejectEdit?.(edit.id)}
+                                />
                               ))}
                             </div>
                           )}

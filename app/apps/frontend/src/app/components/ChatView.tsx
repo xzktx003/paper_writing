@@ -230,6 +230,7 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
             proposed={edit.new_content}
             filename={edit.filename}
             stats={edit.stats}
+            error={edit.error}
             compact
             onAccept={() => onAcceptEdit?.(edit.id)}
             onReject={() => onRejectEdit?.(edit.id)}

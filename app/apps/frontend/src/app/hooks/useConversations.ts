@@ -3,16 +3,20 @@ import {
   listConversations, getConversation, createConversation,
   deleteConversation, updateConversation, sendMessage, sendMessageStream,
   uploadConversationAttachment, deleteConversationAttachment,
-  Conversation, ConversationSummary, AttachedFileData
+  Conversation, ConversationSummary, AttachedFileData, EditProposalData
 } from '../api/conversationApi';
+import { writeFile as writeProjectFile } from '../../api/client';
+import { writeChapter } from '../api/projectApi';
 
 export interface PendingEdit {
   id: string;
+  conversationId: string;
   filename: string;
   original: string;
   new_content: string;
   stats: { added: number; removed: number };
   status: 'pending' | 'accepted' | 'rejected';
+  error?: string;
 }
 
 export interface AttachedImage {
@@ -123,6 +127,22 @@ export function useConversations(projectId: string | null) {
     }
   }, [projectId, activeConv?.id, activeConv?.active_skills]);
 
+  const enqueueEditProposal = useCallback((conversationId: string, proposal: EditProposalData) => {
+    const edit: PendingEdit = {
+      id: `${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      conversationId,
+      filename: proposal.filename,
+      original: proposal.original,
+      new_content: proposal.new_content,
+      stats: proposal.stats,
+      status: 'pending',
+    };
+    setPendingEdits(prev => [
+      ...prev.filter(item => !(item.conversationId === conversationId && item.filename === proposal.filename && item.status === 'pending')),
+      edit,
+    ]);
+  }, []);
+
   /** Non-streaming send (fallback) */
   const sendRaw = useCallback(async (message: string, projectPath: string, projectConfig: any, files?: AttachedFileData[], skipUserMessage = false) => {
     if (!projectId || !activeConv) return;
@@ -135,13 +155,16 @@ export function useConversations(projectId: string | null) {
     }
     setLoading(true);
     const result = await sendMessage(projectId, activeConv.id, projectPath, message, projectConfig, files);
+    for (const proposal of result.editProposals || []) {
+      enqueueEditProposal(activeConv.id, proposal);
+    }
     setActiveConv(prev => prev ? {
       ...prev,
       history: [...prev.history, { role: 'assistant', content: result.reply }],
     } : null);
     setLoading(false);
     return result;
-  }, [projectId, activeConv]);
+  }, [projectId, activeConv, enqueueEditProposal]);
 
   /** Streaming send with token-by-token updates */
   const send = useCallback(async (message: string, projectPath: string, projectConfig: any, files?: AttachedFileData[]) => {
@@ -204,6 +227,9 @@ export function useConversations(projectId: string | null) {
         onToolResult: (name, result) => {
           console.log('[Chat DEBUG] Tool result:', name, result?.slice(0, 100));
         },
+        onEditProposal: (proposal) => {
+          enqueueEditProposal(activeConv.id, proposal);
+        },
         onDone: () => {
           // Final state update - ensure both messages are present
           setActiveConv(prev => {
@@ -244,25 +270,47 @@ export function useConversations(projectId: string | null) {
         setUploadProgress(null);
       }
     }
-  }, [projectId, activeConv, sendRaw]);
+  }, [projectId, activeConv, sendRaw, enqueueEditProposal]);
 
   const acceptEdit = useCallback(async (editId: string, projectPath: string) => {
     const edit = pendingEdits.find(e => e.id === editId);
-    if (!edit) return;
-    await fetch(`/api/projects/${projectId}/file`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: edit.filename, content: edit.new_content }),
-    });
-    setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'accepted' as const } : e));
-  }, [projectId, pendingEdits]);
+    if (!edit) return false;
+    if (edit.original.length >= 500 && edit.new_content.length < edit.original.length * 0.7) {
+      setPendingEdits(prev => prev.map(item => item.id === editId ? {
+        ...item,
+        error: '已阻止危险修改：新内容明显短于原文件，可能会删除未修改章节。请拒绝此提案并让 Agent 重新生成。',
+      } : item));
+      return false;
+    }
+    try {
+      if (projectPath.startsWith('__paper_agent__:')) {
+        const paperAgentId = projectPath.replace('__paper_agent__:', '');
+        await writeProjectFile(paperAgentId, edit.filename, edit.new_content);
+      } else {
+        const chapterFilename = edit.filename.replace(/^chapters\//, '');
+        await writeChapter(projectPath, chapterFilename, edit.new_content);
+      }
+      setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'accepted' as const, error: undefined } : e));
+      return true;
+    } catch (error) {
+      setPendingEdits(prev => prev.map(item => item.id === editId ? {
+        ...item,
+        error: error instanceof Error ? error.message : '应用修改失败。',
+      } : item));
+      return false;
+    }
+  }, [pendingEdits]);
 
   const rejectEdit = useCallback((editId: string) => {
     setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'rejected' as const } : e));
   }, []);
 
+  const activePendingEdits = activeConv
+    ? pendingEdits.filter(edit => edit.conversationId === activeConv.id)
+    : [];
+
   return {
-    conversations, activeConv, loading, uploadProgress, pendingEdits,
+    conversations, activeConv, loading, uploadProgress, pendingEdits: activePendingEdits,
     refresh, select, create, remove, rename, send,
     uploadAttachment, removeAttachment, setRagDocuments, setActiveSkills, acceptEdit, rejectEdit,
   };

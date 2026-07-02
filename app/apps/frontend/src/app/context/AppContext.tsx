@@ -35,7 +35,7 @@ interface AppState {
   setConversationRagDocuments: (documentPaths: string[]) => Promise<void>;
   setConversationActiveSkills: (skillNames: string[]) => Promise<void>;
   pendingEdits: any[];
-  acceptEdit: (editId: string) => void;
+  acceptEdit: (editId: string) => Promise<void>;
   rejectEdit: (editId: string) => void;
   skills: SkillInfo[];
   activateSkill: (name: string) => void;
@@ -200,7 +200,15 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     await convHook.send(message, project.path, project.config, files);
   }, [project.path, project.config, convHook]);
 
-  const acceptEdit = useCallback((editId: string) => convHook.acceptEdit(editId, project.path || ''), [convHook, project.path]);
+  const acceptEdit = useCallback(async (editId: string) => {
+    const edit = convHook.pendingEdits.find(item => item.id === editId);
+    const accepted = await convHook.acceptEdit(editId, project.path || '');
+    if (edit && accepted) {
+      setOpenFiles(prev => prev.map(file => file.filename === edit.filename
+        ? { ...file, content: edit.new_content, dirty: false }
+        : file));
+    }
+  }, [convHook, project.path]);
   const toggleTerminal = useCallback(() => setTerminalVisible(v => !v), []);
 
   const value: AppState = useMemo(() => ({
