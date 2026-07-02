@@ -7,6 +7,10 @@ import { URL } from 'url';
 import OpenAI from 'openai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_IMAGE_API_BASE = 'https://www.right.codes/draw/v1';
+const DEFAULT_HTTP_TIMEOUT_MS = 300000;
+const DEFAULT_RETRY_DELAY_MS = 1000;
+const DEFAULT_RETRY_COUNT = 2;
 
 // Resolve papers directory from environment variable (OPENPRISM_PROJECTS_DIR)
 function getPapersBaseDir() {
@@ -30,8 +34,50 @@ For a given paper section/chapter content, generate a detailed, professional ima
 
 Output ONLY the image prompt, nothing else. Start directly with the description.`;
 
+export function getDrawImageApiBase(appConfig = {}) {
+  return appConfig.draw_image_api_base || process.env.OPENPRISM_DRAW_IMAGE_API_BASE || DEFAULT_IMAGE_API_BASE;
+}
+
+export function isRetryableDrawNetworkError(error) {
+  const code = error?.code || error?.cause?.code;
+  const message = String(error?.message || '');
+  return [
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'EAI_AGAIN',
+    'ENETUNREACH',
+    'EHOSTUNREACH',
+    'ECONNREFUSED',
+  ].includes(code) ||
+    /Client network socket disconnected before secure TLS connection was established|socket hang up|request timeout/i.test(message);
+}
+
+function isRetryableHttpStatus(status) {
+  return [408, 502, 503, 504].includes(Number(status));
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function formatDrawNetworkError(error, attempts) {
+  const message = String(error?.message || error || 'unknown network error');
+  const retryNote = attempts > 1 ? `已重试 ${attempts - 1} 次。` : '';
+  if (/Client network socket disconnected before secure TLS connection was established/i.test(message)) {
+    return `图片服务 TLS 连接建立前被断开。${retryNote}请稍后重试，或检查服务器到图片 API 的网络、代理和证书配置。原始错误: ${message}`;
+  }
+  return `图片服务网络请求失败。${retryNote}请稍后重试，或检查服务器到图片 API 的网络、代理和证书配置。原始错误: ${message}`;
+}
+
+export function formatDrawApiError(error) {
+  if (isRetryableDrawNetworkError(error)) {
+    return formatDrawNetworkError(error, error.attempts || DEFAULT_RETRY_COUNT + 1);
+  }
+  return String(error?.message || error || 'unknown error');
+}
+
 // Helper: Promise-based HTTP request
-function httpRequest(url, options = {}) {
+export function httpRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
     const isHttps = parsedUrl.protocol === 'https:';
@@ -43,7 +89,7 @@ function httpRequest(url, options = {}) {
       path: parsedUrl.pathname + parsedUrl.search,
       method: options.method || 'GET',
       headers: options.headers || {},
-      timeout: 300000, // 5分钟超时
+      timeout: options.timeoutMs || DEFAULT_HTTP_TIMEOUT_MS,
     };
     
     const req = lib.request(reqOptions, (res) => {
@@ -67,7 +113,11 @@ function httpRequest(url, options = {}) {
     });
     
     req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
+    req.on('timeout', () => {
+      const timeoutError = new Error(`Request timeout after ${reqOptions.timeout}ms`);
+      timeoutError.code = 'ETIMEDOUT';
+      req.destroy(timeoutError);
+    });
     
     if (options.body) {
       req.write(options.body);
@@ -76,12 +126,40 @@ function httpRequest(url, options = {}) {
   });
 }
 
+export async function httpRequestWithRetry(url, options = {}) {
+  const retries = options.retries ?? DEFAULT_RETRY_COUNT;
+  const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await httpRequest(url, options);
+      if (attempt < retries && isRetryableHttpStatus(response.status)) {
+        lastError = new Error(`HTTP ${response.status}`);
+        lastError.status = response.status;
+        await delay(retryDelayMs * (attempt + 1));
+        continue;
+      }
+      return { ...response, attempts: attempt + 1 };
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries || !isRetryableDrawNetworkError(error)) {
+        error.attempts = attempt + 1;
+        throw error;
+      }
+      await delay(retryDelayMs * (attempt + 1));
+    }
+  }
+
+  throw lastError;
+}
+
 // Register routes function
 export async function registerDrawRoutes(fastify, opts) {
   const appConfig = opts?.appConfig || {};
   
   // Image API base URL -统一前缀
-  const IMAGE_API_BASE = 'https://www.right.codes/draw/v1';
+  const IMAGE_API_BASE = getDrawImageApiBase(appConfig);
   
   // Initialize chat client for generating image prompts
   let openai;
@@ -229,7 +307,7 @@ export async function registerDrawRoutes(fastify, opts) {
         
         const startTime = Date.now();
         
-        const apiResponse = await httpRequest(apiUrl, {
+        const apiResponse = await httpRequestWithRetry(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -244,7 +322,7 @@ export async function registerDrawRoutes(fastify, opts) {
         });
         
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        fastify.log.info(`[DEBUG] Image API responded in ${elapsed}s, status: ${apiResponse.status}`);
+        fastify.log.info(`[DEBUG] Image API responded in ${elapsed}s, status: ${apiResponse.status}, attempts: ${apiResponse.attempts}`);
         fastify.log.info(`[DEBUG] API Response data: ${JSON.stringify(apiResponse.data)}`);
         
         if (apiResponse.status !== 200 || !apiResponse.data?.data?.[0]?.url) {
@@ -258,7 +336,7 @@ export async function registerDrawRoutes(fastify, opts) {
         
         // Download image
         fastify.log.info('Downloading image from: ' + imageUrl.substring(0, 80));
-        const imgResponse = await httpRequest(imageUrl, { method: 'GET' });
+        const imgResponse = await httpRequestWithRetry(imageUrl, { method: 'GET' });
         
         if (imgResponse.status !== 200) {
           throw new Error(`Failed to download image: ${imgResponse.status}`);
@@ -280,8 +358,8 @@ export async function registerDrawRoutes(fastify, opts) {
         fastify.log.error('Image API error:', apiError.message);
         
         return reply.status(500).send({ 
-          error: `图片生成失败: ${apiError.message}`,
-          hint: '请检查网络连接和API配置'
+          error: `图片生成失败: ${formatDrawApiError(apiError)}`,
+          hint: '请检查网络连接、代理、证书和图片 API 配置'
         });
       }
     } catch (error) {
@@ -380,7 +458,7 @@ export async function registerDrawRoutes(fastify, opts) {
           size: '1024x1024',
         });
         
-        const apiResponse = await httpRequest(apiUrl, {
+        const apiResponse = await httpRequestWithRetry(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -402,7 +480,7 @@ export async function registerDrawRoutes(fastify, opts) {
         const imageUrl = apiResponse.data.data[0].url;
         
         // Download edited image
-        const imgResponse = await httpRequest(imageUrl, { method: 'GET' });
+        const imgResponse = await httpRequestWithRetry(imageUrl, { method: 'GET' });
         
         if (imgResponse.status !== 200) {
           throw new Error(`Failed to download edited image: ${imgResponse.status}`);
@@ -423,8 +501,8 @@ export async function registerDrawRoutes(fastify, opts) {
         fastify.log.error('Image edit API error:', apiError.message);
         
         return reply.status(500).send({
-          error: `图片编辑失败: ${apiError.message}`,
-          hint: '请检查网络连接和API配置'
+          error: `图片编辑失败: ${formatDrawApiError(apiError)}`,
+          hint: '请检查网络连接、代理、证书和图片 API 配置'
         });
       }
     } catch (error) {

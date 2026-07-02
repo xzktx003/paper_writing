@@ -22,7 +22,7 @@ import TransferPanel from './TransferPanel';
 import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { SettingsModal } from './components/SettingsModal';
 
-type ViewFilter = 'all' | 'mine' | 'archived' | 'trash';
+type ViewFilter = 'mine' | 'archived' | 'trash';
 type SortBy = 'updatedAt' | 'name' | 'createdAt';
 
 function formatRelativeTime(iso: string, t: (k: string, o?: Record<string, unknown>) => string): string {
@@ -53,7 +53,7 @@ export default function ProjectPage() {
   const [status, setStatus] = useState('');
   const [filter, setFilter] = useState('');
 
-  const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('mine');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('updatedAt');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -130,8 +130,7 @@ export default function ProjectPage() {
     let list = projects;
     if (viewFilter === 'archived') list = list.filter((p) => p.archived && !p.trashed);
     else if (viewFilter === 'trash') list = list.filter((p) => p.trashed);
-    else if (viewFilter === 'mine') list = list.filter((p) => !p.archived && !p.trashed);
-    else list = list.filter((p) => !p.trashed);
+    else list = list.filter((p) => !p.archived && !p.trashed);
     if (activeTag) list = list.filter((p) => (p.tags || []).includes(activeTag));
     const term = filter.trim().toLowerCase();
     if (term) list = list.filter((p) => p.name.toLowerCase().includes(term));
@@ -144,7 +143,6 @@ export default function ProjectPage() {
   }, [projects, viewFilter, activeTag, filter, sortBy]);
 
   const viewCounts = useMemo(() => ({
-    all: projects.filter((p) => !p.trashed).length,
     mine: projects.filter((p) => !p.archived && !p.trashed).length,
     archived: projects.filter((p) => p.archived && !p.trashed).length,
     trash: projects.filter((p) => p.trashed).length,
@@ -356,13 +354,11 @@ export default function ProjectPage() {
 
 
   const navIcons: Record<ViewFilter, React.ReactNode> = {
-    all: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5h12M2 4.5v8a1 1 0 001 1h10a1 1 0 001-1v-8M2 4.5l1.5-2h9l1.5 2"/></svg>,
     mine: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2H4.5a1 1 0 00-1 1v10a1 1 0 001 1h7a1 1 0 001-1V5.5L9 2z"/><path d="M9 2v3.5h3.5M6 8.5h4M6 11h2.5"/></svg>,
     archived: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2.5" width="12" height="3" rx=".5"/><path d="M3 5.5v7.5a1 1 0 001 1h8a1 1 0 001-1V5.5"/><path d="M6.5 8.5h3"/></svg>,
     trash: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4.5h10M6 4.5V3a1 1 0 011-1h2a1 1 0 011 1v1.5"/><path d="M4.5 4.5l.5 8.5a1 1 0 001 1h4a1 1 0 001-1l.5-8.5"/></svg>,
   };
   const navItems: { key: ViewFilter; label: string }[] = [
-    { key: 'all', label: t('所有项目') },
     { key: 'mine', label: t('我的项目') },
     { key: 'archived', label: t('已归档') },
     { key: 'trash', label: t('回收站') },
@@ -472,7 +468,7 @@ export default function ProjectPage() {
       <div className="project-main">
         <header className="project-main-header">
           <h1 className="project-main-title">
-            {activeTag ? `${t('标签')}: ${activeTag}` : navItems.find((n) => n.key === viewFilter)?.label || t('所有项目')}
+            {activeTag ? `${t('标签')}: ${activeTag}` : navItems.find((n) => n.key === viewFilter)?.label || t('我的项目')}
           </h1>
           <div className="project-main-header-actions">
             {viewFilter === 'trash' && viewCounts.trash > 0 && (
