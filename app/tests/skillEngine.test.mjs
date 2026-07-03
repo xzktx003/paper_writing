@@ -44,6 +44,39 @@ describe('Skill Engine', () => {
     expect(prompt).toContain('/skill-resources/snl-paper-writing');
   });
 
+  it('includes vetted popular GitHub research Skills with provenance and popularity metadata', async () => {
+    await loadSkills(null);
+    expect(getSkill('patent-disclosure-skill')).toMatchObject({
+      source_license: 'MIT',
+      source_stars: 3374,
+      categories: ['patent-writing'],
+      subcategory: 'patent-disclosure',
+    });
+    expect(getSkill('huggingface-papers')).toMatchObject({
+      source_license: 'Apache-2.0',
+      source_stars: 10761,
+      categories: ['literature-search'],
+      subcategory: 'paper-reading',
+    });
+    expect(getSkill('huggingface-paper-publisher')).toMatchObject({
+      source_license: 'Apache-2.0',
+      source_stars: 10761,
+      categories: ['open-access'],
+      subcategory: 'research-artifacts',
+    });
+    expect(getSkill('autoresearch')).toMatchObject({
+      source_license: 'MIT',
+      source_stars: 5235,
+      categories: ['experiment-design'],
+      subcategory: 'autonomous-experimentation',
+    });
+
+    for (const name of ['patent-disclosure-skill', 'huggingface-papers', 'huggingface-paper-publisher', 'autoresearch']) {
+      expect(getSkill(name)._resourceDir, name).toContain('/skill-resources/popular-');
+      expect(listSkills().find(skill => skill.name === name)?.source_url, name).toMatch(/^https:\/\/github\.com\//);
+    }
+  });
+
   it('provides Chinese names, Chinese descriptions, and valid academic categories for every Skill', async () => {
     await loadSkills(null);
     const categories = new Set(['literature-search', 'experiment-design', 'paper-writing', 'patent-writing', 'scientific-figures', 'academic-conference', 'grant-writing', 'peer-review', 'open-access', 'exploration-discovery']);

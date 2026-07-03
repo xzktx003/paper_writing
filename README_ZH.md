@@ -225,9 +225,17 @@ npm start
 
 点击聊天输入区或 Draw 面板中的 **Select Skill**。选择器采用三级结构：**科研大类 → 任务小类 → 具体 Skill**。例如展开“论文写作”后，会先看到“大纲与规划、摘要、Introduction、Related Work、Method、实验与结果、语法与润色”等小类；继续展开小类，才会显示 Skill 名称及其真实功能说明。点击具体 Skill 后，它会出现在已选列表中，并向模型注入对应的规则、检查项和工作步骤。
 
-当前目录采用面向 AI/ML、LLM、计算机领域及 CCF-A、ICLR、ICML、NeurIPS 等会议的精简 Skill 配置，共保留约 100 个功能明确的 Skill。批量导入的医学、材料、专利、人文历史、探险剧情、通用网页研究和同功能重复项已移除。开源部分包括 36 个 AI/ML 相关 AlterLab Skill、SNL 顶会写作流程、AI4S、ResearchPilot 中文科研流程，以及 4 个经过逐项审核的 SkillsBot Skill；完整 GitHub 资源位于 `app/apps/backend/skill-resources/`。
+当前目录采用面向 AI/ML、LLM、计算机领域及 CCF-A、ICLR、ICML、NeurIPS 等会议的精简配置，共保留 104 个功能明确的 Skill。批量导入的医学、材料、人文历史、探险剧情、通用网页研究和同功能重复项已移除。开源部分包括 36 个 AI/ML 相关 AlterLab Skill、SNL 顶会写作流程、AI4S、ResearchPilot 中文科研流程、4 个经过逐项审核的 SkillsBot Skill，以及下表中的热门 GitHub Skill。迁移的是完整上游资源，而不是只有一段摘要提示词；文件位于 `app/apps/backend/skill-resources/`。
 
-文献检索不再使用“大而全”的数据库列表，而是按实际用途拆分为：检索式与筛选策略、arXiv、Google Scholar、Semantic Scholar、DBLP、论文阅读与信息提取、综述与证据综合、Related Work、BibTeX 管理和引用真实性核验。OpenAlex、USPTO、PubMed、材料数据库及历史史料检索不再作为可选 Skill 展示。
+| GitHub 来源 | 仓库 Star¹ | 已接入能力 | 许可证 |
+|---|---:|---|---|
+| `handsomestWei/patent-disclosure-skill` | 3,374 | AI/软件项目专利挖掘、现有技术差异化、技术交底书、一致性检查与 DOCX 交付 | MIT |
+| `huggingface/skills` | 10,761 | AI 论文阅读，以及论文与模型、数据集、Space 等研究产物的发布关联 | Apache-2.0 |
+| `uditgoenka/autoresearch` | 5,235 | 围绕指标执行修改、评估、保留或回滚，并按边界条件停止的自主实验循环 | MIT |
+
+¹ Star 是 2026-07-03 的仓库快照，只作为来源热度与可追溯信息，不等同于质量保证。热门 Skill 会在选择器中显示该信息。
+
+文献检索不再使用“大而全”的数据库列表，而是按实际用途拆分为：检索式与筛选策略、arXiv、Google Scholar、Semantic Scholar、DBLP、Hugging Face AI 论文页面、论文阅读与信息提取、综述与证据综合、Related Work、BibTeX 管理和引用真实性核验。OpenAlex、USPTO 检索、PubMed、材料数据库及历史史料检索不再作为可选 Skill 展示。专利方向只保留面向项目代码和技术材料的“专利挖掘与技术交底书”完整流程，不引入泛化的专利数据库 Skill。
 
 常见用法包括：
 

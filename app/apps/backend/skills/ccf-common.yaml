@@ -1,0 +1,48 @@
+name: ccf-common
+display_name: CCF Common Governance
+display_name_zh: CCF共享治理
+description_zh: |
+  CCFA技能家族的共享治理层。维护路由规则、隐私/证据策略、source registry、
+  artifact合约和校验策略。确保所有skill之间的协作一致性和数据安全。
+type: system
+categories:
+  - exploration-discovery
+category_zh: 探索发现
+subcategory: research-ideation
+subcategory_zh: 研究构思
+trigger: manual
+auto_recommend: false
+description: |
+  Shared governance layer for the CCFA skill family. Manages routing rules, privacy/evidence policies,
+  source registry, artifact contracts, and validation strategies for cross-skill collaboration.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [governance, routing, shared, CCF-A, system]
+triggers:
+  - 共享治理
+  - 路由规则
+  - 隐私策略
+  - artifact合约
+  - common governance
+  - routing
+  - artifact contract
+  - shared rules
+
+content: |
+  # CCF Common Governance
+
+  ## Overview
+  Shared governance layer that coordinates all CCFA runtime skills. Provides routing rules, privacy/evidence policies, source registries, artifact contracts, and validation.
+
+  ## Responsibilities
+  - Maintain routing tables for skill selection
+  - Define privacy and evidence policies
+  - Manage source registry for citation verification
+  - Enforce artifact contracts between skills
+  - Run validation scripts
+
+  ## Artifact Contract
+  Ensures that each skill's output is properly formatted and can be consumed by the next skill in the pipeline without conflicts.

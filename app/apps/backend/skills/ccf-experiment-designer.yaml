@@ -1,0 +1,54 @@
+name: ccf-experiment-designer
+display_name: CCF Experiment Designer
+display_name_zh: CCF实验设计
+description_zh: |
+  设计完善的实验方案，包括baseline选择、评估指标、消融实验、鲁棒性测试。
+  生成实验协议、baseline矩阵、结果表模板和结果图表。
+type: research
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-protocol
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: true
+description: |
+  Design comprehensive experiment plans including baseline selection, evaluation metrics, ablation studies, and robustness tests.
+  Generates experiment protocols, baseline matrices, result table templates, and result figures.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [experiment, design, baseline, ablation, CCF-A]
+triggers:
+  - 实验设计
+  - 设计实验
+  - 选择baseline
+  - 评估指标
+  - 消融实验
+  - design experiment
+  - experiment plan
+  - baseline selection
+  - ablation study
+  - evaluation metrics
+
+content: |
+  # CCF Experiment Designer
+
+  ## Overview
+  Designs comprehensive experimental protocols for CCF-A paper submissions. Covers baseline selection, metric definition, ablation study design, robustness testing, and result presentation.
+
+  ## Capabilities
+  - Baseline matrix design
+  - Metric selection and definition
+  - Ablation study protocols
+  - Robustness and generalization tests
+  - Result table templates
+  - Result visualization
+
+  ## Output
+  - Experiment protocol document
+  - Baseline matrix
+  - Result table templates
+  - Real result figures (not fabricated)

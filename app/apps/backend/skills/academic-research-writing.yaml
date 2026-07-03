@@ -1,0 +1,214 @@
+name: academic-research-writing
+display_name: Academic Research Writing
+display_name_zh: 学术论文写作(系统)
+description_zh: 学术论文系统写作指导，覆盖摘要/引言/方法/实验/结论，包含段落清晰度检查和五维自审清单。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: full-paper
+subcategory_zh: 全文写作
+trigger: manual
+auto_recommend: true
+description: |
+  Academic paper writing skill with section-specific guidance for Abstract, Introduction, Related Work, Method, Experiments, and Conclusion. Based on Peng Sida's research paper writing methodology.
+license: MIT
+source: https://github.com/Master-cai/Research-Paper-Writing-Skills
+metadata:
+  author: Master-cai
+  version: "1.0.0"
+  tags: [paper-writing, ML, CV, NLP, academic, abstract, introduction, method]
+
+triggers:
+  - 写摘要
+  - 写引言
+  - 写方法
+  - 写实验
+  - 写结论
+  - write abstract
+  - write introduction
+  - write method
+  - write experiments
+  - paper writing
+
+content: |
+  # Research Paper Writing
+
+  ## Overview
+
+  Use this skill to rewrite a research paper into a reviewer-friendly, high-clarity draft. Prioritize first-impression quality (figures/tables/layout), logical flow, and evidence-backed claims.
+
+  ## Core Workflow
+
+  1. Clarify the paper story before sentence-level edits
+  2. Use section-specific guidance in `references/`
+  3. Rewrite paragraph-by-paragraph with one message per paragraph
+  4. Run reverse outlining after writing each section
+  5. Check every major claim in Abstract/Introduction against experimental evidence
+  6. Run final-paper adversarial review
+
+  ## Global Principles
+
+  1. Keep one paragraph for one message only
+  2. State the paragraph message in the first sentence
+  3. Make nouns self-contained; define new terms before reusing them
+  4. Maintain sentence-to-sentence flow (cause, contrast, consequence, or refinement)
+  5. Iterate with adversarial self-review: read as a skeptical reviewer
+  6. Treat visual quality as core content, not decoration
+  7. Use a clean teaser and pipeline figure
+  8. Use readable, minimal-ink tables
+  9. Keep formatting consistent and tidy
+
+  ## Section Guides
+
+  ### Abstract Writing
+
+  **Pre-Writing Questions:**
+  1. What technical problem do we solve, and why is there no well-established solution?
+  2. What is our technical contribution?
+  3. Why can our method work in essence?
+  4. What technical advantage and new insight do we provide?
+
+  **Version 1: Challenge -> Contribution**
+  - Task sentence
+  - Technical challenge for previous methods
+  - One to two sentences introducing the technical contribution
+  - Benefits of the technical contribution
+  - Experiment summary
+
+  **Version 2: Challenge -> Insight -> Contribution**
+  - Task sentence
+  - Technical challenge for previous methods
+  - One sentence introducing the insight
+  - One to two sentences introducing the technical contribution
+  - Benefits
+  - Experiment summary
+
+  **Version 3: Multiple Contributions**
+  - Task sentence
+  - Contrast sentence about prior methods
+  - Contribution sentence 1 + technical advantage
+  - Contribution sentence 2 + technical advantage
+  - Contribution sentence 3 + technical advantage
+  - Experiment summary
+
+  ### Introduction Writing
+
+  **Section Skeleton:**
+  ```latex
+  \section{Introduction}
+  % Task and application
+  % Technical challenge for previous methods
+  % Introduce our pipeline for solving the challenge
+  % Experiment
+  % Contributions
+  ```
+
+  **Part A: Introduce Task and Application**
+  - Version 1: If the task is niche, introduce the task first, then applications
+  - Version 2: Start from general task importance, narrow to specific setting
+  - Version 3: Introduce applications of the general task first, then specific setting
+
+  **Part B: Introduce Technical Challenge**
+  - Technical-Challenge Version 1: Existing task + main limitation
+  - Technical-Challenge Version 2: Existing task + our insight seen in traditional methods
+  - Technical-Challenge Version 3: Novel task, no direct methods
+
+  **Part C: Introduce Our Pipeline**
+  - Pipeline Version 1: One contribution with multiple advantages, one teaser figure
+  - Pipeline Version 2: Multiple contributions with clear advantages
+
+  ### Related Work Writing
+
+  **Goal:** Position your work against the most relevant lines of research, and make your novelty easy to verify.
+
+  **Workflow:**
+  1. List directly competing and recent baseline papers first
+  2. Group literature by technical topic (not by publication year alone)
+  3. For each topic: summarize common paradigm, then key limitation
+  4. End each topic by clarifying your distinction
+
+  **Paragraph Template:**
+  1. Topic sentence: define scope of this topic
+  2. Representative methods: one compact summary
+  3. Limitation tied to your target technical challenge
+  4. Transition sentence that leads to your method
+
+  ### Method Writing
+
+  **Method Writing Steps:**
+  1. Draw the pipeline figure sketch
+  2. Use the sketch to organize Method subsection structure
+  3. For each subsection, plan three parts: motivation, module design, and technical advantages
+  4. Write module design first to build a concrete backbone
+  5. Add motivation and technical advantages afterward
+
+  **Three Elements of a Pipeline Module:**
+  1. Module Design: Describe representation/network/data-structure details and forward process
+  2. Motivation of This Module: Explain why this module is needed (problem-driven)
+  3. Technical Advantages: Explain why this module has advantage over alternatives
+
+  ### Experiments Writing
+
+  **Three Core Questions:**
+  1. Are improvements over baselines meaningful, not just statistically tiny?
+  2. Is absolute performance competitive enough for the target venue?
+  3. Do we report both strengths and failure cases honestly?
+
+  **Experiment Planning:**
+  - Map each claim to its supporting experiment
+  - Design baselines: Naive, Strong, Ablation, Compute-matched
+  - Define evaluation protocol: Metrics, Aggregation, Statistical tests, Sample sizes
+
+  **Figure/Table Writing Rules:**
+  1. Add packages: `\usepackage{booktabs}`, `\usepackage{colortbl,xcolor}`
+  2. Replace `\hline` with `\toprule/\midrule/\bottomrule`
+  3. Put `\caption{...}` before `\label{...}`
+  4. Use restrained highlighting; never color too many cells
+
+  ### Conclusion Writing
+
+  **Template:**
+  1. This paper addresses [problem] by proposing [method]
+  2. The key idea is [core insight], which enables [main benefit]
+  3. Experiments show [main gains] across [datasets/settings]
+  4. A current limitation is [scope boundary], and extending to [future setting] is an important next step
+
+  ## Paragraph Clarity Check
+
+  1. Does this paragraph have one explicit message?
+  2. Does the first sentence state what this paragraph will do?
+  3. Are all key nouns/terms readable without hidden context?
+  4. Does each sentence connect to the previous one?
+
+  ## Paper Review Self-Check
+
+  ### 1. Contribution
+  - What new knowledge does this paper give to readers?
+  - Is our gain surprising or insightful rather than a predictable improvement?
+  - Is there at least one clear novelty type (task/pipeline/module/design finding/insight)?
+
+  ### 2. Writing Clarity
+  - Can a knowledgeable reader reproduce the method from the paper?
+  - Is the motivation of every module explicit and logically connected to a challenge?
+  - Does each paragraph carry one clear message with smooth transitions?
+
+  ### 3. Experimental Strength
+  - Are improvements over strong baselines meaningful, not just statistically tiny?
+  - Are gains consistent across multiple datasets/settings/metrics?
+
+  ### 4. Evaluation Completeness
+  - Do we include ablations for all key design choices?
+  - Are all strong/recent baselines included under fair settings?
+
+  ### 5. Method Design Soundness
+  - Is the experimental setting realistic for practical use?
+  - Do benefits outweigh added complexity and new limitations?
+
+  ## Output Contract
+
+  When asked to rewrite or draft sections, return:
+  1. A compact section outline (3-7 bullets)
+  2. Revised paragraphs with explicit paragraph roles
+  3. A short self-review checklist
+  4. A claim-evidence map for each major claim

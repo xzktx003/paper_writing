@@ -1,7 +1,7 @@
 {
   "generated": true,
   "profile": "ai-ml-academic",
-  "totalSkills": 63,
+  "totalSkills": 67,
   "generatedFiles": [
     "alterlab-arxiv.yaml",
     "alterlab-dask.yaml",
@@ -39,6 +39,7 @@
     "alterlab-umap.yaml",
     "alterlab-workflow-orchestration.yaml",
     "alterlab-zarr.yaml",
+    "autoresearch.yaml",
     "github-ai4s-skills-ai4s-agent.yaml",
     "github-ai4s-skills-experiment-suite.yaml",
     "github-ai4s-skills-integrity-auditor.yaml",
@@ -62,6 +63,9 @@
     "github-researchpilot-research-g-8-translate.yaml",
     "github-researchpilot-research-start.yaml",
     "github-snl-paper-writing-paper-writing.yaml",
+    "huggingface-paper-publisher.yaml",
+    "huggingface-papers.yaml",
+    "patent-disclosure-skill.yaml",
     "related-work-analyzer.yaml",
     "scientific-clarity-checker.yaml",
     "scientific-figure-assembly.yaml",
@@ -73,28 +77,55 @@
       "repository": "https://github.com/AlterLab-IEU/AlterLab-Academic-Skills",
       "commit": "a0064fd54180541785cd1986ad8eb1689b834270",
       "skillCount": 36,
-      "syncedAt": "2026-07-03T02:47:41.697Z"
+      "syncedAt": "2026-07-03T06:35:45.700Z"
     },
     {
       "id": "snl-paper-writing",
       "repository": "https://github.com/SNL-UCSB/paper-writing-skill",
       "commit": "12582d704105eb99768fedc67ea87e0377c54f97",
       "skillCount": 1,
-      "syncedAt": "2026-07-03T02:47:41.697Z"
+      "syncedAt": "2026-07-03T06:35:45.700Z"
     },
     {
       "id": "ai4s-skills",
       "repository": "https://github.com/ai4s-research/ai4s-skills",
       "commit": "8fa2ab0523082c135598909b227ed8feb48263ad",
       "skillCount": 6,
-      "syncedAt": "2026-07-03T02:47:41.697Z"
+      "syncedAt": "2026-07-03T06:35:45.700Z"
     },
     {
       "id": "researchpilot",
       "repository": "https://github.com/LMDHQ-0420/ResearchPilot-Skills",
       "commit": "60749461fb8d0ce7e85e6786f6767d416aec1eac",
       "skillCount": 16,
-      "syncedAt": "2026-07-03T02:47:41.697Z"
+      "syncedAt": "2026-07-03T06:35:45.700Z"
+    },
+    {
+      "id": "popular-patent-disclosure",
+      "repository": "https://github.com/handsomestWei/patent-disclosure-skill",
+      "commit": "c4b843e2037376ce65a63f8db09b0cf635002b8f",
+      "skillCount": 1,
+      "stars": 3374,
+      "starsCheckedAt": "2026-07-03T06:35:45.700Z",
+      "syncedAt": "2026-07-03T06:35:45.700Z"
+    },
+    {
+      "id": "popular-huggingface-skills",
+      "repository": "https://github.com/huggingface/skills",
+      "commit": "35e8c35a1ae5b462e0bb23d444d25569c3bb6700",
+      "skillCount": 2,
+      "stars": 10761,
+      "starsCheckedAt": "2026-07-03T06:35:45.700Z",
+      "syncedAt": "2026-07-03T06:35:45.700Z"
+    },
+    {
+      "id": "popular-autoresearch",
+      "repository": "https://github.com/uditgoenka/autoresearch",
+      "commit": "870e9b8eca4fbe53cd6cb1247410373692e4aec3",
+      "skillCount": 1,
+      "stars": 5235,
+      "starsCheckedAt": "2026-07-03T06:35:45.700Z",
+      "syncedAt": "2026-07-03T06:35:45.700Z"
     },
     {
       "id": "skillsbot-scientific-academic-curated",
@@ -103,7 +134,7 @@
       "skippedMedical": 0,
       "skippedOffProfile": 248,
       "fallbackCount": 0,
-      "syncedAt": "2026-07-03T02:47:41.697Z"
+      "syncedAt": "2026-07-03T06:35:45.700Z"
     }
   ]
 }

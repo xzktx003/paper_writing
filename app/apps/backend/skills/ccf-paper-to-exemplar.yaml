@@ -1,0 +1,43 @@
+name: ccf-paper-to-exemplar
+display_name: CCF Paper To Exemplar
+display_name_zh: CCF写作范例抽取
+description_zh: |
+  从已发表论文PDF中抽取出可复用的写作范例。
+  分析论文结构、写作模式、venue标签，建立个人exemplar库。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: language-polish
+subcategory_zh: 语言润色
+trigger: manual
+auto_recommend: true
+description: |
+  Extract reusable writing exemplars from published paper PDFs.
+  Analyze paper structure, writing patterns, and venue tags to build a personal exemplar library.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [exemplar, writing, pattern, analysis, CCF-A]
+triggers:
+  - 抽取范例
+  - 写作范例
+  - 分析论文结构
+  - extract exemplar
+  - writing example
+  - learn from paper
+  - writing pattern
+
+content: |
+  # CCF Paper To Exemplar
+
+  ## Overview
+  Analyzes published papers in PDF format and extracts reusable writing exemplars. Identifies structural patterns, rhetorical moves, and venue-specific writing conventions.
+
+  ## Output
+  - Exemplar card with key patterns
+  - Writing pattern summary
+  - Venue-tagged reusable snippets
+  - Writer-usable index entries

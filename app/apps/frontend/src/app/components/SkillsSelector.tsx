@@ -108,10 +108,31 @@ export const displayNameTranslations: Record<string, { zh: string; en: string }>
   'LaTeX Template Organizer': { zh: 'LaTeX模板管理', en: 'LaTeX Template Organizer' },
   'Academic Search & Retrieval': { zh: '学术搜索与检索', en: 'Academic Search & Retrieval' },
   'Post-Acceptance': { zh: '接收后事项', en: 'Post-Acceptance' },
+  // ===== CCFA Skills Family (mikubaka88/CCFA-Skills) =====
+  'ccf-project-scaffolder': { zh: 'CCF项目搭建', en: 'CCF Project Scaffolder' },
+  'ccf-pipeline-orchestrator': { zh: 'CCF流程编排', en: 'CCF Pipeline Orchestrator' },
+  'ccf-idea-optimizer': { zh: 'CCF Idea优化', en: 'CCF Idea Optimizer' },
+  'ccf-idea-reviewer': { zh: 'CCF Idea评审', en: 'CCF Idea Reviewer' },
+  'ccf-literature-monitor': { zh: 'CCF文献监控', en: 'CCF Literature Monitor' },
+  'ccf-literature-searcher': { zh: 'CCF文献检索', en: 'CCF Literature Searcher' },
+  'ccf-experiment-designer': { zh: 'CCF实验设计', en: 'CCF Experiment Designer' },
+  'ccf-paper-to-exemplar': { zh: 'CCF写作范例', en: 'CCF Paper To Exemplar' },
+  'ccf-paper-reviewer': { zh: 'CCF论文评审', en: 'CCF Paper Reviewer' },
+  'ccf-integrity-auditor': { zh: 'CCF完整性审计', en: 'CCF Integrity Auditor' },
+  'ccf-submission-checker': { zh: 'CCF投稿检查', en: 'CCF Submission Checker' },
+  'ccf-rebuttal-writer': { zh: 'CCF审稿回复', en: 'CCF Rebuttal Writer' },
+  'ccf-common': { zh: 'CCF共享治理', en: 'CCF Common Governance' },
+  'ccf-skill-forger': { zh: 'CCF技能锻造', en: 'CCF Skill Forger' },
+  // ===== End CCFA Skills =====
   // GitHub Open-Source Skills (Real)
   'paper-review': { zh: '学术论文评审', en: 'Paper Reviewer' },
   'wu5-research': { zh: '科研论文写作流程', en: 'Research Paper Pipeline' },
   'research-writing': { zh: '科研论文写作助手', en: 'Research Writing Assistant' },
+  'ccf-paper-writer': { zh: 'CCF论文写作', en: 'CCF Paper Writer' },
+  'academic-research-writing': { zh: '学术论文写作(系统)', en: 'Academic Research Writing' },
+  'latex-paper-tips': { zh: 'LaTeX论文技巧', en: 'LaTeX Paper Tips' },
+  'chinese-paper-tips': { zh: '中文论文写作技巧', en: 'Chinese Paper Tips' },
+  'research-writing-comprehensive': { zh: '全面科研写作助手', en: 'Research Writing Comprehensive' },
 };
 
 // Get localized display name
@@ -323,6 +344,27 @@ const descriptionTranslations: Record<string, { zh: string; en: string }> = {
   'ml-introduction-writing': { zh: 'ML论文引言撰写', en: 'ML Paper Introduction Writer' },
   'ml-related-work': { zh: 'ML相关工作撰写', en: 'ML Related Work Writer' },
   'ml-experiments-writing': { zh: 'ML实验部分撰写', en: 'ML Experiments Section Writer' },
+  // New GitHub Open-Source Skills Descriptions
+  'Plan, draft, revise, polish, compress, and presentation-adapt CCF research paper text': { zh: '规划、起草、修订、润色、压缩和展示适配CCF研究论文', en: 'Plan, draft, revise, polish, compress, and presentation-adapt CCF research paper text' },
+  'Improve academic paper writing quality for ML/CV/NLP papers': { zh: '提高ML/CV/NLP学术论文写作质量', en: 'Improve academic paper writing quality for ML/CV/NLP papers' },
+  'LaTeX paper writing tips for ML/CV/PR conference papers': { zh: 'ML/CV/PR会议论文LaTeX写作技巧', en: 'LaTeX paper writing tips for ML/CV/PR conference papers' },
+  '中文科技论文写作技巧': { zh: '中文科技论文写作技巧', en: 'Chinese scientific paper writing tips' },
+  '科研论文写作助手，提供30个Prompt模板覆盖论文写作全流程': { zh: '科研论文写作助手，提供30个Prompt模板覆盖论文写作全流程', en: 'Research writing assistant with 30 prompt templates covering full workflow' },
+  // ===== CCFA Skills Family Descriptions =====
+  'Create paper project directories, copy LaTeX templates, and initialize ccfa.yaml project state files. Supports template selection for NeurIPS, ICML, ICLR, CVPR, ACL, and other CCF-A conferences.': { zh: '创建论文项目目录、复制LaTeX模板、初始化项目状态文件。支持NeurIPS/ICML/ICLR/CVPR/ACL等CCF-A会议的模板选择和项目结构搭建。', en: 'Create paper project directories, copy LaTeX templates, and initialize project state files. Supports template selection for NeurIPS, ICML, ICLR, CVPR, ACL, and other CCF-A conferences.' },
+  'Decompose paper tasks, arrange stages, set gates, and decide the next owner skill. Manage the complete paper project pipeline from idea to rebuttal, ensuring proper handoff between skills.': { zh: '拆解论文任务、排列阶段、设置检查点、决定下一步owner skill。管理从idea到rebuttal的完整论文项目流程，确保各skill有序交接。', en: 'Decompose paper tasks, arrange stages, set gates, and decide the next owner skill. Manage the complete paper project pipeline from idea to rebuttal, ensuring proper handoff between skills.' },
+  'Transform vague research ideas into actionable research plans. Uses the problem-gap-insight-method-evidence framework to identify innovation points and rescue routes.': { zh: '将模糊的科研想法转化为可执行的研究方案。使用problem-gap-insight-method-evidence框架，挖掘创新点和救援路线。', en: 'Transform vague research ideas into actionable research plans. Uses the problem-gap-insight-method-evidence framework to identify innovation points and rescue routes.' },
+  'Conduct rigorous review, scoring, and ranking of research ideas. Provides novelty assessment, risk analysis, and stage-aware potential evaluation.': { zh: '对研究idea进行严格评审、打分和排名。提供创新性评估、风险分析和stage-aware发展潜力判断。', en: 'Conduct rigorous review, scoring, and ranking of research ideas. Provides novelty assessment, risk analysis, and stage-aware potential evaluation.' },
+  'Track new papers, competitor activities, arXiv/OpenReview/conference updates. Automatically detect overlap and competing work related to current research.': { zh: '追踪最新论文、竞品动态、arXiv/OpenReview/会议动态。自动检测与当前研究相关的重叠和竞争工作。', en: 'Track new papers, competitor activities, arXiv/OpenReview/conference updates. Automatically detect overlap and competing work related to current research.' },
+  'Systematic literature search for related work, prior art, datasets, benchmarks, and research gaps. Provides curated literature lists, screening rationale, and evidence gap analysis.': { zh: '系统性检索相关文献、prior art、数据集、benchmark和研究空白。提供文献列表、筛选理由、相关工作结构和证据缺口分析。', en: 'Systematic literature search for related work, prior art, datasets, benchmarks, and research gaps. Provides curated literature lists, screening rationale, and evidence gap analysis.' },
+  'Design comprehensive experiment plans including baseline selection, evaluation metrics, ablation studies, and robustness tests. Generates experiment protocols, baseline matrices, and result table templates.': { zh: '设计完善的实验方案，包括baseline选择、评估指标、消融实验、鲁棒性测试。生成实验协议、baseline矩阵和结果表模板。', en: 'Design comprehensive experiment plans including baseline selection, evaluation metrics, ablation studies, and robustness tests. Generates experiment protocols, baseline matrices, and result table templates.' },
+  'Analyzes published papers in PDF format and extracts reusable writing exemplars. Identifies structural patterns, rhetorical moves, and venue-specific writing conventions.': { zh: '从已发表论文PDF中抽取出可复用的写作范例。分析论文结构、写作模式、venue标签，建立个人exemplar库。', en: 'Analyzes published papers in PDF format and extracts reusable writing exemplars. Identifies structural patterns, rhetorical moves, and venue-specific writing conventions.' },
+  'Professional paper review service: scientific review, writing review, scoring, AC/meta-review simulation, and submission risk diagnosis. Evaluates novelty, experimental soundness, and writing quality.': { zh: '提供专业级论文评审：科学评审、写作评审、打分、AC/meta-review模拟、投稿风险诊断。评估创新性、实验充分性和写作质量。', en: 'Professional paper review service: scientific review, writing review, scoring, AC/meta-review simulation, and submission risk diagnosis. Evaluates novelty, experimental soundness, and writing quality.' },
+  'Verify paper claims, numbers, figures, citations, and BibTeX correctness. Provides claim-support mapping, numerical consistency reports, and citation audits for research integrity.': { zh: '核验论文中的声明(claim)、数字、图表、引用和BibTeX的正确性。提供claim-support对照表、数字一致性报告和引用审计，确保研究诚信。', en: 'Verify paper claims, numbers, figures, citations, and BibTeX correctness. Provides claim-support mapping, numerical consistency reports, and citation audits for research integrity.' },
+  'Check paper compliance with target venue submission rules: page limit, anonymity, PDF metadata, LaTeX compilation, artifact completeness, camera-ready preparation. Ensures zero-error submission.': { zh: '检查论文是否符合目标会议的投稿规则：页数限制、匿名要求、PDF metadata、LaTeX编译、artifact完整性、camera-ready准备，确保投稿包零错误。', en: 'Check paper compliance with target venue submission rules: page limit, anonymity, PDF metadata, LaTeX compilation, artifact completeness, camera-ready preparation. Ensures zero-error submission.' },
+  'Write professional rebuttal letters, response letters, revision ledgers, and resubmission plans. Address reviewer comments point-by-point, maintain revision history, and plan resubmission strategy.': { zh: '撰写专业的rebuttal、response letter、revision ledger和重投计划。逐条回应审稿意见，维护修改记录，制定重投策略。', en: 'Write professional rebuttal letters, response letters, revision ledgers, and resubmission plans. Address reviewer comments point-by-point, maintain revision history, and plan resubmission strategy.' },
+  'Shared governance layer for the CCFA skill family. Manages routing rules, privacy/evidence policies, source registry, artifact contracts, and validation strategies for cross-skill collaboration.': { zh: 'CCFA技能家族的共享治理层。维护路由规则、隐私/证据策略、source registry、artifact合约和校验策略。', en: 'Shared governance layer for the CCFA skill family. Manages routing rules, privacy/evidence policies, source registry, artifact contracts, and validation strategies.' },
+  'Development and maintenance tool for the CCFA skill family. Creates new skills, manages naming, generates documentation and diagrams, runs validation, and publishes releases.': { zh: 'CCFA技能家族开发维护工具。创建新skill、管理命名规范、生成文档和图表、运行校验、发布release。', en: 'Development and maintenance tool for the CCFA skill family. Creates new skills, manages naming, generates documentation and diagrams, runs validation, and publishes releases.' },
 };
 
 // Generate skill description with i18n support
@@ -735,7 +777,14 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
                                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-secondary)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                               >
-                                <span style={{ fontWeight: 500 }}>{localizedName}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontWeight: 500 }}>
+                                  <span>{localizedName}</span>
+                                  {Boolean(skill.source_stars) && (
+                                    <span title={t({ zh: '来源仓库 Star（同步时记录）', en: 'Source repository stars at sync time' }, lang)} style={{ flexShrink: 0, color: '#d99a00', fontSize: '9px' }}>
+                                      ★ {Number(skill.source_stars).toLocaleString()}
+                                    </span>
+                                  )}
+                                </span>
                                 <span style={{ fontSize: '10px', color: 'var(--accent)' }}>
                                   {generateSkillDescription(skill, lang)}
                                 </span>

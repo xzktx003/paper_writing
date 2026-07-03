@@ -1,0 +1,189 @@
+name: latex-paper-tips
+display_name: LaTeX Paper Tips
+display_name_zh: LaTeX论文技巧
+description_zh: LaTeX论文写作技巧：表格/图表/引用/公式规范。涵盖CVPR/ICCV/NeurIPS模板指南。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: formatting-latex
+subcategory_zh: LaTeX格式
+trigger: manual
+auto_recommend: false
+description: |
+  LaTeX paper writing tips for ML/CV/PR conference papers. Covers writing habits, table/figure formatting, citation rules, and submission checklist for CVPR/ICCV/NeurIPS.
+license: MIT
+source: https://github.com/guanyingc/latex_paper_writing_tips
+metadata:
+  author: guanyingc
+  version: "1.0.0"
+  tags: [latex, CVPR, ICCV, NeurIPS, writing-tips, table, figure]
+
+triggers:
+  - LaTeX技巧
+  - 论文格式
+  - 表格排版
+  - 图片排版
+  - 引用格式
+  - latex tips
+  - paper formatting
+  - table format
+  - figure format
+
+content: |
+  # Tips for Writing a Research Paper using LaTeX
+
+  ## Writing Habits
+
+  ### Common Mistakes
+  1. There should be a space before the open parentheses:
+     - Wrong: `Convolutional neural network(CNN) has been...`
+     - Correct: `Convolutional neural network (CNN) has been...`
+  2. There should be no space before the period and comma punctuation marks
+  3. There should be a punctuation at the end of the equation
+  4. All equations should be numbered
+  5. The first character in a sentence should be capitalized
+  6. Double quotation marks should be correctly typed: ``okay'' not "okay"
+  7. There should be a space before the citation: `problem~[1]` not `problem[1]`
+  8. Don't use abbreviations like "didn't" in academic writing
+  9. For all possessives, use "of" phrase instead of apostrophe when possible
+
+  ### Suggestions
+  1. Do not include citations in the abstract
+  2. Define macros for frequently used terms (model names, dataset names)
+  3. Use `\ie` command for "i.e." and `\eg` for "e.g."
+  4. When referring to a table, use "Table~ref{tab:table1}"
+  5. When referring to a figure, use "Figure~ref{fig:figure1}" at sentence start, "Fig.~ref{fig:figure1}" elsewhere
+  6. The table caption should be at the top of the table
+  7. The figure caption should be at the bottom of the figure
+  8. It is better to put the tables and figures at the top of a page
+
+  ### Abbreviations
+  1. Use abbreviations (like model names, definitions) at their first occurrence
+  2. Keep model name case consistent: BERT, ELECTRA (not Bert, electra)
+  3. Examples should be in italic
+  4. A vs An: an LSTM cell, an F/H/L/M/N/S/X, a U
+  5. `\begin{enumerate}\item` can be replaced with paragraphs with bullet points to save space
+
+  ### Footnote Writing
+  - Footnotes should be placed after the first non-left punctuation mark
+  - No space between `\footnote` command and preceding punctuation
+
+  ## Citation Rules
+
+  1. Citation in parentheses (parent): use `\cite`
+  2. Citation within text: 
+     - ACL/NAACL/EMNLP: `\citet{...}`
+     - COLING: `\newcite{...}`
+     - AAAI/IJCAI: `\citeauthor{...} \shortcite{...}`
+     - IEEE: `\citeauthor{...}~(\citeyear{...})`
+  3. Bib management: keep conference/journal names consistent in full and abbreviated form
+  4. Check year, volume number, page numbers - don't rely solely on Google Scholar
+
+  ## Equation Rules
+
+  1. Equations are part of a sentence
+  2. You can add commas and periods inside equations (especially multi-line)
+  3. If text after equation completes a sentence with the equation, no capital letter needed
+  4. If starting a new sentence after equation, capitalize the first letter
+
+  ## Table Formatting
+
+  ### Table Packages
+  ```latex
+  \usepackage{booktabs}
+  \usepackage{colortbl,xcolor}
+  \usepackage{makecell}
+  ```
+
+  ### Table Best Practices
+  1. Use `\toprule`, `\midrule`, `\bottomrule` instead of `\hline`
+  2. Use `\caption{...}` above the table
+  3. Use `\label{...}` after caption
+  4. Use `\resizebox` or `\begin{tabular}{...}` with appropriate column widths
+  5. For highlighting best results: red for best, blue for second best
+  6. Two-column tables can be placed side-by-side using minipage
+
+  ### Table Caption Style
+  - Simple and descriptive
+  - Explain what the table shows
+  - Include key findings if notable
+
+  ## Figure Formatting
+
+  ### Figure Best Practices
+  1. Use vector graphics (PDF) instead of raster
+  2. Internal fonts should be consistent with main text
+  3. Keep figure compact without excessive white space on sides
+  4. Use `\caption{...}` below the figure
+  5. Place figures at top of page when possible
+
+  ### Figure Design Principles
+  1. Same type of modules should have consistent color scheme
+  2. If using similar colors, darker/brighter modules indicate importance
+  3. Limit color variety to 6 or fewer colors
+  4. Use visual elements over text labels where possible
+  5. Keep line styles and colors consistent within categories
+  6. Arrow directions should be consistent, avoid back-and-forth turns
+  7. Avoid isolated components (no source or destination arrows)
+
+  ### Figure Caption Style
+  - Describe what the figure shows
+  - Include key observation or comparison
+  - Reference specific sub-parts if applicable
+
+  ## CVPR/ICCV/NeurIPS Template
+
+  ### Package Options
+  - `review`: For submission (anonymous)
+  - `final`: Camera-ready version
+  - `pagenumbers`: Force page numbers
+
+  ### Required Preamble
+  ```latex
+  \documentclass[10pt,twocolumn,letterpaper]{article}
+  \usepackage[review]{cvpr}  % For submission
+  % or
+  \usepackage{cvpr}  % For camera-ready
+  ```
+
+  ### Submission Checklist
+  1. Check anonymity - no author names, affiliations, or identifying URLs
+  2. Check page limits
+  3. Check title and abstract match submission system
+  4. Clear PDF metadata
+  5. Use third-person for self-citations
+  6. Figures legible in grayscale
+
+  ## LaTeX Packages Reference
+
+  ```latex
+  % Basic
+  \usepackage{graphicx}
+  \usepackage{amsmath}
+  \usepackage{amssymb}
+  \usepackage{booktabs}
+
+  % For tables
+  \usepackage{makecell}
+  \usepackage{colortbl}
+  \usepackage{xcolor}
+
+  % For figure/table captions
+  \usepackage[format=plain,labelformat=simple,labelsep=period,font=small]{caption}
+  \usepackage[font=footnotesize,skip=3pt]{subcaption}
+
+  % For hyperlinks
+  \usepackage[pagebackref,breaklinks,colorlinks]{hyperref}
+
+  % For cross-references
+  \usepackage[capitalize]{cleveref}
+  ```
+
+  ## Caption Formatting
+  ```latex
+  \captionsetup[table]{aboveskip=3pt}
+  \captionsetup[table]{belowskip=2pt}
+  \captionsetup[figure]{aboveskip=5pt}
+  \captionsetup[figure]{belowskip=0pt}
+  ```

@@ -1,0 +1,56 @@
+name: ccf-pipeline-orchestrator
+display_name: CCF Pipeline Orchestrator
+display_name_zh: CCF流程编排
+description_zh: |
+  拆解论文任务、排列阶段、设置检查点、决定下一步owner skill。
+  管理从idea到rebuttal的完整论文项目流程，确保各skill有序交接。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: full-paper
+subcategory_zh: 全文写作
+trigger: manual
+auto_recommend: true
+description: |
+  Decompose paper tasks, arrange stages, set gates, and decide the next owner skill.
+  Manage the complete paper project pipeline from idea to rebuttal, ensuring proper handoff between skills.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [paper-writing, CCF-A, pipeline, workflow, orchestration]
+triggers:
+  - 排任务
+  - 编排流程
+  - 设置阶段
+  - 下一步做什么
+  - orchestrate
+  - pipeline
+  - workflow
+  - next step
+
+content: |
+  # CCF Pipeline Orchestrator
+
+  ## Overview
+  Orchestrates the paper project pipeline. Breaks down tasks, arranges stages, sets quality gates, and hands off to the appropriate owner skill at each stage.
+
+  ## Pipeline Stages
+  1. Project Setup → Scaffolder
+  2. Idea Development → Idea Optimizer
+  3. Idea Review → Idea Reviewer
+  4. Literature Monitoring → Literature Monitor
+  5. Literature Search → Literature Searcher
+  6. Experiment Design → Experiment Designer
+  7. Writing → Paper Writer
+  8. Paper Review → Paper Reviewer
+  9. Integrity Audit → Integrity Auditor
+  10. Submission Check → Submission Checker
+  11. Rebuttal → Rebuttal Writer
+
+  ## Artifacts
+  - Stage plan with gates
+  - Handoff recommendations
+  - Status update suggestions

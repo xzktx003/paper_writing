@@ -1,0 +1,93 @@
+name: ccf-paper-writer
+display_name: CCF Paper Writer
+display_name_zh: CCF论文写作
+description_zh: CCF-A会议论文写作技能，支持NeurIPS/ICML/ICLR/CVPR/ACL等会议，规划、起草、修订、润色、压缩和展示适配研究论文。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+trigger: manual
+auto_recommend: false
+description: |
+  CCF-A conference paper writing skill. Plan, draft, revise, polish, compress, and presentation-adapt research papers for NeurIPS, ICML, ICLR, CVPR, ICCV, ACL, AAAI, and other CCF conferences.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [paper-writing, CCF-A, conference, NeurIPS, ICML, ICLR, CVPR, ACL, AAAI]
+
+triggers:
+  - 写论文
+  - 润色论文
+  - 压缩论文
+  - 写CCF论文
+  - 投会议
+  - write a paper
+  - polish paper
+  - compress paper
+  - paper writing
+  - draft manuscript
+
+content: |
+  # CCF Paper Writer
+
+  ## Overview
+
+  Write for the target CCF venue, not for a generic paper. Improve structure, section logic, paragraph roles, contribution framing, claim-evidence alignment, reviewer-facing clarity, and concise presentation.
+
+  ## Core Rule
+
+  A submission manuscript should target the venue's usable page budget: too short is a writing failure, not just a harmless demo choice; too long triggers compression.
+
+  ## Modes
+
+  - `draft`: Create or revise paper sections
+  - `polish`: Improve clarity, flow, terminology, and claim-evidence presentation
+  - `compress`: Shorten text to word/page limits without changing claims or numbers
+  - `presentation`: Convert paper into slides, poster, talk script, figure narration, and Q&A
+
+  ## Workflow
+
+  1. Identify mode, target venue, paper type, draft state, available evidence, and target length
+  2. Select venue guide and exemplars (load venue-guides/index.md)
+  3. Build global story: task -> gap -> root challenge -> insight -> method -> evidence -> limitation
+  4. Prepare citations (mandatory): identify citation slots, search literature, obtain correct bib entries
+  5. Draft or revise section by section using section-modules.md
+  6. Compile and check page count against venue budget
+  7. Expand if under target, compress if over target
+
+  ## Format And Output Policy
+
+  1. Preserve original format for polishing/rewriting/compression unless user asks to restructure
+  2. For one paragraph or one subsection, output direct improved version plus short optional note
+  3. For rough idea or "write from scratch" request, create the requested artifact
+  4. If user requests Markdown, Chinese prose, English prose, an outline, a full LaTeX file, follow that request
+  5. Never invent results, baselines, experiments, reviewer impact, or missing evidence
+  6. Obtain correct citations through literature search; never guess bib entries
+  7. For full-paper requests, produce full manuscript-level artifact
+
+  ## Post-Writing Coordination
+
+  After producing a complete manuscript, inform user which CCFA skills are available:
+
+  - ccf-paper-reviewer: Scientific review, score prediction, reviewer simulation
+  - ccf-integrity-auditor: Citation existence, claim-evidence consistency
+  - ccf-submission-checker: Venue template compliance, page/anonymity limits
+  - ccf-rebuttal-writer: Reviewer response, rebuttal drafting
+
+  ## CCF Venue Support
+
+  - NeurIPS, ICML, ICLR (ML)
+  - CVPR, ICCV, ECCV (CV)
+  - ACL, EMNLP, NAACL (NLP)
+  - AAAI, IJCAI (AI)
+  - ACM conferences (CCS, WWW, SIGCOMM, etc.)
+
+  ## Key Principles
+
+  1. Do not invent results, baselines, or experiments
+  2. Every major claim must be supported by experimental evidence
+  3. Use venue-specific LaTeX templates
+  4. Target 85-100% of venue main-body page budget
+  5. Use citation workflow for proper bib entries

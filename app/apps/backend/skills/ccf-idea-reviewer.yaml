@@ -1,0 +1,49 @@
+name: ccf-idea-reviewer
+display_name: CCF Idea Reviewer
+display_name_zh: CCF Idea评审
+description_zh: |
+  对研究idea进行严格评审、打分和排名。
+  提供创新性评估、风险分析和stage-aware发展潜力判断。
+type: research
+categories:
+  - paper-review
+category_zh: 论文评审
+subcategory: paper-reading
+subcategory_zh: 论文阅读
+trigger: manual
+auto_recommend: true
+description: |
+  Conduct rigorous review, scoring, and ranking of research ideas.
+  Provides novelty assessment, risk analysis, and stage-aware potential evaluation.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [idea, review, scoring, CCF-A, novelty, risk]
+triggers:
+  - 评审idea
+  - 打分排序
+  - 判断创新性
+  - review idea
+  - score ideas
+  - rank ideas
+  - novelty check
+
+content: |
+  # CCF Idea Reviewer
+
+  ## Overview
+  Scores and ranks research ideas with rigorous criteria. Provides novelty assessment, risk analysis, and stage-aware development potential.
+
+  ## Review Criteria
+  - Novelty & Significance
+  - Feasibility
+  - Clarity of Problem Formulation
+  - Potential Impact
+  - Competition Landscape
+
+  ## Output
+  - Scores with detailed rationale
+  - Risk assessment
+  - Stage-specific development recommendations

@@ -1,0 +1,55 @@
+name: ccf-skill-forger
+display_name: CCF Skill Forger
+display_name_zh: CCF技能锻造
+description_zh: |
+  维护CCFA技能家族：创建新skill、管理命名规范、更新文档、绘制SVG图、
+  运行校验、发布release。面向技能开发者的维护工具。
+type: system
+categories:
+  - exploration-discovery
+category_zh: 探索发现
+subcategory: research-ideation
+subcategory_zh: 研究构思
+trigger: manual
+auto_recommend: false
+description: |
+  Maintain the CCFA skill family: create new skills, manage naming conventions, update documentation,
+  generate SVG diagrams, run validation, and publish releases. For skill developers.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [maintenance, skill-development, CCF-A, documentation]
+triggers:
+  - 锻造技能
+  - 维护技能
+  - 创建新skill
+  - 更新文档
+  - 发布release
+  - forge skill
+  - maintain skill
+  - create new skill
+  - publish release
+
+content: |
+  # CCF Skill Forger
+
+  ## Overview
+  Development and maintenance tool for the CCFA skill family. Creates new skills, manages naming, generates documentation and diagrams, runs validation, and publishes releases.
+
+  ## Capabilities
+  - New skill scaffolding
+  - Naming convention enforcement
+  - Documentation generation
+  - SVG diagram building
+  - Validation script execution
+  - Release publishing
+
+  ## Usage
+  ```
+  forge:create <skill-name>  - Create a new skill
+  forge:validate              - Run all validation checks
+  forge:docs                  - Generate documentation
+  forge:release               - Publish new version
+  ```

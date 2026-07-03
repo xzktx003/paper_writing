@@ -1,0 +1,50 @@
+name: ccf-idea-optimizer
+display_name: CCF Idea Optimizer
+display_name_zh: CCF Idea优化
+description_zh: |
+  将模糊的科研想法转化为可执行的研究方案。
+  提供problem-gap-insight-method-evidence框架，挖掘创新点和救援路线。
+type: research
+categories:
+  - exploration-discovery
+category_zh: 探索发现
+subcategory: research-ideation
+subcategory_zh: 研究构思
+trigger: manual
+auto_recommend: true
+description: |
+  Transform vague research ideas into actionable research plans.
+  Uses the problem-gap-insight-method-evidence framework to identify innovation points and rescue routes.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [idea, research, optimization, CCF-A, brainstorming]
+triggers:
+  - 优化idea
+  - 研究想法
+  - 找方向
+  - 救援路线
+  - optimize idea
+  - research idea
+  - find direction
+  - problem formulation
+
+content: |
+  # CCF Idea Optimizer
+
+  ## Overview
+  Takes rough, fuzzy, or stuck research ideas and develops them into well-structured research plans. Uses the PGIME (Problem-Gap-Insight-Method-Evidence) framework.
+
+  ## PGIME Framework
+  - **Problem**: What problem are you solving?
+  - **Gap**: What's missing in existing work?
+  - **Insight**: What's your key insight?
+  - **Method**: How do you realize it?
+  - **Evidence**: How do you validate it?
+
+  ## Artifacts
+  - Idea brief document
+  - Rescue routes for stuck ideas
+  - Minimum viable problem formulation

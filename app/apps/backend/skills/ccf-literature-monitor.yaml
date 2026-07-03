@@ -1,0 +1,49 @@
+name: ccf-literature-monitor
+display_name: CCF Literature Monitor
+display_name_zh: CCF文献监控
+description_zh: |
+  追踪最新论文、竞品动态、arXiv/OpenReview/会议动态。
+  自动检测与当前研究相关的重叠和竞争工作，支持跨skill交接。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: paper-reading
+subcategory_zh: 论文阅读
+trigger: manual
+auto_recommend: true
+description: |
+  Track new papers, competitor activities, arXiv/OpenReview/conference updates.
+  Automatically detect overlap and competing work related to current research.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [literature, monitoring, tracking, arXiv, CCF-A]
+triggers:
+  - 文献监控
+  - 追踪新论文
+  - 竞品跟踪
+  - 关注arXiv
+  - monitor literature
+  - track papers
+  - competitor watch
+  - arXiv alerts
+
+content: |
+  # CCF Literature Monitor
+
+  ## Overview
+  Monitors the latest research developments across arXiv, OpenReview, and conference proceedings. Detects overlapping and competing work relevant to the current research project.
+
+  ## Capabilities
+  - arXiv RSS/API monitoring by keyword and category
+  - OpenReview preprint tracking
+  - Conference program monitoring (CVPR, NeurIPS, ICML, etc.)
+  - Overlap detection with current project ideas
+  - RELAX/RESEARCH/FOLLOW-UP tagging
+
+  ## Output
+  - Monitoring report with overlap assessment
+  - Cross-skill handoff recommendations

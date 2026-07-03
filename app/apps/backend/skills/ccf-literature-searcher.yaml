@@ -1,0 +1,52 @@
+name: ccf-literature-searcher
+display_name: CCF Literature Searcher
+display_name_zh: CCF文献检索
+description_zh: |
+  系统性检索相关文献、prior art、数据集、benchmark和研究空白。
+  提供文献列表、筛选理由、相关工作结构和证据缺口分析。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: paper-reading
+subcategory_zh: 论文阅读
+trigger: manual
+auto_recommend: true
+description: |
+  Systematic literature search for related work, prior art, datasets, benchmarks, and research gaps.
+  Provides curated literature lists, screening rationale, and evidence gap analysis.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [literature, search, related work, CCF-A, survey]
+triggers:
+  - 文献检索
+  - 查相关文献
+  - 找数据集
+  - 找benchmark
+  - 研究空白
+  - search literature
+  - find related work
+  - find datasets
+  - find benchmarks
+  - research gap
+
+content: |
+  # CCF Literature Searcher
+
+  ## Overview
+  Systematic literature search engine for academic research. Finds related work, prior art, datasets, benchmarks, and identifies research gaps.
+
+  ## Search Dimensions
+  - Related work and prior art
+  - Datasets and benchmarks
+  - Open problems and gaps
+  - Competitor analysis
+
+  ## Output
+  - Curated literature list with relevance scores
+  - Screening rationale
+  - Related work structure outline
+  - Opportunity/evidence gap map

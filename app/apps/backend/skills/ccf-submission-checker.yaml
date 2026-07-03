@@ -1,0 +1,54 @@
+name: ccf-submission-checker
+display_name: CCF Submission Checker
+display_name_zh: CCF投稿检查
+description_zh: |
+  检查论文是否符合目标会议的投稿规则：页数限制、匿名要求、PDF metadata、LaTeX编译、
+  artifact完整性、camera-ready准备等，确保投稿包零错误。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: formatting-latex
+subcategory_zh: LaTeX格式
+trigger: manual
+auto_recommend: true
+description: |
+  Check paper compliance with target venue submission rules: page limit, anonymity, PDF metadata,
+  LaTeX compilation, artifact completeness, camera-ready preparation. Ensures zero-error submission.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [submission, check, compliance, LaTeX, CCF-A, camera-ready]
+triggers:
+  - 投稿检查
+  - 检查格式
+  - 页数限制
+  - 匿名检查
+  - camera-ready
+  - submission check
+  - format check
+  - page limit
+  - anonymity check
+  - LaTeX build
+
+content: |
+  # CCF Submission Checker
+
+  ## Overview
+  Pre-submission quality gate for CCF-A conferences. Checks page count, anonymity, PDF metadata, LaTeX build, artifact packaging, and camera-ready readiness.
+
+  ## Check Items
+  - **Page Count**: Within venue limit?
+  - **Anonymity**: No identifying information?
+  - **PDF Metadata**: Author/created-by cleaned?
+  - **LaTeX Build**: Clean compilation with no errors?
+  - **Artifact Checklist**: Supplementary material complete?
+  - **Camera-Ready**: Final version ready?
+
+  ## Output
+  - Submission checklist with pass/fail status
+  - LaTeX/PDF build results
+  - Anonymity verification report
+  - Artifact completeness check

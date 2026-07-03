@@ -1,0 +1,117 @@
+name: chinese-paper-tips
+display_name: Chinese Paper Tips
+display_name_zh: 中文论文写作技巧
+description_zh: 中文科技论文写作技巧：科技英语规范、图片规范、投稿注意事项。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: language-polish
+subcategory_zh: 语言润色
+trigger: manual
+auto_recommend: false
+description: |
+  中文科技论文写作技巧。涵盖科技英语习惯、图表规范、引用格式、公式规范、投稿注意事项等。
+license: MIT
+source: https://github.com/cooelf/PaperWritingTips
+metadata:
+  author: cooelf
+  version: "1.0.0"
+  tags: [中文, 论文写作, 科技英语, 润色, 格式]
+
+triggers:
+  - 科技英语
+  - 中文论文
+  - 论文润色
+  - 写作技巧
+  - 格式规范
+  - Chinese paper
+  - writing tips
+  - English writing
+
+content: |
+  # PaperWritingTips - 科技论文写作技巧
+
+  ## 科技英语写作习惯
+
+  ### 基本规范
+  1. **不要使用缩写形式**：任何时候都不要用didn't这样的缩写。对于所有格，完全不要用，改用of短语。
+  2. **使用缩写需定义**：如模型名、定义等需在最初使用位置定义。
+  3. **大小写一致**：模型名字大小写保持一致，如BERT，ELECTRA，避免Bert、Electra、electra混合使用。
+  4. **例句用斜体**：例子考虑用斜体。
+
+  ### 标点与格式
+  5. **不要用enumerate/item**：改成正常段落可以使页面更紧凑，在每段前手工加黑点bullet，节省空间避免被怀疑灌水。
+  6. **脚注写法**：脚注写在相关地方后第一个非左标点符号后面。\footnote命令和前面标点之间没有空格。
+  7. **A和an的区别**：
+     - an LSTM cell
+     - an F/H/L/M/N/S/X字母
+     - a U
+
+  ### 常见错误
+  - 括号前缺少空格：CNN has been -> CNN has been
+  - 逗号句号前有多余空格
+  - 公式后缺少标点
+  - 句子首字母不大写
+  - 引用前缺少空格：problem~[1] not problem[1]
+
+  ## 图片规范
+
+  ### 基本要求
+  1. 图片内部字体应统一且跟正文文字大小一致
+  2. 整张图片两侧尽量不要有空白，保持紧凑
+  3. 同类型模块颜色尽可能保持一个色系
+  4. 同样色系中，更深更亮的模块代表更重要
+  5. 颜色种类最好不超过六种
+  6. 图片使用矢量图
+
+  ### 设计原则
+  7. figure本意是提供比文字更直观简洁的表达，应尽可能用合理的绘画元素而非大量文字标记
+  8. 细节到线型配色：
+     - 保持统一（低描述复杂性）
+     - 同一意思/类别的图形元素应用近似的线形配色（认知直观性）
+  9. 箭头方向尽量保持同向，避免来回折转
+  10. 流程图中避免出现孤立组件（无任何来源或去向箭头标识）
+
+  ## 引用规范
+
+  1. **引用格式**：
+     - ACL/NAACL/EMNLP：`\citet{...}`
+     - COLING：`\newcite{...}`
+     - AAAI/IJCAI：`\citeauthor{...} \shortcite{...}`
+     - IEEE：`\citeauthor{...}~(\citeyear{...})`
+  
+  2. **bib管理**：会议/期刊名称全程和缩写保持一致，检查年份、卷号、页码等
+
+  3. **不要完全依赖scholar**：Google Scholar信息可能存在缺失或格式混乱
+
+  4. **章节引用**：使用\label{...}定义后，可通过\ref{...}自动引用跳转
+
+  ## 公式规范
+
+  1. 公式为句子的一部分，可在公式内部（尤其是多行）加入逗号和句号
+  2. 若公式后文字与公式组成完整句子，则首字母不需要大写，紧接在公式后面
+  3. 若另起新句子或段落，在\end{equation}后换行，首字母大写
+
+  ## 投稿前注意事项
+
+  1. **匿名性检查**：尤其是code里面一些hard coded模型或数据路径等需要处理掉
+  2. **页数检查**：检查是否超页，最后时刻慎重勿随意改图表大小
+  3. **信息核对**：标题和摘要与投稿系统填写框内的信息是否对应
+
+  ## 其他建议
+
+  ### 推荐阅读
+  - [如何优雅地（用TeX）写AI论文](https://zhuanlan.zhihu.com/p/103519006)
+  - [浅谈学术论文rebuttal](https://zhuanlan.zhihu.com/p/104298923)
+  - NLP领域综述性文章推荐
+
+  ### LaTeX模板
+  - Overleaf提供CVPR/ICCV/NeurIPS模板
+  - rebuttal模板可单独获取
+  - 附录材料模板可参考
+
+  ### 配色建议
+  - 使用统一的配色方案
+  - 论文中颜色不超过6种
+  - 考虑黑白打印效果

@@ -1138,6 +1138,9 @@ function enrichSkillForUI(s) {
     subcategory_zh: ACADEMIC_SUBCATEGORY_ZH[subcategory] || s.subcategory_zh || '其他',
     trigger: s.trigger || 'manual',
     auto_recommend: s.auto_recommend !== false,
+    source_stars: Number(s.source_stars || 0),
+    stars_checked_at: s.stars_checked_at || '',
+    source_url: s.url || s.adapted_from || '',
     source: s._source,
     kind: s.kind || 'yaml',
     tags,
@@ -1374,9 +1377,9 @@ const ACADEMIC_SUBCATEGORY_ZH = {
   'paper-discovery': '论文发现与追踪', 'search-retrieval': '其他检索与下载', 'literature-review': '综述与证据综合', 'related-work': '相关工作分析', 'citation-management': 'BibTeX 与文献管理', 'citation-verification': '引用真实性核验', 'paper-reading': '论文阅读与信息提取', 'research-mapping': '引用网络与研究脉络',
   'research-question': '研究问题与假设', 'experiment-planning': '实验方案', statistics: '统计分析', 'baseline-ablation': '基线、消融与评估', reproducibility: '复现与透明度', 'data-processing': '数据处理与建模',
   'outline-planning': '大纲与故事线', 'full-paper': '整篇论文', abstract: '摘要', introduction: '引言（Introduction）', 'related-work': '相关工作（Related Work）', method: '方法（Method）', 'experiments-results': '实验与结果', 'discussion-conclusion': '讨论与结论', 'language-polish': '语法、润色与翻译', 'formatting-latex': '格式与 LaTeX',
-  'prior-art': '现有技术检索', 'patent-drafting': '专利交底与权利要求', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', captions: '图注与可访问性',
+  'prior-art': '现有技术检索', 'patent-disclosure': '专利挖掘与技术交底书', 'patent-drafting': '权利要求与申请文件', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', captions: '图注与可访问性',
   submission: '投稿与终稿', presentation: '演讲与幻灯片', poster: '学术海报', 'venue-guidance': '会议模板与规范', proposal: '申请书主体', 'budget-impact': '预算与影响', 'grant-review': '基金评审',
-  'paper-review': '论文预审', 'logic-method-review': '逻辑与方法审查', 'citation-integrity': '引用与科研诚信', rebuttal: '审稿回复', preprint: '预印本', 'open-data': '开放数据与代码', 'open-science': '开放科学',
+  'paper-review': '论文预审', 'logic-method-review': '逻辑与方法审查', 'citation-integrity': '引用与科研诚信', rebuttal: '审稿回复', preprint: '预印本', 'open-data': '开放数据与代码', 'open-science': '开放科学', 'research-artifacts': '论文与研究产物发布', 'autonomous-experimentation': '自主实验迭代',
   ideation: '选题与创意', 'gap-discovery': '研究空白', 'critical-thinking': '批判性思维', interdisciplinary: '跨学科探索', 'project-workflow': '科研项目与工作流',
 };
 
@@ -1443,7 +1446,7 @@ function ensureChineseSkillDescription(candidate, displayNameZh, category) {
 }
 
 function categorySortWeight(category) {
-  const order = ['文献检索', '实验设计', '论文写作', '科研绘图', '学术会议', '同行评审', '研究探索'];
+  const order = ['文献检索', '实验设计', '论文写作', '专利撰写', '科研绘图', '学术会议', '同行评审', '开放获取', '研究探索'];
   const index = order.indexOf(category);
   return index === -1 ? order.length : index;
 }
@@ -1453,7 +1456,7 @@ export function recommendSkills(taskText, options = {}) {
   if (!query) return [];
   // This catalog intentionally targets AI/ML/computer-science paper workflows.
   // Do not recommend a loosely matching paper Skill for explicitly out-of-profile tasks.
-  if (/(?:基金|\bproposal\b|grant proposal|funding proposal|专利|patent|临床|医学|medical|clinical|考古|历史史料|ancient ruins|primary source evaluation)/i.test(query)) return [];
+  if (/(?:基金|\bproposal\b|grant proposal|funding proposal|临床|医学|medical|clinical|考古|历史史料|ancient ruins|primary source evaluation)/i.test(query)) return [];
   const projectState = options.projectState || {};
   const queryTokens = tokenizeSkillText(query);
   return listSkills()
@@ -1871,6 +1874,23 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
   const reviewerRevision = isReviewerRevisionQuery(query);
   const latexDebug = isLatexDebugQuery(query);
   const evidenceReview = isEvidenceReviewQuery(query);
+
+  if (/(?:专利|patent|技术交底书|交底书|查新|现有技术)/i.test(query) && skill.name === 'patent-disclosure-skill') {
+    score += 30;
+    reasons.push('匹配专利点挖掘、现有技术查新和技术交底书流程');
+  }
+  if (/(?:hugging\s*face|hf\s+papers?|arxiv).{0,24}(?:论文|paper|阅读|总结|分析)|(?:阅读|总结|分析).{0,24}(?:hugging\s*face|arxiv)/i.test(query) && skill.name === 'huggingface-papers') {
+    score += 24;
+    reasons.push('匹配 Hugging Face/arXiv AI 论文读取与产物关联');
+  }
+  if (/(?:发布|索引|认领|publish|index|claim).{0,24}(?:hugging\s*face|hf|论文|paper)|(?:论文|paper).{0,24}(?:模型|数据集|space|artifact|产物).{0,12}(?:关联|link)/i.test(query) && skill.name === 'huggingface-paper-publisher') {
+    score += 24;
+    reasons.push('匹配 Hugging Face 论文发布与模型/数据集产物关联');
+  }
+  if (/(?:autoresearch|自主实验|自动迭代|实验迭代|优化).{0,32}(?:指标|metric|loss|accuracy|latency|性能)|(?:metric|loss|accuracy|latency).{0,24}(?:迭代|优化)/i.test(query) && skill.name === 'autoresearch') {
+    score += 28;
+    reasons.push('匹配基于明确指标的自主实验、验证和回滚循环');
+  }
 
   for (const intent of skill.task_intents || []) {
     if (containsLoose(query, intent)) {

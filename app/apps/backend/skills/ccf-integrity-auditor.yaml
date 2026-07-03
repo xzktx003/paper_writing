@@ -1,0 +1,52 @@
+name: ccf-integrity-auditor
+display_name: CCF Integrity Auditor
+display_name_zh: CCF完整性审计
+description_zh: |
+  核验论文中的声明(claim)、数字、图表、引用和BibTeX的正确性。
+  提供claim-support对照表、数字一致性报告和引用审计，确保研究诚信。
+type: research
+categories:
+  - peer-review
+category_zh: 同行评审
+subcategory: evidence-review
+subcategory_zh: 证据审查
+trigger: manual
+auto_recommend: true
+description: |
+  Verify paper claims, numbers, figures, citations, and BibTeX correctness.
+  Provides claim-support mapping, numerical consistency reports, and citation audits for research integrity.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [audit, integrity, claim, citation, verification, CCF-A]
+triggers:
+  - 完整性审计
+  - 核验声明
+  - 检查引用
+  - 数字一致性
+  - 审计论文
+  - integrity audit
+  - verify claims
+  - check citations
+  - numerical consistency
+  - research integrity
+
+content: |
+  # CCF Integrity Auditor
+
+  ## Overview
+  Academic integrity audit for CCF-A papers. Verifies that every claim is supported, every number is consistent, every citation is accurate, and every BibTeX entry is correct.
+
+  ## Audit Dimensions
+  - **Claim-Support Mapping**: Every major claim → supporting evidence
+  - **Numerical Consistency**: Numbers in text vs. tables vs. figures
+  - **Citation Audit**: Each citation actually supports the claim it's attached to
+  - **BibTeX Verification**: Entry correctness and completeness
+
+  ## Output
+  - Claim-support table
+  - Numerical consistency report
+  - Citation audit results
+  - Integrity score with issues flagged

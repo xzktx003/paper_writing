@@ -237,9 +237,17 @@ Skills encode task-specific instructions and safety boundaries. The catalog incl
 
 The selector uses a three-level hierarchy: **research category → task subcategory → Skill**. Opening Paper Writing, for example, first shows subcategories such as outline and planning, abstract, introduction, related work, methods, experiments and results, and language polishing. Open a subcategory to see the individual Skills and their task-specific descriptions. This same selector is available in Chat and Draw.
 
-The catalog is now a curated set of roughly 100 Skills for AI/ML, LLM, computer-science research, and CCF-A/ICLR/ICML/NeurIPS-style submissions. Medical, materials-science, patent, humanities/history, fictional exploration, generic web-research, and functionally duplicate entries were removed. The open-source subset contains 36 AI/ML-relevant AlterLab Skills, SNL's top-tier writing workflow, AI4S, the Chinese ResearchPilot pipeline, and four individually reviewed SkillsBot entries. Complete GitHub resources remain under `app/apps/backend/skill-resources/`.
+The catalog is now a curated set of 104 Skills for AI/ML, LLM, computer-science research, and CCF-A/ICLR/ICML/NeurIPS-style submissions. Medical, materials-science, humanities/history, fictional exploration, generic web-research, and functionally duplicate entries were removed. The open-source subset contains 36 AI/ML-relevant AlterLab Skills, SNL's top-tier writing workflow, AI4S, the Chinese ResearchPilot pipeline, four individually reviewed SkillsBot entries, and the popular GitHub Skills below. Complete upstream resources—not prompt summaries—remain under `app/apps/backend/skill-resources/`.
 
-Literature search is split by real workflow rather than a broad database grab bag: query and screening strategy, arXiv, Google Scholar, Semantic Scholar, DBLP, paper reading/extraction, evidence synthesis, related-work analysis, BibTeX management, and citation verification. OpenAlex, USPTO, PubMed, materials databases, and historical-source search are not exposed as selectable Skills.
+| GitHub source | Repository stars¹ | Included capability | License |
+|---|---:|---|---|
+| `handsomestWei/patent-disclosure-skill` | 3,374 | AI/software patent mining, prior-art differentiation, technical disclosure, consistency checks, and DOCX delivery | MIT |
+| `huggingface/skills` | 10,761 | AI paper reading plus publication and model/dataset/Space artifact linking | Apache-2.0 |
+| `uditgoenka/autoresearch` | 5,235 | Metric-driven modify, evaluate, keep-or-revert experiment loops with bounded stopping | MIT |
+
+¹ Repository-star snapshots were checked on 2026-07-03. They are provenance/popularity signals, not a quality guarantee. The selector displays this metadata for imported popular Skills.
+
+Literature search is split by real workflow rather than a broad database grab bag: query and screening strategy, arXiv, Google Scholar, Semantic Scholar, DBLP, Hugging Face AI paper pages, paper reading/extraction, evidence synthesis, related-work analysis, BibTeX management, and citation verification. OpenAlex, USPTO search, PubMed, materials databases, and historical-source search are not exposed as selectable Skills. Patent work is represented only by the dedicated project-to-disclosure workflow above, not by a generic patent database Skill.
 
 Usage notes:
 

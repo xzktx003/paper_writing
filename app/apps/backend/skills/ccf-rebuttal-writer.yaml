@@ -1,0 +1,50 @@
+name: ccf-rebuttal-writer
+display_name: CCF Rebuttal Writer
+display_name_zh: CCF审稿回复
+description_zh: |
+  撰写专业的rebuttal、response letter、revision ledger和重投计划。
+  逐条回应审稿意见，维护修改记录，制定重投策略。
+type: research
+categories:
+  - peer-review
+category_zh: 同行评审
+subcategory: reviewer-response
+subcategory_zh: 审稿回复
+trigger: manual
+auto_recommend: true
+description: |
+  Write professional rebuttal letters, response letters, revision ledgers, and resubmission plans.
+  Address reviewer comments point-by-point, maintain revision history, and plan resubmission strategy.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [rebuttal, response, revision, resubmission, CCF-A]
+triggers:
+  - 审稿回复
+  - rebuttal
+  - 回复审稿人
+  - response letter
+  - 重投计划
+  - revision ledger
+  - write rebuttal
+  - respond to reviewers
+  - resubmission plan
+
+content: |
+  # CCF Rebuttal Writer
+
+  ## Overview
+  Professional rebuttal writing for CCF-A conference reviews. Drafts point-by-point responses, maintains a revision ledger, and creates resubmission plans.
+
+  ## Capabilities
+  - Point-by-point reviewer response
+  - Revision ledger tracking (comment → action → resolved)
+  - Resubmission strategy planning
+  - Tone and strategy optimization
+
+  ## Output
+  - Rebuttal letter with structured responses
+  - Revision ledger (reviewer comments → author actions)
+  - Resubmission plan for next venue

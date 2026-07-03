@@ -17,6 +17,9 @@ export interface SkillInfo {
   categories?: string[];  // e.g. ['writing', 'research']
   subcategory?: string;
   subcategory_zh?: string;
+  source_stars?: number;
+  stars_checked_at?: string;
+  source_url?: string;
   url?: string;           // GitHub or official URL
   source_license?: string;
   adapted_from?: string;

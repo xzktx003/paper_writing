@@ -1,0 +1,46 @@
+name: ccf-project-scaffolder
+display_name: CCF Project Scaffolder
+display_name_zh: CCF项目搭建
+description_zh: |
+  创建论文项目目录、复制LaTeX模板、初始化ccfa.yaml项目状态文件。
+  支持NeurIPS/ICML/ICLR/CVPR/ACL等CCF-A会议的模板选择和项目结构搭建。
+type: research
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: full-paper
+subcategory_zh: 全文写作
+trigger: manual
+auto_recommend: true
+description: |
+  Create paper project directories, copy LaTeX templates, and initialize ccfa.yaml project state files.
+  Supports template selection for NeurIPS, ICML, ICLR, CVPR, ACL, and other CCF-A conferences.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [paper-writing, CCF-A, project-setup, LaTeX, template]
+triggers:
+  - 创建项目
+  - 初始化论文
+  - 搭建项目结构
+  - 复制模板
+  - create project
+  - scaffold paper
+  - initialize project
+  - setup paper directory
+
+content: |
+  # CCF Project Scaffolder
+
+  ## Overview
+  Creates a complete paper project directory with the correct LaTeX template for the target CCF venue, initializes the shared ccfa.yaml state file, and sets up the directory structure.
+
+  ## Artifacts
+  - Project directory with LaTeX template
+  - `ccfa.yaml` initialized with venue, stage, and artifact state
+  - Standard directory structure (sections, figures, tables, bib)
+
+  ## Output
+  A ready-to-write paper project with the correct venue template.

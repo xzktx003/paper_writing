@@ -1,0 +1,57 @@
+name: ccf-paper-reviewer
+display_name: CCF Paper Reviewer
+display_name_zh: CCF论文评审
+description_zh: |
+  提供专业级论文评审服务：科学评审、写作评审、打分、AC/meta-review、投稿风险诊断。
+  模拟审稿人视角，评估论文的创新性、实验充分性和写作质量。
+type: research
+categories:
+  - peer-review
+category_zh: 同行评审
+subcategory: paper-reading
+subcategory_zh: 论文阅读
+trigger: manual
+auto_recommend: true
+description: |
+  Professional paper review service: scientific review, writing review, scoring, AC/meta-review, submission risk diagnosis.
+  Evaluates novelty, experimental soundness, and writing quality from a reviewer's perspective.
+license: MIT
+source: https://github.com/mikubaka88/CCFA-Skills
+metadata:
+  author: mikubaka88
+  version: "1.0.0"
+  tags: [review, scoring, peer-review, CCF-A, risk-assessment]
+triggers:
+  - 论文评审
+  - 审稿
+  - 模拟审稿
+  - 打分
+  - 投稿风险
+  - 科学评审
+  - review paper
+  - peer review
+  - simulate reviewer
+  - score paper
+  - submission risk
+
+content: |
+  # CCF Paper Reviewer
+
+  ## Overview
+  Professional paper review service for CCF-A submissions. Provides scientific review, writing quality assessment, scoring, AC/meta-review simulation, and submission risk diagnosis.
+
+  ## Review Types
+  - **Scientific Review**: Novelty, correctness, significance, experimental soundness
+  - **Writing Review**: Clarity, structure, argument flow, claim-evidence alignment
+  - **Risk Diagnosis**: Acceptance probability, weak points, revision priorities
+
+  ## Output
+  - Scientific review with detailed comments
+  - Writing review with line-level feedback
+  - Risk table with scores and priorities
+  - Modification recommendations
+
+  ## Principles
+  - Do not rewrite the paper content
+  - Focus on evaluation, not generation
+  - Every critique must be actionable

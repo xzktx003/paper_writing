@@ -86,6 +86,64 @@ const githubSources = [
       'research[G.8]-translate': 'language-polish',
     },
   },
+  {
+    id: 'popular-patent-disclosure',
+    repo: 'https://github.com/handsomestWei/patent-disclosure-skill.git',
+    web: 'https://github.com/handsomestWei/patent-disclosure-skill',
+    skillRoot: '.',
+    select: path => path === 'SKILL.md',
+    names: {
+      'patent-disclosure-skill': ['专利挖掘与技术交底书', '扫描 AI/软件项目材料挖掘可专利技术点，执行现有技术查新与差异化分析，生成含流程图、公式和实施例的中文技术交底书，并完成一致性自检与 DOCX 交付。'],
+    },
+    displayNames: { 'patent-disclosure-skill': 'Patent Mining & Technical Disclosure' },
+    categories: { 'patent-disclosure-skill': 'patent-writing' },
+    subcategories: { 'patent-disclosure-skill': 'patent-disclosure' },
+    canonicalNames: { 'patent-disclosure-skill': 'patent-disclosure-skill' },
+    license: 'MIT',
+    stars: 3374,
+    autoRecommend: true,
+    copySelectedOnly: false,
+  },
+  {
+    id: 'popular-huggingface-skills',
+    repo: 'https://github.com/huggingface/skills.git',
+    web: 'https://github.com/huggingface/skills',
+    skillRoot: 'skills',
+    select: path => ['huggingface-papers/SKILL.md', 'huggingface-paper-publisher/SKILL.md'].includes(path),
+    names: {
+      'huggingface-papers': ['Hugging Face AI 论文阅读', '通过 Hugging Face Papers 与 arXiv 页面读取 AI 论文正文和结构化元数据，并关联作者、模型、数据集、Space、代码仓库与项目主页。'],
+      'huggingface-paper-publisher': ['Hugging Face 论文与产物发布', '将 arXiv 论文发布或索引到 Hugging Face，认领作者身份，并把论文与模型、数据集、Space 和项目资料建立可核验关联。'],
+    },
+    displayNames: {
+      'huggingface-papers': 'Hugging Face AI Paper Reader',
+      'huggingface-paper-publisher': 'Hugging Face Paper & Artifact Publisher',
+    },
+    categories: { 'huggingface-papers': 'literature-search', 'huggingface-paper-publisher': 'open-access' },
+    subcategories: { 'huggingface-papers': 'paper-reading', 'huggingface-paper-publisher': 'research-artifacts' },
+    canonicalNames: { 'huggingface-papers': 'huggingface-papers', 'huggingface-paper-publisher': 'huggingface-paper-publisher' },
+    license: 'Apache-2.0',
+    stars: 10761,
+    autoRecommend: true,
+    copySelectedOnly: true,
+  },
+  {
+    id: 'popular-autoresearch',
+    repo: 'https://github.com/uditgoenka/autoresearch.git',
+    web: 'https://github.com/uditgoenka/autoresearch',
+    skillRoot: '.agents/skills',
+    select: path => path === 'autoresearch/SKILL.md',
+    names: {
+      autoresearch: ['自主实验迭代 Autoresearch', '围绕明确指标执行有界的修改、验证、保留或回滚循环，记录每轮实验与评估结果，并在平台期、失败或预算耗尽时安全停止。'],
+    },
+    displayNames: { autoresearch: 'Autoresearch — Metric-Driven Experiment Loop' },
+    categories: { autoresearch: 'experiment-design' },
+    subcategories: { autoresearch: 'autonomous-experimentation' },
+    canonicalNames: { autoresearch: 'autoresearch' },
+    license: 'MIT',
+    stars: 5235,
+    autoRecommend: true,
+    copySelectedOnly: true,
+  },
 ];
 
 const alterlabSource = {
@@ -239,10 +297,10 @@ const SUBCATEGORY_ZH = {
   'paper-discovery': '论文发现与追踪', 'search-retrieval': '其他检索与下载', 'literature-review': '综述与证据综合', 'related-work': '相关工作分析', 'citation-management': 'BibTeX 与文献管理', 'citation-verification': '引用真实性核验', 'paper-reading': '论文阅读与信息提取', 'research-mapping': '引用网络与研究脉络',
   'research-question': '研究问题与假设', 'experiment-planning': '实验方案', 'statistics': '统计分析', 'baseline-ablation': '基线、消融与评估', 'reproducibility': '复现与透明度', 'data-processing': '数据处理与建模',
   'outline-planning': '大纲与故事线', 'full-paper': '整篇论文', 'abstract': '摘要', 'introduction': '引言（Introduction）', 'related-work': '相关工作（Related Work）', 'method': '方法（Method）', 'experiments-results': '实验与结果', 'discussion-conclusion': '讨论与结论', 'language-polish': '语法、润色与翻译', 'formatting-latex': '格式与 LaTeX',
-  'prior-art': '现有技术检索', 'patent-drafting': '专利交底与权利要求', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', 'captions': '图注与可访问性',
+  'prior-art': '现有技术检索', 'patent-disclosure': '专利挖掘与技术交底书', 'patent-drafting': '权利要求与申请文件', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', 'captions': '图注与可访问性',
   'submission': '投稿与终稿', 'presentation': '演讲与幻灯片', 'poster': '学术海报', 'venue-guidance': '会议模板与规范',
   'proposal': '申请书主体', 'budget-impact': '预算与影响', 'grant-review': '基金评审', 'paper-review': '论文预审', 'logic-method-review': '逻辑与方法审查', 'citation-integrity': '引用与科研诚信', 'rebuttal': '审稿回复',
-  'preprint': '预印本', 'open-data': '开放数据与代码', 'open-science': '开放科学', 'ideation': '选题与创意', 'gap-discovery': '研究空白', 'critical-thinking': '批判性思维', 'interdisciplinary': '跨学科探索', 'project-workflow': '科研项目与工作流',
+  'preprint': '预印本', 'open-data': '开放数据与代码', 'open-science': '开放科学', 'research-artifacts': '论文与研究产物发布', 'autonomous-experimentation': '自主实验迭代', 'ideation': '选题与创意', 'gap-discovery': '研究空白', 'critical-thinking': '批判性思维', 'interdisciplinary': '跨学科探索', 'project-workflow': '科研项目与工作流',
 };
 
 function subcategoryFor(name, category, text = '') {
@@ -357,7 +415,7 @@ function alterlabChineseName(name, markdown, explicitCategory = '') {
   return `${proper} ${suffix}`;
 }
 
-function makeYaml({ name, displayName, displayNameZh, description, descriptionZh, category, subcategory: explicitSubcategory = '', prompt, url, license, resourceRoot = '', resourceDir = '', upstreamName = '', commit = '', tags = [] }) {
+function makeYaml({ name, displayName, displayNameZh, description, descriptionZh, category, subcategory: explicitSubcategory = '', prompt, url, license, resourceRoot = '', resourceDir = '', upstreamName = '', commit = '', sourceStars = 0, starsCheckedAt = '', autoRecommend = false, tags = [] }) {
   const subcategory = explicitSubcategory || subcategoryFor(name, category, `${description} ${descriptionZh}`);
   return {
     name,
@@ -371,13 +429,14 @@ function makeYaml({ name, displayName, displayNameZh, description, descriptionZh
     subcategory,
     subcategory_zh: SUBCATEGORY_ZH[subcategory] || '其他',
     trigger: 'manual',
-    auto_recommend: false,
+    auto_recommend: autoRecommend,
     tags: [...new Set([categoryNames[category], ...tags].filter(Boolean))].slice(0, 12),
     url,
     source_license: license,
     adapted_from: url,
     upstream_name: upstreamName,
     upstream_commit: commit,
+    ...(sourceStars ? { source_stars: sourceStars, stars_checked_at: starsCheckedAt || now } : {}),
     ...(resourceRoot ? { resource_root: resourceRoot } : {}),
     ...(resourceDir ? { resource_dir: resourceDir } : {}),
     prompt,
@@ -448,7 +507,20 @@ async function syncGithubSource(source, tempRoot, generated, sourceRecords) {
   const commit = git(sourceDir, 'rev-parse', 'HEAD');
   const root = join(sourceDir, source.skillRoot);
   const files = await walk(root, path => basename(path) === 'SKILL.md' && source.select(relative(root, path).split('\\').join('/')));
-  await copyRepo(sourceDir, join(resourcesDir, source.id));
+  const destination = join(resourcesDir, source.id);
+  if (source.copySelectedOnly) {
+    await rm(destination, { recursive: true, force: true });
+    await mkdir(destination, { recursive: true });
+    for (const legal of ['LICENSE', 'LICENSE.md', 'NOTICE', 'NOTICE.md']) {
+      await cp(join(sourceDir, legal), join(destination, legal), { recursive: true }).catch(() => {});
+    }
+    for (const file of files) {
+      const relDir = relative(sourceDir, dirname(file));
+      await cp(dirname(file), join(destination, relDir), { recursive: true });
+    }
+  } else {
+    await copyRepo(sourceDir, destination);
+  }
   let syncedCount = 0;
   for (const file of files) {
     const markdown = await readFile(file, 'utf8');
@@ -460,17 +532,17 @@ async function syncGithubSource(source, tempRoot, generated, sourceRecords) {
     const zhDescription = /[\u4e00-\u9fff]/.test(pair[1]) ? pair[1] : `${zhName}用于 AI/ML 研究的规划、执行或论文写作。`;
     const category = source.categories?.[original] || categoryForText(original, `${meta.description} ${zhName}`);
     const relDir = relative(sourceDir, dirname(file)).split('\\').join('/');
-    const name = `github-${source.id}-${slugify(original)}`;
+    const name = source.canonicalNames?.[original] || `github-${source.id}-${slugify(original)}`;
     generated.push({ file: `${name}.yaml`, skill: makeYaml({
-      name, displayName: markdownTitle(markdown, original), displayNameZh: zhName,
+      name, displayName: source.displayNames?.[original] || markdownTitle(markdown, original), displayNameZh: zhName,
       description: String(meta.description), descriptionZh: zhDescription, category, subcategory: source.subcategories?.[original], prompt: markdown,
-      url: `${source.web}/tree/${commit}/${relDir}`, license: String(meta.license || 'MIT'),
+      url: `${source.web}/tree/${commit}/${relDir}`, license: String(source.license || meta.license || 'MIT'),
       resourceRoot: `../skill-resources/${source.id}`, resourceDir: `../skill-resources/${source.id}/${relDir}`,
-      upstreamName: original, commit, tags: ['AI', 'ML', 'CCF-A', 'ICLR', 'ICML'],
+      upstreamName: original, commit, sourceStars: source.stars, starsCheckedAt: now, autoRecommend: source.autoRecommend, tags: ['AI', 'ML', 'CCF-A', 'ICLR', 'ICML'],
     }) });
     syncedCount += 1;
   }
-  sourceRecords.push({ id: source.id, repository: source.web, commit, skillCount: syncedCount, syncedAt: now });
+  sourceRecords.push({ id: source.id, repository: source.web, commit, skillCount: syncedCount, stars: source.stars || undefined, starsCheckedAt: source.stars ? now : undefined, syncedAt: now });
 }
 
 const medicalPattern = /(?:pubmed|medrxiv|biorxiv|biomedical|medical|medicine|clinical|care-check|uniprot|bio-research|bio-strategy|strobe|consort|医学|临床|生物医学|病例报告|医疗)/i;
