@@ -1,0 +1,320 @@
+name: skillsbot-arxiv-viewer-2584
+display_name: arxiv-viewer
+display_name_zh: arXiv学术论文助手
+description: arxiv-viewer from SkillsBot scientific academic catalog
+description_zh: arXiv学术论文助手是一款集论文搜索、下载、阅读和智能分析于一体的工具。它整合了arXiv官方API、网页抓取和ar5iv HTML阅读功能，支持关键词搜索、最新论文追踪、热门趋势分析、高级筛选、PDF下载、HTML章节阅读、图表提取、引用分析以及AI自动生成论文报告。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/2584
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/2584
+upstream_name: arxiv-viewer
+upstream_commit: ""
+prompt: |
+  ---
+  名称: arxiv-viewer
+  描述: 查看、搜索和下载arXiv学术论文。支持API查询、通过Actionbook进行网页抓取以及通过ar5iv阅读HTML论文。当用户询问arXiv论文、学术论文、研究论文、论文摘要、最新论文，或想要搜索/下载/阅读论文时使用。
+  ---
+
+  # arXiv 论文查看器
+
+  使用混合API + Actionbook方法访问、搜索、下载和阅读arXiv学术论文。
+
+  ## 架构概览
+
+  ```
+  ┌─────────────────────────────────────────────────────────────┐
+  │                     arxiv-viewer                            │
+  ├─────────────────┬─────────────────┬─────────────────────────┤
+  │   arXiv API     │  arxiv.org 网页 │      ar5iv.org          │
+  │   (WebFetch)    │  (Actionbook)   │    (Actionbook)         │
+  ├─────────────────┼─────────────────┼─────────────────────────┤
+  │ • 元数据        │ • 最新列表      │ • 阅读章节             │
+  │ • 搜索          │ • 热门趋势      │ • 提取图表             │
+  │ • ID查找        │ • 高级          │ • 提取引用             │
+  │                 │   搜索表单      │ • 获取大纲             │
+  └─────────────────┴─────────────────┴─────────────────────────┘
+  ```
+
+  ## 工具优先级
+
+  **按功能划分:**
+
+  | 功能 | 主要工具 | 备用工具 |
+  |---------|--------------|----------|
+  | 论文元数据 | WebFetch (API) | browser-fetcher |
+  | 搜索 | WebFetch (API) | browser-fetcher |
+  | 最新论文 | browser-fetcher (Actionbook) | WebFetch (API) |
+  | 热门趋势 | browser-fetcher (Actionbook) | - |
+  | 高级搜索 | browser-fetcher (Actionbook) | WebFetch (API) |
+  | 阅读HTML章节 | html-reader (Actionbook) | Read (PDF) |
+  | 下载PDF | Bash (curl) | - |
+
+  ## 工作流规则
+
+  ### ⚠️ 代理等待规则
+
+  **启动 browser-fetcher 或 html-reader 代理后:**
+  1. ✅ **必须等待所有代理完成**
+  2. ⛔ **不要**在等待时使用 WebFetch/WebSearch
+  3. ✅ 仅在代理失败后使用备用工具
+
+  ---
+
+  ## 数据源
+
+  ### 1. arXiv API (WebFetch)
+
+  **最适合:** 快速元数据查找、简单搜索
+
+  ```
+  基础URL: http://export.arxiv.org/api/query
+  ```
+
+  | 参数 | 描述 |
+  |-----------|-------------|
+  | search_query | 使用字段前缀搜索 (ti:, au:, abs:, cat:) |
+  | id_list | 逗号分隔的arXiv ID列表 |
+  | max_results | 1-2000 (默认: 10) |
+  | sortBy | 相关性 / 提交日期 / 最后更新日期 |
+
+  **字段前缀:** `ti:` (标题), `au:` (作者), `abs:` (摘要), `cat:` (类别), `all:` (全部)
+
+  **布尔运算符:** `AND`, `OR`, `ANDNOT` (大写)
+
+  ### 2. arxiv.org 网页 (Actionbook + agent-browser)
+
+  **最适合:** 最新论文、热门趋势、高级搜索界面
+
+  | 页面 | 操作ID | 使用场景 |
+  |------|-----------|----------|
+  | 最新列表 | `arxiv.org/list/{category}/recent` | 近期提交 |
+  | 高级搜索 | `arxiv.org/search/advanced` | 复杂筛选 |
+  | 主页 | `arxiv.org/` | 热门趋势/公告 |
+
+  **工作流:**
+  ```
+  1. search_actions("arxiv list recent")
+  2. get_action_by_id(action_id) → 选择器
+  3. agent-browser 打开 URL
+  4. agent-browser 获取文本 <selector>
+  5. 返回结果
+  ```
+
+  ### 3. ar5iv.org HTML 论文 (Actionbook + agent-browser)
+
+  **最适合:** 阅读特定章节、提取图表/引用
+
+  ```
+  HTML 论文 URL: https://ar5iv.org/html/{arxiv_id}
+  ```
+
+  | 元素 | 选择器 | 描述 |
+  |---------|----------|-------------|
+  | 标题 | `.ltx_title` | 论文标题 |
+  | 作者 | `.ltx_authors` | 作者列表 |
+  | 摘要 | `.ltx_abstract` | 摘要文本 |
+  | 章节 | `section` | 所有章节 |
+  | 章节标题 | `h2.ltx_title`, `h3.ltx_title` | 章节标题 |
+  | 段落 | `.ltx_para` | 段落内容 |
+  | 图表 | `figure.ltx_figure` | 带标题的图表 |
+  | 表格 | `table.ltx_tabular` | 数据表格 |
+  | 公式 | `.ltx_equation` | 数学公式 |
+  | 参考文献 | `.ltx_bibliography` | 参考文献列表 |
+  | 单个引用 | `.ltx_bibitem` | 单个参考文献 |
+
+  **工作流:**
+  ```
+  1. search_actions("ar5iv section")
+  2. get_action_by_id(action_id) → 选择器
+  3. agent-browser 打开 ar5iv.org/html/{id}
+  4. agent-browser 获取文本 <section_selector>
+  5. 返回章节内容
+  ```
+
+  ---
+
+  ## URL 模式
+
+  | 用途 | URL |
+  |---------|-----|
+  | arXiv 摘要 | `https://arxiv.org/abs/{id}` |
+  | arXiv PDF | `https://arxiv.org/pdf/{id}.pdf` |
+  | arXiv API | `http://export.arxiv.org/api/query?id_list={id}` |
+  | ar5iv HTML | `https://ar5iv.org/html/{id}` |
+  | ar5iv 摘要 | `https://ar5iv.org/abs/{id}` |
+
+  ## arXiv ID 格式
+
+  | 格式 | 示例 |
+  |--------|---------|
+  | 新格式 (2007+) | `2301.07041` |
+  | 带版本号 | `2301.07041v2` |
+  | 旧格式 | `cs.AI/0612345` |
+
+  ## 常见类别
+
+  | 代码 | 领域 |
+  |------|-------|
+  | `cs.AI` | 人工智能 |
+  | `cs.CL` | 计算与语言 (NLP) |
+  | `cs.CV` | 计算机视觉 |
+  | `cs.LG` | 机器学习 |
+  | `cs.SE` | 软件工程 |
+  | `stat.ML` | 统计机器学习 |
+
+  ---
+
+  ## 功能矩阵
+
+  | 命令 | 数据源 | 代理 |
+  |---------|-------------|-------|
+  | `/arxiv-viewer:paper` | API | paper-fetcher |
+  | `/arxiv-viewer:search` | API | search-executor |
+  | `/arxiv-viewer:download` | 直接URL | - |
+  | `/arxiv-viewer:latest` | arxiv.org | browser-fetcher |
+  | `/arxiv-viewer:trending` | arxiv.org | browser-fetcher |
+  | `/arxiv-viewer:read` | ar5iv.org | html-reader |
+  | `/arxiv-viewer:outline` | ar5iv.org | html-reader |
+  | `/arxiv-viewer:figures` | ar5iv.org | html-reader |
+  | `/arxiv-viewer:citations` | ar5iv.org | html-reader |
+  | `/arxiv-viewer:report` | API + ar5iv | paper-summarizer |
+
+  ---
+
+  ## 输出格式
+
+  ### 论文信息
+  ```
+  ## {标题}
+
+  **arXiv:** {id}
+  **作者:** {author1}, {author2}, ...
+  **类别:** {cat1}, {cat2}
+  **发布日期:** {date}
+
+  ### 摘要
+  {abstract}
+
+  **链接:** [摘要]({abs_url}) | [PDF]({pdf_url}) | [HTML]({ar5iv_url})
+  ```
+
+  ### 章节内容
+  ```
+  ## {章节标题}
+
+  {章节内容}
+
+  ---
+  *来源: ar5iv.org/html/{id}*
+  ```
+
+  ### 论文报告 (AI生成)
+
+  **命令:** `/arxiv-viewer:report {arxiv_id}` 或 `/arxiv-viewer:report {paper_title}`
+
+  **目的:** 生成一份全面、格式良好的论文报告，包含AI生成的分析。
+
+  **输出格式:**
+  ```markdown
+  ---
+  > **🤖 AI 生成内容**
+  > 作者: Powered by ActionBook
+  ---
+
+  # {论文标题}
+
+  **论文信息**
+  | 字段 | 内容 |
+  |-------|---------|
+  | arXiv ID | {id} |
+  | 作者 | {authors} |
+  | 所属机构 | {affiliations} |
+  | 发布日期 | {date} |
+  | 类别 | {categories} |
+
+  ---
+
+  ## 📋 摘要
+
+  {abstract_summary}
+
+  ---
+
+  ## 🎯 问题陈述
+
+  {problem_statement}
+
+  ---
+
+  ## 💡 关键贡献
+
+  1. {contribution_1}
+  2. {contribution_2}
+  3. {contribution_3}
+
+  ---
+
+  ## 🔬 方法概述
+
+  {method_summary}
+
+  ---
+
+  ## 📊 实验结果
+
+  {experimental_results}
+
+  ---
+
+  ## 🌟 重要性
+
+  {significance}
+
+  ---
+
+  ## 🔗 链接
+
+  - [arXiv 摘要](https://arxiv.org/abs/{id})
+  - [PDF 下载](https://arxiv.org/pdf/{id}.pdf)
+  - [HTML 版本](https://ar5iv.org/html/{id})
+
+  ---
+  > 本报告基于原始论文内容由AI自动生成。
+  > **Powered by ActionBook** | 生成时间: {timestamp}
+  ```
+
+  **工作流:**
+  ```
+  1. 通过arXiv API获取论文元数据
+  2. 从ar5iv.org HTML读取完整论文内容
+  3. 提取关键章节 (摘要、引言、方法、结果)
+  4. 使用AI分析生成结构化报告
+  5. 添加ActionBook品牌页眉和页脚
+  ```
+
+  **报告章节:**
+  | 章节 | 来源 | 描述 |
+  |---------|--------|-------------|
+  | 论文信息 | API元数据 | 基本论文信息 |
+  | 摘要 | 摘要 | 摘要总结 |
+  | 问题陈述 | 引言 | 提取的问题陈述 |
+  | 关键贡献 | 引言 | 列出的关键贡献 |
+  | 方法概述 | 方法章节 | 技术方法总结 |
+  | 实验结果 | 实验章节 | 关键结果和指标 |
+  | 重要性 | 分析 | AI生成的重要性分析 |
+
+  ## 速率限制
+
+  - arXiv API: 请求间隔3秒
+  - ar5iv.org: 尊重服务器负载
+  - agent-browser: 一次一个页面

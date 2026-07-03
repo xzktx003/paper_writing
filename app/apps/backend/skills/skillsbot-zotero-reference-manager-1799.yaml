@@ -1,0 +1,65 @@
+name: skillsbot-zotero-reference-manager-1799
+display_name: zotero-reference-manager
+display_name_zh: Zotero参考文献管理器
+description: zotero-reference-manager from SkillsBot scientific academic catalog
+description_zh: Zotero参考文献管理器是一款专业的学术文献管理工具，支持文献导入、注释同步、引文格式化、PDF管理和协作共享。适用于科研人员、学生和学者高效管理参考文献，提升论文写作效率。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1799
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1799
+upstream_name: zotero-reference-manager
+upstream_commit: ""
+prompt: |
+  ---
+  name: zotero-reference-manager
+  description: 用于文献目录组织、注释同步和引文格式化的参考文献管理工具
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: scientific-discovery
+    domain: science
+    category: literature-knowledge
+    phase: 6
+  ---
+
+  # Zotero 参考文献管理器
+
+  ## 目的
+
+  提供参考文献管理功能，用于文献目录组织、注释同步和引文格式化。
+
+  ## 功能
+
+  - 从多个来源导入参考文献
+  - 注释和笔记管理
+  - 引文样式格式化（CSL）
+  - 群组库协作
+  - PDF附件管理
+  - BibTeX/RIS导出
+
+  ## 使用指南
+
+  1. **组织**：使用集合和标签进行组织
+  2. **注释**：将高亮和笔记与参考文献同步
+  3. **引文样式**：应用适当的CSL样式
+  4. **协作**：与研究小组共享库
+
+  ## 工具/库
+
+  - Pyzotero
+  - Zotero API

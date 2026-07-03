@@ -1,0 +1,116 @@
+name: skillsbot-nanocatalyst-performance-analyzer-1679
+display_name: nanocatalyst-performance-analyzer
+display_name_zh: 纳米催化剂性能分析器
+description: nanocatalyst-performance-analyzer from SkillsBot scientific academic catalog
+description_zh: 纳米催化剂性能分析器是一款专注于评估纳米材料催化剂综合性能的专业工具。它能够系统分析催化剂的活性（如转换频率TOF）、产物选择性以及长期运行稳定性，并支持基于比表面积（BET）的归一化计算和反应动力学参数（如活化能）测定。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: baseline-ablation
+subcategory_zh: 基线、消融与评估
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1679
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1679
+upstream_name: nanocatalyst-performance-analyzer
+upstream_commit: ""
+prompt: |
+  ---
+  name: nanocatalyst-performance-analyzer
+  description: 用于评估纳米材料催化剂催化活性、选择性和稳定性的纳米催化技能
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 应用
+    priority: medium
+    phase: 6
+    tools-libraries:
+      - 反应动力学分析器
+      - BET比表面积工具
+  ---
+
+  # 纳米催化剂性能分析器
+
+  ## 目的
+
+  纳米催化剂性能分析器技能提供对纳米材料催化剂性能的全面评估，能够系统性地评估催化应用中的活性、选择性和稳定性。
+
+  ## 能力
+
+  - 转换频率（TOF）计算
+  - 选择性分析
+  - 活化能测定
+  - 稳定性和可回收性测试
+  - 比表面积归一化（BET）
+  - 反应机理研究
+
+  ## 使用指南
+
+  ### 催化剂评估
+
+  1. **活性评估**
+     - 测量转化率随时间变化
+     - 计算TOF
+     - 根据比表面积进行归一化
+
+  2. **选择性分析**
+     - 识别产物
+     - 计算选择性
+     - 绘制反应路径图
+
+  3. **稳定性测试**
+     - 进行可回收性测试
+     - 监测失活情况
+     - 表征使用后的催化剂
+
+  ## 流程整合
+
+  - 纳米催化剂开发与性能优化
+
+  ## 输入模式
+
+  ```json
+  {
+    "catalyst_id": "string",
+    "reaction": "string",
+    "reactants": [{"name": "string", "concentration": "number"}],
+    "temperature": "number (C)",
+    "pressure": "number (atm)",
+    "catalyst_mass": "number (mg)"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "activity": {
+      "conversion": "number (%)",
+      "tof": "number (1/s)",
+      "specific_activity": "number (mol/g/s)"
+    },
+    "selectivity": [{
+      "product": "string",
+      "selectivity": "number (%)"
+    }],
+    "kinetics": {
+      "activation_energy": "number (kJ/mol)",
+      "rate_law": "string"
+    },
+    "stability": {
+      "cycles_tested": "number",
+      "activity_retention": "number (%)"
+    }
+  }
+  ```

@@ -6,14 +6,20 @@ export interface SkillInfo {
   name: string;
   display_name: string;
   description: string;
+  description_zh?: string;
   type: string;
   trigger: string;
+  auto_recommend?: boolean;
   source: string;
   kind?: string;
   tags?: string[];
   // New fields for categorized display
   categories?: string[];  // e.g. ['writing', 'research']
+  subcategory?: string;
+  subcategory_zh?: string;
   url?: string;           // GitHub or official URL
+  source_license?: string;
+  adapted_from?: string;
   package?: {
     references: string[];
     scripts: string[];

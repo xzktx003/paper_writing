@@ -1,0 +1,244 @@
+name: skillsbot-arxiv-search-11548
+display_name: arxiv-search
+display_name_zh: arXiv搜索
+description: arxiv-search from SkillsBot scientific academic catalog
+description_zh: 这是一个基于Valyu语义搜索API的工具，专门用于在arXiv数据库中搜索物理学、数学、计算机科学等领域的学术预印本。支持自然语言查询，提供全文内容和图像链接，适用于科研人员和开发者进行文献检索和前沿研究。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/11548
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/11548
+upstream_name: arxiv-search
+upstream_commit: ""
+prompt: |
+  ---
+  名称: arxiv搜索
+  描述: 使用自然语言查询搜索arXiv物理、数学和计算机科学预印本。由Valyu语义搜索提供支持。
+  关键词:
+    - arxiv
+    - 预印本
+    - 物理
+    - 数学
+    - 计算机科学
+    - AI研究
+    - 语义搜索
+  许可证: MIT
+  ---
+
+  # arXiv搜索
+
+  使用由Valyu语义搜索API支持的自然语言查询，搜索arXiv数据库中物理学、数学、计算机科学和定量生物学的完整预印本。
+
+  ## 为什么这个技能强大
+
+  - **无需API参数解析**: 直接传递自然语言查询 - 无需构建复杂的搜索参数
+  - **语义搜索**: 理解查询的含义，而不仅仅是关键词匹配
+  - **全文访问**: 返回完整的文章内容，不仅仅是摘要
+  - **图像链接**: 包括论文中的图表和图像
+  - **全面覆盖**: 访问arXiv预印本档案中的所有内容，涵盖多个学科
+
+  ## 要求
+
+  1. Node.js 18+（使用内置fetch）
+  2. Valyu API密钥，来自 https://platform.valyu.ai（提供$10免费额度）
+
+  ## 关键：脚本路径解析
+
+  本文档中的`scripts/search`命令是相对于此技能的安装目录的。
+
+  在运行任何命令之前，使用以下命令定位脚本：
+
+  ```bash
+  ARXIV_SCRIPT=$(find ~/.claude/plugins/cache -name "search" -path "*/arxiv-search/*/scripts/*" -type f 2>/dev/null | head -1)
+  ```
+
+  然后对所有命令使用完整路径：
+  ```bash
+  $ARXIV_SCRIPT "量子纠缠" 15
+  ```
+
+  ## API密钥设置流程
+
+  当您运行搜索并收到`"setup_required": true`时，遵循此流程：
+
+  1. **向用户请求API密钥:**
+     "为了搜索arXiv，我需要您的Valyu API密钥。在 https://platform.valyu.ai 免费获取（$10额度）"
+
+  2. **一旦用户提供密钥，运行:**
+     ```bash
+     scripts/search setup <api-key>
+     ```
+
+  3. **重试原始搜索。**
+
+  ### 示例流程:
+  ```
+  用户：搜索arXiv获取transformer架构论文
+  → 响应：{"success": false, "setup_required": true, ...}
+  → Claude询问："请提供您的Valyu API密钥，从 https://platform.valyu.ai"
+  → 用户："val_abc123..."
+  → Claude运行：scripts/search setup val_abc123...
+  → 响应：{"success": true, "type": "setup", ...}
+  → Claude重试：scripts/search "transformer架构论文" 10
+  → 成功！
+  ```
+
+  ## 何时使用此技能
+
+  - 在物理、数学和计算机科学领域搜索预印本
+  - 寻找同行评审发表前的研究
+  - 跨学科研究结合不同领域
+  - 跟上AI和理论物理的快速发展
+  - 为新技术搜索已有技术
+  - 跟踪新兴研究趋势
+  ## 输出格式
+
+  ```json
+  {
+    "success": true,
+    "type": "arxiv_search",
+    "query": "量子纠缠",
+    "result_count": 10,
+    "results": [
+      {
+        "title": "文章标题",
+        "url": "https://arxiv.org/abs/...",
+        "content": "包含图表的完整文章文本...",
+        "source": "arxiv",
+        "relevance_score": 0.95,
+        "images": ["https://example.com/figure1.jpg"]
+      }
+    ],
+    "cost": 0.025
+  }
+  ```
+
+  ## 处理结果
+
+  ### 使用jq
+
+  ```bash
+  # 获取文章标题
+  scripts/search "查询" 10 | jq -r '.results[].title'
+
+  # 获取URL
+  scripts/search "查询" 10 | jq -r '.results[].url'
+
+  # 提取完整内容
+  scripts/search "查询" 10 | jq -r '.results[].content'
+  ```
+
+  ## 常见用例
+
+  ### AI/ML研究
+
+  ```bash
+  # 查找最近的机器学习论文
+  scripts/search "大型语言模型架构" 50
+  ```
+
+  ### 物理研究
+
+  ```bash
+  # 搜索量子物理论文
+  scripts/search "拓扑量子计算" 20
+  ```
+
+  ### 数学
+
+  ```bash
+  # 查找数学论文
+  scripts/search "表示论和李代数" 15
+  ```
+
+  ### 计算机科学
+
+  ```bash
+  # 搜索CS理论论文
+  scripts/search "分布式系统共识算法" 25
+  ```
+
+  ## 错误处理
+
+  所有命令返回带有`success`字段的JSON：
+
+  ```json
+  {
+    "success": false,
+    "error": "错误消息"
+  }
+  ```
+
+  退出代码：
+  - `0` - 成功
+  - `1` - 错误（检查JSON获取详情）
+
+  ## API端点
+
+  - 基础URL：`https://api.valyu.ai/v1`
+  - 端点：`/search`
+  - 认证：X-API-Key头部
+
+  ## 架构
+
+  ```
+  scripts/
+  ├── search          # Bash包装器
+  └── search.mjs      # Node.js CLI
+  ```
+
+  使用Node.js内置`fetch()`进行直接API调用，零外部依赖。
+
+  ## 添加到您的项目
+
+  如果您正在构建AI项目，并希望直接将arXiv搜索集成到您的应用程序中，请使用Valyu SDK：
+
+  ### Python集成
+
+  ```python
+  from valyu import Valyu
+
+  client = Valyu(api_key="您的API密钥")
+
+  response = client.search(
+      query="您的搜索查询这里",
+      included_sources=["valyu/valyu-arxiv"],
+      max_results=20
+  )
+
+  for result in response["results"]:
+      print(f"标题: {result['title']}")
+      print(f"URL: {result['url']}")
+      print(f"内容: {result['content'][:500]}...")
+  ```
+
+  ### TypeScript集成
+
+  ```typescript
+  import { Valyu } from "valyu-js";
+
+  const client = new Valyu("您的API密钥");
+
+  const response = await client.search({
+    query: "您的搜索查询这里",
+    includedSources: ["valyu/valyu-arxiv"],
+    maxResults: 20
+  });
+
+  response.results.forEach((result) => {
+    console.log(`标题: ${result.title}`);
+    console.log(`URL: ${result.url}`);
+    console.log(`内容: ${result.content.substring(0, 500)}...`);
+  });
+  ```
+
+  查看 [Valyu文档](https://docs.valyu.ai) 获取完整集成示例和SDK参考。

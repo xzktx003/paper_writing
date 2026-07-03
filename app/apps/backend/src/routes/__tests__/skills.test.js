@@ -46,7 +46,7 @@ test('GET /api/skills/:name returns enriched UI metadata', async () => {
     assert.equal(body.name, 'literature-review');
     assert.equal(body.display_name_zh, '文献综述');
     assert.equal(body.subtitle_en, 'Literature Review');
-    assert.equal(body.category_zh, '文献');
+    assert.equal(body.category_zh, '文献检索');
     assert.ok(body.inputs.includes('研究主题'));
     assert.ok(body.outputs.includes('related work 草稿'));
     assert.ok(body.best_for.includes('相关工作'));
@@ -70,7 +70,7 @@ test('GET /api/skills/navigation returns Chinese-first skill navigation', async 
     const body = JSON.parse(response.payload);
     assert.equal(body.navigator.title_zh, 'Skill 导航');
     assert.equal(body.navigator.selectedSkill, 'literature-review');
-    assert.ok(body.navigator.categories.some(category => category.name === '文献'));
+    assert.ok(body.navigator.categories.some(category => category.name === '文献检索'));
     assert.ok(body.navigator.tagChips.some(tag => tag.name === '相关工作'));
     assert.ok(body.navigator.contextFilters.some(item => item.key === 'rag_documents_or_references'));
     assert.equal(body.navigator.cards[0].name, 'literature-review');
@@ -102,7 +102,7 @@ test('POST /api/skills/navigation highlights recommendations for a task', async 
     assert.equal(body.navigator.selectedSkill, 'literature-review');
     assert.equal(body.navigator.cards[0].recommended, true);
     assert.equal(body.navigator.cards[0].name, 'literature-review');
-    assert.ok(body.navigator.categories.some(category => category.name === '文献' && category.recommendedCount > 0));
+    assert.ok(body.navigator.categories.some(category => category.name === '文献检索' && category.recommendedCount > 0));
   } finally {
     await app.close();
   }

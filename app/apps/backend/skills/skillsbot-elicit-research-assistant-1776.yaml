@@ -1,0 +1,67 @@
+name: skillsbot-elicit-research-assistant-1776
+display_name: elicit-research-assistant
+display_name_zh: Elicit研究助手
+description: elicit-research-assistant from SkillsBot scientific academic catalog
+description_zh: Elicit研究助手是一款AI驱动的文献综述工具，专注于科研论文的智能问答、主张提取和证据综合。通过自然语言处理技术，帮助研究人员快速定位关键信息、评估证据强度、比较研究方法，并识别研究空白。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: literature-review
+subcategory_zh: 综述与证据综合
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1776
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1776
+upstream_name: elicit-research-assistant
+upstream_commit: ""
+prompt: |
+  ---
+  name: elicit-research-assistant
+  description: AI辅助文献综述，用于论文问答、证据提取与综合
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+    - WebFetch
+  metadata:
+    specialization: scientific-discovery
+    domain: science
+    category: literature-knowledge
+    phase: 6
+  ---
+
+  # Elicit研究助手
+
+  ## 目的
+
+  提供AI辅助的文献综述能力，支持对研究论文进行问答、主张提取和证据综合。
+
+  ## 功能
+
+  - 对研究论文进行问答
+  - 主张提取与验证
+  - 证据强度评估
+  - 方法论比较
+  - 跨论文发现综合
+  - 研究缺口识别
+
+  ## 使用指南
+
+  1. **问题表述**：提出具体、可回答的问题
+  2. **主张提取**：识别关键主张及其支持依据
+  3. **证据评估**：评估证据强度
+  4. **综合**：汇总多篇论文的发现
+
+  ## 工具/库
+
+  - Elicit API
+  - LangChain
+  - 向量数据库

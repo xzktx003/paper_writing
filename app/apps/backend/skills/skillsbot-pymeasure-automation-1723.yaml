@@ -1,0 +1,67 @@
+name: skillsbot-pymeasure-automation-1723
+display_name: pymeasure-automation
+display_name_zh: PyMeasure实验室自动化
+description: pymeasure-automation from SkillsBot scientific academic catalog
+description_zh: PyMeasure实验室自动化技能是专门用于科学实验仪器控制和自动化测量序列的Python工具包。该技能提供完整的仪器驱动程序库、自动化测量流程设计、实时数据采集与记录、图形用户界面生成以及错误恢复机制，帮助科研人员实现高效、可重复的实验室自动化实验。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1723
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1723
+upstream_name: pymeasure-automation
+upstream_commit: ""
+prompt: |
+  ---
+  name: pymeasure-automation
+  description: PyMeasure实验室自动化技能，用于仪器控制和自动化测量序列
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 实验室自动化
+    phase: 6
+  ---
+
+  # PyMeasure自动化
+
+  ## 目的
+
+  提供关于PyMeasure实验室自动化的专家指导，包括仪器控制和自动化测量程序。
+
+  ## 能力
+
+  - 仪器驱动程序库
+  - 自动化测量程序
+  - 实时数据记录
+  - GUI生成
+  - 错误处理与恢复
+  - 多仪器协调
+
+  ## 使用指南
+
+  1. **仪器**: 使用内置或创建自定义驱动程序
+  2. **程序**: 定义自动化测量程序
+  3. **记录**: 在实验期间设置数据记录
+  4. **GUI**: 为实验生成图形界面
+  5. **错误处理**: 实现稳健的错误恢复机制
+
+  ## 工具/库
+
+  - PyMeasure
+  - PyVISA
+  - Qt

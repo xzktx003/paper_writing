@@ -1,5 +1,5 @@
 import { readdir, readFile, mkdir, writeFile, rm, stat } from 'fs/promises';
-import { join, dirname, basename, extname } from 'path';
+import { join, dirname, basename, extname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash, randomUUID } from 'crypto';
 import { execSync } from 'child_process';
@@ -801,6 +801,9 @@ async function loadSkillsFromDir(dir, source) {
       const content = await readFile(join(dir, entry.name), 'utf-8');
       const skill = YAML.parse(content);
       if (!skill?.name) continue;
+      const definitionDir = dirname(join(dir, entry.name));
+      if (skill.resource_root) skill._resourceRoot = resolve(definitionDir, skill.resource_root);
+      if (skill.resource_dir) skill._resourceDir = resolve(definitionDir, skill.resource_dir);
       skill._source = source;
       skill.kind = skill.kind || 'yaml';
       skillRegistry.set(skill.name, skill);
@@ -1118,15 +1121,23 @@ function enrichSkillForUI(s) {
   const ui = SKILL_UI_METADATA[s.name] || inferSkillUiMetadata(s);
   const hasExplicitUiMetadata = Boolean(SKILL_UI_METADATA[s.name]);
   const tags = normalizeSkillTags(s.tags || [], ui.tags || [], { hasExplicitUiMetadata });
+  const categories = Array.isArray(s.categories) && s.categories.length ? s.categories : [inferAcademicCategoryForSkill(s)];
+  const displayNameZh = ensureChineseSkillName(s.display_name_zh || ui.display_name_zh, s.display_name || s.name, categories[0]);
+  const subcategory = s.subcategory || inferSkillSubcategory(s, categories[0]);
   const enriched = {
     name: s.name,
-    display_name: s.display_name,
-    display_name_zh: s.display_name_zh || ui.display_name_zh,
+    display_name: s.display_name || s.name,
+    display_name_zh: displayNameZh,
     subtitle_en: s.subtitle_en || ui.subtitle_en || s.display_name,
     description: s.description,
-    type: s.type,
-    category_zh: s.category_zh || ui.category_zh,
-    trigger: s.trigger,
+    description_zh: ensureChineseSkillDescription(s.description_zh || ui.description_zh, displayNameZh, categories[0]),
+    type: s.type || academicCategoryToLegacyType(categories[0]),
+    category_zh: ACADEMIC_CATEGORY_ZH[categories[0]] || s.category_zh || ui.category_zh,
+    categories,
+    subcategory,
+    subcategory_zh: ACADEMIC_SUBCATEGORY_ZH[subcategory] || s.subcategory_zh || '其他',
+    trigger: s.trigger || 'manual',
+    auto_recommend: s.auto_recommend !== false,
     source: s._source,
     kind: s.kind || 'yaml',
     tags,
@@ -1140,6 +1151,9 @@ function enrichSkillForUI(s) {
     risk_level: s.risk_level || ui.risk_level || 'low',
     estimated_time: s.estimated_time || ui.estimated_time || '',
     requires_context: s.requires_context || ui.requires_context || [],
+    url: s.url || '',
+    source_license: s.source_license || '',
+    adapted_from: s.adapted_from || '',
     package: s.package ? {
       references: s.package.references || [],
       scripts: s.package.scripts || [],
@@ -1342,8 +1356,93 @@ function inferSkillUiMetadata(skill) {
   };
 }
 
+const ACADEMIC_CATEGORY_ZH = {
+  'literature-search': '文献检索',
+  'experiment-design': '实验设计',
+  'paper-writing': '论文写作',
+  'patent-writing': '专利撰写',
+  'scientific-figures': '科研绘图',
+  'academic-conference': '学术会议',
+  'grant-writing': '基金申请',
+  'peer-review': '同行评审',
+  'open-access': '开放获取',
+  'exploration-discovery': '探险、发现',
+};
+
+const ACADEMIC_SUBCATEGORY_ZH = {
+  'search-retrieval': '检索与下载', 'literature-review': '综述与证据综合', 'citation-management': '引用与文献管理', 'paper-reading': '论文阅读与笔记', 'research-mapping': '研究脉络与发现',
+  'research-question': '研究问题与假设', 'experiment-planning': '实验方案', statistics: '统计分析', 'baseline-ablation': '基线、消融与评估', reproducibility: '复现与透明度', 'data-processing': '数据处理与建模',
+  'outline-planning': '大纲与故事线', 'full-paper': '整篇论文', abstract: '摘要', introduction: '引言（Introduction）', 'related-work': '相关工作（Related Work）', method: '方法（Method）', 'experiments-results': '实验与结果', 'discussion-conclusion': '讨论与结论', 'language-polish': '语法、润色与翻译', 'formatting-latex': '格式与 LaTeX',
+  'prior-art': '现有技术检索', 'patent-drafting': '专利交底与权利要求', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', captions: '图注与可访问性',
+  submission: '投稿与终稿', presentation: '演讲与幻灯片', poster: '学术海报', 'venue-guidance': '会议模板与规范', proposal: '申请书主体', 'budget-impact': '预算与影响', 'grant-review': '基金评审',
+  'paper-review': '论文预审', 'logic-method-review': '逻辑与方法审查', 'citation-integrity': '引用与科研诚信', rebuttal: '审稿回复', preprint: '预印本', 'open-data': '开放数据与代码', 'open-science': '开放科学',
+  ideation: '选题与创意', 'gap-discovery': '研究空白', 'critical-thinking': '批判性思维', interdisciplinary: '跨学科探索', 'project-workflow': '科研项目与工作流',
+};
+
+function inferSkillSubcategory(skill, category) {
+  const text = `${skill?.name || ''} ${skill?.display_name || ''} ${skill?.description || ''} ${(skill?.tags || []).join(' ')}`.toLowerCase();
+  if (category === 'paper-writing') {
+    if (/abstract|摘要/.test(text)) return 'abstract'; if (/introduction|引言/.test(text)) return 'introduction'; if (/related.?work|相关工作/.test(text)) return 'related-work'; if (/method|algorithm|方法/.test(text)) return 'method';
+    if (/experiment|result|实验|结果/.test(text)) return 'experiments-results'; if (/discussion|conclusion|limitation|结论|讨论/.test(text)) return 'discussion-conclusion'; if (/polish|grammar|translate|humanize|语言|润色|翻译|语法/.test(text)) return 'language-polish'; if (/latex|format|template|格式|排版/.test(text)) return 'formatting-latex'; if (/outline|plan|story|大纲|故事线/.test(text)) return 'outline-planning'; return 'full-paper';
+  }
+  if (category === 'literature-search') { if (/citation|reference|zotero|bib|引用/.test(text)) return 'citation-management'; if (/graph|map|discover|脉络/.test(text)) return 'research-mapping'; if (/review|survey|synthesis|综述/.test(text)) return 'literature-review'; if (/read|note|pdf|笔记/.test(text)) return 'paper-reading'; return 'search-retrieval'; }
+  if (category === 'experiment-design') { if (/hypothesis|question|假设|问题/.test(text)) return 'research-question'; if (/stat|test|pymc|统计|检验/.test(text)) return 'statistics'; if (/baseline|ablation|evaluation|评估|消融/.test(text)) return 'baseline-ablation'; if (/repro|prereg|transparen|复现|透明/.test(text)) return 'reproducibility'; if (/data|model|learn|transform|数据|模型/.test(text)) return 'data-processing'; return 'experiment-planning'; }
+  if (category === 'scientific-figures') { if (/caption|图注/.test(text)) return 'captions'; if (/architecture|schematic|mermaid|network|架构|流程/.test(text)) return 'architecture-diagrams'; if (/poster|panel|assembly|layout|组图|版式/.test(text)) return 'figure-layout'; return 'statistical-plots'; }
+  if (category === 'academic-conference') { if (/poster|海报/.test(text)) return 'poster'; if (/slide|presentation|talk|演讲|幻灯/.test(text)) return 'presentation'; if (/template|venue|规范/.test(text)) return 'venue-guidance'; return 'submission'; }
+  if (category === 'peer-review') { if (/rebuttal|response|回复/.test(text)) return 'rebuttal'; if (/citation|integrity|引用|诚信/.test(text)) return 'citation-integrity'; if (/logic|method|critical|逻辑|方法/.test(text)) return 'logic-method-review'; return 'paper-review'; }
+  if (category === 'grant-writing') return /budget|impact|预算|影响/.test(text) ? 'budget-impact' : /review|评审/.test(text) ? 'grant-review' : 'proposal';
+  if (category === 'open-access') return /data|code|数据|代码/.test(text) ? 'open-data' : /preprint|arxiv|预印本/.test(text) ? 'preprint' : 'open-science';
+  if (category === 'patent-writing') return /search|prior|检索/.test(text) ? 'prior-art' : 'patent-drafting';
+  if (/gap|空白/.test(text)) return 'gap-discovery'; if (/critical|thinking|批判/.test(text)) return 'critical-thinking'; if (/workflow|project|pipeline|工作流/.test(text)) return 'project-workflow'; if (/interdiscip|跨学科/.test(text)) return 'interdisciplinary'; return 'ideation';
+}
+
+function legacyTypeToAcademicCategory(type) {
+  return ({ writing: 'paper-writing', research: 'literature-search', review: 'peer-review', draw: 'scientific-figures', analysis: 'experiment-design', utility: 'exploration-discovery' })[type] || 'exploration-discovery';
+}
+
+function academicCategoryToLegacyType(category) {
+  if (['paper-writing', 'patent-writing', 'grant-writing'].includes(category)) return 'writing';
+  if (category === 'peer-review') return 'review';
+  if (category === 'scientific-figures') return 'draw';
+  if (category === 'experiment-design') return 'analysis';
+  return 'research';
+}
+
+function inferAcademicCategoryForSkill(skill) {
+  const text = `${skill?.name || ''} ${skill?.display_name || ''} ${skill?.description || ''} ${(skill?.tags || []).join(' ')}`.toLowerCase();
+  const name = String(skill?.name || '').toLowerCase();
+  if (/^(writing-|academic-paper|scientific-writing|research-writing|ml-paper-writing|doc-coauthoring|latex-|paper-(planning|storyline))/.test(name) || /polish/.test(name)) return 'paper-writing';
+  if (/^(evidence-review|paper-review|paper-self-review|reviewer-response|review-response|nature-response)/.test(name)) return 'peer-review';
+  if (/^(literature-|nature-academic-search|reference-management|citation-verification|systematic-review)/.test(name)) return 'literature-search';
+  if (/^(nature-paper2ppt|poster-design|conference-submission|post-acceptance)/.test(name)) return 'academic-conference';
+  if (/patent|专利/.test(text)) return 'patent-writing';
+  if (/grant|funding|基金|proposal/.test(text)) return 'grant-writing';
+  if (/figure|visual|plot|chart|schematic|绘图|图表/.test(text)) return 'scientific-figures';
+  if (/literature|citation|reference|search|survey|文献|检索|引用/.test(text)) return 'literature-search';
+  if (/review|audit|rebuttal|审稿|评审|诚信/.test(text)) return 'peer-review';
+  if (/conference|submission|camera-ready|poster|slides|presentation|会议|投稿|post-acceptance/.test(text)) return 'academic-conference';
+  if (/open.access|preprint|开放获取/.test(text)) return 'open-access';
+  if (/experiment|statistic|result|data.analysis|实验|统计/.test(text)) return 'experiment-design';
+  if (/writing|paper|abstract|introduction|method|discussion|conclusion|polish|latex|论文|写作|翻译|润色/.test(text)) return 'paper-writing';
+  if (/idea|brainstorm|hypothesis|explor|discover|构思|选题|发现/.test(text)) return 'exploration-discovery';
+  return legacyTypeToAcademicCategory(skill?.type);
+}
+
+function ensureChineseSkillName(candidate, fallback, category) {
+  const value = String(candidate || '').trim();
+  if (/\p{Script=Han}/u.test(value)) return value;
+  const base = String(fallback || 'Academic Skill').replace(/\s*Skill\s*$/i, '').trim();
+  return `${base} · ${ACADEMIC_CATEGORY_ZH[category] || '科研技能'}`;
+}
+
+function ensureChineseSkillDescription(candidate, displayNameZh, category) {
+  const value = String(candidate || '').trim();
+  if (/\p{Script=Han}/u.test(value)) return value;
+  return `${displayNameZh}用于${ACADEMIC_CATEGORY_ZH[category] || '科研学术'}任务，提供结构化步骤、质量检查和可复核输出。`;
+}
+
 function categorySortWeight(category) {
-  const order = ['写作', '文献', '引用', '实验', '图表', '投稿', '项目申请', '构思', '工具'];
+  const order = ['文献检索', '实验设计', '论文写作', '专利撰写', '科研绘图', '学术会议', '基金申请', '同行评审', '开放获取', '探险、发现'];
   const index = order.indexOf(category);
   return index === -1 ? order.length : index;
 }
@@ -1354,9 +1453,10 @@ export function recommendSkills(taskText, options = {}) {
   const projectState = options.projectState || {};
   const queryTokens = tokenizeSkillText(query);
   return listSkills()
+    .filter(skill => skill.auto_recommend !== false)
     .map(skill => scoreSkillRecommendation(skill, query, queryTokens, projectState))
     .filter(item => item.score > 0)
-    .sort((a, b) => b.score - a.score || a.skill.display_name.localeCompare(b.skill.display_name))
+    .sort((a, b) => b.score - a.score || String(a.skill.display_name || a.skill.name).localeCompare(String(b.skill.display_name || b.skill.name)))
     .slice(0, Math.min(Number(options.limit || 5), 10));
 }
 
@@ -2245,16 +2345,31 @@ export function assemblePrompt({ globalSkills = [], chapterSkills = [], manualSk
   
   for (const name of globalSkills || []) {
     const skill = skillRegistry.get(name);
-    if (skill) parts.push(`[Global Rule - ${skill.display_name}]\n${skill.prompt}`);
+    if (skill) parts.push(`[Global Rule - ${skill.display_name}]\n${renderSkillPrompt(skill)}`);
   }
   for (const name of chapterSkills || []) {
     const skill = skillRegistry.get(name);
-    if (skill) parts.push(`[Chapter Skill - ${skill.display_name}]\n${skill.prompt}`);
+    if (skill) parts.push(`[Chapter Skill - ${skill.display_name}]\n${renderSkillPrompt(skill)}`);
   }
   for (const name of activeManualSkills) {
     const skill = skillRegistry.get(name);
-    if (skill) parts.push(`[Active Skill - ${skill.display_name}]\n${skill.prompt}`);
+    if (skill) parts.push(`[Active Skill - ${skill.display_name}]\n${renderSkillPrompt(skill)}`);
   }
   return parts.join('\n\n---\n\n');
+}
+
+function renderSkillPrompt(skill) {
+  if (!skill?._resourceDir && !skill?._resourceRoot) return skill?.prompt || '';
+  const lines = [
+    '[Open-source Skill resource mapping]',
+    `Skill directory: ${skill._resourceDir || skill._resourceRoot}`,
+    `Repository root: ${skill._resourceRoot || skill._resourceDir}`,
+    'Resolve relative references, scripts, assets, and evals against the Skill directory above.',
+  ];
+  if (skill.upstream_name && skill.name?.startsWith('medsci-')) {
+    lines.push(`For this Skill, CLAUDE_SKILL_DIR=${skill._resourceDir} and MEDSCI_SKILLS_ROOT=${skill._resourceRoot}.`);
+  }
+  lines.push('Preserve the upstream workflow and use bundled deterministic scripts when its instructions require them.');
+  return `${lines.join('\n')}\n\n${skill.prompt || ''}`;
 }
  

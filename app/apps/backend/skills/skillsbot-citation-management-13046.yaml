@@ -1,0 +1,1221 @@
+name: skillsbot-citation-management-13046
+display_name: citation-management
+display_name_zh: 引文管理
+description: citation-management from SkillsBot scientific academic catalog
+description_zh: 学术研究中的引文管理，包括搜索Google Scholar和PubMed论文、提取元数据、验证引文准确性、生成BibTeX格式条目。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/13046
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/13046
+upstream_name: citation-management
+upstream_commit: ""
+prompt: |
+  ---
+  名称: 引文管理
+  描述: 用于学术研究的全面引文管理。搜索Google Scholar和PubMed论文，提取准确的元数据，验证引文，生成正确格式的BibTeX条目。当您需要查找论文、验证引文信息、将DOIs转换为BibTeX或确保科学写作中的参考准确性时，应使用此技能。
+  允许工具: [读、写、编辑、Bash]
+  ---
+
+  # 引文管理
+
+  ## 概述
+
+  系统管理研究和写作过程中的引文。此技能提供工具和策略，用于搜索学术数据库（Google Scholar、PubMed），从多个来源（CrossRef、PubMed、arXiv）提取准确的元数据，验证引文信息，并生成正确格式的BibTeX条目。
+
+  对于保持引文准确性、避免参考错误和确保可重复研究至关重要。与文献综述技能无缝集成，用于全面的研究工作流程。
+
+  ## 何时使用此技能
+
+  使用此技能当：
+  - 在Google Scholar或PubMed上搜索特定论文
+  - 将DOIs、PMIDs或arXiv IDs转换为正确格式的BibTeX
+  - 提取引文的完整元数据（作者、标题、期刊、年份等）
+  - 验证现有引文的准确性
+  - 清理和格式化BibTeX文件
+  - 在特定领域查找高被引论文
+  - 验证引文信息与实际出版物匹配
+  - 为手稿或论文构建参考文献
+  - 检查重复引文
+  - 确保一致的引文格式
+
+  ## 通过科学示意图增强视觉效果
+
+  **在使用此技能创建文档时，始终考虑添加科学图表和示意图以增强视觉传达。**
+
+  如果您的文档尚未包含示意图或图表：
+  - 使用**scientific-schematics**技能生成AI驱动的出版质量图表
+  - 只需用自然语言描述您所需的图表
+  - Nano Banana Pro将自动生成、审查和精炼示意图
+
+  **对于新文档：** 应默认生成科学示意图，以视觉表示文本中描述的关键概念、工作流程、架构或关系。
+
+  **如何生成示意图：**
+  ```bash
+  python scripts/generate_schematic.py "您的图表描述" -o figures/output.png
+  ```
+
+  AI将自动：
+  - 创建具有适当格式的出版质量图像
+  - 通过多次迭代进行审查和精炼
+  - 确保可访问性（色盲友好、高对比度）
+  - 在figures/目录中保存输出
+
+  **何时添加示意图：**
+  - 引文工作流程图表
+  - 文献搜索方法流程图
+  - 参考管理系统架构
+  - 引文样式决策树
+  - 数据库集成图表
+  - 任何受益于可视化的复杂概念
+
+  有关创建示意图的详细指南，请参阅scientific-schematics技能文档。
+
+  ---
+
+  ## 核心工作流程
+
+  引文管理遵循系统过程：
+
+  ### 阶段1：论文发现与搜索
+
+  **目标**：使用学术搜索引擎查找相关论文。
+
+  #### Google Scholar搜索
+
+  Google Scholar提供跨学科的最全面覆盖。
+
+  **基本搜索**：
+  ```bash
+  # 搜索主题论文
+  python scripts/search_google_scholar.py "CRISPR基因编辑" \
+    --limit 50 \
+    --output results.json
+
+  # 使用年份过滤器搜索
+  python scripts/search_google_scholar.py "机器学习蛋白质折叠" \
+    --year-start 2020 \
+    --year-end 2024 \
+    --limit 100 \
+    --output ml_proteins.json
+  ```
+
+  **高级搜索策略**（见`references/google_scholar_search.md`）：
+  - 使用引号进行精确短语搜索：`"深度学习"`
+  - 按作者搜索：`author:LeCun`
+  - 在标题中搜索：`intitle:"神经网络"`
+  - 排除术语：`机器学习 -survey`
+  - 使用排序选项查找高被引论文
+  - 按日期范围过滤以获取近期工作
+
+  **最佳实践**：
+  - 使用特定、有针对性的搜索术语
+  - 包括关键技术术语和缩写
+  - 对快速发展的领域按近期年份过滤
+  - 检查“被引次数”以查找开创性论文
+  - 导出顶级结果以供进一步分析
+
+  #### PubMed搜索
+
+  PubMed专门用于生物医学和生命科学文献（3500万+引文）。
+
+  **基本搜索**：
+  ```bash
+  # 搜索PubMed
+  python scripts/search_pubmed.py "阿尔茨海默病治疗" \
+    --limit 100 \
+    --output alzheimers.json
+
+  # 使用MeSH术语和过滤器搜索
+  python scripts/search_pubmed.py \
+    --query '"阿尔茨海默病"[MeSH] AND "药物治疗"[MeSH]' \
+    --date-start 2020 \
+    --date-end 2024 \
+    --publication-types "临床试验,综述" \
+    --output alzheimers_trials.json
+  ```
+
+  **高级PubMed查询**（见`references/pubmed_search.md`）：
+  - 使用MeSH术语：`"糖尿病"[MeSH]`
+  - 字段标签：`"癌症"[标题]`, `"Smith J"[作者]`
+  - 布尔运算符：`AND`, `OR`, `NOT`
+  - 日期过滤器：`2020:2024[出版日期]`
+  - 出版物类型：`"综述"[出版物类型]`
+  - 与E-utilities API结合以进行自动化
+
+  **最佳实践**：
+  - 使用MeSH浏览器查找正确的受控词汇
+  - 首先在PubMed高级搜索构建器中构建复杂查询
+  - 使用OR包括多个同义词
+  - 检索PMIDs以便于元数据提取
+  - 导出到JSON或直接到BibTeX
+
+  ### 阶段2：元数据提取
+
+  **目标**：将论文标识符（DOI、PMID、arXiv ID）转换为完整、准确的元数据。
+
+  #### 快速DOI到BibTeX转换
+
+  对于单个DOIs，使用快速转换工具：
+
+  ```bash
+  # 转换单个DOI
+  python scripts/doi_to_bibtex.py 10.1038/s41586-021-03819-2
+
+  # 从文件转换多个DOIs
+  python scripts/doi_to_bibtex.py --input dois.txt --output references.bib
+
+  # 不同输出格式
+  python scripts/doi_to_bibtex.py 10.1038/nature12345 --format json
+  ```
+
+  #### 全面元数据提取
+
+  对于DOIs、PMIDs、arXiv IDs或URLs：
+
+  ```bash
+  # 从DOI提取
+  python scripts/extract_metadata.py --doi 10.1038/s41586-021-03819-2
+
+  # 从PMID提取
+  python scripts/extract_metadata.py --pmid 34265844
+
+  # 从arXiv ID提取
+  python scripts/extract_metadata.py --arxiv 2103.14030
+
+  # 从URL提取
+  python scripts/extract_metadata.py --url "https://www.nature.com/articles/s41586-021-03819-2"
+
+  # 从文件批量提取（混合标识符）
+  python scripts/extract_metadata.py --input identifiers.txt --output citations.bib
+  ```
+
+  **元数据来源**（见`references/metadata_extraction.md`）：
+
+  1. **CrossRef API**：DOIs的主要来源
+     - 期刊文章的全面元数据
+     - 出版商提供的信息
+     - 包括作者、标题、期刊、卷、页、日期
+     - 免费，无需API密钥
+
+  2. **PubMed E-utilities**：生物医学文献
+     - 官方NCBI元数据
+     - 包括MeSH术语、摘要
+     - PMID和PMCID标识符
+     - 免费，建议高容量使用API密钥
+
+  3. **arXiv API**：物理学、数学、计算机科学、q-bio领域的预印本
+     - 预印本的完整元数据
+     - 版本跟踪
+     - 作者单位
+     - 免费，开放获取
+
+  4. **DataCite API**：研究数据集、软件、其他资源
+     - 非传统学术输出的元数据
+     - 数据集和代码的DOIs
+     - 免费访问
+
+  **提取内容**：
+  - **必填字段**：作者、标题、年份
+  - **期刊文章**：期刊、卷、期、页、DOI
+  - **书籍**：出版商、ISBN、版本
+  - **会议论文**：书名、会议地点、页
+  - **预印本**：存储库（arXiv、bioRxiv）、预印本ID
+  - **附加**：摘要、关键词、URL
+
+  ### 阶段2.5：通过网络搜索进行元数据增强（强制性）
+
+  **目标**：使用网络搜索检测并填补任何缺失的元数据字段。此阶段在提取之后、格式化之前运行，以确保每个BibTeX条目完整。
+
+  **为什么这至关重要**：从API（CrossRef、PubMed、arXiv）提取元数据有时返回不完整的记录——缺少卷、页、期号或DOI。在参考文献被认为准备好之前，必须填补这些空白。
+
+  #### 步骤1：扫描不完整条目
+
+  提取元数据后，扫描BibTeX文件以查找缺少关键字段的条目：
+
+  **每个条目类型要检查的字段**：
+
+  | 条目类型 | 必须有 | 应该有 |
+  |------------|-----------|-------------|
+  | @article | 作者、标题、期刊、年份 | 卷、页、期号、doi |
+  | @inproceedings | 作者、标题、书名、年份 | 页、doi |
+  | @book | 作者/编辑、标题、出版商、年份 | isbn、doi |
+  | @misc | 作者、标题、年份 | doi 或 url |
+
+  任何缺少`卷`、`页`或`doi`的`@article`条目被视为**不完整**，必须增强。
+
+  #### 步骤2：搜索缺失元数据
+
+  对于每个不完整条目，搜索缺失信息：
+
+  **选项A — 按标题和作者搜索**（最适合查找DOI）：
+  ```bash
+  python scripts/parallel_web.py search \
+    "第一作者 标题 期刊名称 卷 页 DOI" \
+    -o sources/search_YYYYMMDD_HHMMSS_citation_引文键.md
+  ```
+
+  **选项B — 从DOI页面提取**（当DOI已知但缺少卷/页时最佳）：
+  ```bash
+  python scripts/parallel_web.py extract \
+    "https://doi.org/10.XXXX/YYYY" \
+    --objective "提取完整引文元数据：卷、期、页、出版日期" \
+    -o sources/extract_YYYYMMDD_HHMMSS_doi_引文键.md
+  ```
+
+  **选项C — 直接搜索CrossRef API**（编程化，快速）：
+  ```bash
+  python scripts/parallel_web.py search \
+    "crossref DOI 元数据 第一作者 标题" \
+    -o sources/search_YYYYMMDD_HHMMSS_crossref_引文键.md
+  ```
+
+  **选项D — 搜索Google Scholar**（对于难以找到的论文备用）：
+  ```bash
+  python scripts/parallel_web.py search \
+    "google scholar 第一作者 标题 年份 完整引文" \
+    -o sources/search_YYYYMMDD_HHMMSS_scholar_引文键.md
+  ```
+
+  #### 步骤3：更新BibTeX条目
+
+  找到缺失元数据后：
+
+  1. 打开`references.bib`
+  2. 将缺失字段添加到不完整条目
+  3. 验证找到的元数据与现有字段一致（相同作者、标题、年份）
+  4. 记录每个修复：
+     ```
+     [HH:MM:SS] 元数据增强：[引文键] - 添加 volume={X}, pages={Y--Z}, doi={10.XXX/YYY} ✅
+     ```
+
+  #### 步骤4：处理找不到的元数据
+
+  如果元数据在Web搜索后确实无法找到（非常旧的论文、模糊会议等）：
+
+  1. 在BibTeX条目中添加`note`字段解释空白：
+     ```bibtex
+     note = {卷和页不可用 — 仅在线出版}
+     ```
+  2. 记录例外：
+     ```
+     [HH:MM:SS] 元数据不完整：[引文键] - 页不可用（仅在线出版）⚠️
+     ```
+  3. 这些例外应很少见 — 大多数现代论文具有可通过Web搜索找到的完整元数据。
+
+  #### 快速参考：常见缺失字段及查找位置
+
+  | 缺失字段 | 最佳搜索策略 |
+  |---------------|---------------------|
+  | DOI | 通过parallel_web.py搜索“作者 标题 DOI” |
+  | 卷 | 从DOI页面提取或搜索“期刊 年份 标题 卷” |
+  | 页 | 从DOI页面提取或搜索出版商网站 |
+  | 期/号 | 从DOI页面提取或CrossRef |
+  | 出版商 | 搜索“期刊 出版商”或检查期刊网站 |
+
+  ---
+
+  ### 阶段3：BibTeX格式化
+
+  **目标**：生成干净、正确格式化的BibTeX条目。
+
+  #### 理解BibTeX条目类型
+
+  见`references/bibtex_formatting.md`获取完整指南。
+
+  **常见条目类型**：
+  - `@article`：期刊文章（最常见）
+  - `@book`：书籍
+  - `@inproceedings`：会议论文
+  - `@incollection`：书籍章节
+  - `@phdthesis`：学位论文
+  - `@misc`：预印本、软件、数据集
+
+  **按类型必填字段**：
+
+  ```bibtex
+  @article{引文键,
+    author  = {姓1, 名1 and 姓2, 名2},
+    title   = {文章标题},
+    journal = {期刊名称},
+    year    = {2024},
+    volume  = {10},
+    number  = {3},
+    pages   = {123--145},
+    doi     = {10.1234/示例}
+  }
+
+  @inproceedings{引文键,
+    author    = {姓, 名},
+    title     = {论文标题},
+    booktitle = {会议名称},
+    year      = {2024},
+    pages     = {1--10}
+  }
+
+  @book{引文键,
+    author    = {姓, 名},
+    title     = {书籍标题},
+    publisher = {出版商名称},
+    year      = {2024}
+  }
+  ```
+
+  #### 格式化和清理
+
+  使用格式化器标准化BibTeX文件：
+
+  ```bash
+  # 格式化和清理BibTeX文件
+  python scripts/format_bibtex.py references.bib \
+    --output formatted_references.bib
+
+  # 按引文键排序条目
+  python scripts/format_bibtex.py references.bib \
+    --sort key \
+    --output sorted_references.bib
+
+  # 按年份排序（最新优先）
+  python scripts/format_bibtex.py references.bib \
+    --sort year \
+    --descending \
+    --output sorted_references.bib
+
+  # 移除重复
+  python scripts/format_bibtex.py references.bib \
+    --deduplicate \
+    --output clean_references.bib
+
+  # 验证和报告问题
+  python scripts/format_bibtex.py references.bib \
+    --validate \
+    --report validation_report.txt
+  ```
+
+  **格式化操作**：
+  - 标准化字段顺序
+  - 一致的缩进和间距
+  - 标题中的适当大写（用{}保护）
+  - 标准化作者姓名格式
+  - 一致的引文键格式
+  - 移除不必要字段
+  - 修复常见错误（缺少逗号、大括号）
+
+  ### 阶段4：引文验证
+
+  **目标**：验证所有引文准确且完整。
+
+  #### 全面验证
+
+  ```bash
+  # 验证BibTeX文件
+  python scripts/validate_citations.py references.bib
+
+  # 验证并修复常见问题
+  python scripts/validate_citations.py references.bib \
+    --auto-fix \
+    --output validated_references.bib
+
+  # 生成详细验证报告
+  python scripts/validate_citations.py references.bib \
+    --report validation_report.json \
+    --verbose
+  ```
+
+  **验证检查**（见`references/citation_validation.md`）：
+
+  1. **DOI验证**：
+     - DOI通过doi.org正确解析
+     - BibTeX和CrossRef之间的元数据匹配
+     - 没有损坏或无效的DOIs
+
+  2. **必填字段**：
+     - 所有必填字段存在用于条目类型
+     - 没有空或缺少关键信息
+     - 作者姓名正确格式化
+
+  3. **数据一致性**：
+     - 年份有效（4位数字，合理范围）
+     - 卷/期是数字
+     - 页正确格式化（例如，123--145）
+     - URL可访问
+
+  4. **重复检测**：
+     - 相同的DOI多次使用
+     - 相似标题（可能重复）
+     - 相同作者/年份/标题组合
+
+  5. **格式合规性**：
+     - 有效的BibTeX语法
+     - 适当的大括号和引号
+     - 引文键唯一
+     - 特殊字符正确处理
+
+  **验证输出**：
+  ```json
+  {
+    "total_entries": 150,
+    "valid_entries": 145,
+    "errors": [
+      {
+        "citation_key": "Smith2023",
+        "error_type": "missing_field",
+        "field": "journal",
+        "severity": "high"
+      },
+      {
+        "citation_key": "Jones2022",
+        "error_type": "invalid_doi",
+        "doi": "10.1234/broken",
+        "severity": "high"
+      }
+    ],
+    "warnings": [
+      {
+        "citation_key": "Brown2021",
+        "warning_type": "possible_duplicate",
+        "duplicate_of": "Brown2021a",
+        "severity": "medium"
+      }
+    ]
+  }
+  ```
+
+  ### 阶段5：与写作工作流程集成
+
+  #### 为手稿构建参考文献
+
+  创建参考文献的完整工作流程：
+
+  ```bash
+  # 1. 搜索主题论文
+  python scripts/search_pubmed.py \
+    '"CRISPR-Cas系统"[MeSH] AND "基因编辑"[MeSH]' \
+    --date-start 2020 \
+    --limit 200 \
+    --output crispr_papers.json
+
+  # 2. 从搜索结果中提取DOIs并转换为BibTeX
+  python scripts/extract_metadata.py \
+    --input crispr_papers.json \
+    --output crispr_refs.bib
+
+  # 3. 按DOI添加特定论文
+  python scripts/doi_to_bibtex.py 10.1038/nature12345 >> crispr_refs.bib
+  python scripts/doi_to_bibtex.py 10.1126/science.abcd1234 >> crispr_refs.bib
+
+  # 4. 格式化和清理BibTeX文件
+  python scripts/format_bibtex.py crispr_refs.bib \
+    --deduplicate \
+    --sort year \
+    --descending \
+    --output references.bib
+
+  # 5. 验证所有引文
+  python scripts/validate_citations.py references.bib \
+    --auto-fix \
+    --report validation.json \
+    --output final_references.bib
+
+  # 6. 审查验证报告并修复任何剩余问题
+  cat validation.json
+
+  # 7. 在LaTeX文档中使用
+  # \bibliography{final_references}
+  ```
+
+  #### 与文献综述技能集成
+
+  此技能补充`literature-review`技能：
+
+  **文献综述技能** → 系统搜索和综合
+  **引文管理技能** → 技术引文处理
+
+  **组合工作流程**：
+  1. 使用`literature-review`进行全面的多数据库搜索
+  2. 使用`citation-management`提取和验证所有引文
+  3. 使用`literature-review`综合主题发现
+  4. 使用`citation-management`验证最终参考文献准确性
+
+  ```bash
+  # 完成文献综述后
+  # 验证综述文档中的所有引文
+  python scripts/validate_citations.py my_review_references.bib --report review_validation.json
+
+  # 如果需要，格式化特定引文样式
+  python scripts/format_bibtex.py my_review_references.bib \
+    --style nature \
+    --output formatted_refs.bib
+  ```
+
+  ## 搜索策略
+
+  ### Google Scholar最佳实践
+
+  **查找开创性和高影响论文**（关键）：
+
+  始终根据被引次数、场地质量和作者声誉优先考虑论文：
+
+  **被引次数阈值**：
+  | 论文年龄 | 被引次数 | 分类 |
+  |-----------|-----------|----------------|
+  | 0-3年 | 20+ | 值得注意 |
+  | 0-3年 | 100+ | 高影响力 |
+  | 3-7年 | 100+ | 重要 |
+  | 3-7年 | 500+ | 里程碑论文 |
+  | 7+年 | 500+ | 开创性工作 |
+  | 7+年 | 1000+ | 基础性 |
+
+  **场地质量层级**：
+  - **层级1（首选）**：Nature、Science、Cell、NEJM、Lancet、JAMA、PNAS
+  - **层级2（高优先级）**：影响因子>10，顶级会议（NeurIPS、ICML、ICLR）
+  - **层级3（好）**：专业期刊（IF 5-10）
+  - **层级4（谨慎使用）**：低影响同行评审场地
+
+  **作者声誉指标**：
+  - h指数>40的高级研究人员
+  - 在层级1场地发表多篇论文
+  - 认可机构的领导职位
+  - 奖项和编辑职位
+
+  **高影响论文搜索策略**：
+  - 按被引次数排序（最多被引优先）
+  - 从层级1期刊查找综述文章以获取概览
+  - 检查“被引次数”以评估影响和近期后续工作
+  - 使用引文警报跟踪关键论文的新引文
+  - 使用`source:Nature`或`source:Science`按顶级场地过滤
+  - 使用`author:LastName`搜索已知领域领导者的论文
+
+  **高级运算符**（完整列表见`references/google_scholar_search.md`）：
+  ```
+  "精确短语"           # 精确短语匹配
+  author:姓氏          # 按作者搜索
+  intitle:关键词          # 仅在标题中搜索
+  source:期刊           # 搜索特定期刊
+  -exclude                 # 排除术语
+  OR                       # 替代术语
+  2020..2024              # 年份范围
+  ```
+
+  **示例搜索**：
+  ```
+  # 查找主题的近期综述
+  "CRISPR" intitle:review 2023..2024
+
+  # 查找特定作者的主题论文
+  author:Church "合成生物学"
+
+  # 查找高被引基础工作
+  "深度学习" 2012..2015 sort:citations
+
+  # 排除综述并专注于方法
+  "蛋白质折叠" -survey -review intitle:method
+  ```
+
+  ### PubMed最佳实践
+
+  **使用MeSH术语**：
+  MeSH（医学主题词表）提供受控词汇以进行精确搜索。
+
+  1. **查找MeSH术语** 在 https://meshb.nlm.nih.gov/search
+  2. **在查询中使用**：`"2型糖尿病"[MeSH]`
+  3. **与关键词结合** 以进行全面覆盖
+
+  **字段标签**：
+  ```
+  [标题]              # 仅在标题中搜索
+  [标题/摘要]     # 在标题或摘要中搜索
+  [作者]             # 按作者姓名搜索
+  [期刊]            # 搜索特定期刊
+  [出版日期]   # 日期范围
+  [出版物类型]   # 文章类型
+  [MeSH]              # MeSH术语
+  ```
+
+  **构建复杂查询**：
+  ```bash
+  # 最近发表的糖尿病治疗临床试验
+  "2型糖尿病"[MeSH] AND "药物治疗"[MeSH] 
+  AND "临床试验"[出版物类型] AND 2020:2024[出版日期]
+
+  # 特定期刊中关于CRISPR的综述
+  "CRISPR-Cas系统"[MeSH] AND "自然"[期刊] AND "综述"[出版物类型]
+
+  # 特定作者的近期工作
+  "Smith AB"[作者] AND 癌症[标题/摘要] AND 2022:2024[出版日期]
+  ```
+
+  **用于自动化的E-utilities**：
+  脚本使用NCBI E-utilities API进行编程访问：
+  - **ESearch**：搜索和检索PMIDs
+  - **EFetch**：检索完整元数据
+  - **ESummary**：获取摘要信息
+  - **ELink**：查找相关文章
+
+  见`references/pubmed_search.md`获取完整的API文档。
+
+  ## 工具和脚本
+
+  ### search_google_scholar.py
+
+  搜索Google Scholar并导出结果。
+
+  **功能**：
+  - 带有速率限制的自动化搜索
+  - 分页支持
+  - 年份范围过滤
+  - 导出到JSON或BibTeX
+  - 被引次数信息
+
+  **用法**：
+  ```bash
+  # 基本搜索
+  python scripts/search_google_scholar.py "量子计算"
+
+  # 带有过滤器的高级搜索
+  python scripts/search_google_scholar.py "量子计算" \
+    --year-start 2020 \
+    --year-end 2024 \
+    --limit 100 \
+    --sort-by citations \
+    --output quantum_papers.json
+
+  # 直接导出到BibTeX
+  python scripts/search_google_scholar.py "机器学习" \
+    --limit 50 \
+    --format bibtex \
+    --output ml_papers.bib
+  ```
+
+  ### search_pubmed.py
+
+  使用E-utilities API搜索PubMed。
+
+  **功能**：
+  - 复杂查询支持（MeSH、字段标签、布尔）
+  - 日期范围过滤
+  - 出版物类型过滤
+  - 批量检索与元数据
+  - 导出到JSON或BibTeX
+
+  **用法**：
+  ```bash
+  # 简单关键词搜索
+  python scripts/search_pubmed.py "CRISPR基因编辑"
+
+  # 带有过滤器的复杂查询
+  python scripts/search_pubmed.py \
+    --query '"CRISPR-Cas系统"[MeSH] AND "治疗"[标题/摘要]' \
+    --date-start 2020-01-01 \
+    --date-end 2024-12-31 \
+    --publication-types "临床试验,综述" \
+    --limit 200 \
+    --output crispr_therapeutic.json
+
+  # 导出到BibTeX
+  python scripts/search_pubmed.py "阿尔茨海默病" \
+    --limit 100 \
+    --format bibtex \
+    --output alzheimers.bib
+  ```
+
+  ### extract_metadata.py
+
+  从论文标识符提取完整元数据。
+
+  **功能**：
+  - 支持DOI、PMID、arXiv ID、URL
+  - 查询CrossRef、PubMed、arXiv APIs
+  - 处理多种标识符类型
+  - 批处理
+  - 多种输出格式
+
+  **用法**：
+  ```bash
+  # 单个DOI
+  python scripts/extract_metadata.py --doi 10.1038/s41586-021-03819-2
+
+  # 单个PMID
+  python scripts/extract_metadata.py --pmid 34265844
+
+  # 单个arXiv ID
+  python scripts/extract_metadata.py --arxiv 2103.14030
+
+  # 从URL
+  python scripts/extract_metadata.py \
+    --url "https://www.nature.com/articles/s41586-021-03819-2"
+
+  # 批处理（每行一个标识符的文件）
+  python scripts/extract_metadata.py \
+    --input paper_ids.txt \
+    --output references.bib
+
+  # 不同输出格式
+  python scripts/extract_metadata.py \
+    --doi 10.1038/nature12345 \
+    --format json  # 或 bibtex, yaml
+  ```
+
+  ### validate_citations.py
+
+  验证BibTeX条目的准确性和完整性。
+
+  **功能**：
+  - 通过doi.org和CrossRef进行DOI验证
+  - 必填字段检查
+  - 重复检测
+  - 格式验证
+  - 自动修复常见问题
+  - 详细报告
+
+  **用法**：
+  ```bash
+  # 基本验证
+  python scripts/validate_citations.py references.bib
+
+  # 带有自动修复
+  python scripts/validate_citations.py references.bib \
+    --auto-fix \
+    --output fixed_references.bib
+
+  # 详细验证报告
+  python scripts/validate_citations.py references.bib \
+    --report validation_report.json \
+    --verbose
+
+  # 仅检查DOIs
+  python scripts/validate_citations.py references.bib \
+    --check-dois-only
+  ```
+
+  ### format_bibtex.py
+
+  格式化和清理BibTeX文件。
+
+  **功能**：
+  - 标准化格式化
+  - 排序条目（按键、年份、作者）
+  - 移除重复
+  - 验证语法
+  - 修复常见错误
+  - 强制执行引文键约定
+
+  **用法**：
+  ```bash
+  # 基本格式化
+  python scripts/format_bibtex.py references.bib
+
+  # 按年份排序（最新优先）
+  python scripts/format_bibtex.py references.bib \
+    --sort year \
+    --descending \
+    --output sorted_refs.bib
+
+  # 移除重复
+  python scripts/format_bibtex.py references.bib \
+    --deduplicate \
+    --output clean_refs.bib
+
+  # 完全清理
+  python scripts/format_bibtex.py references.bib \
+    --deduplicate \
+    --sort year \
+    --validate \
+    --auto-fix \
+    --output final_refs.bib
+  ```
+
+  ### doi_to_bibtex.py
+
+  快速DOI到BibTeX转换。
+
+  **功能**：
+  - 快速单个DOI转换
+  - 批处理
+  - 多种输出格式
+  - 剪贴板支持
+
+  **用法**：
+  ```bash
+  # 单个DOI
+  python scripts/doi_to_bibtex.py 10.1038/s41586-021-03819-2
+
+  # 多个DOIs
+  python scripts/doi_to_bibtex.py \
+    10.1038/nature12345 \
+    10.1126/science.abc1234 \
+    10.1016/j.cell.2023.01.001
+
+  # 从文件（每行一个DOI）
+  python scripts/doi_to_bibtex.py --input dois.txt --output references.bib
+
+  # 复制到剪贴板
+  python scripts/doi_to_bibtex.py 10.1038/nature12345 --clipboard
+  ```
+
+  ## 最佳实践
+
+  ### 搜索策略
+
+  1. **从宽泛开始，然后缩小**：
+     - 从一般术语开始以了解该领域
+     - 使用特定关键词和过滤器进行精炼
+     - 使用同义词和相关术语
+
+  2. **使用多个来源**：
+     - Google Scholar以进行全面覆盖
+     - PubMed以关注生物医学
+     - arXiv以获取预印本
+     - 结合结果以实现完整性
+
+  3. **利用引文**：
+     - 检查“被引次数”以查找开创性论文
+     - 审查关键论文的参考文献
+     - 使用引文网络发现相关工作
+
+  4. **记录您的搜索**：
+     - 保存搜索查询和日期
+     - 记录结果数量
+     - 注意应用的所有过滤器或限制
+
+  ### 元数据提取
+
+  1. **始终使用可用的DOIs**：
+     - 最可靠的标识符
+     - 出版物的永久链接
+     - 通过CrossRef的最佳元数据来源
+
+  2. **验证提取的元数据**：
+     - 检查作者姓名是否正确
+     - 验证期刊/会议名称
+     - 确认出版年份
+     - 验证页数和卷
+
+  3. **处理边缘情况**：
+     - 预印本：包括存储库和ID
+     - 后来出版的预印本：使用已出版版本
+     - 会议论文：包括会议名称和地点
+     - 书籍章节：包括书籍标题和编辑
+
+  4. **保持一致性**：
+     - 使用一致的作者姓名格式
+     - 标准化期刊缩写
+     - 使用相同的DOI格式（首选URL）
+
+  ### BibTeX质量
+
+  1. **遵循约定**：
+     - 使用有意义的引文键（第一作者2024关键词）
+     - 在标题中使用{}保护大写
+     - 使用--表示页范围（不是单破折号）
+     - 为所有现代出版物包括DOI字段
+
+  2. **保持清洁**：
+     - 移除不必要字段
+     - 没有冗余信息
+     - 一致的格式化
+     - 定期验证语法
+
+  3. **系统组织**：
+     - 按年份或主题排序
+     - 分组相关论文
+     - 为不同项目使用单独文件
+     - 小心合并以避免重复
+
+  ### 验证
+
+  1. **及早并经常验证**：
+     - 添加引文时检查
+     - 提交前验证完整参考文献
+     - 任何手动编辑后重新验证
+
+  2. **及时修复问题**：
+     - 损坏的DOIs：查找正确的标识符
+     - 缺失字段：从原始来源提取
+     - 重复：选择最佳版本，移除其他
+     - 格式错误：安全时使用自动修复
+
+  3. **手动审查关键引文**：
+     - 验证关键论文正确引用
+     - 检查作者姓名与出版物匹配
+     - 确认页数和卷
+     - 确保URL当前
+
+  ## 常见陷阱避免
+
+  1. **单一来源偏见**：仅使用Google Scholar或PubMed
+     - **解决方案**：搜索多个数据库以进行全面覆盖
+
+  2. **盲目接受元数据**：不验证提取的信息
+     - **解决方案**：根据原始来源抽查提取的元数据
+
+  3. **忽略DOI错误**：参考文献中的损坏或不正确DOIs
+     - **解决方案**：最终提交前运行验证
+
+  4. **不一致格式化**：混合引文键样式、格式化
+     - **解决方案**：使用format_bibtex.py进行标准化
+
+  5. **重复条目**：同一论文以不同键多次引用
+     - **解决方案**：在验证中使用重复检测
+
+  6. **缺少必填字段**：不完整的BibTeX条目（缺少卷、页、DOI）
+     - **解决方案**：运行阶段2.5元数据增强 — 在继续之前通过网络搜索查找每个缺失字段。切勿留下没有卷、页和DOI的@article条目。
+
+  7. **过时预印本**：当存在已出版版本时引用预印本
+     - **解决方案**：检查预印本是否已出版，更新到期刊版本
+
+  8. **特殊字符问题**：由于字符导致LaTeX编译损坏
+     - **解决方案**：在BibTeX中使用适当的转义或Unicode
+
+  9. **提交前无验证**：提交带有引文错误
+     - **解决方案**：始终运行验证作为最终检查
+
+  10. **手动BibTeX条目**：手动键入条目
+      - **解决方案**：始终使用脚本从元数据源提取
+
+  ## 示例工作流程
+
+  ### 示例1：为论文构建参考文献
+
+  ```bash
+  # 步骤1：查找主题的关键论文
+  python scripts/search_google_scholar.py "transformer神经网络" \
+    --year-start 2017 \
+    --limit 50 \
+    --output transformers_gs.json
+
+  python scripts/search_pubmed.py "深度学习医学成像" \
+    --date-start 2020 \
+    --limit 50 \
+    --output medical_dl_pm.json
+
+  # 步骤2：从搜索结果中提取元数据
+  python scripts/extract_metadata.py \
+    --input transformers_gs.json \
+    --output transformers.bib
+
+  python scripts/extract_metadata.py \
+    --input medical_dl_pm.json \
+    --output medical.bib
+
+  # 步骤3：添加您已经知道的特定论文
+  python scripts/doi_to_bibtex.py 10.1038/s41586-021-03819-2 >> specific.bib
+  python scripts/doi_to_bibtex.py 10.1126/science.aam9317 >> specific.bib
+
+  # 步骤4：合并所有BibTeX文件
+  cat transformers.bib medical.bib specific.bib > combined.bib
+
+  # 步骤5：格式化和去重
+  python scripts/format_bibtex.py combined.bib \
+    --deduplicate \
+    --sort year \
+    --descending \
+    --output formatted.bib
+
+  # 步骤6：验证
+  python scripts/validate_citations.py formatted.bib \
+    --auto-fix \
+    --report validation.json \
+    --output final_references.bib
+
+  # 步骤7：审查任何问题
+  cat validation.json | grep -A 3 '"errors"'
+
+  # 步骤8：在LaTeX中使用
+  # \bibliography{final_references}
+  ```
+
+  ### 示例2：转换DOIs列表
+
+  ```bash
+  # 您有一个包含DOIs的文本文件（每行一个）
+  # dois.txt包含：
+  # 10.1038/s41586-021-03819-2
+  # 10.1126/science.aam9317
+  # 10.1016/j.cell.2023.01.001
+
+  # 全部转换为BibTeX
+  python scripts/doi_to_bibtex.py --input dois.txt --output references.bib
+
+  # 验证结果
+  python scripts/validate_citations.py references.bib --verbose
+  ```
+
+  ### 示例3：清理现有BibTeX文件
+
+  ```bash
+  # 您有一个来自各种来源的混乱BibTeX文件
+  # 系统地清理它
+
+  # 步骤1：格式化和标准化
+  python scripts/format_bibtex.py messy_references.bib \
+    --output step1_formatted.bib
+
+  # 步骤2：移除重复
+  python scripts/format_bibtex.py step1_formatted.bib \
+    --deduplicate \
+    --output step2_deduplicated.bib
+
+  # 步骤3：验证和自动修复
+  python scripts/validate_citations.py step2_deduplicated.bib \
+    --auto-fix \
+    --output step3_validated.bib
+
+  # 步骤4：按年份排序
+  python scripts/format_bibtex.py step3_validated.bib \
+    --sort year \
+    --descending \
+    --output clean_references.bib
+
+  # 步骤5：最终验证报告
+  python scripts/validate_citations.py clean_references.bib \
+    --report final_validation.json \
+    --verbose
+
+  # 审查报告
+  cat final_validation.json
+  ```
+
+  ### 示例4：查找和引用开创性论文
+
+  ```bash
+  # 查找主题的高被引论文
+  python scripts/search_google_scholar.py "AlphaFold蛋白质结构" \
+    --year-start 2020 \
+    --year-end 2024 \
+    --sort-by citations \
+    --limit 20 \
+    --output alphafold_seminal.json
+
+  # 按被引次数提取前10名
+  # （脚本将在JSON中包括被引次数）
+
+  # 转换为BibTeX
+  python scripts/extract_metadata.py \
+    --input alphafold_seminal.json \
+    --output alphafold_refs.bib
+
+  # BibTeX文件现在包含最有影响力的论文
+  ```
+
+  ## 与其他技能集成
+
+  ### 文献综述技能
+
+  **引文管理**为**文献综述**提供技术基础设施：
+
+  - **文献综述**：多数据库系统搜索和综合
+  - **引文管理**：元数据提取和验证
+
+  **组合工作流程**：
+  1. 使用literature-review进行系统搜索方法
+  2. 使用citation-management提取和验证引文
+  3. 使用literature-review综合发现
+  4. 使用citation-management确保参考文献准确性
+
+  ### 科学写作技能
+
+  **引文管理**确保**科学写作**的准确参考：
+
+  - 导出已验证的BibTeX用于LaTeX手稿
+  - 验证引文符合出版标准
+  - 根据期刊要求格式化参考文献
+
+  ### 场地模板技能
+
+  **引文管理**与**场地模板**配合使用，以准备提交就绪的手稿：
+
+  - 不同场地需要不同的引文样式
+  - 生成正确格式化的参考文献
+  - 验证引文满足场地要求
+
+  ## 资源
+
+  ### 捆绑资源
+
+  **参考文献**（在`references/`中）：
+  - `google_scholar_search.md`：完整的Google Scholar搜索指南
+  - `pubmed_search.md`：PubMed和E-utilities API文档
+  - `metadata_extraction.md`：元数据来源和字段要求
+  - `citation_validation.md`：验证标准和质量检查
+  - `bibtex_formatting.md`：BibTeX条目类型和格式化规则
+
+  **脚本**（在`scripts/`中）：
+  - `search_google_scholar.py`：Google Scholar搜索自动化
+  - `search_pubmed.py`：PubMed E-utilities API客户端
+  - `extract_metadata.py`：通用元数据提取器
+  - `validate_citations.py`：引文验证和验证
+  - `format_bibtex.py`：BibTeX格式化器和清理器
+  - `doi_to_bibtex.py`：快速DOI到BibTeX转换器
+
+  **资产**（在`assets/`中）：
+  - `bibtex_template.bib`：所有类型的示例BibTeX条目
+  - `citation_checklist.md`：质量保证检查清单
+
+  ### 外部资源
+
+  **搜索引擎**：
+  - Google Scholar：https://scholar.google.com/
+  - PubMed：https://pubmed.ncbi.nlm.nih.gov/
+  - PubMed高级搜索：https://pubmed.ncbi.nlm.nih.gov/advanced/
+
+  **元数据APIs**：
+  - CrossRef API：https://api.crossref.org/
+  - PubMed E-utilities：https://www.ncbi.nlm.nih.gov/books/NBK25501/
+  - arXiv API：https://arxiv.org/help/api/
+  - DataCite API：https://api.datacite.org/
+
+  **工具和验证器**：
+  - MeSH浏览器：https://meshb.nlm.nih.gov/search
+  - DOI解析器：https://doi.org/
+  - BibTeX格式：http://www.bibtex.org/Format/
+
+  **引文样式**：
+  - BibTeX文档：http://www.bibtex.org/
+  - LaTeX参考文献管理：https://www.overleaf.com/learn/latex/Bibliography_management
+
+  ## 依赖
+
+  ### 必需的Python包
+
+  ```bash
+  # 核心依赖
+  pip install requests  # APIs的HTTP请求
+  pip install bibtexparser  # BibTeX解析和格式化
+  pip install biopython  # PubMed E-utilities访问
+
+  # 可选（用于Google Scholar）
+  pip install scholarly  # Google Scholar API包装器
+  # 或
+  pip install selenium  # 用于更健壮的Scholar爬取
+  ```
+
+  ### 可选工具
+
+  ```bash
+  # 用于高级验证
+  pip install crossref-commons  # 增强的CrossRef API访问
+  pip install pylatexenc  # LaTeX特殊字符处理
+  ```
+
+  ## 总结
+
+  引文管理技能提供：
+  1. **全面搜索能力** 用于Google Scholar和PubMed
+  2. **自动化元数据提取** 从DOI、PMID、arXiv ID、URLs
+  3. **引文验证** 带有DOI验证和完整性检查
+  4. **BibTeX格式化** 带有标准化和清理工具
+  5. **质量保证** 通过验证和报告
+  6. **集成** 与科学写作工作流程
+  7. **可重复性** 通过记录的搜索和提取方法
+
+  使用此技能在您的研究过程中维护准确、完整的引文，并确保出版就绪的参考文献。

@@ -1,0 +1,109 @@
+name: skillsbot-grant-narrative-writing-1871
+display_name: grant-narrative-writing
+display_name_zh: 基金提案叙述撰写
+description: grant-narrative-writing from SkillsBot scientific academic catalog
+description_zh: 基金提案叙述撰写技能专注于为人文学科研究项目（如NEH、ACLS及各类基金会）撰写高质量、有竞争力的资助申请提案。该技能核心在于构建引人入胜的研究叙述，清晰阐述项目的学术价值、创新性、方法论及社会影响，并精准匹配资助机构的评审标准与优先事项。
+type: writing
+categories:
+  - grant-writing
+category_zh: 基金申请
+subcategory: budget-impact
+subcategory_zh: 预算与影响
+trigger: manual
+auto_recommend: false
+tags:
+  - 基金申请
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1871
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1871
+upstream_name: grant-narrative-writing
+upstream_commit: ""
+prompt: |
+  ---
+  name: grant-narrative-writing
+  description: 为NEH、ACLS和基金会资助提案撰写引人入胜的研究叙述，并包含清晰的重要性陈述
+  allowed-tools: Read, Grep, Write, Edit, Glob, WebFetch
+  ---
+
+  # 基金提案叙述撰写
+
+  为NEH、ACLS和基金会资助提案撰写引人入胜的研究叙述，并包含清晰的重要性陈述。
+
+  ## 概述
+
+  本技能旨在创建具有竞争力的人文学科基金提案。它涵盖叙述发展、重要性阐述和提案撰写，以从NEH、ACLS和其他人文学科资助机构获得资金。
+
+  ## 能力
+
+  ### 叙述发展
+  - 项目描述
+  - 研究问题
+  - 方法论阐述
+  - 工作计划制定
+  - 成果说明
+
+  ### 重要性陈述
+  - 学术贡献
+  - 领域推进
+  - 更广泛影响
+  - 公共利益
+  - 创新主张
+
+  ### 提案组成部分
+  - 摘要撰写
+  - 预算说明
+  - 时间线创建
+  - 参考文献整理
+  - 补充材料准备
+
+  ### 资助机构匹配
+  - 指南解读
+  - 优先级匹配
+  - 评估标准
+  - 评审流程
+  - 合规要求
+
+  ## 使用指南
+
+  ### 撰写流程
+  1. 分析资助机构优先级
+  2. 开发项目概念
+  3. 起草叙述部分
+  4. 阐述重要性
+  5. 创建工作计划
+  6. 制定预算
+  7. 修订和完善
+
+  ### 叙述要素
+  - 清晰的研究问题
+  - 可行的方法论
+  - 现实的时间线
+  - 合格的人员
+  - 可衡量的成果
+
+  ### 质量标准
+  - 引人入胜的论证
+  - 清晰的写作
+  - 完整的信息
+  - 资助机构匹配
+  - 现实的规划
+
+  ## 集成点
+
+  ### 相关流程
+  - 基金提案开发
+  - 学术文章开发
+  - 研究伦理审查
+
+  ### 协作技能
+  - citation-scholarly-apparatus
+  - research-ethics-irb-navigation
+  - critical-theory-application
+
+  ## 参考文献
+
+  - NEH申请指南
+  - ACLS奖学金项目
+  - 基金会提案指南
+  - 人文学科基金撰写资源

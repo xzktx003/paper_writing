@@ -1,0 +1,378 @@
+name: skillsbot-online-research-2568
+display_name: online-research
+display_name_zh: 在线学术研究助手
+description: online-research from SkillsBot scientific academic catalog
+description_zh: 在线学术研究助手是一个智能工具，专门用于帮助研究人员、学生和学者高效地发现、定位和下载学术论文PDF。通过支持DOI、arXiv ID和论文标题等多种标识符，该工具能够从arXiv、ACM、IEEE等权威学术平台快速获取论文资源。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: paper-reading
+subcategory_zh: 论文阅读与笔记
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/2568
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/2568
+upstream_name: online-research
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: 在线学术研究
+  描述: 使用DOI、arXiv ID或论文标题发现并下载学术PDF。下载的PDF会自动由PDF监控服务处理。
+  工具:
+  - download_pdf
+  - locate_pdf
+  ---
+
+  # 在线研究与PDF发现
+
+  使用DOI、arXiv ID或论文标题从各种来源发现并下载学术PDF。
+
+  ## 核心能力
+
+  此技能使您能够：
+  - **定位PDF**：通过DOI、arXiv ID或论文标题查找PDF
+  - **下载PDF**：直接下载到保险库（由监控服务自动处理）
+
+  **注意**：对于网页搜索，请使用Letta内置的`web_search`工具，而非Thoth已弃用的网页搜索。下载的PDF会自动由PDF监控服务处理 - 无需手动处理。
+
+  ## 阅读外部内容
+
+  对于阅读**知识库之外**的网页文章、博客文章和文档：
+
+  | 工具 | 用途 |
+  |------|---------|
+  | Letta的`fetch_webpage` | 阅读外部网页内容（博客、文档、文章） |
+  | `read_full_article` | 阅读知识库中的论文 |
+  | `download_pdf` | 保存论文以供后续处理 |
+
+  **使用外部源进行迭代学习**：
+  1. 使用`web_search`查找相关网页内容
+  2. 使用`fetch_webpage`完整阅读文章
+  3. 从内容中学习，识别知识空白
+  4. 持续阅读更多来源，直到理解该主题
+  5. 对于学术论文，使用`download_pdf`将其添加到知识库
+
+  ## 工具概览
+
+  | 工具 | 目的 | 何时使用 |
+  |------|---------|-------------|
+  | `locate_pdf` | 从标识符查找PDF URL | 拥有DOI/arXiv ID，需要下载链接时 |
+  | `download_pdf` | 下载PDF到保险库 | 找到论文URL，想要保存时 |
+
+  ## 何时使用此技能
+
+  当用户要求以下内容时使用在线研究：
+  - "从arXiv下载这篇论文"
+  - "获取DOI为10.xxxx/xxxxx的PDF"
+  - "查找并下载这篇论文"
+  - "将此论文添加到我的知识库"
+
+  **对于网页搜索**：使用Letta内置的`web_search`工具在线查找论文。然后使用此技能下载它们。
+
+  **不要使用**当：
+  - 用户询问知识库中已有的论文（使用`knowledge-base-qa`或`deep-research`技能）
+  - 简单的引文查找（使用引文工具）
+
+  ## 标准研究工作流程
+
+  ### 1. 在线发现论文（使用Letta web_search）
+
+  使用Letta内置的`web_search`工具查找论文：
+  - 添加年份过滤器："强化学习 2024 2025"
+  - 使用特定会议："NeurIPS 2024 注意力机制"
+  - 包含文件类型："transformers 架构 filetype:pdf"
+  - 针对预印本服务器："site:arxiv.org 记忆增强"
+
+  ### 2. 定位PDF来源
+
+  ```
+  # 如果您有DOI
+  locate_pdf(
+    doi="10.1145/3534678.3539147",
+    title="[论文标题]"
+  )
+
+  # 如果您有arXiv ID
+  locate_pdf(
+    arxiv_id="2401.12345",
+    title="[论文标题]"
+  )
+
+  # 如果您只有标题
+  locate_pdf(
+    title="Attention Is All You Need"
+  )
+  ```
+
+  **返回**：
+  - 直接PDF URL
+  - 来源（arXiv、ACM、IEEE、DOI解析器等）
+  - 可访问性状态
+  - 如果主要链接失败，提供替代链接
+
+  ### 3. 下载前验证
+
+  ```
+  # 对于多篇论文，首先验证来源
+  validate_pdf_sources(
+    sources=[
+      {"url": "https://arxiv.org/pdf/2401.12345.pdf"},
+      {"doi": "10.xxxx/xxxxx"},
+      {"arxiv_id": "2402.56789"}
+    ]
+  )
+  ```
+
+  **验证检查**：
+  - URL可访问性
+  - Content-Type验证
+  - 文件大小合理性
+  - 重定向处理
+
+  ### 4. 下载PDF
+
+  ```
+  # 下载单个PDF
+  download_pdf(
+    source="https://arxiv.org/pdf/2401.12345.pdf"
+  )
+
+  # 或使用DOI
+  download_pdf(
+    source="10.1145/3534678.3539147"
+  )
+
+  # 或使用arXiv ID
+  download_pdf(
+    source="2401.12345"
+  )
+
+  # 自定义文件名（可选）
+  download_pdf(
+    source="https://example.com/paper.pdf",
+    filename="我的自定义论文名称.pdf"
+  )
+  ```
+
+  **下载功能**：
+  - 自动保存到配置的保险库PDF目录
+  - 从标题自动生成文件名
+  - 支持直接URL、DOI和arXiv ID
+  - 大文件进度跟踪
+  - 重复检测
+
+  ### 5. 自动处理
+
+  下载的PDF会自动被PDF监控服务拾取，该服务：
+  - 提取文本和元数据
+  - 生成嵌入
+  - 将论文添加到知识库
+  - 与引文网络集成
+  - 自动生成标签
+
+  **无需手动处理！** 只需下载PDF，监控服务会处理其余部分。
+
+  ## 工作流程示例
+
+  ### 示例1：查找并下载论文
+
+  **用户**："查找并下载关于记忆增强transformer的最新论文"
+
+  ```
+  步骤1：使用Letta的web_search查找论文
+  web_search(query="记忆增强 transformer 2024 2025 arxiv")
+  → 找到带有arXiv链接的论文
+
+  步骤2：从结果中提取arXiv ID或DOI
+
+  步骤3：下载论文
+  对于每篇论文：
+    download_pdf(source="2401.12345")  # arXiv ID
+  → 已下载并自动处理
+
+  响应："已下载5篇关于记忆增强transformer的论文。
+  它们将自动处理并添加到您的知识库。"
+  ```
+
+  ### 示例2：下载特定论文
+
+  **用户**："下载论文'Attention Is All You Need'"
+
+  ```
+  步骤1：定位论文
+  locate_pdf(title="Attention Is All You Need")
+  → 找到：https://arxiv.org/pdf/1706.03762.pdf
+
+  步骤2：下载
+  download_pdf(source="https://arxiv.org/pdf/1706.03762.pdf")
+  → 下载到：vault/thoth/papers/pdfs/Attention-Is-All-You-Need.pdf
+  → 自动处理将添加到知识库
+
+  响应："成功下载'Attention Is All You Need'。
+  该论文将自动处理并添加到您的知识库。"
+  ```
+
+  ### 示例3：从DOI下载
+
+  **用户**："给我获取DOI为10.1145/3534678.3539147的PDF"
+
+  ```
+  步骤1：直接使用DOI下载
+  download_pdf(source="10.1145/3534678.3539147")
+  → 已下载并自动处理
+
+  响应："已从DOI 10.1145/3534678.3539147下载论文。
+  该论文将自动处理并添加到您的知识库。"
+  ```
+
+  ### 示例4：研究主题发现
+
+  **用户**："关于高效注意力机制的最新研究是什么？下载前5篇论文。"
+
+  ```
+  步骤1：使用Letta的web_search
+  web_search(query="高效注意力机制 2024 2025 arxiv")
+  → 找到带有arXiv链接的论文
+
+  步骤2：从结果中提取arXiv ID
+
+  步骤3：下载前5篇论文
+  对于每个arXiv ID：
+    download_pdf(source="[arxiv_id]")
+  → 全部下载并自动处理
+
+  响应："已下载5篇关于高效注意力机制的论文。
+  所有论文将自动处理并添加到您的知识库。"
+  ```
+
+  ## 高级技术
+
+  ### 智能文件名生成
+
+  ```
+  # download_pdf工具从以下内容自动生成文件名：
+  # 1. 文章标题（如果在元数据中找到）
+  # 2. URL路径（如果标题不可用）
+  # 3. 基于哈希的唯一名称（作为后备）
+
+  # 您可以使用自定义文件名覆盖：
+  download_pdf(
+    source="https://arxiv.org/pdf/2401.12345.pdf",
+    filename="我的研究_强化学习_2024.pdf"
+  )
+  ```
+
+  ### 错误处理
+
+  ```
+  # 如果直接下载失败，首先尝试定位PDF
+  # 尝试主要来源
+  pdf = locate_pdf(doi="10.xxxx/xxxxx")
+  download_pdf(source=pdf.url)
+  # 如果定位失败，尝试使用Letta的web_search查找替代URL
+  ```
+
+  ## 来源优先级
+
+  定位PDF时，系统按以下顺序尝试来源：
+
+  1. **arXiv** - 快速、可靠、开放获取
+  2. **DOI解析器** - 权威，可能需要访问权限
+  3. **Semantic Scholar** - 良好的元数据，开放获取跟踪
+  4. **PubMed Central** - 生命科学，开放获取
+  5. **ACM/IEEE** - 会议论文（可能需要访问权限）
+
+  ## 最佳实践
+
+  ### 下载策略
+  1. **处理错误**：并非所有论文都是开放获取的
+  2. **尊重限制**：不要用请求淹没服务器
+  3. **检查重复**：工具自动检测现有文件
+  4. **使用arXiv/DOI（如果可用）**：最可靠的来源
+
+  ### 搜索策略（使用Letta web_search）
+  1. **具体明确**：包含领域术语、年份、会议
+  2. **使用过滤器**：添加"filetype:pdf"或"site:arxiv.org"
+  3. **迭代**：根据初步结果优化搜索
+
+  ## 常见陷阱
+
+  ### ❌ 不要：
+  - 搜索知识库中已有的论文（使用现有工具）
+  - 使用过于宽泛的搜索查询
+  - 下载论文而不检查重复
+
+  ### ✅ 要：
+  - 首先使用`search_articles`检查知识库
+  - 使用Letta web_search进行具体、有针对性的搜索查询
+  - 让下载工具处理重复检测
+  - 信任PDF监控服务进行处理
+
+  ## 与其他技能的集成
+
+  ### 在线研究 → 深度研究
+  ```
+  1. 使用Letta web_search查找论文
+  2. 使用download_pdf保存它们
+  3. 等待自动处理
+  4. 使用read_full_article深度阅读论文
+  5. 持续阅读相关论文以填补知识空白
+  6. 使用deep-research工具进行分析和综合
+  ```
+
+  ### 在线研究 → 知识库
+  ```
+  1. web_search (Letta) → 查找论文
+  2. download_pdf → 保存到保险库
+  3. （由监控服务自动处理）
+  4. read_full_article → 深度阅读处理后的论文
+  5. 现在可通过所有知识库工具访问
+  ```
+
+  ### 从外部网页内容学习
+  ```
+  1. web_search (Letta) → 查找网页文章、博客、文档
+  2. fetch_webpage (Letta) → 阅读完整内容
+  3. 从文章中学习，做笔记
+  4. 识别理解上的空白
+  5. 持续阅读更多来源，直到理解
+  ```
+
+  ## 快速参考
+
+  ### 最快路径：arXiv论文
+  ```
+  download_pdf(source="2401.12345")  # 仅arXiv ID
+  → 由监控服务自动处理
+  ```
+
+  ### 最快路径：DOI
+  ```
+  download_pdf(source="10.1145/xxxxx")
+  → 由监控服务自动处理
+  ```
+
+  ### 最快路径：直接URL
+  ```
+  download_pdf(source="https://arxiv.org/pdf/2401.12345.pdf")
+  → 由监控服务自动处理
+  ```
+
+  ### 发现工作流程
+  ```
+  web_search (Letta) → locate_pdf → download_pdf → （自动处理）
+  ```
+
+  ## 总结
+
+  此技能使您能够：
+  1. **定位**来自DOI、arXiv ID或标题的PDF
+  2. **下载**论文直接到保险库
+  3. **自动处理**通过PDF监控服务
+
+  将此技能作为任何研究工作流程的**第一步**，这些工作流程需要访问尚未在知识库中的论文。一旦论文被下载和处理，切换到`deep-research`或`knowledge-base-qa`技能进行分析。

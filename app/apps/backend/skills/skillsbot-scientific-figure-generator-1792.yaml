@@ -1,0 +1,81 @@
+name: skillsbot-scientific-figure-generator-1792
+display_name: scientific-figure-generator
+display_name_zh: 科研绘图生成器
+description: scientific-figure-generator from SkillsBot scientific academic catalog
+description_zh: 科研绘图生成器是一款专为科研人员设计的工具，能够自动生成符合国际期刊发表标准的科学图表。该工具支持统计图表、多面板组合图等多种可视化类型，内置各大期刊的格式模板和配色方案，确保图表在学术严谨性和视觉美观性上达到发表要求。
+type: draw
+categories:
+  - scientific-figures
+category_zh: 科研绘图
+subcategory: statistical-plots
+subcategory_zh: 实验数据图
+trigger: manual
+auto_recommend: false
+tags:
+  - 科研绘图
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1792
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1792
+upstream_name: scientific-figure-generator
+upstream_commit: ""
+prompt: |
+  ---
+  name: scientific-figure-generator
+  description: 用于生成符合发表质量的科学图表
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+  metadata:
+    specialization: scientific-discovery
+    domain: science
+    category: Visualization
+    skill-id: SK-SCIDISC-021
+  ---
+
+  # 科学图表生成技能
+
+  ## 目的
+
+  遵循期刊标准和数据可视化最佳实践，生成符合发表质量的科学图表。
+
+  ## 能力
+
+  - 创建统计图表
+  - 生成多面板图表
+  - 应用期刊格式
+  - 导出多种格式
+  - 确保可访问性
+  - 添加注释
+
+  ## 使用指南
+
+  1. 准备数据
+  2. 选择可视化类型
+  3. 应用样式
+  4. 添加注释
+  5. 检查可访问性
+  6. 导出图表
+
+  ## 流程集成
+
+  在科学发现工作流程中用于：
+  - 稿件准备
+  - 演示文稿制作
+  - 数据交流
+  - 结果可视化
+
+  ## 配置
+
+  - 期刊样式指南
+  - 配色方案
+  - 分辨率设置
+  - 导出格式
+
+  ## 输出成果
+
+  - 发表图表
+  - 多面板布局
+  - 矢量图形
+  - 图例说明

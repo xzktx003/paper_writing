@@ -1,0 +1,104 @@
+name: skillsbot-loogle-search-9965
+display_name: loogle-search
+display_name_zh: Loogle搜索
+description: loogle-search from SkillsBot scientific academic catalog
+description_zh: Loogle 搜索是一个专门用于在 Mathlib 数学库中通过类型签名模式快速查找引理的工具。它适用于 Lean 证明助手的用户，帮助进行类型导向的证明搜索和引理发现，提升数学证明效率。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/9965
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/9965
+upstream_name: loogle-search
+upstream_commit: ""
+prompt: |-
+  ---
+  name: loogle-search
+  description: 通过类型签名模式在Mathlib中搜索引理
+  ---
+  # Loogle 搜索 - Mathlib 类型签名搜索
+
+  通过类型签名模式在Mathlib中搜索引理。
+
+  ## 使用时机
+
+  - 当您知道类型形状但不知道名称时查找引理
+  - 发现某个类型可用的引理（例如，所有`Nontrivial ↔ _`引理）
+  - 类型导向的证明搜索
+
+  ## 命令
+
+  ```bash
+  # 通过模式搜索（如果服务器运行，则使用服务器，否则直接）
+  loogle-search "Nontrivial _ ↔ _"
+  loogle-search "(?a → ?b) → List ?a → List ?b"
+  loogle-search "IsCyclic, center"
+
+  # JSON输出
+  loogle-search "List.map" --json
+
+  # 启动服务器以快速查询（在内存中保持索引）
+  loogle-server &
+  ```
+
+  ## 查询语法
+
+  | 模式 | 含义 |
+  |---------|---------|
+  | `_` | 任何单个类型 |
+  | `?a`, `?b` | 类型变量（相同变量 = 相同类型） |
+  | `Foo, Bar` | 必须同时提到 `Foo` 和 `Bar` |
+  | `Foo.bar` | 精确名称匹配 |
+
+  ## 示例
+
+  ```bash
+  # 查找与Nontrivial和基数相关的引理
+  loogle-search "Nontrivial _ ↔ _ < Fintype.card _"
+
+  # 查找类似map的函数
+  loogle-search "(?a → ?b) → List ?a → List ?b"
+  # → List.map, List.pmap, ...
+
+  # 查找关于循环群和中心的所有内容
+  loogle-search "IsCyclic, center"
+  # → commutative_of_cyclic_center_quotient, ...
+
+  # 查找Fintype.card引理
+  loogle-search "Fintype.card"
+  ```
+
+  ## 性能
+
+  - **服务器运行时**: 每次查询约100-200毫秒
+  - **冷启动（无服务器）**: 每次查询约10秒（加载343MB索引）
+
+  ## 设置
+
+  Loogle必须先构建：
+  ```bash
+  cd ~/tools/loogle && lake build
+  lake build LoogleMathlibCache  # 或使用 --write-index
+  ```
+
+  ## 与证明集成
+
+  在Lean证明中卡住时：
+  1. 识别需要的类型形状
+  2. 查询Loogle以找到引理名称
+  3. 在证明中应用该引理
+
+  ```lean
+  -- 目标：从1 < Fintype.card G得到Nontrivial G
+  -- 查询：loogle-search "Nontrivial _ ↔ 1 < Fintype.card _"
+  -- 找到：Fintype.one_lt_card_iff_nontrivial
+  exact Fintype.one_lt_card_iff_nontrivial.mpr h
+  ```

@@ -1,0 +1,60 @@
+name: skillsbot-content-research-writer-11331
+display_name: content-research-writer
+display_name_zh: 内容研究撰稿人
+description: content-research-writer from SkillsBot scientific academic catalog
+description_zh: 此技能用于彻底研究主题并撰写高质量内容，包括博客文章、技术文档和教育材料，确保引用准确，适合SEO优化。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: full-paper
+subcategory_zh: 整篇论文
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/11331
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/11331
+upstream_name: content-research-writer
+upstream_commit: ""
+prompt: |-
+  ---
+  name: content-research-writer
+  description: 彻底研究主题并撰写全面、结构良好的内容，包括文章、文档、博客文章和技术写作，带有适当的引用和来源。在撰写博客文章、创建技术文章、研究主题、收集来源、编写文档、创建教育内容或产生研究支持的内容时使用。
+  ---
+
+  # 内容研究撰稿人 - 研究支持型写作
+
+  ## 何时使用此技能
+
+  - 撰写博客文章和文章
+  - 创建技术文档
+  - 全面研究主题
+  - 收集可信的来源和引用
+  - 撰写教育内容
+  - 产生研究支持的写作
+  - 创建白皮书和报告
+  - 撰写案例研究
+  - 开发内容策略
+  - 创建SEO优化内容
+  - 撰写教程和指南
+  - 产生思想领导力内容
+
+  ## 何时使用此技能
+
+  - 撰写带引用的技术内容。
+  - 当处理相关任务或功能时
+  - 在需要此专业知识的开发过程中
+
+  **使用时机**: 撰写带引用的技术内容。
+
+  ## 过程
+  1. 研究来源
+  2. 提取关键点
+  3. 添加引用
+  4. 审查准确性
+
+  ## 资源
+  - [技术写作指南](https://developers.google.com/tech-writing)

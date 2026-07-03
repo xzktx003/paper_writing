@@ -1,0 +1,114 @@
+name: skillsbot-sem-eds-analyzer-1692
+display_name: sem-eds-analyzer
+display_name_zh: SEM-EDS分析器
+description: sem-eds-analyzer from SkillsBot scientific academic catalog
+description_zh: SEM-EDS 分析器是一个用于材料科学领域的专业技能，专门通过扫描电子显微镜（SEM）和能量色散X射线光谱（EDS）技术，对纳米材料等样品的微观形貌和元素组成进行自动化、高精度的表征与分析。核心功能包括SEM图像分析、EDS谱图定量、元素分布成像、颗粒尺寸测量及表面形貌评估。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: baseline-ablation
+subcategory_zh: 基线、消融与评估
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1692
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1692
+upstream_name: sem-eds-analyzer
+upstream_commit: ""
+prompt: |-
+  ---
+  name: sem-eds-analyzer
+  description: 扫描电子显微镜与能谱分析技能，用于形貌和元素分析
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 显微表征
+    priority: high
+    phase: 6
+    tools-libraries:
+      - AZtec
+      - ESPRIT
+      - NSS
+      - Pathfinder
+  ---
+
+  # SEM-EDS 分析器
+
+  ## 目的
+
+  SEM-EDS 分析器技能提供全面的扫描电子显微镜和能谱分析，用于纳米材料的形貌和元素组成表征。
+
+  ## 能力
+
+  - 自动化 SEM 图像分析
+  - EDS 谱图采集与定量分析
+  - 元素分布图与线扫描
+  - 基于 SEM 图像的颗粒尺寸分析
+  - 表面形貌表征
+  - 截面分析
+
+  ## 使用指南
+
+  ### SEM-EDS 分析
+
+  1. **图像采集**
+     - 针对样品优化加速电压
+     - 选择合适的探测器（二次电子，背散射电子）
+     - 最小化荷电效应
+
+  2. **EDS 分析**
+     - 在合适的千伏下采集谱图
+     - 应用 ZAF 校正
+     - 生成元素分布图
+
+  3. **定量分析**
+     - 使用无标样或有标样方法
+     - 报告检测限
+     - 考虑基体效应
+
+  ## 流程集成
+
+  - 多模态纳米材料表征流程
+  - 纳米器件集成工艺流程
+  - 纳米光刻工艺开发
+
+  ## 输入模式
+
+  ```json
+  {
+    "sample_id": "string",
+    "analysis_type": "imaging|eds_point|eds_map|line_scan",
+    "accelerating_voltage": "number (kV)",
+    "elements_of_interest": ["string"]
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "morphology": {
+      "features": ["string"],
+      "measurements": [{"feature": "string", "value": "number", "unit": "string"}]
+    },
+    "composition": [{
+      "element": "string",
+      "weight_percent": "number",
+      "atomic_percent": "number"
+    }],
+    "elemental_maps": [{
+      "element": "string",
+      "image_path": "string"
+    }]
+  }
+  ```

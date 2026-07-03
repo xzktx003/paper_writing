@@ -1,0 +1,81 @@
+name: skillsbot-protocol-builder-1787
+display_name: protocol-builder
+display_name_zh: 研究方案构建器
+description: protocol-builder from SkillsBot scientific academic catalog
+description_zh: 研究方案构建器是一款专注于科学实验设计的AI技能工具，用于自动化生成标准化、可重复的研究方案。它提供结构化模板、方法学设计、伦理合规检查和格式导出功能，服务于科研人员、学术机构和企业研发团队。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1787
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1787
+upstream_name: protocol-builder
+upstream_commit: ""
+prompt: |
+  ---
+  name: protocol-builder
+  description: 构建标准化研究方案的技能
+  allowed-tools:
+    - Read
+    - Write
+    - Bash
+  metadata:
+    specialization: 科学发现
+    domain: 科学
+    category: 实验设计
+    skill-id: SK-SCIDISC-015
+  ---
+
+  # 研究方案构建器技能
+
+  ## 目的
+
+  遵循可重复性、清晰性和完整性的最佳实践，构建标准化的研究方案。
+
+  ## 能力
+
+  - 生成方案模板
+  - 结构化方法学部分
+  - 包含必需元素
+  - 格式化为注册要求
+  - 支持多领域
+  - 以标准格式导出
+
+  ## 使用指南
+
+  1. 选择方案类型
+  2. 定义研究参数
+  3. 结构化方法学
+  4. 包含所有元素
+  5. 审查完整性
+  6. 导出用于注册
+
+  ## 流程集成
+
+  在科学发现工作流中用于：
+  - 研究注册
+  - 资助申请
+  - 伦理提交
+  - 方案发表
+
+  ## 配置
+
+  - 方案模板
+  - 必需章节
+  - 格式标准
+  - 导出选项
+
+  ## 输出成果
+
+  - 研究方案
+  - 注册文件
+  - 方法学章节
+  - 方案摘要

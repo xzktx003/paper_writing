@@ -1,0 +1,114 @@
+name: skillsbot-raman-spectroscopy-analyzer-1689
+display_name: raman-spectroscopy-analyzer
+display_name_zh: 拉曼光谱分析仪
+description: raman-spectroscopy-analyzer from SkillsBot scientific academic catalog
+description_zh: 拉曼光谱分析仪是一种用于纳米材料表征的专业技能，通过分析材料的拉曼光谱，实现分子指纹识别、化学结构鉴定、缺陷分析（如碳材料的D/G比）以及化学成像（Mapping）。该技能广泛应用于纳米技术、材料科学、化学分析等领域，支持SERS、共振拉曼等多种高级分析模式，是研究材料结构…
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1689
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1689
+upstream_name: raman-spectroscopy-analyzer
+upstream_commit: ""
+prompt: |-
+  ---
+  name: raman-spectroscopy-analyzer
+  description: 用于纳米材料分子指纹识别、结构表征和化学鉴定的拉曼光谱技能
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 光谱学
+    priority: high
+    phase: 6
+    tools-libraries:
+      - WiRE
+      - LabSpec
+      - Renishaw software
+      - 自定义光谱数据库
+  ---
+
+  # 拉曼光谱分析仪
+
+  ## 目的
+
+  拉曼光谱分析仪技能通过振动光谱提供纳米材料的分子级表征，实现结构识别、缺陷分析和化学成像。
+
+  ## 能力
+
+  - 拉曼光谱采集与处理
+  - 峰位识别与归属
+  - SERS（表面增强拉曼）分析
+  - 拉曼成像与化学成像
+  - 共振拉曼分析
+  - 石墨烯/碳纳米管表征（D/G比）
+
+  ## 使用指南
+
+  ### 拉曼分析
+
+  1. **光谱采集**
+     - 选择合适的激发波长
+     - 优化激光功率以避免样品损伤
+     - 应用基线校正
+
+  2. **峰位分析**
+     - 识别特征峰
+     - 计算峰位比率（碳材料的D/G比）
+     - 评估结晶度
+
+  3. **化学成像**
+     - 生成化学分布图
+     - 识别相分布
+     - 量化异质性
+
+  ## 流程集成
+
+  - 多模态纳米材料表征流程
+  - 原位表征实验设计
+  - 结构-性能关联分析
+
+  ## 输入模式
+
+  ```json
+  {
+    "spectrum_file": "string",
+    "excitation_wavelength": "number (nm)",
+    "material_type": "string",
+    "analysis_type": "identification|mapping|sers"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "identified_peaks": [{
+      "position": "number (cm-1)",
+      "assignment": "string",
+      "intensity": "number"
+    }],
+    "structural_parameters": {
+      "d_g_ratio": "number (for carbon)",
+      "crystallinity": "string"
+    },
+    "chemical_map": {
+      "species": "string",
+      "image_path": "string"
+    }
+  }
+  ```

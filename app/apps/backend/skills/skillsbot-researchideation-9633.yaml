@@ -1,0 +1,220 @@
+name: skillsbot-researchideation-9633
+display_name: ResearchIdeation
+display_name_zh: 研究构思
+description: ResearchIdeation from SkillsBot scientific academic catalog
+description_zh: 此技能支持研究项目启动的完整工作流程，包括使用5W1H框架进行想法头脑风暴、系统化文献回顾、缺口分析、研究问题定义、方法选择和详细研究计划制定。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/9633
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/9633
+upstream_name: ResearchIdeation
+upstream_commit: ""
+prompt: |
+  ---
+  名称：研究构思
+  描述：此技能应用于当用户要求“头脑风暴研究想法”、“使用5W1H框架”、“识别研究缺口”、“进行缺口分析”、“启动研究项目”、“进行文献回顾”、“定义研究问题”、“选择研究方法”、“计划研究”或提及研究项目启动阶段时。提供从想法生成到计划的研究启动工作流程的全面指导。
+  版本：0.1.0
+  ---
+
+  # 研究构思
+
+  支持研究项目启动阶段的完整工作流程，从文献回顾到研究问题定义、方法选择和研究计划制定。
+
+  ## 核心功能
+
+  ### 1. 想法头脑风暴（5W1H框架）
+
+  使用5W1H框架系统化头脑风暴研究想法：
+  - **什么**：研究什么问题或现象
+  - **为什么**：为什么这个问题重要
+  - **谁**：目标受众和利益相关者
+  - **何时**：研究的时间范围和背景
+  - **何地**：应用场景和领域
+  - **如何**：初步研究方法想法
+
+  **与superpowers:brainstorming集成**：可以调用superpowers:brainstorming技能进行交互式头脑风暴，帮助快速生成和评估研究想法。
+
+  ### 2. 文献回顾
+
+  系统化搜索、分析和综合相关文献：
+  - 构建有效的搜索关键词
+  - 通过WebSearch在学术数据库（如arXiv、Google Scholar等）中搜索
+  - 筛选和评估论文质量
+  - 识别研究趋势和缺口
+  - 生成结构化文献回顾
+  - **Zotero集成**：通过DOI自动将论文添加到Zotero，按主题组织到收藏集中，并为全文阅读自动附加开放获取PDF
+
+  ### 3. 缺口分析
+
+  系统化识别和评估研究缺口：
+  - **文献缺口**：识别尚未充分研究的主题或问题
+  - **方法论缺口**：发现现有方法的局限性和改进机会
+  - **应用缺口**：识别理论到实践转移的机会
+  - **跨学科缺口**：发现不同领域交叉的研究机会
+  - **时间缺口**：识别随时间变化产生的新研究需求
+
+  **分析维度**：
+  - 研究主题覆盖范围
+  - 现有方法优劣势比较
+  - 实验设置完整性
+  - 数据集和基准可用性
+  - 理论与实践之间的差距
+
+  ### 4. 研究问题定义
+
+  基于文献分析制定具体研究问题：
+  - 识别研究缺口和机会
+  - 应用SMART原则制定问题
+  - 评估重要性、新颖性和可行性
+  - 定义研究目标和预期贡献
+
+  ### 5. 方法选择
+
+  选择合适的研究方法：
+  - 分析现有方法的优劣势
+  - 评估方法适用性
+  - 识别所需技术和资源
+  - 考虑方法可行性
+
+  ### 6. 研究计划
+
+  制定详细研究计划：
+  - 计划研究时间线
+  - 定义里程碑和可交付成果
+  - 识别潜在风险
+  - 评估资源需求
+
+  ## 何时使用
+
+  ### 使用此技能的场景
+
+  在以下情况下使用research-ideation技能：
+
+  1. **启动新研究项目** – 有研究兴趣但尚未明确研究问题
+  2. **文献回顾** – 需要系统化理解研究领域
+  3. **研究问题制定** – 需要将模糊想法转化为具体研究问题
+  4. **方法选择** – 需要选择合适的研究方法和技术方法
+  5. **研究计划** – 需要计划研究时间线和资源
+
+  ### 典型工作流程
+
+  ```
+  研究兴趣 → 想法头脑风暴（5W1H） → 文献回顾 → 缺口分析 → 定义问题 → 选择方法 → 创建计划
+  ```
+
+  **输出文件**：
+  - `literature-review.md` – 结构化文献回顾
+  - `research-proposal.md` – 研究提案（包括问题、方法、计划）
+  - `references.bib` – BibTeX格式的参考文献
+  - 包含组织化论文和PDF的Zotero收藏集
+
+  ## 与其他系统集成
+
+  ### 完整研究工作流程
+
+  ```
+  research-ideation（研究启动）
+      ↓
+  实验执行（由用户完成）
+      ↓
+  results-analysis（结果分析）
+      ↓
+  ml-paper-writing（论文写作）
+  ```
+
+  ### 数据流
+
+  - **research-ideation输出** → 指导实验设计和方法选择
+  - **实验结果** → results-analysis用于统计分析
+  - **分析结果** → ml-paper-writing的相关工作和方法部分
+
+  ### Zotero集成
+
+  通过Zotero MCP服务器，research-ideation工作流程自动化文献管理：
+
+  - **论文发现**：WebSearch在学术数据库中查找相关论文
+  - **自动导入**：从搜索结果中提取DOI，使用`add_items_by_doi`添加带完整元数据的论文
+  - **收藏集组织**：`create_collection`创建基于主题的收藏集，包含标准子收藏集（核心论文、方法、应用、基准、待读）
+  - **PDF附件**：`find_and_attach_pdfs`通过Unpaywall自动查找和附加开放获取PDF
+  - **全文阅读**：`get_item_fulltext`读取索引PDF内容进行分析和笔记记录
+  - **库搜索**：`search_library`和`get_collection_items`浏览现有论文以避免重复
+
+  ### 关键配置
+
+  - **文献搜索范围**：默认最近3年的论文，可配置
+  - **输出格式**：Markdown格式，便于编辑和版本控制
+  - **引文管理**：生成BibTeX格式的参考文献
+  - **Zotero收藏集命名**：`Research-{topic}-{YYYY}`格式
+  - **PDF自动附加**：默认启用，通过Unpaywall用于开放获取论文
+
+  ## 附加资源
+
+  ### 参考文件
+
+  详细方法指南，按需加载：
+
+  - **`references/5w1h-framework.md`** – 5W1H框架指南
+    - 什么、为什么、谁、何时、何地、如何 – 六个维度
+    - 系统化头脑风暴研究想法的方法
+    - 与superpowers:brainstorming集成
+    - 使用示例和最佳实践
+
+  - **`references/literature-search-strategies.md`** – 文献搜索策略
+    - 关键词构建技术
+    - 学术数据库选择（arXiv、Google Scholar）
+    - 搜索提示和筛选标准
+    - 论文质量评估方法
+    - DOI提取和Zotero自动导入工作流程
+
+  - **`references/zotero-integration-guide.md`** – Zotero MCP集成指南
+    - 可用Zotero MCP工具（浏览、添加、引用）
+    - 收藏集组织策略和命名约定
+    - 自动化工作流程：WebSearch → DOI → Zotero导入 → PDF附加
+    - 全文阅读和结构化笔记记录
+    - 常见问题和故障排除
+
+  - **`references/gap-analysis-guide.md`** – 缺口分析指南
+    - 5种缺口分析类型（文献、方法论、应用、跨学科、时间）
+    - 5个分析维度
+    - 系统化识别研究机会的方法
+    - 使用示例和最佳实践
+
+  - **`references/research-question-formulation.md`** – 研究问题制定
+    - 应用SMART原则
+    - 问题类型分类（探索性、验证性、应用性）
+    - 评估标准（重要性、新颖性、可行性）
+    - 定义研究目标和贡献
+
+  - **`references/method-selection-guide.md`** – 方法选择指南
+    - 常见研究方法分类
+    - 方法适用性分析
+    - 优劣势比较
+    - 资源需求评估
+
+  - **`references/research-planning.md`** – 研究计划
+    - 时间线计划方法
+    - 里程碑定义技术
+    - 风险识别和缓解
+    - 资源分配策略
+
+  ### 示例文件
+
+  完整工作示例：
+
+  - **`examples/example-literature-review.md`** – 文献回顾示例
+    - 展示结构化文献回顾格式
+    - 包括研究趋势分析和缺口识别
+
+  - **`examples/example-research-proposal.md`** – 研究提案示例
+    - 展示完整研究提案结构
+    - 包括问题、方法和计划的完整示例

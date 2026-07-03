@@ -1,0 +1,107 @@
+name: skillsbot-survey-design-administration-1907
+display_name: survey-design-administration
+display_name_zh: 调查设计与实施
+description: survey-design-administration from SkillsBot scientific academic catalog
+description_zh: 调查设计与实施技能专注于开发高效问卷、制定科学抽样策略、优化数据收集过程，以支持严谨的社会科学和人口研究。核心关键词包括：问卷设计、抽样方法、数据收集、应答率优化、调查研究、社会调查、人口研究、质量控制。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1907
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1907
+upstream_name: survey-design-administration
+upstream_commit: ""
+prompt: |
+  ---
+  名称: 调查设计与实施
+  描述: 开发调查工具，实施抽样策略，优化应答率，管理多模式数据收集
+  允许使用的工具:
+    - 读取
+    - 写入
+    - 编辑
+    - 搜索
+    - 全局匹配
+    - Bash
+  ---
+
+  # 调查设计与实施技能
+
+  为基于人群的研究开发调查工具，实施抽样策略并管理数据收集。
+
+  ## 概述
+
+  调查设计与实施技能能够为严谨的基于人群的社会科学研究开发调查工具，实施抽样策略，优化应答率，并管理多模式数据收集。
+
+  ## 能力
+
+  ### 问卷设计
+  - 问题构建
+  - 应答量表设计
+  - 问题排序
+  - 跳转逻辑实施
+  - 认知测试
+
+  ### 抽样方法
+  - 概率抽样
+  - 分层抽样
+  - 整群抽样
+  - 多阶段抽样
+  - 非概率替代方案
+
+  ### 应答优化
+  - 联系策略
+  - 激励设计
+  - 跟进程序
+  - 无应答分析
+  - 加权调整
+
+  ### 多模式实施
+  - 网络调查设计
+  - 电话调查协议
+  - 邮件调查程序
+  - 混合模式策略
+  - 模式效应评估
+
+  ### 质量控制
+  - 数据清洗
+  - 应答验证
+  - 项目无应答处理
+  - 偏倚评估
+  - 文档标准
+
+  ## 使用指南
+
+  ### 何时使用
+  - 收集人群数据
+  - 测量态度/行为
+  - 进行需求评估
+  - 评估项目
+  - 检验假设
+
+  ### 最佳实践
+  - 试点测试工具
+  - 记录程序
+  - 监控应答率
+  - 处理无应答
+  - 妥善归档数据
+
+  ### 集成点
+  - 心理测量评估技能
+  - 定量方法技能
+  - 研究伦理与IRB技能
+  - 混合方法集成技能
+
+  ## 参考文献
+
+  - 调查研究设计流程
+  - 调查实施流程
+  - 量表开发与验证流程
+  - 调查研究主管智能体

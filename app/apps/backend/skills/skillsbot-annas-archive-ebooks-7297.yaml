@@ -1,0 +1,203 @@
+name: skillsbot-annas-archive-ebooks-7297
+display_name: annas-archive-ebooks
+display_name_zh: 安娜档案馆电子书查找与下载
+description: annas-archive-ebooks from SkillsBot scientific academic catalog
+description_zh: 搜索和下载Anna's Archive平台上的电子书，支持PDF、EPUB等多种格式，适用于图书查找、内容引用和下载需求。关键词包括：电子书、图书查找、下载、PDF、EPUB、安娜档案馆、文献检索。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/7297
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/7297
+upstream_name: annas-archive-ebooks
+upstream_commit: ""
+prompt: |-
+  ---
+  name: 安娜档案馆电子书查找与下载
+  description: 当需要查找书籍内容、通过标题/作者查找书籍、下载电子书或引用已出版书籍的材料时使用。在书籍查找、电子书下载、“查找书籍”、“获取PDF/EPUB”时触发。下载生成PDF/EPUB/MOBI文件 - 使用ebook-extractor技能转换为文本。
+  ---
+
+  # Anna's Archive 电子书查找与下载
+
+  ## 概述
+
+  搜索和下载Anna's Archive中的电子书，该网站索引了数百万本书籍，覆盖多种格式（PDF、EPUB、MOBI等）。
+
+  ## 前提条件
+
+  **重要：下载需要Anna's Archive会员密钥。**
+
+  使用下载功能前，用户必须：
+  1. 拥有Anna's Archive会员（https://annas-archive.org/donate）
+  2. 设置API密钥：`export ANNAS_ARCHIVE_KEY="your-key"`
+
+  密钥在成为会员后的账户设置中找到。搜索功能无需密钥，但下载会失败。
+
+  **如果未设置密钥：** 告知用户需要设置`ANNAS_ARCHIVE_KEY`并提供上述设置说明。
+
+  ## 何时使用
+
+  - 用户要求查找/下载书籍
+  - 需要查找已出版书籍的内容
+  - 搜索特定版本或格式
+  - “获取Clean Code的PDF”
+  - “查找Design Patterns的最新版本”
+
+  ## 快速参考
+
+  | 任务 | 命令 |
+  |------|---------|
+  | 搜索 | `python3 annas.py search "query" --format pdf` |
+  | 获取详情 | `python3 annas.py details <md5>` |
+  | 下载 | `python3 annas.py download <md5> --output /path/` |
+  | 验证匹配 | `python3 annas.py search "title author" --verify "expected title"` |
+
+  ## 环境设置
+
+  ```bash
+  export ANNAS_ARCHIVE_KEY="your-membership-key"
+  ```
+
+  密钥在您的Anna's Archive账户设置中找到。
+
+  ## 工作流程
+
+  ```dot
+  digraph download_flow {
+      rankdir=TB;
+      node [shape=box];
+
+      search [label="按标题/作者搜索"];
+      verify [label="验证正确书籍\n（检查标题、作者、年份）"];
+      multiple [label="多个版本？" shape=diamond];
+      prefer_recent [label="首选最新版本\n除非指定特定版本"];
+      format_ok [label="首选格式可用？" shape=diamond];
+      download [label="通过快速API下载"];
+      convert [label="使用ebook-extractor\n转换为文本"];
+
+      search -> verify;
+      verify -> multiple;
+      multiple -> prefer_recent [label="是"];
+      multiple -> format_ok [label="否"];
+      prefer_recent -> format_ok;
+      format_ok -> download [label="是"];
+      format_ok -> search [label="否 - 尝试不同格式"];
+      download -> convert;
+  }
+  ```
+
+  ## 常见模式
+
+  ### 查找并下载书籍
+  ```bash
+  # 带格式偏好搜索
+  python3 annas.py search "Clean Code Robert Martin" --format pdf --limit 5
+
+  # 验证是正确书籍，获取详情
+  python3 annas.py details adb5293cf369256a883718e71d3771c3
+
+  # 下载
+  python3 annas.py download adb5293cf369256a883718e71d3771c3 --output ./books/
+  ```
+
+  ### 处理多个版本
+  当搜索返回多个版本时：
+  1. 检查年份 - 首选最新版本，除非用户指定版本
+  2. 检查格式 - 匹配用户偏好（pdf/epub）
+  3. 验证作者完全匹配
+
+  ### 格式优先级
+  用户未指定时的默认优先级：`pdf > epub > mobi > azw3 > djvu`
+
+  ## API 详情
+
+  **搜索端点：** `https://annas-archive.org/search`
+  - `q` - 查询字符串
+  - `ext` - 格式过滤器（pdf, epub, mobi, azw3, djvu）
+  - `sort` - `year_desc` 为最新优先
+
+  **快速下载API：** `https://annas-archive.org/dyn/api/fast_download.json`
+  - `md5` - 书籍标识符
+  - `key` - 来自 ANNAS_ARCHIVE_KEY 环境变量
+
+  ## 常见错误
+
+  | 错误 | 修复 |
+  |---------|-----|
+  | 未设置密钥 | 检查 `echo $ANNAS_ARCHIVE_KEY` |
+  | 错误版本 | 使用 `--verify` 标志与预期标题 |
+  | 格式不匹配 | 明确设置 `--format` |
+  | 书籍未找到 | 尝试较短查询，作者名称变体 |
+
+  ## 转换为文本
+
+  下载的文件保持其原始格式（PDF, EPUB, MOBI等）。要转换为纯文本进行分析或处理，请在下载后使用 **ebook-extractor** 技能。
+
+  典型工作流程：
+  1. 用此技能下载 → `books/Clean_Code.pdf`
+  2. 用ebook-extractor转换 → `books/Clean_Code.txt`
+
+  ## 镜像回退
+
+  如果主域名不可用，脚本会自动尝试多个镜像域名：
+  - annas-archive.org (主域名)
+  - annas-archive.li
+  - annas-archive.se
+  - annas-archive.in
+  - annas-archive.pm
+
+  第一个工作的镜像在会话中被缓存。当使用回退时，您会在stderr中看到 `Using mirror: <domain>`。
+
+  ## 错误处理
+
+  - **“无效md5”** - MD5哈希格式错误或不存在
+  - **“不是会员”** - 密钥无效或过期
+  - **无结果** - 扩大搜索词，尝试仅作者搜索
+  - **“无法连接到任何镜像”** - 所有镜像都宕机，稍后重试
+
+  ## 故障排除
+
+  ### macOS上的SSL证书错误
+
+  如果看到此错误：
+  ```
+  [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate
+  ```
+
+  这是因为Python在macOS上找不到系统的CA证书包。
+
+  **快速修复：**
+
+  1. 安装certifi：
+     ```bash
+     pip3 install certifi
+     ```
+
+  2. 找到您的证书路径：
+     ```bash
+     python3 -c "import certifi; print(certifi.where())"
+     ```
+
+  3. 添加到 `~/.zshrc`：
+     ```bash
+     export SSL_CERT_FILE=/path/from/step/2/cacert.pem
+     ```
+
+  4. 重新加载shell：`source ~/.zshrc`
+
+  **验证是否工作：**
+  ```bash
+  python3 -c "import urllib.request; urllib.request.urlopen('https://google.com')"
+  ```
+
+  **为何发生：** macOS使用Keychain管理证书，但Python默认不使用它。框架安装（如 `/Library/Frameworks/Python.framework`）通常缺少证书配置。
+
+  **不要** 使用 `verify=False` 或 `PYTHONHTTPSVERIFY=0` - 这会完全禁用SSL，不安全。

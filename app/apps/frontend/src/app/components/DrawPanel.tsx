@@ -423,6 +423,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
           paperContent: state.paperContent,
           figureDescription: state.figureDescription,
           ragContext: figureContext,
+          selectedSkills,
         }),
       });
 

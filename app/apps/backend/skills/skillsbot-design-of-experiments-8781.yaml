@@ -1,0 +1,714 @@
+name: skillsbot-design-of-experiments-8781
+display_name: design-of-experiments
+display_name_zh: Python实验设计专家指导
+description: design-of-experiments from SkillsBot scientific academic catalog
+description_zh: 这个技能提供实验设计（DOE）的全面专家指导，专注于Python实现。它帮助用户通过交互式问题驱动的方法选择最佳实验设计策略，包括经典DOE（如因子实验和响应面）、贝叶斯优化、模型驱动设计和主动学习，以最大化实验效率和信息增益。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: research-question
+subcategory_zh: 研究问题与假设
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/8781
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/8781
+upstream_name: design-of-experiments
+upstream_commit: ""
+prompt: |
+  ---
+  名称: 实验设计
+  描述: 用于Python中实验设计（DOE）的专家指导 - 交互式目标驱动设计选择、经典DOE（因子实验、响应面、筛选）、基于高斯过程的贝叶斯优化、模型驱动最优设计、主动学习和顺序实验；包括pyDOE3、pycse、GPyOpt、scikit-optimize、statsmodels
+  允许工具: ["*"]
+  ---
+
+  # 实验设计（DOE） - 交互式专家
+
+  ## 概述
+
+  通过**交互式、目标驱动的指导**掌握实验设计，询问正确的问题以推荐适合您情况的最佳方法。此技能涵盖经典DOE、贝叶斯优化、模型驱动设计和主动学习，帮助您在批量和顺序策略、筛选和优化、探索和利用之间做出选择。
+
+  **核心价值：** 不要从方法开始，从问题开始。根据您的目标、预算和约束，获得个性化的实验设计策略推荐，以最大化每个实验的信息增益。
+
+  ## 关键：从问题开始，而非方法
+
+  **当用户提到DOE或实验设计时，首先询问以下问题：**
+
+  ### 主要问题（推荐前询问）：
+
+  1. **“您的主要目标是什么？”**
+     - **筛选**：识别哪些因素重要（从多因素到少数重要因素）
+     - **优化**：为已知因素找到最佳设置
+     - **探索**：理解系统/建立模型
+     - **模型区分**：在竞争模型之间选择
+     - **稳健性**：最小化对噪声的敏感性
+
+  2. **“您能顺序运行实验，还是必须批量进行？”**
+     - **顺序**：运行一个（或几个），获取结果，决定下一个实验
+     - **批量**：必须提前计划所有实验
+     - **混合**：顺序与偶尔批量结合
+
+  3. **“每个实验的成本如何？”**
+     - **非常昂贵**：>$1000 或 >1 天每个实验
+     - **中等**：$100-$1000 或几小时每个实验
+     - **便宜**：<$100 或几分钟每个实验
+
+  4. **“您调查多少个因素？”**
+     - **1-5 个因素**：全因子实验、响应面可行
+     - **6-15 个因素**：需要筛选或分数设计
+     - **>15 个因素**：确定性筛选设计、需要正则化
+
+  5. **“您有先验知识、现有数据或机制模型吗？”**
+     - **有模型**：使用模型驱动的最优设计
+     - **有数据**：预热启动贝叶斯优化
+     - **无知识**：需要探索、空间填充设计
+
+  ### 根据答案推荐：
+
+  ```
+  顺序 + 昂贵 + 未知地形
+      → 贝叶斯优化（高斯过程 + 期望改进）
+
+  顺序 + 有模型 + 参数估计目标
+      → 模型驱动顺序最优设计
+
+  仅批量 + 筛选目标 + 多因素
+      → 分数因子实验或确定性筛选设计
+
+  仅批量 + 优化 + 少因素
+      → 中心复合设计或 Box-Behnken
+
+  顺序 + 中等成本 + 需要模型
+      → 主动学习与高斯过程
+
+  仅批量 + 无先验知识 + 探索
+      → 拉丁超立方采样
+  ```
+
+  ## 快速决策树
+
+  ```
+  实验能以顺序反馈运行吗？
+  │
+  ├─ 是（顺序可能）
+  │   │
+  │   ├─ 昂贵实验（>$1000 或 >1 天每个）？
+  │   │   ├─ 是 → 贝叶斯优化
+  │   │   │        • 优化用期望改进
+  │   │   │        • 探索用上置信边界
+  │   │   │        • 工具：GPyOpt、scikit-optimize、BoTorch
+  │   │   │
+  │   │   └─ 否 → 有模型？
+  │   │       ├─ 是 → 模型驱动顺序设计
+  │   │       │        • 参数估计用D最优
+  │   │       │        • 随参数学习更新设计
+  │   │       │
+  │   │       └─ 否 → 主动学习
+  │   │                • 高斯过程与不确定性采样
+  │   │                • 工具：modAL、自定义GP
+  │   │
+  └─ 否（仅批量）
+      │
+      ├─ 您的目标是什么？
+      │   │
+      │   ├─ 筛选（识别重要因素）
+      │   │   ├─ <20 次运行可用 → Plackett-Burman、分数因子实验
+      │   │   ├─ 20-50 次运行 → 确定性筛选设计
+      │   │   └─ 工具：pyDOE3、dexpy
+      │   │
+      │   ├─ 优化（找到最佳设置）
+      │   │   ├─ 2-5 个因素 → 中心复合设计、Box-Behnken
+      │   │   ├─ >5 个因素 → 顺序筛选 → 然后优化
+      │   │   ├─ 有模型 → D最优或I最优
+      │   │   └─ 工具：pyDOE3、pycse、statsmodels
+      │   │
+      │   ├─ 探索（理解系统）
+      │   │   ├─ 无先验 → 拉丁超立方采样
+      │   │   ├─ 建立代理模型 → 空间填充 + 建模
+      │   │   └─ 工具：pyDOE3、pycse、scipy
+      │   │
+      │   └─ 稳健性（最小化变异性）
+      │       └─ 控制 + 噪声因素 → Taguchi / 稳健参数设计
+  ```
+
+  ## 何时使用每种方法
+
+  ### 经典DOE（批量实验）
+
+  **使用时：**
+  - 必须提前计划所有实验
+  - 系统理解良好或标准优化
+  - 中等数量因素（<15）
+  - 实验足够便宜以进行全面覆盖
+
+  **最适合：**
+  - 筛选多因素（Plackett-Burman、分数因子实验）
+  - 响应面建模（CCD、Box-Behnken）
+  - 标准过程优化
+  - 教学/学习DOE概念
+
+  **工具：** pyDOE3、dexpy、pycse、statsmodels
+
+  ### 贝叶斯优化（顺序）
+
+  **使用时：**
+  - 可以一次运行一个实验（或小批量）
+  - 实验昂贵（时间、金钱、资源）
+  - 黑盒系统（无机制模型）
+  - 希望最小化总实验次数
+
+  **最适合：**
+  - 优化昂贵过程（$1000+ 每次运行）
+  - 材料发现、药物筛选
+  - ML模型超参数调优
+  - 自主实验 / 自驱动实验室
+
+  **工具：** GPyOpt、scikit-optimize、BoTorch、Ax
+
+  ### 模型驱动DOE（最优设计）
+
+  **使用时：**
+  - 有机制或经验模型
+  - 目标是参数估计或模型区分
+  - 希望统计最优实验
+  - 可以基于当前参数估计更新设计
+
+  **最适合：**
+  - 化学动力学（速率常数估计）
+  - 药代动力学（PK参数估计）
+  - 系统生物学（模型校准）
+  - 比较竞争模型
+
+  **工具：** 自定义实现与Fisher信息矩阵、pyoptex
+
+  ### 主动学习（顺序模型构建）
+
+  **使用时：**
+  - 希望高效建立准确代理模型
+  - 可以顺序运行实验
+  - 需要平衡探索和利用
+  - 中等实验成本
+
+  **最适合：**
+  - 复杂地形的自适应采样
+  - 为后续优化建立GP代理模型
+  - 不确定性量化
+  - 智能数据收集
+
+  **工具：** modAL、scikit-learn、GPy
+
+  ## 快速参考表
+
+  | 情况 | 推荐方法 | 关键工具 | 典型运行次数 |
+  |-----------|---------------------|----------|----------------|
+  | 批量, <5 因素, 筛选 | 全/分数因子实验 | pyDOE3 | 8-32 |
+  | 批量, 6-15 因素, 筛选 | Plackett-Burman, DSD | pyDOE3, dexpy | 12-50 |
+  | 批量, 优化, 2-5 因素 | CCD, Box-Behnken | pyDOE3, pycse | 13-50 |
+  | 批量, 探索, 未知 | 拉丁超立方 | pyDOE3, pycse | 10×因素数 |
+  | **顺序, 昂贵, 优化** | **贝叶斯优化** | **GPyOpt, skopt** | **10-50** |
+  | 顺序, 建立模型 | 主动学习 + GP | modAL | 20-100 |
+  | 有机制模型 | 模型驱动D最优 | 自定义FIM | 10-30 |
+  | 参数估计 | D最优, A最优 | pyoptex | 可变 |
+  | 模型区分 | T最优, KL最优 | 自定义 | 10-20 |
+  | 多目标 | 多目标BO | BoTorch | 30-100 |
+  | 混合物组分 | 单纯形设计 | pyDOE3 | 10-30 |
+
+  ## 快速开始示例
+
+  ### 示例 1: 经典响应面（批量）
+
+  **情况：** 优化3个因素，批量实验，中等成本
+
+  ```python
+  import pyDOE3 as pyd
+  import pandas as pd
+
+  # 生成中心复合设计
+  n_factors = 3
+  design = pyd.ccdesign(n_factors, center=(0, 4))  # 带中心点
+
+  # 创建带因素名的DataFrame
+  factors = ['温度', '压力', '催化剂']
+  df = pd.DataFrame(design, columns=factors)
+
+  # 缩放到实际范围
+  ranges = {'温度': (300, 400),
+            '压力': (1, 5),
+            '催化剂': (0.1, 1.0)}
+
+  for factor, (low, high) in ranges.items():
+      df[factor] = df[factor] * (high - low)/2 + (high + low)/2
+
+  print(f"生成 {len(df)} 个实验")
+  print(df.head())
+
+  # 导出供实验室使用
+  df.to_csv('experimental_design.csv', index=False)
+  ```
+
+  **下一步：**
+  1. 运行实验并收集响应
+  2. 使用statsmodels或pycse分析
+  3. 使用拟合模型优化
+
+  ### 示例 2: pycse 响应面
+
+  **情况：** 快速RSM与集成分析
+
+  ```python
+  from pycse import design_sr, analyze_sr, sr_parity
+  import numpy as np
+
+  # 生成设计
+  bounds = np.array([[300, 400],   # 温度
+                     [1, 5],        # 压力
+                     [0.1, 1.0]])   # 催化剂
+
+  design = design_sr(bounds,
+                     inputs=['温度', '压力', '催化剂'],
+                     outputs=['产量'])
+
+  print(design)
+
+  # 运行实验后，添加结果
+  design['产量'] = [78, 82, 75, 88, 91, 85, 79, ...]  # 您的数据
+
+  # 分析
+  anova_table = analyze_sr(design)
+  print(anova_table)
+
+  # 奇偶图（模型拟合）
+  sr_parity(design, show=True)
+  ```
+
+  **优势：** 集成工作流，自动ANOVA，快速可视化
+
+  ### 示例 3: 贝叶斯优化（顺序）
+
+  **情况：** 昂贵实验，4个因素，希望最小化总运行次数
+
+  ```python
+  import numpy as np
+  from skopt import gp_minimize
+  from skopt.space import Real
+  from skopt.plots import plot_convergence
+
+  # 定义参数空间
+  space = [
+      Real(300, 400, name='温度'),
+      Real(1, 5, name='压力'),
+      Real(0.1, 1.0, name='催化剂'),
+      Real(10, 60, name='时间')
+  ]
+
+  # 您的黑盒函数（返回要最小化的值）
+  def expensive_experiment(params):
+      temp, pressure, catalyst, time = params
+
+      # 在此运行实际实验
+      # 目前，模拟
+      yield_value = run_experiment(temp, pressure, catalyst, time)
+
+      return -yield_value  # 最小化负值 = 最大化产量
+
+  # 贝叶斯优化
+  result = gp_minimize(
+      expensive_experiment,
+      space,
+      n_calls=30,          # 最大实验数
+      n_random_starts=5,   # 初始随机探索
+      acq_func='EI',       # 期望改进
+      random_state=42
+  )
+
+  print(f"最佳参数: {result.x}")
+  print(f"最佳产量: {-result.fun:.2f}")
+
+  # 可视化收敛
+  plot_convergence(result)
+  ```
+
+  **工作流：**
+  1. 从5个随机实验开始（探索）
+  2. 拟合GP代理模型
+  3. 建议下一个实验（最大化EI）
+  4. 运行实验，更新模型
+  5. 重复直到收敛
+
+  ### 示例 4: 模型驱动D最优（参数估计）
+
+  **情况：** 有动力学模型，需要估计3个速率常数
+
+  ```python
+  import numpy as np
+  from scipy.optimize import minimize
+  from scipy.linalg import det
+
+  # 您的机制模型
+  def model(t, k1, k2, k3):
+      """浓度 vs 时间模型"""
+      return k1 * (1 - np.exp(-k2 * t)) + k3 * t
+
+  # 给定设计点的Fisher信息矩阵
+  def fisher_information(t_design, k_guess):
+      """计算设计点 t 的FIM"""
+      k1, k2, k3 = k_guess
+
+      # 雅可比矩阵（敏感度矩阵）
+      J = np.zeros((len(t_design), 3))
+
+      for i, t in enumerate(t_design):
+          J[i, 0] = 1 - np.exp(-k2 * t)
+          J[i, 1] = k1 * t * np.exp(-k2 * t)
+          J[i, 2] = t
+
+      # FIM = J^T * J（假设常数方差）
+      FIM = J.T @ J
+      return FIM
+
+  # D最优准则：最大化FIM的行列式
+  def d_optimal_criterion(t_design, k_guess):
+      FIM = fisher_information(t_design, k_guess)
+      return -np.log(det(FIM))  # 最大化行列式 = 最小化 -log(行列式)
+
+  # 找到最优设计点
+  k_initial_guess = [1.0, 0.1, 0.05]
+  n_points = 6
+
+  result = minimize(
+      lambda t: d_optimal_criterion(t, k_initial_guess),
+      x0=np.linspace(0, 100, n_points),
+      bounds=[(0, 100)] * n_points,
+      method='L-BFGS-B'
+  )
+
+  optimal_times = result.x
+  print(f"最优测量时间: {optimal_times}")
+
+  # 在这些时间运行实验
+  # 获取数据后，更新 k_guess，如果顺序则重新优化设计
+  ```
+
+  **顺序工作流：**
+  1. 初始参数猜测
+  2. 计算D最优设计
+  3. 运行实验
+  4. 拟合模型，更新参数估计
+  5. 用新估计重新计算最优设计
+  6. 重复直到参数收敛
+
+  ### 示例 5: 主动学习（建立代理模型）
+
+  **情况：** 希望准确代理模型，可以顺序运行
+
+  ```python
+  from modAL.models import ActiveLearner
+  from modAL.uncertainty import uncertainty_sampling
+  from sklearn.gaussian_process import GaussianProcessRegressor
+  from sklearn.gaussian_process.kernels import RBF
+
+  # 初始随机样本
+  X_initial = np.random.uniform([0, 0], [10, 10], size=(5, 2))
+  y_initial = [expensive_function(x) for x in X_initial]
+
+  # 创建带GP的主动学习器
+  regressor = GaussianProcessRegressor(kernel=RBF())
+  learner = ActiveLearner(
+      estimator=regressor,
+      query_strategy=uncertainty_sampling,  # 在不确定处查询
+      X_training=X_initial,
+      y_training=y_initial
+  )
+
+  # 主动学习循环
+  n_queries = 20
+  for i in range(n_queries):
+      # 查询下一个实验（最高不确定性）
+      query_idx, query_instance = learner.query(X_candidate_pool)
+
+      # 运行实验
+      y_new = expensive_function(query_instance[0])
+
+      # 更新模型
+      learner.teach(query_instance, y_new)
+
+      print(f"迭代 {i+1}: GP 标准差 = {learner.predict(query_instance)[1]:.4f}")
+
+  # 最终模型在 learner.estimator 中
+  ```
+
+  ## 工作流：如何使用此技能
+
+  ### 步骤 1: 回答问题
+
+  开始DOE项目时，预期这些问题：
+
+  1. 您的实验目标是什么？
+  2. 您能顺序运行还是必须批量？
+  3. 实验成本如何？
+  4. 有多少个因素？
+  5. 您有模型或先验数据吗？
+  6. 因素组合有任何约束吗？
+  7. 您的总预算是多少（实验次数）？
+
+  ### 步骤 2: 获取推荐
+
+  基于答案，接收：
+  - **推荐方法** 及理由
+  - **备选方案** 及权衡
+  - **估计运行次数** 需求
+  - **库/工具推荐**
+  - **示例代码** 以开始
+
+  ### 步骤 3: 生成设计
+
+  使用提供代码：
+  - 生成设计矩阵
+  - 可视化因素空间中的设计
+  - 检查设计属性
+  - 导出到CSV供实验室使用
+
+  ### 步骤 4: 运行实验
+
+  按设计执行实验：
+  - 随机化运行顺序（除非顺序）
+  - 记录所有结果
+  - 注意任何偏差或问题
+
+  ### 步骤 5: 分析结果
+
+  用适当方法分析数据：
+  - **经典**：ANOVA、回归、诊断
+  - **贝叶斯**：更新GP、检查收敛
+  - **模型驱动**：拟合模型、评估参数
+
+  ### 步骤 6: 做出决策
+
+  基于分析：
+  - **经典**：优化响应、验证
+  - **贝叶斯**：继续或停止？下一个实验？
+  - **模型驱动**：参数收敛？需要更多数据？
+
+  ## 详细参考
+
+  深入了解特定主题：
+
+  - **references/DESIGN_SELECTION_GUIDE.md** - 完整决策树与问题
+  - **references/CLASSICAL_DOE.md** - 因子实验、RSM、筛选设计
+  - **references/BAYESIAN_OPTIMIZATION.md** - BO理论、获取函数、GP模型
+  - **references/MODEL_DRIVEN_DOE.md** - 最优设计、Fisher信息
+  - **references/ACTIVE_LEARNING.md** - 顺序策略、不确定性采样
+  - **references/ANALYSIS_METHODS.md** - 统计分析、ANOVA、诊断
+  - **references/PYCSE_INTEGRATION.md** - 使用pycse进行RSM工作流
+
+  ## 按行业常见模式
+
+  **化学工程：**
+  - 反应器优化 → CCD 或 贝叶斯优化
+  - 催化剂筛选 → 分数因子实验 → 命中后BO
+  - 过程开发 → 顺序模型驱动DOE
+
+  **材料科学：**
+  - 组成优化 → 混合物设计 或 BO
+  - 性能映射 → 拉丁超立方 + GP代理
+  - 合金发现 → 高通量与主动学习
+
+  **制药：**
+  - 制剂 → 混合物设计、响应面
+  - 剂量优化 → 贝叶斯优化
+  - PK/PD建模 → 模型驱动D最优设计
+
+  **制造业：**
+  - 工艺参数调优 → CCD 或 Box-Behnken
+  - 质量改进 → Taguchi、稳健参数设计
+  - 持续改进 → 顺序BO
+
+  **机器学习：**
+  - 超参数调优 → 贝叶斯优化
+  - 架构搜索 → BO与离散/分类变量
+  - 神经网络训练 → 自适应采样
+
+  ## 安装
+
+  ```bash
+  # 经典DOE
+  pip install pyDOE3          # 因子实验、RSM、LHS
+  pip install dexpy           # 现代DOE库
+
+  # pycse 用于集成RSM
+  pip install pycse
+
+  # 贝叶斯优化
+  pip install scikit-optimize # skopt - 最易用
+  pip install GPyOpt          # 全面BO
+  pip install ax-platform     # Meta的自适应实验
+  # pip install botorch torch # 高级BO（需要PyTorch）
+
+  # 主动学习
+  pip install modAL           # 主动学习框架
+
+  # 高斯过程
+  pip install GPy             # GP模型
+  # scikit-learn 内置GP
+
+  # 分析
+  pip install statsmodels     # ANOVA、回归
+  pip install scipy           # 优化、统计
+  pip install scikit-learn    # ML模型、交叉验证
+
+  # 可视化
+  pip install matplotlib seaborn plotly
+
+  # 敏感性分析
+  pip install SALib
+
+  # 一次性安装所有
+  pip install pyDOE3 dexpy pycse scikit-optimize statsmodels scipy scikit-learn modAL GPy matplotlib seaborn
+  ```
+
+  ## 最佳实践
+
+  ### 1. 始终从问题开始
+
+  **❌ 不要：** “我将使用Box-Behnken设计”
+  **✅ 做：** “我的目标是优化，我有3个因素，我只能批量，所以Box-Behnken合理”
+
+  ### 2. 匹配方法与约束
+
+  - **预算有限** → 贝叶斯优化
+  - **时间有限** → 批量经典DOE
+  - **知识有限** → 空间填充探索
+  - **有模型** → 模型驱动最优设计
+
+  ### 3. 可能时使用顺序
+
+  顺序设计（BO、主动学习、模型驱动）：
+  - **基于结果适应**
+  - **如果收敛则提前停止**
+  - **避免浪费** 实验
+  - **总运行次数** 通常少于批量
+
+  **当批量更好时：**
+  - 并行设备可用
+  - 设置成本主导运行成本
+  - 系统理解良好
+
+  ### 4. 从简单开始，增加复杂性
+
+  **初始阶段：** 简单筛选（分数因子实验、LHS）
+  **精炼：** 聚焦重要因素（RSM、BO）
+  **验证：** 确认运行
+
+  ### 5. 验证假设
+
+  **经典DOE假设：**
+  - 正态残差
+  - 常数方差
+  - 独立观测
+  - 线性/二次模型足够
+
+  **检查诊断：** 残差图、Q-Q图、缺乏拟合检验
+
+  **贝叶斯优化假设：**
+  - GP模型适当
+  - 核选择合理
+  - 足够初始探索
+
+  **检查：** GP后验不确定性、核超参数
+
+  ### 6. 使用确认实验
+
+  找到“最优”后：
+  - 在预测最佳设置处运行额外实验
+  - 验证预测与实际情况匹配
+  - 考虑预测不确定性
+
+  ## 常见陷阱
+
+  ### 1. 使用错误设计类型
+
+  **问题：** 对昂贵实验应用批量RSM
+  **解决方案：** 先问问题，考虑顺序方法
+
+  ### 2. 初始点太少（BO）
+
+  **问题：** GP需要多样数据以建模地形
+  **解决方案：** 从5-10个空间填充点（LHS）开始
+
+  ### 3. 忽略约束
+
+  **问题：** 设计建议不可行实验
+  **解决方案：** 提前指定约束，使用约束优化
+
+  ### 4. 过拟合代理模型
+
+  **问题：** GP拟合噪声，预测差
+  **解决方案：** 交叉验证、保留测试集、正则化
+
+  ### 5. 不随机化运行顺序
+
+  **问题：** 系统效应与因素混淆
+  **解决方案：** 随机化执行顺序（除顺序设计外）
+
+  ### 6. 过早停止（顺序）
+
+  **问题：** 在真正收敛前声明收敛
+  **解决方案：** 使用停止准则（EI < 阈值、GP不确定性低）
+
+  ## 成本效益分析：顺序 vs 批量
+
+  ### 当顺序值得时：
+
+  **昂贵实验：**
+  - 批量CCD：20 次运行 $1000 = $20,000
+  - 顺序BO：15 次运行（提前收敛）= $15,000
+  - **节省：$5,000 + 更好结果**
+
+  **复杂地形：**
+  - 批量可能错过全局最优
+  - 顺序适应发现
+  - **更好最终结果**
+
+  ### 当批量更好时：
+
+  **便宜实验：**
+  - 批量：30 次运行在1天（并行）
+  - 顺序：30 次运行超过30天
+  - **时间节省主导**
+
+  **设置成本：**
+  - 如果设置需要小时，运行时间分钟
+  - 批量摊销设置
+  - **顺序开销太高**
+
+  ## 响应格式
+
+  帮助DOE时，Claude应该：
+
+  1. **先问问题** - 不要假设方法
+  2. **解释推荐** - 为什么此方法适合他们的情况
+  3. **提供完整代码** - 工作示例，而非伪代码
+  4. **展示备选方案** - “BO最佳，但如果必须批量，尝试...”
+  5. **指导工作流** - 设计 → 执行 → 分析 → 优化
+  6. **解释结果** - 统计显著性和实际显著性
+
+  ## 额外资源
+
+  - **pyDOE3 文档：** https://pydoe3.readthedocs.io/
+  - **pycse 示例：** https://kitchingroup.cheme.cmu.edu/pycse/
+  - **scikit-optimize：** https://scikit-optimize.github.io/
+  - **GPyOpt：** https://sheffieldml.github.io/GPyOpt/
+  - **贝叶斯优化书：** https://bayesoptbook.com/
+  - **实验设计（Montgomery）：** 经典教科书
+  - **实验者统计（Box, Hunter, Hunter）：** 全面参考
+
+  ## 相关技能
+
+  - `python-optimization` - DOE后响应优化
+  - `pycse` - 包括回归、ANOVA、置信区间用于分析
+  - `python-multiobjective-optimization` - 多响应优化
+  - `python-plotting` - 结果和诊断可视化

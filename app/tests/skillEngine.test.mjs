@@ -8,7 +8,51 @@ describe('Skill Engine', () => {
   it('loads built-in skills from skills directory', async () => {
     await loadSkills(null);
     const skills = listSkills();
-    expect(skills.length).toBeGreaterThanOrEqual(20);
+    expect(skills.length).toBeGreaterThanOrEqual(390);
+  });
+
+  it('loads the AI/ML-focused open-source YAML migrations without MedSci', async () => {
+    await loadSkills(null);
+    const skills = listSkills();
+    expect(skills.filter(skill => skill.name.startsWith('alterlab-'))).toHaveLength(74);
+    expect(skills.filter(skill => skill.name.startsWith('medsci-'))).toHaveLength(0);
+    expect(skills.filter(skill => skill.name.startsWith('skillsbot-')).length).toBeGreaterThanOrEqual(200);
+    expect(skills.filter(skill => skill.name.startsWith('github-')).length).toBeGreaterThanOrEqual(24);
+
+    expect(getSkill('alterlab-scientific-writing')).toMatchObject({
+      kind: 'yaml',
+      source_license: 'MIT',
+      categories: ['paper-writing'],
+    });
+    expect(getSkill('github-snl-paper-writing-paper-writing')).toMatchObject({
+      kind: 'yaml',
+      source_license: 'MIT',
+      categories: ['paper-writing'],
+    });
+  });
+
+  it('maps migrated Skill references and scripts to the bundled upstream resources', async () => {
+    await loadSkills(null);
+    const skill = getSkill('github-snl-paper-writing-paper-writing');
+    expect(skill.prompt).toContain('# Paper Writing Skill');
+    expect(skill._resourceDir).toContain('/skill-resources/snl-paper-writing');
+
+    const prompt = assemblePrompt({ manualSkills: ['github-snl-paper-writing-paper-writing'] });
+    expect(prompt).toContain('Skill directory:');
+    expect(prompt).toContain('/skill-resources/snl-paper-writing');
+  });
+
+  it('provides Chinese names, Chinese descriptions, and valid academic categories for every Skill', async () => {
+    await loadSkills(null);
+    const categories = new Set(['literature-search', 'experiment-design', 'paper-writing', 'patent-writing', 'scientific-figures', 'academic-conference', 'grant-writing', 'peer-review', 'open-access', 'exploration-discovery']);
+    for (const skill of listSkills()) {
+      expect(skill.display_name_zh, skill.name).toMatch(/\p{Script=Han}/u);
+      expect(skill.description_zh, skill.name).toMatch(/\p{Script=Han}/u);
+      expect(skill.categories?.length, skill.name).toBeGreaterThan(0);
+      expect(skill.categories.every(category => categories.has(category)), skill.name).toBe(true);
+      expect(skill.subcategory, skill.name).toBeTruthy();
+      expect(skill.subcategory_zh, skill.name).toMatch(/\p{Script=Han}/u);
+    }
   });
 
   it('each skill has required fields in listing', async () => {

@@ -1,0 +1,108 @@
+name: skillsbot-philosophical-writing-argumentation-1890
+display_name: philosophical-writing-argumentation
+display_name_zh: 哲学写作与论证
+description: philosophical-writing-argumentation from SkillsBot scientific academic catalog
+description_zh: 哲学写作与论证技能是一个专注于撰写高质量哲学学术文章的专业能力。它帮助用户构建清晰、逻辑严密的论证结构，系统性地预判并回应潜在异议，并恰当地引用和参与现有学术文献。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: full-paper
+subcategory_zh: 整篇论文
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1890
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1890
+upstream_name: philosophical-writing-argumentation
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: 哲学写作与论证
+  描述: 撰写清晰严谨的哲学文章，包含结构良好的论证、对异议的预判，以及对现有文献的恰当学术参与
+  允许工具:
+    - 阅读
+    - 写作
+    - 编辑
+    - 搜索
+    - 全局查找
+    - 命令行
+  ---
+
+  # 哲学写作与论证技能
+
+  撰写严谨的哲学文章，包含清晰的论证、系统的异议处理以及学术参与。
+
+  ## 概述
+
+  哲学写作与论证技能能够撰写清晰、严谨的哲学文章，包含结构良好的论证、对潜在异议的系统性预判、对现有文献的恰当学术参与，并遵守学科惯例。
+
+  ## 能力
+
+  ### 论证构建
+  - 构建清晰的论证结构
+  - 系统地发展前提
+  - 充分支持结论
+  - 保持逻辑有效性
+  - 确保论证的合理性
+
+  ### 异议处理
+  - 预判潜在的异议
+  - 公正地处理反驳论点
+  - 发展回应
+  - 强化原有立场
+  - 承认局限性
+
+  ### 学术参与
+  - 梳理相关文献
+  - 在辩论中定位观点
+  - 恰当引用
+  - 在现有研究基础上发展
+  - 做出原创性贡献
+
+  ### 文章质量
+  - 清晰精确地写作
+  - 避免不必要的术语
+  - 有效组织结构
+  - 保持适当的风格
+  - 仔细编辑
+
+  ### 发表准备
+  - 遵循期刊惯例
+  - 准备摘要
+  - 应对同行评审
+  - 回应审稿人意见
+  - 管理修订过程
+
+  ## 使用指南
+
+  ### 何时使用
+  - 撰写哲学论文
+  - 准备发表
+  - 发展学位论文
+  - 教授哲学写作
+  - 评审手稿
+
+  ### 最佳实践
+  - 首先规划论证结构
+  - 为目标受众清晰写作
+  - 深入参与文献
+  - 预判异议
+  - 广泛修订
+
+  ### 集成点
+  - 论证映射与重构技能
+  - 学术文献综合技能
+  - 概念分析技能
+  - 形式逻辑分析技能
+
+  ## 参考文献
+
+  - 哲学论文起草流程
+  - 同行评审与学术批判流程
+  - 哲学文献综述流程
+  - 学术哲学写作助手
+  - 逻辑分析助手

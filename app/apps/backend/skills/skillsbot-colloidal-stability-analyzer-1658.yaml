@@ -1,0 +1,107 @@
+name: skillsbot-colloidal-stability-analyzer-1658
+display_name: colloidal-stability-analyzer
+display_name_zh: 胶体稳定性分析器
+description: colloidal-stability-analyzer from SkillsBot scientific academic catalog
+description_zh: 胶体稳定性分析器是一款专业的纳米技术分析工具，专注于评估纳米颗粒分散体系的稳定性。该技能通过Zeta电位分析、DLVO理论计算和聚集动力学建模，能够准确预测纳米颗粒的聚集行为、估算产品保质期，并提供优化稳定性的科学建议。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: baseline-ablation
+subcategory_zh: 基线、消融与评估
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1658
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1658
+upstream_name: colloidal-stability-analyzer
+upstream_commit: ""
+prompt: |-
+  ---
+  name: colloidal-stability-analyzer
+  description: 胶体稳定性分析技能，用于通过zeta电位、聚集动力学和保质期预测评估纳米颗粒分散稳定性
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 合成材料
+    priority: high
+    phase: 6
+    tools-libraries:
+      - DLS分析仪
+      - Zeta电位仪
+      - 稳定性预测模型
+  ---
+
+  # 胶体稳定性分析器
+
+  ## 目的
+
+  胶体稳定性分析器技能提供对纳米颗粒分散稳定性的全面评估，通过DLVO理论和实验验证，能够预测聚集行为、估算保质期并优化稳定策略。
+
+  ## 能力
+
+  - Zeta电位分析
+  - 基于DLVO理论的稳定性预测
+  - 聚集动力学建模
+  - pH和离子强度影响分析
+  - 空间稳定化评估
+  - 保质期预测算法
+
+  ## 使用指南
+
+  ### 稳定性评估
+
+  1. **Zeta电位分析**
+     - 在多个pH值下测量
+     - 确定等电点
+     - 评估稳定性窗口（|zeta| > 30 mV）
+
+  2. **DLVO理论应用**
+     - 计算范德华引力
+     - 估算静电斥力
+     - 确定能垒高度
+
+  3. **保质期预测**
+     - 随时间监测尺寸变化
+     - 应用加速老化方案
+     - 预测长期稳定性
+
+  ## 流程集成
+
+  - 纳米颗粒合成协议开发
+  - 纳米材料表面功能化流程
+  - 纳米颗粒药物递送系统开发
+
+  ## 输入模式
+
+  ```json
+  {
+    "nanoparticle_type": "string",
+    "size": "number (nm)",
+    "surface_chemistry": "string",
+    "dispersion_medium": "string",
+    "pH_range": {"min": "number", "max": "number"},
+    "ionic_strength": "number (mM)"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "zeta_potential": "number (mV)",
+    "stability_classification": "stable|marginally_stable|unstable",
+    "aggregation_rate": "number (nm/day)",
+    "predicted_shelf_life": "number (days)",
+    "optimization_recommendations": ["string"]
+  }
+  ```

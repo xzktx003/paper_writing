@@ -1,0 +1,118 @@
+name: skillsbot-afm-spm-analyzer-1653
+display_name: afm-spm-analyzer
+display_name_zh: AFM-SPM分析器
+description: afm-spm-analyzer from SkillsBot scientific academic catalog
+description_zh: AFM-SPM 分析器是一款专业的纳米材料表征工具，专门用于处理和分析原子力显微镜（AFM）与扫描探针显微镜（SPM）数据。该技能能够进行纳米级表面形貌成像、粗糙度计算、力学性质（如模量、粘附力）映射以及电学性质（如表面电势、功函数）测量。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1653
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1653
+upstream_name: afm-spm-analyzer
+upstream_commit: ""
+prompt: |-
+  ---
+  name: afm-spm-analyzer
+  description: 用于纳米尺度形貌、力学及电学性质表征的原子力显微镜与扫描探针显微镜技能
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 显微镜表征
+    priority: high
+    phase: 6
+    tools-libraries:
+      - Gwyddion
+      - WSxM
+      - NanoScope Analysis
+      - SPIP
+  ---
+
+  # AFM-SPM 分析器
+
+  ## 目的
+
+  AFM-SPM 分析器技能提供全面的原子力显微镜和扫描探针显微镜数据分析，用于纳米尺度表面表征，包括形貌、力学性质和电学测量。
+
+  ## 能力
+
+  - 形貌成像与分析
+  - 表面粗糙度计算（Ra, RMS）
+  - 力-距离曲线分析
+  - 纳米压痕与力学性质映射
+  - 开尔文探针力显微镜（KPFM）
+  - 导电原子力显微镜测量
+
+  ## 使用指南
+
+  ### AFM 分析工作流
+
+  1. **形貌分析**
+     - 应用平面平整度校正
+     - 去除伪影与噪声
+     - 计算粗糙度参数
+
+  2. **力学性质映射**
+     - 校准悬臂梁弹性常数
+     - 应用接触力学模型
+     - 生成模量分布图
+
+  3. **电学测量**
+     - 校准功函数参考
+     - 映射表面电势
+     - 测量局部电导率
+
+  ## 流程集成
+
+  - 多模态纳米材料表征流程
+  - 原位表征实验设计
+  - 薄膜沉积工艺优化
+
+  ## 输入模式
+
+  ```json
+  {
+    "data_file": "string",
+    "analysis_type": "topography|force_curves|mechanical|electrical",
+    "cantilever_specs": {
+      "spring_constant": "number (N/m)",
+      "tip_radius": "number (nm)"
+    }
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "topography": {
+      "Ra": "number (nm)",
+      "RMS": "number (nm)",
+      "Rmax": "number (nm)",
+      "image_path": "string"
+    },
+    "mechanical": {
+      "modulus": "number (GPa)",
+      "adhesion": "number (nN)",
+      "deformation": "number (nm)"
+    },
+    "electrical": {
+      "surface_potential": "number (mV)",
+      "work_function": "number (eV)"
+    }
+  }
+  ```

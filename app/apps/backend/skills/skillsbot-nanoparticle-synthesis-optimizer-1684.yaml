@@ -1,0 +1,111 @@
+name: skillsbot-nanoparticle-synthesis-optimizer-1684
+display_name: nanoparticle-synthesis-optimizer
+display_name_zh: 纳米颗粒合成优化器
+description: nanoparticle-synthesis-optimizer from SkillsBot scientific academic catalog
+description_zh: 纳米颗粒合成优化器是一款专门用于优化金属、半导体和氧化物纳米颗粒合成参数的AI技能。它通过自动化协议生成、反应动力学建模和实验设计，帮助科研人员精准控制纳米颗粒的尺寸、形态和表面化学性质，确保合成过程的可重复性和高产量。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1684
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1684
+upstream_name: nanoparticle-synthesis-optimizer
+upstream_commit: ""
+prompt: |
+  ---
+  名称: 纳米颗粒合成优化器
+  描述: 用于金属、半导体和氧化物纳米颗粒生产的合成参数优化技能，具有自动化协议生成和可重复性验证功能
+  允许工具:
+    - 读取
+    - 写入
+    - 全局搜索
+    - 文本搜索
+    - Bash
+  元数据:
+    专业领域: 纳米技术
+    领域: 科学
+    类别: 合成-材料
+    优先级: 高
+    阶段: 6
+    工具库:
+      - 定制合成规划器
+      - 反应动力学模型
+      - 实验设计框架
+  ---
+
+  # 纳米颗粒合成优化器
+
+  ## 目的
+
+  纳米颗粒合成优化器技能为金属、半导体和氧化物纳米颗粒生产提供系统化的合成参数优化，实现具有可控尺寸、形态和表面化学性质的可重复合成协议。
+
+  ## 能力
+
+  - 前驱体化学计量计算
+  - 反应温度/时间优化
+  - 表面活性剂和封端剂选择
+  - 成核和生长动力学建模
+  - 尺寸分布目标设定
+  - 批次可重复性评估
+
+  ## 使用指南
+
+  ### 合成参数优化
+
+  1. **前驱体选择**
+     - 将前驱体反应性与所需动力学匹配
+     - 考虑热分解温度
+     - 评估纯度要求
+
+  2. **温度程序控制**
+     - 优化成核温度以实现爆发成核
+     - 控制生长温度以实现尺寸聚焦
+     - 管理加热速率
+
+  3. **表面活性剂系统**
+     - 平衡空间稳定与静电稳定
+     - 考虑与特定晶面的结合亲和力
+     - 优化表面活性剂与前驱体比例
+
+  ## 流程集成
+
+  - 纳米颗粒合成协议开发
+  - 纳米材料放大与工艺转移
+  - 绿色合成路线开发
+
+  ## 输入模式
+
+  ```json
+  {
+    "目标材料": "字符串",
+    "目标尺寸": "数字 (nm)",
+    "目标形态": "球形|棒状|立方体|片状",
+    "尺寸公差": "数字 (%)",
+    "合成方法": "热分解|热注射|共沉淀"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "优化协议": {
+      "前驱体": [{"名称": "字符串", "浓度": "数字"}],
+      "温度曲线": [{"温度": "数字", "持续时间": "数字"}],
+      "表面活性剂": [{"名称": "字符串", "比例": "数字"}]
+    },
+    "预测结果": {
+      "尺寸": "数字 (nm)",
+      "尺寸分布": "数字 (%)",
+      "产率": "数字 (%)"
+    }
+  }
+  ```

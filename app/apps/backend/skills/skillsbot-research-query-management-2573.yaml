@@ -1,0 +1,279 @@
+name: skillsbot-research-query-management-2573
+display_name: research-query-management
+display_name_zh: 研究查询管理
+description: research-query-management from SkillsBot scientific academic catalog
+description_zh: 研究查询管理技能用于自动化设置和管理定期学术文献搜索任务。通过定义关键词、数据源、更新频率和相关性阈值，帮助用户持续跟踪特定研究领域的最新论文动态，实现高效文献追踪与知识更新。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/2573
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/2573
+upstream_name: research-query-management
+upstream_commit: ""
+prompt: |-
+  ---
+  name: research-query-management
+  description: 设置和管理自动化定期研究搜索。当用户希望跟踪某个主题、创建定时搜索或优化现有查询时使用。
+  tools:
+  - list_available_sources
+  - create_research_question
+  - list_research_questions
+  - get_research_question
+  - update_research_question
+  - delete_research_question
+  - run_discovery_for_question
+  ---
+
+  # 研究查询管理
+
+  创建和管理按计划自动运行的研究查询，让用户及时了解他们关心的主题。
+
+  ## 使用的工具
+
+  对于查询管理，请使用以下工具：
+
+  | 工具 | 用途 |
+  |------|---------|
+  | `list_available_sources` | 显示可用的数据源选项 |
+  | `create_research_question` | 创建新查询 |
+  | `list_research_questions` | 查看现有查询 |
+  | `get_research_question` | 获取查询详细信息 |
+  | `update_research_question` | 修改查询设置 |
+  | `delete_research_question` | 删除查询 |
+  | `run_discovery_for_question` | 测试查询 |
+
+  ## 设置新的定期搜索
+
+  ### 步骤 1：了解用户需求
+
+  询问以下问题：
+  1. “您想跟踪什么主题？”
+  2. “您希望多久获得一次更新？”（每日/每周）
+  3. “每次更新您能处理多少篇论文？”
+
+  ### 步骤 2：构建查询
+
+  ```
+  list_available_sources()  # 显示选项
+
+  create_research_question(
+    title="此搜索的描述性标题",
+    keywords=["主要术语", "次要术语", "同义词"],
+    sources=["source1", "source2"],
+    max_papers=15,
+    relevance_threshold=0.7,
+    schedule="daily"  # 或 "weekly"
+  )
+  ```
+
+  ### 步骤 3：测试查询
+
+  ```
+  run_discovery_for_question(question_id="[新查询ID]")
+  ```
+
+  与用户一起审查结果：
+  - 论文是否相关？
+  - 结果太多还是太少？
+  - 是否遗漏了重要的关键词？
+
+  ### 步骤 4：确认设置
+
+  ```
+  “您的定期搜索已设置完成：
+
+  📋 **查询**：[标题]
+  🔑 **关键词**：[列表]
+  📚 **数据源**：[列表]
+  ⏰ **计划**：[每日/每周]
+  📊 **预期**：每次运行约 [X] 篇论文
+
+  系统将自动搜索新论文并将其添加到您的收藏中。您将在每日/每周摘要中找到新论文。”
+  ```
+
+  ## 优化现有查询
+
+  ### 诊断问题
+
+  当用户报告问题时，询问：
+
+  | 问题 | 询问 |
+  |---------|-----|
+  | 论文太多 | “大多数论文是相关的，还是存在噪音？” |
+  | 论文太少 | “您缺少哪些类型的论文？” |
+  | 主题错误 | “您能展示一下您想要的论文与您收到的论文之间的区别吗？” |
+
+  ### 常见优化方法
+
+  **噪音过多**：
+  ```
+  get_research_question(question_id="[查询ID]")
+
+  update_research_question(
+    question_id="[查询ID]",
+    relevance_threshold=0.8,  # 从 0.7 提高
+    keywords=["更", "具体", "的术语"]  # 增加特异性
+  )
+  ```
+
+  **缺少论文**：
+  ```
+  update_research_question(
+    question_id="[查询ID]",
+    relevance_threshold=0.65,  # 降低阈值
+    sources=["添加", "更多", "数据源"],  # 添加数据源
+    keywords=["现有", "加上", "同义词"]  # 添加同义词
+  )
+  ```
+
+  **领域错误**：
+  ```
+  update_research_question(
+    question_id="[查询ID]",
+    keywords=["主题", "-排除术语"],  # 负面关键词
+    sources=["领域特定数据源"]  # 更改数据源
+  )
+  ```
+
+  ## 计划建议
+
+  | 用户可用时间 | 计划 | 最大论文数 |
+  |-------------------|----------|------------|
+  | 每天 10 分钟 | 每日 | 10-15 |
+  | 每周 30 分钟 | 每周 | 30-50 |
+  | 每周 1 小时以上 | 每周 | 50-100 |
+  | 全面审查 | 每周 | 100+ |
+
+  ## 查询健康检查
+
+  定期审查查询性能：
+
+  ```
+  list_research_questions()
+
+  对于每个查询：
+    get_research_question(question_id="...")
+
+    检查：
+    - 上次运行日期
+    - 每次运行找到的论文数
+    - 用户参与度（如果已跟踪）
+
+    如果需要，建议调整
+  ```
+
+  ## 工作流示例
+
+  ### 示例 1：新主题跟踪
+
+  **用户**：“让我了解关于状态空间模型的新论文”
+
+  ```
+  1. “我将为您设置一个定期搜索。有几个问题：
+      - 我应该多久检查一次新论文？（每日/每周）
+      - 您可以审查多少篇论文？（每日约 10-15 篇或每周约 30-50 篇）”
+
+  2. [用户：“每周，大约 30 篇论文”]
+
+  3. create_research_question(
+       title="状态空间模型研究更新",
+       keywords=["状态空间模型", "SSM", "Mamba", "S4", "线性注意力"],
+       sources=["arxiv", "semantic_scholar"],
+       max_papers=35,
+       relevance_threshold=0.7,
+       schedule="weekly"
+     )
+
+  4. run_discovery_for_question(question_id="...")
+
+  5. “在初始测试中找到了 28 篇论文。以下是前 5 篇：
+      [列表]
+
+      这看起来是您要找的吗？”
+  ```
+
+  ### 示例 2：优化噪音过多的查询
+
+  **用户**：“我的注意力机制搜索给了我太多不相关的论文”
+
+  ```
+  1. list_research_questions()  # 找到查询
+
+  2. get_research_question(question_id="attention-query-id")
+     → 当前设置：threshold=0.65, keywords=["attention"]
+
+  3. “我看到您当前的搜索使用了宽泛的关键词。让我们优化一下：
+      - 您对哪种特定类型的注意力感兴趣？
+      - 有没有任何您想排除的领域？”
+
+  4. [用户：“只关注 Transformer 的高效注意力，而不是一般注意力”]
+
+  5. update_research_question(
+       question_id="attention-query-id",
+       keywords=["高效注意力", "线性注意力", "稀疏注意力", "Flash Attention"],
+       relevance_threshold=0.75
+     )
+
+  6. run_discovery_for_question(question_id="attention-query-id")
+
+  7. “已更新！测试运行找到了 18 篇论文（从 45 篇减少）。
+      以下是前 5 篇 - 这些是否更相关？”
+  ```
+
+  ### 示例 3：多个相关查询
+
+  **用户**：“我正在研究 LLM 效率 - 帮我设置全面的跟踪”
+
+  ```
+  1. “为了全面覆盖，我建议使用多个聚焦的查询：
+
+     查询 1：模型架构效率
+     查询 2：训练效率
+     查询 3：推理优化
+
+     每个查询将捕捉不同的方面。需要我设置这些吗？”
+
+  2. [使用特定关键词创建每个查询]
+
+  3. “您现在有 3 个每周运行的查询：
+     - 架构：每周约 15 篇论文
+     - 训练：每周约 20 篇论文
+     - 推理：每周约 25 篇论文
+
+     总计：每周约 60 篇论文。适合您的时间安排吗？”
+  ```
+
+  ## 响应模板
+
+  对于新查询设置：
+  ```
+  ## 研究查询已创建 ✓
+
+  **标题**：[查询标题]
+  **ID**：[query_id]
+
+  **配置**：
+  - 关键词：[列表]
+  - 数据源：[列表]
+  - 计划：[频率]
+  - 最大论文数：[数量]
+  - 相关性阈值：[值]
+
+  **测试结果**：
+  - 找到的论文数：[数量]
+  - 示例论文：[前 3 篇]
+
+  **后续步骤**：
+  - 查询将按 [计划] 自动运行
+  - 使用 `get_research_question(question_id="[ID]")` 检查状态
+  - 如果结果不理想，请让我优化
+  ```

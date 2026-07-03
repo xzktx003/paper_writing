@@ -89,7 +89,7 @@ test('buildPaperWorkbenchContext returns skill recommendations and RAG health', 
     assert.equal(context.skills.recommendations[0].skill.name, 'literature-review');
     assert.ok(context.skills.recommendations[0].skill.task_templates.length > 0);
     assert.ok(context.skills.recommendations[0].suggestedTask.includes('related work'));
-    assert.ok(context.skills.categories.some(category => category.name === '文献'));
+    assert.ok(context.skills.categories.some(category => category.name === '文献检索'));
     assert.equal(context.skills.navigator.title_zh, 'Skill 导航');
     assert.equal(context.skills.navigator.selectedSkill, 'literature-review');
     assert.ok(context.skills.navigator.cards.some(card => card.name === 'literature-review' && card.recommended));

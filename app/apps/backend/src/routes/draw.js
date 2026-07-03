@@ -5,6 +5,7 @@ import https from 'https';
 import http from 'http';
 import { URL } from 'url';
 import OpenAI from 'openai';
+import { assemblePrompt } from '../services/skillEngine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_IMAGE_API_BASE = 'https://www.right.codes/draw/v1';
@@ -33,6 +34,15 @@ For a given paper section/chapter content, generate a detailed, professional ima
 5. Is detailed enough for AI image generation but concise
 
 Output ONLY the image prompt, nothing else. Start directly with the description.`;
+
+export function buildDrawPromptSystem(selectedSkills = []) {
+  const normalizedSkills = Array.isArray(selectedSkills)
+    ? [...new Set(selectedSkills.filter(name => typeof name === 'string' && name.trim()).map(name => name.trim()))]
+    : [];
+  const skillPrompt = assemblePrompt({ manualSkills: normalizedSkills });
+  if (!skillPrompt) return IMAGE_PROMPT_SYSTEM;
+  return `${IMAGE_PROMPT_SYSTEM}\n\nThe user selected the following Skills. Apply their task-specific workflow, constraints, and visual guidance when producing the image prompt:\n\n${skillPrompt}`;
+}
 
 export function getDrawImageApiBase(appConfig = {}) {
   return appConfig.draw_image_api_base || process.env.OPENPRISM_DRAW_IMAGE_API_BASE || DEFAULT_IMAGE_API_BASE;
@@ -182,7 +192,7 @@ export async function registerDrawRoutes(fastify, opts) {
   // Generate image prompt from paper content
   fastify.post('/api/draw/generate-prompt', async (request, reply) => {
     try {
-      const { paperContent, figureDescription, ragContext } = request.body;
+      const { paperContent, figureDescription, ragContext, selectedSkills } = request.body || {};
       
       if (!openai) {
         return reply.status(500).send({ 
@@ -216,7 +226,7 @@ export async function registerDrawRoutes(fastify, opts) {
       const response = await openai.chat.completions.create({
         model: model,
         messages: [
-          { role: 'system', content: IMAGE_PROMPT_SYSTEM },
+          { role: 'system', content: buildDrawPromptSystem(selectedSkills) },
           { role: 'user', content: context }
         ],
         temperature: 0.7,
@@ -252,8 +262,6 @@ export async function registerDrawRoutes(fastify, opts) {
         });
       }
       
-      // Debug: log API key prefix (first 4 chars) and length
-      fastify.log.info(`[DEBUG] API key received: prefix="${apiKey.substring(0,4)}...", length=${apiKey.length}`);
       fastify.log.info(`[DEBUG] API settings:`, JSON.stringify({ ...apiSettings, apiKey: '[REDACTED]' }));
       
       // Determine save directory: projectName relative to OPENPRISM_PROJECTS_DIR

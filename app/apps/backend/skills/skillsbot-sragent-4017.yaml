@@ -1,0 +1,486 @@
+name: skillsbot-sragent-4017
+display_name: sragent
+display_name_zh: SRAgent
+description: sragent from SkillsBot scientific academic catalog
+description_zh: SRAgent 是一个用于自动化基因组数据集的文献发现、元数据提取和手稿检索的代理工作系统。关键词包括：序列读取归档(SRA)、基因表达综合数据库(GEO)、访问号转换、元数据提取、单细胞RNA-seq识别。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/4017
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/4017
+upstream_name: sragent
+upstream_commit: ""
+prompt: |
+  # SRAgent: 序列读取归档数据和出版物检索
+
+  ## 概览
+
+  SRAgent 是一个代理工作系统，用于与 NCBI 序列读取归档（SRA）和基因表达综合数据库（GEO）数据库合作。
+  它自动化了基因组数据集的文献发现、元数据提取和手稿检索。
+
+  ## 安装指南
+
+  ### 1. 安装 SRAgent
+
+  SRAgent 需要 Python ≥3.11。检查 SRAgent 是否已安装：
+  ```bash
+  which SRAgent
+  ```
+  如果 SRAgent 未安装，请按照以下说明操作。
+
+  使用 `uv` 安装：
+  ```bash
+  # 克隆仓库
+  git clone https://github.com/ArcInstitute/SRAgent.git
+  cd SRAgent
+
+  # 创建并激活虚拟环境
+  uv venv
+  source .venv/bin/activate
+
+  # 安装包
+  uv pip install .
+  ```
+  验证安装：
+  ```bash
+  SRAgent --help
+  ```
+  ### 2. 配置环境变量
+
+  以下环境变量是必需的：
+  - `OPENAI_API_KEY=sk-openai-...`
+    - 使用 OpenAI 模型需要
+  - `ANTHROPIC_API_KEY=sk-ant-...`
+    - 使用 Claude 模型需要
+  - `DYNACONF`
+    - 在 Claude 和 OpenAI 模型之间切换需要
+  - `EMAIL=user@example.com`
+    - 使用 Entrez API 需要
+  - `NCBI_API_KEY=your-ncbi-key`
+    - 可选，使用 Entrez API 时增加速率限制
+  - `CORE_API_KEY=your-core-key`
+    - 可选，从 CORE API 下载论文需要
+  - `GCP_PROJECT_ID=your-project-id`
+    - 使用 Google BigQuery 需要
+  - `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json`
+    - 使用 Google BigQuery 需要
+
+  如果这些环境变量尚未设置为环境变量，请提示用户提供它们：`export MY_SECRET_VAR=my-secret-value`。
+
+  ### 3. 配置设置
+
+  SRAgent 使用设置文件（`settings.yml`）来配置模型和行为。
+  默认配置适用于大多数用户，但您可以自定义它。
+
+  #### 选项 A: 使用默认设置
+  无需操作 - SRAgent 提供了合理的默认设置。
+
+  #### 选项 B: 自定义设置文件
+
+  请参见 `./references/example-settings.yml` 中的示例设置文件，您可以根据需要修改它。
+
+  ### 4. 验证设置
+
+  测试您的配置：
+  ```bash
+  # 检查正在使用的模型
+  python -c "from SRAgent.agents.utils import load_settings; s = load_settings(); print(s['models']['default'])"
+
+  # 测试基本功能
+  SRAgent entrez "将 GSE121737 转换为 SRX 访问号"
+  ```
+
+  # 核心能力
+
+  ### 1. 访问号转换
+  在不同的基因组数据库访问号格式之间进行转换：
+  - **GEO 系列：** GSE* → SRA 研究（SRP*）
+  - **SRA 研究：** SRP*/PRJNA* → SRA 实验（SRX*）
+  - **SRA 实验：** SRX*/ERX* → SRA 运行（SRR*/ERR*）
+
+  ### 2. 元数据提取
+  从 SRA/GEO 查询全面的元数据：
+  - 测序平台（Illumina, PacBio, Oxford Nanopore）
+  - 库准备技术（10X Genomics, Smart-seq 等）
+  - 有机体、组织、细胞类型
+  - 研究设计和实验细节
+  - 单细胞与批量 RNA-seq 识别
+
+  ### 3. BigQuery 分析
+  利用 NCBI 的 BigQuery 数据集进行大规模查询：
+  - 批量访问号转换
+  - 跨研究的技术识别
+  - 按平台、测定类型、有机体过滤
+  - 研究/实验/运行关系映射
+
+  ### 4. 出版物检索
+  自动找到并下载与 SRA 访问号相关的手稿：
+  - 将 SRA 访问号链接到 PubMed 出版物
+  - 从 PubMed 记录中提取 DOI
+  - 从多个来源下载全文 PDF：
+    - 预印本服务器（arXiv, bioRxiv, medRxiv）
+    - CORE API
+    - Europe PMC
+    - Unpaywall
+  - CSV 输入的批量处理
+
+  # 使用此技能的时机
+
+  当用户：
+  - 提及 SRA, GEO 或基因组访问号（GSE, SRP, SRX, SRR）
+  - 需要在访问号格式之间进行转换
+  - 想要关于测序实验的元数据
+  - 需要找到或下载与数据集相关的论文
+  - 引用序列读取归档（SRA）, 欧洲核苷酸档案库（ENA）或基因表达综合数据库（GEO）
+
+  # 可用命令
+
+  ### 命令 1: `SRAgent entrez`
+  **目的：** 低层次 NCBI Entrez 数据库查询
+
+  **最适合：**
+  - 简单的访问号转换
+  - 快速数据集摘要
+  - 跨数据库链接
+  - 当你知道要使用哪个 Entrez 工具（esearch, efetch, elink）时
+
+  **示例：**
+  ```bash
+  # 将 GEO 转换为 SRX
+  SRAgent --no-progress --no-summaries entrez "将 GSE121737 转换为 SRX 访问号"
+
+  # 总结数据集
+  SRAgent --no-progress --no-summaries entrez "总结 SRX4967527"
+
+  # 链接到出版物
+  SRAgent --no-progress --no-summaries entrez "为 GSE196830 找到出版物"
+  ```
+
+  ### 命令 2: `SRAgent sragent`
+  **目的：** 使用多个工具进行综合元数据提取
+
+  **最适合：**
+  - 复杂的元数据查询
+  - 技术识别
+  - 当简单的 Entrez 查询不够时
+  - 确定数据是否为单细胞
+
+  **可用工具：**
+  - Entrez 代理（所有数据库）
+  - BigQuery（大规模查询）
+  - NCBI 网络抓取
+  - sra-stat（直接序列文件分析）
+
+  **示例：**
+  ```bash
+  # 检查测序技术
+  SRAgent --no-progress --no-summaries sragent "哪种 10X Genomics 技术用于 ERX11887200？"
+
+  # 综合摘要
+  SRAgent --no-progress --no-summaries sragent "总结 SRX4967527"
+
+  # 验证数据类型
+  SRAgent --no-progress --no-summaries sragent "SRX4967527 是单细胞 RNA-seq 数据吗？"
+
+  # 获取有机体信息
+  SRAgent --no-progress --no-summaries sragent "在研究 PRJNA498286 中测序的有机体是什么？"
+  ```
+
+  ### 命令 3: `SRAgent papers`
+  **目的：** 找到并下载与 SRA 访问号相关的手稿
+
+  **最适合：**
+  - 下载数据集的论文
+  - 批量检索出版物
+  - 用 DOI 和下载路径丰富 CSV 文件
+
+  **输入格式：**
+  - 单个访问号：`SRX4967527`
+  - 研究访问号：`SRP167700` 或 `PRJNA498286`
+  - 带 `accession` 列的 CSV 文件
+
+  **示例：**
+  ```bash
+  # 单个实验
+  SRAgent --no-progress --no-summaries papers SRX4967527
+
+  # 整个研究
+  SRAgent --no-progress --no-summaries papers PRJNA498286
+
+  # 批量 CSV
+  SRAgent --no-progress --no-summaries papers accessions.csv --output-dir papers/
+
+  # 自定义访问号列名
+  SRAgent --no-progress --no-summaries papers my-data.csv --accession-column "experiment_id"
+
+  # 控制并发
+  SRAgent --no-progress --no-summaries papers accessions.csv --max-concurrency 3
+  ```
+
+  **输出：**
+  - PDF 保存到 `--output-dir/<accession>/`
+  - 控制台摘要显示：
+    - 找到的 PubMed ID
+    - 提取的 DOI
+    - 下载成功/失败状态
+  - 更新的 CSV（当输入为 CSV 时）带有列：
+    - `pubmed_id`
+    - `doi`
+    - `download_path`
+
+  # 使用模式
+
+  ### 模式 1: 数据集调查工作流
+  ```bash
+  # 第 1 步：将 GEO 访问号转换为 SRX
+  SRAgent --no-progress --no-summaries entrez "将 GSE121737 转换为 SRX 访问号"
+
+  # 第 2 步：获取详细元数据
+  SRAgent --no-progress --no-summaries sragent "对于 GSE121737 的每个 SRX，确定：它是单细胞吗？什么库准备？"
+
+  # 第 3 步：找到相关出版物
+  SRAgent --no-progress --no-summaries papers GSE121737 --output-dir manuscripts/
+  ```
+
+  ### 模式 2: 技术验证
+  ```bash
+  # 检查数据集是否符合特定标准
+  SRAgent --no-progress --no-summaries sragent "SRX4967527 是 Illumina 配对端单细胞 RNA-seq 数据吗？"
+
+  # 获取特定技术细节
+  SRAgent --no-progress --no-summaries sragent "哪种 10X Genomics 化学用于：SRX4967527？"
+
+  # 验证有机体
+  SRAgent --no-progress --no-summaries sragent "SRX4967527 是什么有机体？"
+  ```
+
+  ### 模式 3: 批量处理
+  ```bash
+  # 创建带有访问号的 CSV
+  cat > accessions.csv << EOF
+  accession
+  SRX4967527
+  SRX4967528
+  SRX4967529
+  EOF
+
+  # 下载所有论文
+  SRAgent --no-progress --no-summaries \
+    papers accessions.csv \
+      --output-dir papers/ \
+      --max-concurrency 5
+
+  # 结果：CSV 丰富了 DOI 和下载路径
+  ```
+
+  ### 模式 4: 研究级分析
+  ```bash
+  # 获取研究中的所有实验
+  SRAgent --no-progress --no-summaries entrez "列出研究 SRP167700 的所有 SRX 访问号"
+
+  # 或使用 BioProject 访问号
+  SRAgent --no-progress --no-summaries entrez "将 PRJNA498286 转换为 SRX 访问号"
+
+  # 然后分析研究
+  SRAgent --no-progress --no-summaries sragent "总结 PRJNA498286 中使用的库准备技术"
+  ```
+
+  ## Claude 实施指南
+
+  ### 运行 SRAgent 命令
+
+  当用户需要 SRAgent 功能时，使用 bash 工具：
+  ```python
+  # 示例：转换访问号
+  result = bash_tool(
+      command="SRAgent --no-progress --no-summaries entrez '将 GSE121737 转换为 SRX 访问号'",
+      description="将 GEO 访问号转换为 SRX 格式"
+  )
+
+  # 示例：获取元数据
+  result = bash_tool(
+      command="SRAgent --no-progress --no-summaries sragent '哪种 10X 技术用于 SRX4967527？'",
+      description="确定库准备技术"
+  )
+
+  # 示例：下载论文
+  result = bash_tool(
+      command="SRAgent --no-progress --no-summaries papers SRX4967527 --output-dir /home/claude/papers",
+      description="为数据集下载手稿"
+  )
+  ```
+
+  ### 处理 CSV 文件
+
+  当处理批量数据时：
+  ```python
+  import pandas as pd
+
+  # 用户提供访问号 - 创建 CSV
+  accessions = ["SRX4967527", "SRX4967528", "SRX4967529"]
+  df = pd.DataFrame({"accession": accessions})
+  df.to_csv("/home/claude/accessions.csv", index=False)
+
+  # 运行 SRAgent papers 命令
+  result = bash_tool(
+      command="SRAgent --no-progress --no-summaries papers /home/claude/accessions.csv --output-dir /home/claude/papers",
+      description="批量下载多个访问号的论文"
+  )
+
+  # 读取丰富的 CSV
+  enriched_df = pd.read_csv("/home/claude/accessions.csv")
+  # 现在有：accession, pubmed_id, doi, download_path 列
+  ```
+
+  # 访问号格式参考
+
+  ### GEO（基因表达综合数据库）
+  - **系列：** `GSE` + 5-7 位数字（例如，`GSE121737`）
+  - **样本：** `GSM` + 6-7 位数字（例如，`GSM3457845`）
+
+  ### SRA（序列读取归档）
+  - **研究：** `SRP` + 6 位数字（例如，`SRP167700`）
+    - 或 BioProject：`PRJNA` + 6 位数字（例如，`PRJNA498286`）
+  - **实验：** `SRX` + 7-8 位数字（例如，`SRX4967527`）
+  - **运行：** `SRR` + 7-8 位数字（例如，`SRR8124405`）
+
+  ### ENA（欧洲核苷酸档案库）
+  - **研究：** `ERP` + 6 位数字或 `PRJEB` + 6 位数字
+  - **实验：** `ERX` + 7-8 位数字（例如，`ERX11887200`）
+  - **运行：** `ERR` + 7-8 位数字
+
+  ### 层级关系
+  ```
+  GEO 系列（GSE）
+      ↓
+  SRA 研究（SRP）= BioProject（PRJNA）
+      ↓
+  SRA 实验（SRX） ← 链接到 → 出版物（PubMed ID, DOI）
+      ↓
+  SRA 运行（SRR）[实际序列文件]
+  ```
+
+  # 常见的单细胞技术
+
+  SRAgent 可以识别这些 scRNA-seq 技术：
+
+  ### 10X Genomics
+  - **Chromium 单细胞 3'**（v1, v2, v3）
+  - **Chromium 单细胞 5'**
+  - **Chromium 单细胞 ATAC**
+  - **Chromium 单细胞 Multiome**
+  - **Visium 空间**
+
+  ### 其他平台
+  - **Smart-seq2** / **Smart-seq3**
+  - **Drop-seq**
+  - **inDrop**
+  - **Seq-Well**
+  - **CEL-Seq2**
+  - **MARS-seq**
+  - **Quartz-Seq**
+
+  ### 检测策略
+  SRAgent 使用多个信号：
+  1. 库准备元数据字段
+  2. 研究描述和标题
+  3. PubMed 摘要
+  4. 序列文件特征（使用 sra-stat 时）
+
+  ### 没有 BigQuery 的工作
+
+  如果您没有 Google Cloud 凭据：
+  ```bash
+  # SRAgent 优雅地回退到仅 Entrez 查询
+  # BigQuery 功能将被跳过，并显示警告
+
+  # 这些仍然可以在没有 BigQuery 的情况下工作：
+  SRAgent --no-progress --no-summaries entrez "将 GSE121737 转换为 SRX 访问号"
+  SRAgent --no-progress --no-summaries papers SRX4967527
+
+  # 这将警告但继续进行：
+  SRAgent --no-progress --no-summaries sragent "哪种 10X 技术用于 SRX4967527？"
+  # （使用 Entrez + 网络抓取代替 BigQuery）
+  ```
+
+  ### 性能优化
+
+  ```bash
+  # 对于大型批量操作，调整并发
+  SRAgent --no-progress --no-summaries papers large-dataset.csv \
+    --max-concurrency 10 \
+    --recursion-limit 150
+
+  # 特别是对于论文下载
+  SRAgent --no-progress --no-summaries papers accessions.csv \
+    --core-api-key "$CORE_API_KEY" \
+    --email "$EMAIL" \
+    --max-concurrency 5
+  ```
+
+  # 故障排除
+
+  ### "ModuleNotFoundError: No module named 'SRAgent'"
+  ```bash
+  # 确保包已安装
+  cd SRAgent
+  uv pip install .
+
+  # 验证安装
+  python -c "import SRAgent; print(SRAgent.__file__)"
+  ```
+
+  ### "速率限制超出"（NCBI）
+  ```bash
+  # 获取 NCBI API 密钥：https://www.ncbi.nlm.nih.gov/account/settings/
+  export NCBI_API_KEY="your-ncbi-api-key"
+
+  # 减少并发请求
+  SRAgent papers accessions.csv --max-concurrency 3
+  ```
+
+  ### 论文下载失败
+
+  - 检查：DOI 是否找到？
+    - 一些数据集可能没有链接的出版物
+    - 先手动检查 PubMed 链接
+
+  - 检查：尝试了多个来源吗？
+    - SRAgent 尝试：预印本 → CORE → Europe PMC → Unpaywall
+    - 一些论文是付费的（没有开放获取）
+
+  - 检查：网络/认证
+    - CORE 需要 API 密钥：export CORE_API_KEY="..."
+    - 一些来源可能被机构防火墙阻止
+    - Cloudflare 可能阻止对一些预印本服务器的自动访问
+
+
+  # 资源
+
+  ### SRAgent 文档
+
+  - `./references/metadata-fields.md`
+    - SRAgent 可以从 SRA/GEO 数据库提取的所有元数据字段
+  - `./references/quick-reference.md`
+   - SRAgent 命令的快速参考
+  - `./references/usage-examples.md`
+   - SRAgent 的使用示例
+  - `./references/example-settings.yml`
+    - SRAgent 的示例设置文件
+
+  ### 外部资源
+
+  - **GitHub:** https://github.com/ArcInstitute/SRAgent
+  - **论文：** bioRxiv 2025.02.27.640494 （scBaseCount 论文）
+  - **NCBI Entrez:** https://www.ncbi.nlm.nih.gov/books/NBK25500/
+  - **SRA 数据库：** https://www.ncbi.nlm.nih.gov/sra
+  - **GEO 数据库：** https://www.ncbi.nlm.nih.gov/geo/

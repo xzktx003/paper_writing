@@ -1,0 +1,125 @@
+name: skillsbot-research-ideation-13614
+display_name: research-ideation
+display_name_zh: 研究构思
+description: research-ideation from SkillsBot scientific academic catalog
+description_zh: 研究构思技能用于从主题或数据集中生成结构化研究问题、可测试假设和实证策略，支持学术研究设计和数据分析。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: research-question
+subcategory_zh: 研究问题与假设
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/13614
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/13614
+upstream_name: research-ideation
+upstream_commit: ""
+prompt: |
+  ---
+  name: research-ideation
+  description: 从主题或数据集中生成结构化研究问题、可测试假设和实证策略
+  disable-model-invocation: true
+  argument-hint: "[主题、现象或数据集描述]"
+  allowed-tools: ["Read", "Grep", "Glob", "Write"]
+  ---
+
+  # 研究构思
+
+  从主题、现象或数据集中生成结构化研究问题、可测试假设和实证策略。
+
+  **输入:** `$ARGUMENTS` — 一个主题（例如，“最低工资对就业的影响”）、现象（例如，“为什么企业地理上聚集？”）或数据集描述（例如，“2000-2020年美国县面板数据，包含污染和健康结果”）。
+
+  ---
+
+  ## 步骤
+
+  1. **理解输入。** 阅读 `$ARGUMENTS` 和任何引用的文件。检查 `master_supporting_docs/` 中相关论文。检查 `.claude/rules/` 中的领域约定。
+
+  2. **生成3-5个研究问题，** 从描述性到因果排序：
+     - **描述性:** 模式是什么？（例如，“X随时间如何演变？”）
+     - **相关性:** 哪些因素相关？（例如，“在控制Z后，X与Y相关吗？”）
+     - **因果性:** 影响是什么？（例如，“X对Y的因果效应是什么？”）
+     - **机制:** 为什么效应存在？（例如，“通过什么渠道X影响Y？”）
+     - **政策:** 含义是什么？（例如，“政策X会改善结果Y吗？”）
+
+  3. **针对每个研究问题，开发:**
+     - **假设:** 一个可测试的预测，包括预期符号/大小
+     - **识别策略:** 如何建立因果性（DiD、IV、RDD、合成控制等）
+     - **数据需求:** 需要什么数据？是否可用？
+     - **关键假设:** 策略有效必须满足的条件
+     - **潜在缺陷:** 识别的常见威胁
+     - **相关文献:** 2-3篇使用类似方法的论文
+
+  4. **按可行性和贡献对问题排序。**
+
+  5. **保存输出** 到 `quality_reports/research_ideation_[sanitized_topic].md`
+
+  ---
+
+  ## 输出格式
+
+  ```markdown
+  # 研究构思: [主题]
+
+  **日期:** [YYYY-MM-DD]
+  **输入:** [原始输入]
+
+  ## 概述
+
+  [1-2段落定位主题及其重要性]
+
+  ## 研究问题
+
+  ### RQ1: [问题] (可行性: 高/中/低)
+
+  **类型:** 描述性 / 相关性 / 因果性 / 机制 / 政策
+
+  **假设:** [可测试预测]
+
+  **识别策略:**
+  - **方法:** [例如，差异中差异]
+  - **处理:** [什么变化和何时]
+  - **控制组:** [比较单位]
+  - **关键假设:** [例如，平行趋势]
+
+  **数据需求:**
+  - [数据集1 — 提供什么]
+  - [数据集2 — 提供什么]
+
+  **潜在缺陷:**
+  1. [威胁1和可能的缓解]
+  2. [威胁2和可能的缓解]
+
+  **相关作品:** [作者 (年份)], [作者 (年份)]
+
+  ---
+
+  [为RQ2-RQ5重复]
+
+  ## 排序
+
+  | RQ | 可行性 | 贡献 | 优先级 |
+  |----|---------|------|--------|
+  | 1  | 高      | 中   | ...    |
+  | 2  | 中      | 高   | ...    |
+
+  ## 建议下一步
+
+  1. [最有希望的方向和立即行动]
+  2. [要获取的数据]
+  3. [更深入审查的文献]
+  ```
+
+  ---
+
+  ## 原则
+
+  - **有创意但接地气。** 超越明显问题，但每个建议必须实证可行。
+  - **像审稿人一样思考。** 对每个因果问题，立即识别识别挑战。
+  - **考虑数据可用性。** 没有可用数据的杰出问题不具操作性。
+  - **尽可能建议具体数据集**（FRED、Census、PSID、行政数据等）。

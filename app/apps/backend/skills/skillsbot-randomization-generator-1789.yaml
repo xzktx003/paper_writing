@@ -1,0 +1,81 @@
+name: skillsbot-randomization-generator-1789
+display_name: randomization-generator
+display_name_zh: 随机化生成器
+description: randomization-generator from SkillsBot scientific academic catalog
+description_zh: 随机化生成器技能专为科学实验设计提供自动化随机分配方案。核心功能包括生成简单随机化、分层随机化、区组随机化及适应性随机化，确保实验组间的平衡性与分配隐蔽性。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1789
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1789
+upstream_name: randomization-generator
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: 随机化生成器
+  描述: 为实验生成随机化方案的技能
+  允许使用的工具:
+    - Bash
+    - 读取
+    - 写入
+  元数据:
+    专业领域: 科学发现
+    领域: 科学
+    类别: 实验设计
+    技能ID: SK-SCIDISC-014
+  ---
+
+  # 随机化生成器技能
+
+  ## 目的
+
+  为实验设计生成随机化方案，包括简单随机化、分层随机化和适应性随机化等方法。
+
+  ## 能力
+
+  - 生成随机分配
+  - 创建分层随机化
+  - 实现区组随机化
+  - 支持适应性设计
+  - 确保分配隐藏
+  - 记录随机化过程
+
+  ## 使用指南
+
+  1. 定义设计要求
+  2. 选择随机化方法
+  3. 配置参数
+  4. 生成分配方案
+  5. 验证平衡性
+  6. 记录方案
+
+  ## 流程集成
+
+  适用于科学发现工作流中的：
+  - 临床试验设计
+  - 实验室实验
+  - 实地研究
+  - A/B测试
+
+  ## 配置
+
+  - 随机化方法
+  - 分层因素
+  - 区组大小
+  - 种子管理
+
+  ## 输出成果
+
+  - 随机化列表
+  - 分配序列
+  - 平衡性检查
+  - 方案文档

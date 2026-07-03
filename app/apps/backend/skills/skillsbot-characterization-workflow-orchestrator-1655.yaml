@@ -1,0 +1,120 @@
+name: skillsbot-characterization-workflow-orchestrator-1655
+display_name: characterization-workflow-orchestrator
+display_name_zh: 表征工作流编排器
+description: characterization-workflow-orchestrator from SkillsBot scientific academic catalog
+description_zh: 表征工作流编排器是一款用于自动化协调多技术表征活动的工作流管理技能。它通过序列规划、仪器调度、样品路径优化和数据集成，实现纳米材料等样品的高通量、高效率表征。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1655
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1655
+upstream_name: characterization-workflow-orchestrator
+upstream_commit: ""
+prompt: |-
+  ---
+  name: 表征工作流编排器
+  description: 用于编排多技术表征序列的工作流自动化技能
+  allowed-tools:
+    - 读取
+    - 写入
+    - 全局匹配
+    - 文本搜索
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 基础设施-质量
+    priority: 高
+    phase: 6
+    tools-libraries:
+      - 工作流引擎
+      - 仪器集成API
+  ---
+
+  # 表征工作流编排器
+
+  ## 目的
+
+  表征工作流编排器技能提供多技术表征活动的自动化协调，实现高效的样品通量、数据关联和综合报告生成。
+
+  ## 能力
+
+  - 表征序列规划
+  - 样品路径优化
+  - 数据聚合与关联
+  - 报告生成
+  - 质量门控执行
+  - 仪器调度
+
+  ## 使用指南
+
+  ### 工作流编排
+
+  1. **序列规划**
+     - 定义所需技术
+     - 按样品兼容性排序
+     - 分配仪器时间
+
+  2. **执行管理**
+     - 跟踪样品进度
+     - 处理技术故障
+     - 路由至后续步骤
+
+  3. **数据集成**
+     - 聚合结果
+     - 跨技术关联
+     - 生成报告
+
+  ## 流程集成
+
+  - 多模态纳米材料表征管道
+  - 结构-性能关联分析
+
+  ## 输入模式
+
+  ```json
+  {
+    "sample_id": "字符串",
+    "characterization_goals": ["尺寸", "成分", "结构", "表面"],
+    "techniques_required": ["透射电镜", "X射线衍射", "X射线光电子能谱", "动态光散射"],
+    "priority": "常规|紧急",
+    "turnaround_target": "数字（天）"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "workflow": {
+      "id": "字符串",
+      "status": "已规划|进行中|已完成",
+      "sequence": [{
+        "step": "数字",
+        "technique": "字符串",
+        "instrument": "字符串",
+        "scheduled_time": "字符串"
+      }]
+    },
+    "progress": {
+      "completed": "数字",
+      "total": "数字",
+      "current_step": "字符串"
+    },
+    "integrated_results": {
+      "summary": "字符串",
+      "data_files": ["字符串"],
+      "quality_metrics": {}
+    },
+    "report_path": "字符串"
+  }
+  ```

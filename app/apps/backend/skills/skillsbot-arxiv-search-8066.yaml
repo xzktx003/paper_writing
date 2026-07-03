@@ -1,0 +1,59 @@
+name: skillsbot-arxiv-search-8066
+display_name: arxiv-search
+display_name_zh: ArXiv论文搜索
+description: arxiv-search from SkillsBot scientific academic catalog
+description_zh: 搜索和检索ArXiv上的科学论文，提供工具进行关键词、作者或主题搜索，并获取详细内容，支持学术研究和文献管理。关键词包括：ArXiv、科学论文、文献检索、学术搜索、论文摘要、元数据、引用格式。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/8066
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/8066
+upstream_name: arxiv-search
+upstream_commit: ""
+prompt: |-
+  ---
+  name: arxiv-search
+  description: 搜索和检索ArXiv上的科学论文
+  ---
+
+  # ArXiv论文搜索
+
+  ## 可用工具
+
+  - **arxiv_search(query)**: 通过关键词、作者或主题搜索ArXiv上的科学论文。
+    - `query` (字符串, 必需): 搜索论文的查询
+
+  - **arxiv_get_paper(paper_ids)**: 从ArXiv获取详细的论文内容（摘要、元数据、内容预览）。
+    - `paper_ids` (字符串, 必需): 逗号分隔的论文ID（例如："2301.12345" 或 "2301.12345,2302.67890"）
+
+  ## 使用指南
+
+  - 使用具体的学术关键词以获得最佳搜索结果（例如，使用“transformer attention mechanism”而非“AI”）。
+  - 论文ID格式为：`2301.12345` 或 `cs.AI/2301.12345`。
+  - 展示结果时，包括：标题、作者、摘要总结和ArXiv链接。
+  - 首先使用 `arxiv_search` 查找相关论文，然后使用 `arxiv_get_paper` 获取详细内容。
+  - 为了效率，一次传递多个论文ID作为逗号分隔的值。
+
+  ## 引用格式
+
+  在展示来自论文的信息时，将每个具体声明包装在 `<cite>` 标签中：
+
+  ```
+  <cite source="PAPER_TITLE" url="https://arxiv.org/abs/PAPER_ID">claim text</cite>
+  ```
+
+  **规则：**
+  - 引用论文中的发现、方法、统计数据和具体声明。
+  - The `source` 属性应包含论文标题。
+  - The `url` 属性应包含ArXiv URL（`https://arxiv.org/abs/XXXX.XXXXX`）。
+  - 不要引用您自己的推理或一般知识。
+  - 使用最少数量的引用以支持声明。

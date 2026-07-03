@@ -4,11 +4,13 @@ import { describe, expect, test } from 'vitest';
 process.env.OPENPRISM_PROJECTS_DIR ||= '/tmp/paper-writer-test-projects';
 
 const {
+  buildDrawPromptSystem,
   formatDrawApiError,
   formatDrawNetworkError,
   httpRequestWithRetry,
   isRetryableDrawNetworkError,
 } = await import('../apps/backend/src/routes/draw.js');
+const { loadSkills } = await import('../apps/backend/src/services/skillEngine.js');
 
 function listen(server) {
   return new Promise((resolve) => {
@@ -17,6 +19,16 @@ function listen(server) {
 }
 
 describe('Draw image API network requests', () => {
+  test('injects selected Skill instructions into Draw prompt generation', async () => {
+    await loadSkills();
+    const systemPrompt = buildDrawPromptSystem(['alterlab-scientific-schematics']);
+
+    expect(systemPrompt).toContain('expert at creating detailed image prompts');
+    expect(systemPrompt).toContain('[Active Skill -');
+    expect(systemPrompt).toContain('alterlab');
+    expect(buildDrawPromptSystem([])).not.toContain('[Active Skill -');
+  });
+
   test('retries transient socket resets before returning a response', async () => {
     let requests = 0;
     const server = http.createServer((req, res) => {

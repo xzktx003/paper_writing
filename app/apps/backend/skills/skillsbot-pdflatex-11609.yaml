@@ -1,0 +1,55 @@
+name: skillsbot-pdflatex-11609
+display_name: pdflatex
+display_name_zh: pdflatex编译与使用
+description: pdflatex from SkillsBot scientific academic catalog
+description_zh: pdflatex是一个用于在Linux系统上安装和使用pdflatex工具将LaTeX文档编译成PDF的技能，特别适用于学术研究、论文撰写和技术文档生成。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: formatting-latex
+subcategory_zh: 格式与 LaTeX
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/11609
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/11609
+upstream_name: pdflatex
+upstream_commit: ""
+prompt: |-
+  name: pdflatex
+  description: 在Linux上安装和使用pdflatex将LaTeX文档编译成PDF。用于生成学术论文、研究出版物或任何用LaTeX编写的文档。
+  triggers:
+  - pdflatex
+  ---
+
+  PdfLatex是一个将LaTeX源代码转换为PDF的工具。这对研究人员特别重要，因为他们用它来发表他们的发现。使用Linux终端可以非常容易地安装，尽管在Windows上似乎是个烦人的任务。安装命令如下。
+
+  * 安装TexLive基础
+
+  ```
+  apt-get install texlive-latex-base
+  ```
+
+  * 同时安装推荐和额外的字体，以避免在使用pdflatex处理有更多字体的latex文件时遇到错误。
+
+  ```
+  apt-get install texlive-fonts-recommended
+  apt-get install texlive-fonts-extra
+  ```
+
+  * 安装额外的包，
+
+  ```
+  apt-get install texlive-latex-extra
+  ```
+
+  一旦如上所述安装完成，您就可以使用PdfLatex从latex源文件创建PDF文件，如下所示。
+  ```
+  pdflatex latex_source_name.tex
+  ```
+
+  参考：http://kkpradeeban.blogspot.com/2014/04/installing-latexpdflatex-on-ubuntu.html

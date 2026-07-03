@@ -1,0 +1,69 @@
+name: skillsbot-latex-proof-formatter-1533
+display_name: latex-proof-formatter
+display_name_zh: LaTeX证明编排器
+description: latex-proof-formatter from SkillsBot scientific academic catalog
+description_zh: LaTeX证明编排器是一款专注于学术论文格式化的专业工具，专门用于将理论计算机科学领域的证明过程和算法以出版级LaTeX标准进行格式化排版。核心功能包括算法伪代码编排、推理规则排版、证明环境格式化、定理编号与交叉引用管理，确保研究成果符合顶级会议和期刊的格式要求。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: formatting-latex
+subcategory_zh: 格式与 LaTeX
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1533
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1533
+upstream_name: latex-proof-formatter
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: latex-proof-formatter
+  描述: 以出版级LaTeX格式编排理论计算机科学证明与算法
+  允许使用的工具:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  元数据:
+    专业领域: 计算机科学
+    领域: 科学
+    类别: 研究文档
+    阶段: 6
+  ---
+
+  # LaTeX证明编排器
+
+  ## 目的
+
+  提供关于使用出版级LaTeX格式编排理论计算机科学证明与算法的专家指导。
+
+  ## 功能
+
+  - 算法伪代码编排（algorithmicx）
+  - 推理规则排版
+  - 证明环境格式化
+  - 定理编号与交叉引用
+  - BibTeX集成
+  - 会议风格合规性
+
+  ## 使用指南
+
+  1. **结构**: 清晰组织证明结构
+  2. **算法**: 使用algorithmicx编排算法
+  3. **规则**: 使用mathpartir排版推理规则
+  4. **引用**: 妥善管理交叉引用
+  5. **风格**: 符合会议/期刊风格要求
+
+  ## 工具/库
+
+  - LaTeX
+  - algorithmicx
+  - mathpartir
+  - amsthm
+  - Overleaf

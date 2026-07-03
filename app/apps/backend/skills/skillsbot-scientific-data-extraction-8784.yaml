@@ -1,0 +1,416 @@
+name: skillsbot-scientific-data-extraction-8784
+display_name: scientific-data-extraction
+display_name_zh: 科学数据提取技能
+description: scientific-data-extraction from SkillsBot scientific academic catalog
+description_zh: 科学数据提取技能用于从多种格式的科学文献中自动化提取结构化数据，支持PDF、HTML、图像等，自动检测科学领域并应用人工智能工具进行高精度提取，特别适用于化学和材料科学。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: paper-reading
+subcategory_zh: 论文阅读与笔记
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/8784
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/8784
+upstream_name: scientific-data-extraction
+upstream_commit: ""
+prompt: |
+  ---
+  name: scientific-data-extraction
+  description: |
+    从多种格式（PDF、HTML、图像、纯文本）的科学文献中提取结构化数据。
+    自动检测科学领域，在适当时推荐用于化学/材料的专业工具。
+
+    使用此技能时：从论文中提取数值数据、数字化图表、解析PDF中的表格、
+    提取化学性质或反应，或将非结构化科学文本转换为结构化格式。
+
+    关键能力：格式检测和路由、领域特定提取（化学/材料）、多方法
+    验证、表格提取、图表数字化、带验证的LLM增强提取、置信度评分。
+  allowed-tools: "*"
+  ---
+
+  # 科学数据提取技能
+
+  ## 概述
+
+  此技能提供从多种输入格式（PDF、HTML、图像、纯文本）的科学文献中提取结构化数据的全面指导。它自动检测科学领域，在适当时推荐专业工具（特别是化学和材料科学），并采用分层提取方法，通过多方法验证获得高置信度结果。
+
+  ## 何时使用此技能
+
+  使用此技能当您需要：
+
+  - **提取数值数据** 从科学论文、报告或文档中
+  - **数字化图表** 以恢复底层数据点
+  - **解析表格** 从PDF或图像中为结构化格式（CSV、DataFrame、JSON）
+  - **提取化学/材料数据** 包括性质、反应、化合物和结构
+  - **转换非结构化文本** 为结构化JSON或表格格式
+  - **验证提取数据** 通过多方法交叉检查
+  - **处理文档批次** 使用一致的提取方法
+
+  ## 输入格式检测
+
+  第一步是识别输入格式并路由到适当工具：
+
+  ### 纯文本 (.txt, .md)
+  - 通过关键词分析进行领域检测
+  - 基于NLP的实体提取（spaCy, Stanza）
+  - 用于结构化数据的正则表达式模式（带单位的数字、化学式）
+  - 基于LLM的结构化提取
+
+  ### HTML (.html, 网页)
+  - 使用BeautifulSoup + lxml进行HTML解析
+  - 表格检测和提取
+  - 带结构保存的文本内容提取
+  - 文本提取后的领域特定处理
+
+  ### PDF (.pdf)
+  | 优先级 | 工具 | 速度 | 使用场景 |
+  |----------|------|-------|----------|
+  | 快速 | PyMuPDF4LLM | ~0.12s | 初始探索、大批量 |
+  | 标准 | GROBID | 中 | 研究级、参考文献解析 |
+  | 标准 | Docling | 中 | 布局感知、复杂文档 |
+  | 表格 | Camelot | 快 | 边框表格 |
+  | 表格 | Tabula | 快 | 通用表格 |
+  | 表格 | pdfplumber | 中 | 复杂表格结构 |
+  | 深层 | Marker-PDF | 慢 | 带OCR的扫描文档 |
+
+  ### 图像 (.png, .jpg, .tiff)
+  | 内容类型 | 推荐方法 |
+  |--------------|---------------------|
+  | 文档扫描 | OCR（Tesseract/Surya）然后文本管道 |
+  | 图表/绘图 | WebPlotDigitizer工作流或LLM视觉 |
+  | 表格图像 | Table Transformer或LLM视觉 |
+  | 化学结构 | OSRA/MolVec用于SMILES转换 |
+
+  ## 领域检测
+
+  此技能自动检测科学领域以应用专业工具：
+
+  ### 化学/材料指标
+  - 化学式（H2O, NaCl, TiO2）
+  - SMILES字符串、InChI标识符
+  - 反应箭头（→, ⟶, ⇌）
+  - 性质关键词：熔点、带隙、电导率、产率、纯度
+  - 材料名称和IUPAC命名法
+  - 光谱数据模式（NMR位移、IR峰）
+
+  ### 当检测到化学/材料时
+  应用专业工具：
+  - **ChemDataExtractor v2**：性质提取、实体识别、表格解析
+  - **OpenChemIE**：从文本、表格和图中提取反应
+  - **领域特定NER**：化学命名实体识别
+
+  ### 通用科学领域
+  使用通用提取：
+  - 标准NLP管道
+  - 基于LLM的结构化提取
+  - 基于模板的解析
+
+  ## 提取方法层次结构
+
+  基于需求按复杂度递增顺序应用方法：
+
+  ### 级别1：快速提取（速度优先）
+  **何时使用**：初始探索、大批量文档、简单结构化数据
+
+  ```python
+  # 使用PyMuPDF4LLM快速PDF到文本
+  import pymupdf4llm
+  text = pymupdf4llm.to_markdown("paper.pdf")
+
+  # 快速HTML解析
+  from bs4 import BeautifulSoup
+  soup = BeautifulSoup(html_content, 'lxml')
+  tables = soup.find_all('table')
+  ```
+
+  **预期置信度**：较低，适合筛查
+
+  ### 级别2：标准提取（平衡）
+  **何时使用**：研究级提取、需要结构保存
+
+  ```python
+  # 使用GROBID进行结构化PDF解析
+  import scipdf_parser
+  article = scipdf_parser.parse_pdf_to_dict("paper.pdf")
+
+  # 使用Docling进行布局感知提取
+  from docling.document_converter import DocumentConverter
+  converter = DocumentConverter()
+  result = converter.convert("paper.pdf")
+
+  # 使用Camelot进行边框表格提取
+  import camelot
+  tables = camelot.read_pdf("paper.pdf", flavor='lattice')
+  df = tables[0].df
+  ```
+
+  **预期置信度**：中高
+
+  ### 级别3：深层提取（准确度优先）
+  **何时使用**：出版质量数据、领域特定提取
+
+  ```python
+  # 使用ChemDataExtractor处理化学文档
+  from chemdataextractor import Document
+  doc = Document.from_file("paper.pdf")
+  records = doc.records
+
+  # 使用OpenChemIE进行反应提取
+  from openchemie import OpenChemIE
+  model = OpenChemIE()
+  reactions = model.extract_reactions_from_text(text)
+
+  # 使用Marker-PDF带OCR处理扫描文档
+  from marker.converters.pdf import PdfConverter
+  converter = PdfConverter()
+  result = converter("scanned_paper.pdf")
+  ```
+
+  **预期置信度**：高
+
+  ### 级别4：LLM增强提取
+  **何时使用**：复杂图形、模糊数据、需要验证
+
+  ```python
+  # 基于LLM的结构化提取
+  prompt = """
+  从以下文本中提取所有数值数据为JSON：
+  - 性质名称
+  - 值（仅数字）
+  - 单位
+  - 上下文（什么材料/化合物）
+
+  文本：{text}
+  """
+
+  # 用于图表解释的LLM视觉
+  prompt = """
+  分析此图表图像并提取：
+  1. X轴标签和范围
+  2. Y轴标签和范围
+  3. 所有数据点作为(x, y)对
+  4. 任何误差棒或不确定性指示器
+  """
+  ```
+
+  **预期置信度**：最高当与验证结合时
+
+  ## 多方法验证管道
+
+  为高置信度结果，使用多种提取方法并验证：
+
+  ### 步骤1：主要提取
+  基于输入类型和领域选择方法，提取结构化数据。
+
+  ### 步骤2：次要提取
+  在同一源上运行替代方法，比较结果并标记差异。
+
+  ### 步骤3：LLM验证查询
+  提出针对性问题以验证提取数据：
+  - "值X是否与上下文Y一致？"
+  - "单位Z对于性质P是否有意义？"
+  - "在预期范围内是否有任何缺失数据点？"
+
+  ### 步骤4：置信度评分
+
+  ```python
+  confidence = {
+      "score": 0.0,  # 0-1标度
+      "level": "HIGH|MEDIUM|LOW|REVIEW",
+      "methods_agreed": [],  # 产生相同结果的方法列表
+      "discrepancies": [],   # 方法之间的任何分歧
+      "verification_notes": ""  # LLM验证结果
+  }
+
+  # 评分规则：
+  # - 单方法：最大0.7
+  # - 两种方法一致：0.8
+  # - 两种方法 + LLM验证：0.9
+  # - 多种方法 + LLM + 数据库交叉引用：0.95+
+  ```
+
+  ### 步骤5：数据库交叉引用（可选）
+  对于化学/材料，比较已知数据库：
+  - Materials Project
+  - AFLOW
+  - PubChem
+  - NIST数据库
+
+  标记与预期范围的显著偏差。
+
+  ## 输出格式
+
+  一致结构化提取数据：
+
+  ```json
+  {
+    "extraction_metadata": {
+      "source": "路径/到/文档.pdf",
+      "source_type": "pdf",
+      "domain_detected": "化学",
+      "methods_used": ["grobid", "chemdataextractor", "llm_verification"],
+      "timestamp": "2025-01-18T..."
+    },
+    "extracted_data": [
+      {
+        "data_type": "材料性质",
+        "entity": "TiO2",
+        "property": "带隙",
+        "value": 3.2,
+        "unit": "eV",
+        "source_location": {
+          "page": 4,
+          "section": "结果",
+          "table_id": "表2",
+          "row": 3
+        },
+        "confidence": {
+          "score": 0.95,
+          "level": "高",
+          "methods_agreed": ["chemdataextractor", "llm_extraction"],
+          "verification_notes": "值与文献范围3.0-3.4 eV一致"
+        }
+      }
+    ],
+    "validation_summary": {
+      "total_extracted": 47,
+      "high_confidence": 38,
+      "medium_confidence": 7,
+      "needs_review": 2,
+      "discrepancies": []
+    }
+  }
+  ```
+
+  ## 逐步说明
+
+  ### 用于PDF数据提取
+
+  1. **识别文档类型**：扫描或基于文本的PDF
+  2. **选择提取级别**：基于准确度要求
+  3. **检测领域**：检查化学/材料指标
+  4. **提取文本/结构**：使用层次结构中的适当工具
+  5. **单独提取表格**：使用Camelot、Tabula或pdfplumber
+  6. **应用领域工具**：如果检测到化学，使用ChemDataExtractor
+  7. **验证**：运行次要提取或LLM验证
+  8. **格式化输出**：结构化为带置信度评分的JSON
+
+  ### 用于图表/绘图数字化
+
+  1. **评估图表质量**：分辨率、清晰度、标签
+  2. **识别图表类型**：线图、散点图、条形图、等高线
+  3. **选择方法**：
+     - 简单、清晰图表：WebPlotDigitizer（手动校准）
+     - 复杂或批量：LLM视觉提取
+  4. **校准轴**：定义坐标系
+  5. **提取数据点**：手动选择或自动检测
+  6. **验证**：根据视觉检查检查提取点
+  7. **导出**：CSV或JSON格式带不确定性估计
+
+  ### 用于表格提取
+
+  1. **识别表格类型**：边框（格子）或无边框（流）
+  2. **选择工具**：
+     - 边框：Camelot带`flavor='lattice'`
+     - 无边框：Tabula或Camelot带`flavor='stream'`
+     - 复杂：pdfplumber用于细粒度控制
+  3. **提取到DataFrame**：审查结构和标题
+  4. **清理数据**：修复合并单元格、缺失值、格式化
+  5. **应用领域解析**：转换单位、解析化学式
+  6. **验证**：与源视觉比较
+  7. **导出**：CSV、JSON或集成到数据集
+
+  ### 用于化学/材料提取
+
+  1. **确认领域**：验证化学/材料内容
+  2. **选择专业工具**：
+     - 性质：ChemDataExtractor v2
+     - 反应：OpenChemIE
+     - 从图像的结构：OSRA/MolVec
+  3. **配置提取**：为目标性质设置解析器
+  4. **运行提取**：使用领域工具处理文档
+  5. **后处理**：标准化单位、标准化标识符
+  6. **交叉引用**：与数据库比较（Materials Project、PubChem）
+  7. **验证**：LLM验证异常值
+  8. **导出**：结构化JSON带置信度评分
+
+  ## 最佳实践
+
+  1. **始终从格式检测开始** - 正确工具选择取决于准确格式识别
+
+  2. **使用最简单有效的方法** - 从级别1开始，仅在需要时升级
+
+  3. **保存源位置** - 跟踪页码、章节、表ID以便追溯
+
+  4. **验证异常值** - 任何超出预期范围的值应标记和验证
+
+  5. **记录提取方法** - 记录哪些工具和设置产生每个数据点
+
+  6. **明确处理不确定性** - 包含误差界限当可用，注意当值是近似时
+
+  7. **交叉引用化学数据** - 始终与已知数据库比较进行健全检查
+
+  8. **谨慎使用LLM验证** - 对于复杂图形和模糊情况最有价值
+
+  ## 要求
+
+  ### 核心Python包
+  - `pymupdf4llm`：快速PDF提取
+  - `pdfplumber`：详细PDF分析
+  - `camelot-py`：表格提取（需要ghostscript）
+  - `beautifulsoup4`, `lxml`：HTML解析
+  - `spacy`：NLP处理
+  - `pandas`：数据操作
+
+  ### 领域特定（化学）
+  - `chemdataextractor`：化学NLP（推荐v2）
+  - `openchemie`：反应提取
+
+  ### 可选
+  - `tabula-py`：表格提取（需要Java）
+  - `grobid`（服务器）：学术PDF解析
+  - `docling`：IBM文档转换器
+  - `marker-pdf`：带OCR的PDF转换
+  - `tesseract`或`surya`：OCR引擎
+
+  ## 限制
+
+  1. **扫描文档需要OCR** - 质量取决于扫描分辨率和OCR准确度
+
+  2. **复杂表格结构** - 合并单元格、嵌套标题可能需要手动校正
+
+  3. **图表数字化是近似的** - 精度受图像分辨率和校准限制
+
+  4. **领域工具是专业的** - 化学工具在生物学或物理学文本上效果不佳
+
+  5. **LLM提取可能产生幻觉** - 始终使用源或替代方法验证
+
+  6. **一些PDF受保护** - 可能因DRM或仅图像内容而无法提取
+
+  ## 相关技能
+
+  - **文献综述**：用于系统文献搜索和综合
+  - **科学评审员**：用于评估提取数据质量
+  - **材料数据库**：用于交叉引用提取的化学/材料数据
+  - **Python绘图**：用于可视化提取数据
+
+  ## 参考文献
+
+  参见`references/`目录获取详细文档：
+  - `pdf-tools.md`：全面PDF提取工具比较
+  - `table-extraction.md`：表格提取方法和代码示例
+  - `graph-digitization.md`：图表数据提取技术
+  - `chemistry-tools.md`：ChemDataExtractor和OpenChemIE使用
+  - `llm-extraction.md`：基于LLM的提取模式和验证
+
+  参见`examples/`目录获取完整工作流：
+  - `extract-from-pdf.md`：端到端PDF提取示例
+  - `extract-table-data.md`：表格提取比较
+  - `digitize-graph.md`：图表数字化指南
+  - `chemistry-extraction.md`：化学特定提取工作流

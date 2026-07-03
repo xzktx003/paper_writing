@@ -1,0 +1,67 @@
+name: skillsbot-aflow-materials-discovery-1701
+display_name: aflow-materials-discovery
+display_name_zh: AFLOW材料发现
+description: aflow-materials-discovery from SkillsBot scientific academic catalog
+description_zh: AFLOW材料发现技能是一个专注于高通量材料计算与发现的工具，主要用于自动化密度泛函理论（DFT）计算流程、材料数据库智能查询、热力学稳定性评估以及晶体结构原型生成。该技能集成了机器学习能力，能够计算材料描述符，为新材料研发和性能预测提供数据支持。
+type: research
+categories:
+  - exploration-discovery
+category_zh: 探险、发现
+subcategory: ideation
+subcategory_zh: 选题与创意
+trigger: manual
+auto_recommend: false
+tags:
+  - 探险、发现
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1701
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1701
+upstream_name: aflow-materials-discovery
+upstream_commit: ""
+prompt: |-
+  ---
+  name: aflow-materials-discovery
+  description: AFLOW自动材料发现技能，用于高通量密度泛函理论计算和材料数据库查询
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 凝聚态物理
+    phase: 6
+  ---
+
+  # AFLOW材料发现
+
+  ## 目的
+
+  提供关于AFLOW在高通量材料发现方面的专家指导，包括数据库查询、工作流生成和机器学习集成。
+
+  ## 能力
+
+  - AFLOW数据库API查询
+  - 自动工作流生成
+  - 热力学稳定性分析
+  - 原型结构生成
+  - 描述符计算
+  - 机器学习集成
+
+  ## 使用指南
+
+  1. **数据库查询**：搜索AFLOW数据库中的材料
+  2. **工作流生成**：创建自动DFT工作流
+  3. **稳定性分析**：分析热力学稳定性
+  4. **原型结构**：生成晶体结构原型
+  5. **机器学习集成**：为机器学习模型计算描述符
+
+  ## 工具/库
+
+  - AFLOW
+  - aflow.py
+  - Materials Project API

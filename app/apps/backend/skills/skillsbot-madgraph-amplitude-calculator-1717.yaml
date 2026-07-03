@@ -1,0 +1,67 @@
+name: skillsbot-madgraph-amplitude-calculator-1717
+display_name: madgraph-amplitude-calculator
+display_name_zh: MadGraph振幅计算器
+description: madgraph-amplitude-calculator from SkillsBot scientific academic catalog
+description_zh: MadGraph振幅计算器是一款专用于高能物理研究的专业工具，主要用于BSM（超越标准模型）物理的矩阵元计算、截面计算和事件生成。该技能支持UFO模型导入、NLO（次领头阶）计算设置、部分子级事件生成以及与Pythia/Herwig等软件的级联匹配，帮助研究人员进行粒子物理…
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1717
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1717
+upstream_name: madgraph-amplitude-calculator
+upstream_commit: ""
+prompt: |
+  ---
+  name: madgraph-amplitude-calculator
+  description: 用于BSM物理的MadGraph矩阵元计算技能，包括截面计算和事件生成
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 粒子物理学
+    phase: 6
+  ---
+
+  # MadGraph振幅计算器
+
+  ## 目的
+
+  为BSM物理的MadGraph矩阵元计算提供专家指导，包括UFO模型导入、NLO计算和级联匹配。
+
+  ## 能力
+
+  - UFO模型导入与验证
+  - 过程生成与优化
+  - NLO计算设置
+  - 部分子级事件生成
+  - 与Pythia/Herwig的级联匹配
+  - 带不确定性的截面提取
+
+  ## 使用指南
+
+  1. **模型导入**：导入用于BSM物理的UFO模型
+  2. **过程生成**：为所需过程生成矩阵元
+  3. **NLO修正**：需要时配置NLO计算
+  4. **匹配**：设置用于强子化的级联匹配
+  5. **不确定性**：评估标度和PDF不确定性
+
+  ## 工具/库
+
+  - MadGraph5_aMC@NLO
+  - UFO模型
+  - FeynRules

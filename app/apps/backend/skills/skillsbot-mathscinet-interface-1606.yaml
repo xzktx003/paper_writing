@@ -1,0 +1,66 @@
+name: skillsbot-mathscinet-interface-1606
+display_name: mathscinet-interface
+display_name_zh: MathSciNet数学文献接口
+description: mathscinet-interface from SkillsBot scientific academic catalog
+description_zh: MathSciNet数学文献接口是一个专门用于访问和检索数学学术文献、评论及引文数据的工具。它支持通过MSC数学分类代码进行精准检索，提供作者资料查询、引用网络分析、专业数学评论阅读等功能。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1606
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1606
+upstream_name: mathscinet-interface
+upstream_commit: ""
+prompt: |
+  ---
+  名称: mathscinet-接口
+  描述: 与MathSciNet交互以获取数学评论和文献数据
+  允许使用的工具:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+    - WebFetch
+    - WebSearch
+  元数据:
+    专业领域: 数学
+    领域: 科学
+    类别: 研究
+    阶段: 6
+  ---
+
+  # MathSciNet 接口
+
+  ## 目的
+
+  提供与MathSciNet的交互接口，用于访问数学评论和文献数据。
+
+  ## 功能
+
+  - MSC分类查询
+  - 作者资料检索
+  - 引用文献搜索
+  - 评论文本访问
+  - 相关作品发现
+  - 合作网络分析
+
+  ## 使用指南
+
+  1. **MSC代码**: 使用数学主题分类代码
+  2. **作者搜索**: 通过作者搜索并进行消歧
+  3. **引用网络**: 分析引用和被引用的论文
+  4. **评论**: 访问专家数学评论
+
+  ## 工具/库
+
+  - MathSciNet API

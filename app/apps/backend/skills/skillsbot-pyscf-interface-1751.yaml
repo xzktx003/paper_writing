@@ -1,0 +1,71 @@
+name: skillsbot-pyscf-interface-1751
+display_name: pyscf-interface
+display_name_zh: PySCF量子化学计算接口
+description: pyscf-interface from SkillsBot scientific academic catalog
+description_zh: PySCF量子化学计算接口是一个专门用于执行经典电子结构计算的工具，旨在为量子计算应用生成关键的分子数据。它支持哈特里-福克、耦合簇等多种计算方法，并能进行活性空间选择、分子轨道可视化和积分计算。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1751
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1751
+upstream_name: pyscf-interface
+upstream_commit: ""
+prompt: |
+  ---
+  name: pyscf-interface
+  description: 用于经典电子结构计算的PySCF量子化学接口
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: quantum-computing
+    domain: science
+    category: quantum-chemistry
+    phase: 6
+  ---
+
+  # PySCF 接口
+
+  ## 目的
+
+  为生成量子计算应用所需的分子数据，提供关于PySCF量子化学计算的专家指导。
+
+  ## 能力
+
+  - 哈特里-福克计算
+  - 耦合簇计算
+  - 活性空间选择
+  - 分子轨道可视化
+  - 积分计算
+  - 基组管理
+  - 几何结构优化
+  - 性质计算
+
+  ## 使用指南
+
+  1. **分子定义**：指定分子几何结构以及电荷/多重度
+  2. **基组选择**：根据精度要求选择合适的基组
+  3. **方法执行**：运行HF、CCSD或其他方法以获取参考能量
+  4. **积分导出**：提取单电子和双电子积分用于量子算法
+  5. **活性空间**：识别化学相关的轨道以进行简化计算
+
+  ## 工具/库
+
+  - PySCF
+  - OpenFermion-PySCF
+  - Qiskit Nature
+  - ASE
+  - RDKit

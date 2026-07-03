@@ -1,0 +1,431 @@
+name: skillsbot-research-lookup-13081
+display_name: research-lookup
+display_name_zh: 研究查找技能
+description: research-lookup from SkillsBot scientific academic catalog
+description_zh: 智能研究信息查找工具，通过自动后端路由（Parallel Chat API 和 Perplexity sonar-pro-search）提供实时研究信息、学术论文搜索、市场数据分析等功能。适用于查找论文、收集研究数据、验证科学信息、支持科学写作、获取技术文档和市场趋势。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/13081
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/13081
+upstream_name: research-lookup
+upstream_commit: ""
+prompt: |
+  ---
+  名称：研究查找
+  描述："使用 Parallel Chat API（主要）或 Perplexity sonar-pro-search（学术论文搜索）查找当前研究信息。自动将查询路由到最佳后端。用于查找论文、收集研究数据、验证科学信息。"
+  允许工具：[读取、写入、编辑、Bash]
+  ---
+
+  # 研究信息查找
+
+  ## 概述
+
+  此技能提供实时研究信息查找，具有**智能后端路由**：
+
+  - **Parallel Chat API**（`core` 模型）：所有一般研究查询的默认后端。通过 OpenAI 兼容的 Chat API 在 `https://api.parallel.ai` 提供全面的、多源研究报告，并附带内联引用。
+  - **Perplexity sonar-pro-search**（通过 OpenRouter）：仅用于学术特定论文搜索，其中学术数据库访问至关重要。
+
+  技能自动检测查询类型并路由到最佳后端。
+
+  ## 何时使用此技能
+
+  当您需要时使用此技能：
+
+  - **当前研究信息**：最新研究、论文和发现
+  - **文献验证**：根据当前研究检查事实、统计数据或声明
+  - **背景研究**：收集科学写作的背景和支持证据
+  - **引用来源**：查找相关论文和研究以引用
+  - **技术文档**：查找规范、协议或方法论
+  - **市场/行业数据**：当前统计数据、趋势、竞争情报
+  - **最新发展**：新兴趋势、突破、公告
+
+  ## 通过科学示意图增强视觉效果
+
+  **使用此技能创建文档时，始终考虑添加科学图表和示意图以增强视觉传达。**
+
+  如果您的文档不包含示意图或图表：
+  - 使用 **scientific-schematics** 技能生成 AI 驱动的出版质量图表
+  - 只需用自然语言描述您想要的图表
+
+  ```bash
+  python scripts/generate_schematic.py "您的图表描述" -o figures/output.png
+  ```
+
+  ---
+
+  ## 自动后端选择
+
+  技能根据内容自动将查询路由到最佳后端：
+
+  ### 路由逻辑
+
+  ```
+  查询到达
+      |
+      +-- 包含学术关键词？（论文、DOI、期刊、同行评审等）
+      |       是 --> Perplexity sonar-pro-search（学术搜索模式）
+      |
+      +-- 其他所有内容（一般研究、市场数据、技术信息、分析）
+              --> Parallel Chat API（core 模型）
+  ```
+
+  ### 学术关键词（路由到 Perplexity）
+
+  包含这些术语的查询被路由到 Perplexity 进行学术重点搜索：
+
+  - 论文查找：`查找论文`、`查找文章`、`关于...的研究论文`、`已发表研究`
+  - 引用：`引用`、`citation`、`doi`、`pubmed`、`pmid`
+  - 学术来源：`同行评审`、`期刊文章`、`学术性`、`arxiv`、`预印本`
+  - 综述类型：`系统综述`、`荟萃分析`、`文献搜索`
+  - 论文质量：`基础论文`、`开创性论文`、`里程碑论文`、`高引用`
+
+  ### 其他所有内容（路由到 Parallel）
+
+  所有其他查询都转到 Parallel Chat API（core 模型），包括：
+
+  - 一般研究问题
+  - 市场和行业分析
+  - 技术信息和文档
+  - 当前事件和最新发展
+  - 比较分析
+  - 统计数据检索
+  - 复杂分析查询
+
+  ### 手动覆盖
+
+  您可以强制使用特定后端：
+
+  ```bash
+  # 强制 Parallel 深度研究
+  python research_lookup.py "您的查询" --force-backend parallel
+
+  # 强制 Perplexity 学术搜索
+  python research_lookup.py "您的查询" --force-backend perplexity
+  ```
+
+  ---
+
+  ## 核心能力
+
+  ### 1. 一般研究查询（Parallel Chat API）
+
+  **默认后端。** 通过 Chat API（`core` 模型）提供全面的、多源研究，并附带引用。
+
+  ```
+  查询示例：
+  - "2025 年 CRISPR 基因编辑的最新进展"
+  - "比较 mRNA 疫苗与传统疫苗在癌症治疗中的应用"
+  - "AI 在医疗行业采用的统计数据"
+  - "全球可再生能源市场趋势和预测"
+  - "解释肠道微生物组与抑郁的机制"
+  ```
+
+  **响应包括：**
+  - 全面的研究报告（markdown 格式）
+  - 来自权威网络来源的内联引用
+  - 带有关键发现的结构化部分
+  - 多个视角和数据点
+  - 用于验证的源 URL
+
+  ### 2. 学术论文搜索（Perplexity sonar-pro-search）
+
+  **用于学术特定查询。** 优先考虑学术数据库和同行评审来源。
+
+  ```
+  查询示例：
+  - "在 NeurIPS 2024 中查找关于 Transformer 注意力机制的论文"
+  - "量子纠错的基础论文"
+  - "非小细胞肺癌免疫疗法的系统综述"
+  - "引用原始 BERT 论文及其最有影响力的后续工作"
+  - "已发表的关于 CRISPR 脱靶效应在临床试验中的研究"
+  ```
+
+  **响应包括：**
+  - 学术文献的关键发现摘要
+  - 5-8 个高质量引用，包括作者、标题、期刊、年份、DOI
+  - 引用计数和会议层级指标
+  - 关键统计数据和方法论亮点
+  - 研究空白和未来方向
+
+  ### 3. 技术和方法论信息
+
+  ```
+  查询示例：
+  - "蛋白质检测的 Western blot 协议"
+  - "临床试验的统计功效分析"
+  - "机器学习模型评估指标比较"
+  ```
+
+  ### 4. 统计和市场数据
+
+  ```
+  查询示例：
+  - "2025 年美国人口中糖尿病的患病率"
+  - "全球 AI 市场规模和增长预测"
+  - "按国家分的 COVID-19 疫苗接种率"
+  ```
+
+  ---
+
+  ## 论文质量和流行度优先排序
+
+  **关键**：在搜索论文时，始终优先考虑高质量、有影响力的论文。
+
+  ### 基于引用的排名
+
+  | 论文年龄 | 引用阈值 | 分类 |
+  |-----------|-------------------|----------------|
+  | 0-3 年 | 20+ 引用 | 值得注意 |
+  | 0-3 年 | 100+ 引用 | 高度有影响力 |
+  | 3-7 年 | 100+ 引用 | 重要 |
+  | 3-7 年 | 500+ 引用 | 里程碑论文 |
+  | 7+ 年 | 500+ 引用 | 开创性工作 |
+  | 7+ 年 | 1000+ 引用 | 基础性 |
+
+  ### 会议质量层级
+
+  **第 1 层 - 顶级会议**（始终优先）：
+  - **一般科学**：Nature、Science、Cell、PNAS
+  - **医学**：NEJM、Lancet、JAMA、BMJ
+  - **领域特定**：Nature Medicine、Nature Biotechnology、Nature Methods
+  - **顶级 CS/AI**：NeurIPS、ICML、ICLR、ACL、CVPR
+
+  **第 2 层 - 高影响力专业化**（强烈偏好）：
+  - 影响因子 > 10 的期刊
+  - 子领域的顶级会议（EMNLP、NAACL、ECCV、MICCAI）
+
+  **第 3 层 - 受尊敬的专业化**（相关时包含）：
+  - 影响因子 5-10 的期刊
+
+  ---
+
+  ## 技术集成
+
+  ### 环境变量
+
+  ```bash
+  # 主要后端（Parallel Chat API）- 必需
+  export PARALLEL_API_KEY="您的 Parallel API 密钥"
+
+  # 学术搜索后端（Perplexity）- 学术查询必需
+  export OPENROUTER_API_KEY="您的 OpenRouter API 密钥"
+  ```
+
+  ### API 规范
+
+  **Parallel Chat API：**
+  - 端点：`https://api.parallel.ai`（OpenAI SDK 兼容）
+  - 模型：`core`（60 秒-5 分钟延迟，复杂多源合成）
+  - 输出：带有内联引用的 Markdown 文本
+  - 引用：带有 URL、推理和置信水平的研究基础
+  - 速率限制：300 次请求/分钟
+  - Python 包：`openai`
+
+  **Perplexity sonar-pro-search：**
+  - 模型：`perplexity/sonar-pro-search`（通过 OpenRouter）
+  - 搜索模式：学术（优先考虑同行评审来源）
+  - 搜索上下文：高（全面研究）
+  - 响应时间：5-15 秒
+
+  ### 命令行使用
+
+  ```bash
+  # 自动路由研究（推荐）— 始终保存到 sources/
+  python research_lookup.py "您的查询" -o sources/research_YYYYMMDD_HHMMSS_<主题>.md
+
+  # 强制特定后端 — 始终保存到 sources/
+  python research_lookup.py "您的查询" --force-backend parallel -o sources/research_<主题>.md
+  python research_lookup.py "您的查询" --force-backend perplexity -o sources/papers_<主题>.md
+
+  # JSON 输出 — 始终保存到 sources/
+  python research_lookup.py "您的查询" --json -o sources/research_<主题>.json
+
+  # 批量查询 — 始终保存到 sources/
+  python research_lookup.py --batch "查询 1" "查询 2" "查询 3" -o sources/batch_research_<主题>.md
+  ```
+
+  ---
+
+  ## 强制：将所有结果保存到 Sources 文件夹
+
+  **每次研究查找结果必须保存到项目的 `sources/` 文件夹。**
+
+  这是不可协商的。研究结果获取成本高，对可重复性至关重要。
+
+  ### 保存规则
+
+  | 后端 | `-o` 标志目标 | 文件名模式 |
+  |---------|-----------------|------------------|
+  | Parallel 深度研究 | `sources/research_<主题>.md` | `research_YYYYMMDD_HHMMSS_<简要主题>.md` |
+  | Perplexity（学术） | `sources/papers_<主题>.md` | `papers_YYYYMMDD_HHMMSS_<简要主题>.md` |
+  | 批量查询 | `sources/batch_<主题>.md` | `batch_research_YYYYMMDD_HHMMSS_<简要主题>.md` |
+
+  ### 如何保存
+
+  **关键：每次调用 `research_lookup.py` 必须包括指向 `sources/` 文件夹的 `-o` 标志。**
+
+  **关键：保存的文件必须保留所有引用、源 URL 和 DOI。** 默认文本输出自动包括一个 `Sources` 部分（每个源有标题、日期、URL）和一个 `Additional References` 部分（从响应文本中提取的 DOI 和学术 URL）。为获得最大引用元数据，使用 `--json`。
+
+  ```bash
+  # 一般研究 — 保存到 sources/（包括 Sources + Additional References 部分）
+  python research_lookup.py "2025 年 CRISPR 基因编辑的最新进展" \
+    -o sources/research_20250217_143000_crispr_advances.md
+
+  # 学术论文搜索 — 保存到 sources/（包括带 DOI 的论文引用）
+  python research_lookup.py "在 NeurIPS 2024 中查找关于 Transformer 注意力机制的论文" \
+    -o sources/papers_20250217_143500_transformer_attention.md
+
+  # JSON 格式以获得最大引用元数据（带 URL、DOI、片段的完整引用对象）
+  python research_lookup.py "CRISPR 临床试验" --json \
+    -o sources/research_20250217_143000_crispr_trials.json
+
+  # 强制后端 — 保存到 sources/
+  python research_lookup.py "AI 监管环境" --force-backend parallel \
+    -o sources/research_20250217_144000_ai_regulation.md
+
+  # 批量查询 — 保存到 sources/
+  python research_lookup.py --batch "mRNA 疫苗有效性" "mRNA 疫苗安全性" \
+    -o sources/batch_research_20250217_144500_mrna_vaccines.md
+  ```
+
+  ### 在保存文件中保留引用
+
+  每种输出格式以不同方式保留引用：
+
+  | 格式 | 包括的引用 | 何时使用 |
+  |--------|-------------------|-------------|
+  | 文本（默认） | `Sources (N):` 部分，带 `[标题] (日期) + URL` + `Additional References (N):`，带 DOI 和学术 URL | 标准使用 — 人类可读，带有所有引用 |
+  | JSON (`--json`) | 完整引用对象：`url`、`title`、`date`、`snippet`、`doi`、`type` | 当需要最大引用元数据时 |
+
+  **对于 Parallel 后端**，保存的文件包括：研究报告 + Sources 列表（标题、URL）+ Additional References（DOI、学术 URL）。
+  **对于 Perplexity 后端**，保存的文件包括：学术摘要 + Sources 列表（标题、日期、URL、片段）+ Additional References（DOI、学术 URL）。
+
+  **使用 `--json` 当您需要：**
+  - 以编程方式解析引用元数据
+  - 为 BibTeX 生成保留完整的 DOI 和 URL 数据
+  - 为交叉引用维护结构化的引用对象
+
+  ### 为什么保存所有内容
+
+  1. **可重复性**：每个引用和声明都可以追溯到其原始研究源
+  2. **上下文窗口恢复**：如果上下文被压缩，可以重新读取保存的结果而无需重新查询
+  3. **审计追踪**：`sources/` 文件夹记录了所有研究信息是如何收集的
+  4. **跨部分重用**：多个部分可以引用相同保存的研究而无需重复查询
+  5. **成本效率**：在进行新 API 调用前检查 `sources/` 中的现有结果
+  6. **同行评审支持**：评审者可以验证每个引用背后的研究支持
+
+  ### 在进行新查询前，先检查 Sources
+
+  在调用 `research_lookup.py` 之前，检查是否存在相关结果：
+
+  ```bash
+  ls sources/  # 检查现有保存的结果
+  ```
+
+  如果先前的查找覆盖相同主题，请重新读取保存的文件而不是进行新 API 调用。
+
+  ### 日志
+
+  当保存研究结果时，始终记录：
+
+  ```
+  [HH:MM:SS] 已保存：研究查找到 sources/research_20250217_143000_crispr_advances.md（3,800 字，8 个引用）
+  [HH:MM:SS] 已保存：论文搜索到 sources/papers_20250217_143500_transformer_attention.md（找到 6 篇论文）
+  ```
+
+  ---
+
+  ## 与科学写作集成
+
+  此技能通过提供以下内容增强科学写作：
+
+  1. **文献综述支持**：收集引言和讨论的当前研究 — **保存到 `sources/`**
+  2. **方法验证**：根据当前标准验证协议 — **保存到 `sources/`**
+  3. **结果情境化**：与最近的类似研究比较发现 — **保存到 `sources/`**
+  4. **讨论增强**：用最新证据支持论点 — **保存到 `sources/`**
+  5. **引用管理**：提供正确格式的引用 — **保存到 `sources/`**
+
+  ## 补充工具
+
+  | 任务 | 工具 |
+  |------|------|
+  | 一般网络搜索 | `parallel-web` 技能（`parallel_web.py search`） |
+  | 引用验证 | `parallel-web` 技能（`parallel_web.py extract`） |
+  | 深度研究（任何主题） | `research-lookup` 或 `parallel-web` 技能 |
+  | 学术论文搜索 | `research-lookup`（自动路由到 Perplexity） |
+  | Google Scholar 搜索 | `citation-management` 技能 |
+  | PubMed 搜索 | `citation-management` 技能 |
+  | DOI 到 BibTeX | `citation-management` 技能 |
+  | 元数据验证 | `parallel-web` 技能（`parallel_web.py search` 或 `extract`） |
+
+  ---
+
+  ## 错误处理和限制
+
+  **已知限制：**
+  - Parallel Chat API（core 模型）：复杂查询可能需要最多 5 分钟
+  - Perplexity：信息截止，可能无法访问付费墙后的全文
+  - 两者：无法访问专有或受限制的数据库
+
+  **回退行为：**
+  - 如果所选后端的 API 密钥缺失，尝试其他后端
+  - 如果两个后端都失败，返回结构化错误响应
+  - 如果初始响应不足，重新表述查询以获得更好结果
+
+  ---
+
+  ## 使用示例
+
+  ### 示例 1：一般研究（路由到 Parallel）
+
+  **查询**："2025 年 Transformer 注意力机制的最新进展"
+
+  **后端**：Parallel Chat API（core 模型）
+
+  **响应**：全面的 Markdown 报告，带有权威来源的引用，涵盖最近的论文、关键创新和性能基准。
+
+  ### 示例 2：学术论文搜索（路由到 Perplexity）
+
+  **查询**："查找关于 CRISPR 脱靶效应在临床试验中的论文"
+
+  **后端**：Perplexity sonar-pro-search（学术模式）
+
+  **响应**：精选的 5-8 篇高影响力论文列表，带有完整引用、DOI、引用计数和会议层级指标。
+
+  ### 示例 3：比较分析（路由到 Parallel）
+
+  **查询**："比较和对比 mRNA 疫苗与传统疫苗在癌症治疗中的应用"
+
+  **后端**：Parallel Chat API（core 模型）
+
+  **响应**：详细的比较报告，带有来自多个来源的数据、结构化分析和引用的证据。
+
+  ### 示例 4：市场数据（路由到 Parallel）
+
+  **查询**："2025 年全球 AI 在医疗行业采用的统计数据"
+
+  **后端**：Parallel Chat API（core 模型）
+
+  **响应**：当前市场数据、采用率、增长预测和区域分析，带有源引用。
+
+  ---
+
+  ## 总结
+
+  此技能作为主要研究接口，具有智能双后端路由：
+
+  - **Parallel Chat API**（默认，`core` 模型）：任何主题的全面、多源研究
+  - **Perplexity sonar-pro-search**：仅学术特定论文搜索
+  - **自动路由**：检测学术查询并适当路由
+  - **手动覆盖**：需要时强制任何后端
+  - **补充性**：与 `parallel-web` 技能一起用于网络搜索和 URL 提取

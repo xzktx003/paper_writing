@@ -1,0 +1,418 @@
+name: skillsbot-skill-latex-implementation-12892
+display_name: skill-latex-implementation
+display_name_zh: LaTeX文档实现技能
+description: skill-latex-implementation from SkillsBot scientific academic catalog
+description_zh: 自动化实现LaTeX文档的创建、编译和管理。它作为一个薄包装器，委托子代理处理LaTeX语言任务，包括文档编写、编译循环、状态更新和Git提交。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: language-polish
+subcategory_zh: 语法、润色与翻译
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/12892
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/12892
+upstream_name: skill-latex-implementation
+upstream_commit: ""
+prompt: |-
+  ---
+  name: skill-latex-implementation
+  description: 实现遵循计划的LaTeX文档。调用用于LaTeX语言实现任务。
+  allowed-tools: Task, Bash, Edit, Read, Write
+  # 原始上下文（现由子代理加载）：
+  #   - .claude/context/project/latex/README.md
+  #   - .claude/context/project/latex/standards/latex-style-guide.md
+  #   - .claude/context/project/latex/standards/notation-conventions.md
+  #   - .claude/context/project/latex/standards/document-structure.md
+  #   - .claude/context/project/latex/patterns/theorem-environments.md
+  #   - .claude/context/project/latex/patterns/cross-references.md
+  #   - .claude/context/project/latex/templates/subfile-template.md
+  #   - .claude/context/project/latex/tools/compilation-guide.md
+  #   - .claude/context/project/logic/standards/notation-standards.md
+  # 原始工具（现用于子代理）：
+  #   - Read, Write, Edit, Glob, Grep
+  #   - Bash(pdflatex *, latexmk *, bibtex *, biber *)
+  ---
+
+  # LaTeX实现技能
+
+  薄包装器，将LaTeX文档实现委托给`latex-implementation-agent`子代理。
+
+  **重要**：此技能实现技能内部的后置飞行模式。子代理返回后，此技能处理所有后置飞行操作（状态更新、工件链接、git提交）然后返回。这消除了技能返回和协调器之间的“继续”提示问题。
+
+  ## 上下文引用
+
+  引用（不要急切加载）：
+  - 路径：`.claude/context/core/formats/return-metadata-file.md` - 元数据文件模式
+  - 路径：`.claude/context/core/patterns/postflight-control.md` - 标记文件协议
+  - 路径：`.claude/context/core/patterns/file-metadata-exchange.md` - 文件I/O帮助程序
+  - 路径：`.claude/context/core/patterns/jq-escaping-workarounds.md` - jq转义模式（问题 #1132）
+
+  注意：此技能是薄包装器，带有内部后置飞行。上下文由委托代理加载。
+
+  ## 触发条件
+
+  此技能在以下情况激活：
+  - 任务语言为"latex"
+  - /implement命令针对LaTeX任务
+  - 需要创建文档、论文或格式化输出
+
+  ---
+
+  ## 执行
+
+  ### 0. 前置飞行状态更新
+
+  在委托给子代理之前，将任务状态更新为"implementing"。
+
+  **引用**：`@.claude/context/core/patterns/inline-status-update.md`
+
+  **更新 state.json**：
+  ```bash
+  jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     --arg status "implementing" \
+     --arg sid "$session_id" \
+    '(.active_projects[] | select(.project_number == '$task_number')) |= . + {
+      status: $status,
+      last_updated: $ts,
+      session_id: $sid,
+      started: $ts
+    }' specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+  ```
+
+  **更新 TODO.md**：使用Edit工具将状态标记从`[PLANNED]`更改为`[IMPLEMENTING]`。
+
+  **更新计划文件**（如果存在）：更新计划元数据中的状态字段：
+  ```bash
+  # 查找最新计划文件（使用填充目录号）
+  padded_num=$(printf "%03d" "$task_number")
+  plan_file=$(ls -1 "specs/${padded_num}_${project_name}/plans/implementation-"*.md 2>/dev/null | sort -V | tail -1)
+  if [ -n "$plan_file" ] && [ -f "$plan_file" ]; then
+      sed -i "s/^\- \*\*Status\*\*: \[.*\]$/- **Status**: [IMPLEMENTING]/" "$plan_file"
+  fi
+  ```
+
+  **创建后置飞行标记**：
+  ```bash
+  # 确保任务目录存在
+  mkdir -p "specs/${padded_num}_${project_name}"
+
+  cat > "specs/${padded_num}_${project_name}/.postflight-pending" << EOF
+  {
+    "session_id": "${session_id}",
+    "skill": "skill-latex-implementation",
+    "task_number": ${task_number},
+    "operation": "implement",
+    "reason": "Postflight pending: status update, artifact linking, git commit",
+    "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "stop_hook_active": false
+  }
+  EOF
+  ```
+
+  ---
+
+  ### 1. 输入验证
+
+  验证所需输入：
+  - `task_number` - 必须提供并存在于state.json中
+  - 任务状态必须允许实现（planned, implementing, partial）
+
+  ```bash
+  # 查找任务
+  task_data=$(jq -r --arg num "$task_number" \
+    '.active_projects[] | select(.project_number == ($num | tonumber))' \
+    specs/state.json)
+
+  # 验证存在
+  if [ -z "$task_data" ]; then
+    return error "Task $task_number not found"
+  fi
+
+  # 提取字段
+  language=$(echo "$task_data" | jq -r '.language // "general"')
+  status=$(echo "$task_data" | jq -r '.status')
+  project_name=$(echo "$task_data" | jq -r '.project_name')
+  description=$(echo "$task_data" | jq -r '.description // ""')
+
+  # 验证语言
+  if [ "$language" != "latex" ]; then
+    return error "Task $task_number is not a LaTeX task"
+  fi
+
+  # 验证状态
+  if [ "$status" = "completed" ]; then
+    return error "Task already completed"
+  fi
+  ```
+
+  ### 2. 上下文准备
+
+  准备委托上下文：
+
+  ```json
+  {
+    "session_id": "sess_{timestamp}_{random}",
+    "delegation_depth": 1,
+    "delegation_path": ["orchestrator", "implement", "skill-latex-implementation"],
+    "timeout": 3600,
+    "task_context": {
+      "task_number": N,
+      "task_name": "{project_name}",
+      "description": "{description}",
+      "language": "latex"
+    },
+    "plan_path": "specs/{NNN}_{SLUG}/plans/implementation-{NNN}.md",
+    "metadata_file_path": "specs/{NNN}_{SLUG}/.return-meta.json"
+  }
+  ```
+
+  ### 3. 调用子代理
+
+  **关键**：您必须使用**Task**工具来生成子代理。
+
+  此技能的前端代理中的`agent`字段指定目标：`latex-implementation-agent`
+
+  **所需工具调用**：
+  ```
+  Tool: Task (NOT Skill)
+  Parameters:
+    - subagent_type: "latex-implementation-agent"
+    - prompt: [Include task_context, delegation_context, plan_path]
+    - description: "Execute LaTeX implementation for task {N}"
+  ```
+
+  **不要**使用`Skill(latex-implementation-agent)` - 这将失败。
+  代理位于`.claude/agents/`，而不是`.claude/skills/`。
+  Skill工具只能调用来自`.claude/skills/`的技能。
+
+  子代理将：
+  - 加载LaTeX特定上下文文件（样式指南、符号约定等）
+  - 创建/修改.tex文件
+  - 执行编译循环（pdflatex/latexmk）
+  - 处理参考文献处理（bibtex/biber）
+  - 创建实现摘要
+  - 将元数据写入`specs/{NNN}_{SLUG}/.return-meta.json`
+  - 返回一个简短的文本摘要（NOT JSON）
+
+  ### 3a. 验证子代理返回格式
+
+  **重要**：检查子代理是否意外将JSON返回到控制台（v1模式）而不是写入文件（v2模式）。
+
+  如果子代理的文本返回解析为有效JSON，记录警告：
+
+  ```bash
+  # 检查子代理返回是否看起来像JSON（以{开头且是有效JSON）
+  subagent_return="$SUBAGENT_TEXT_RETURN"
+  if echo "$subagent_return" | grep -q '^{' && echo "$subagent_return" | jq empty 2>/dev/null; then
+      echo "WARNING: Subagent returned JSON to console instead of writing metadata file."
+      echo "This indicates the agent may have outdated instructions (v1 pattern instead of v2)."
+      echo "The skill will continue by reading the metadata file, but this should be fixed."
+  fi
+  ```
+
+  此验证：
+  - 不失败操作（继续读取元数据文件）
+  - 记录警告用于调试
+  - 指示子代理指令需要更新
+  - 允许优雅处理混合v1/v2代理
+
+  ### 4. 解析子代理返回（读取元数据文件）
+
+  子代理返回后，读取元数据文件：
+
+  ```bash
+  metadata_file="specs/${padded_num}_${project_name}/.return-meta.json"
+
+  if [ -f "$metadata_file" ] && jq empty "$metadata_file" 2>/dev/null; then
+      status=$(jq -r '.status' "$metadata_file")
+      artifact_path=$(jq -r '.artifacts[0].path // ""' "$metadata_file")
+      artifact_type=$(jq -r '.artifacts[0].type // ""' "$metadata_file")
+      artifact_summary=$(jq -r '.artifacts[0].summary // ""' "$metadata_file")
+      phases_completed=$(jq -r '.metadata.phases_completed // 0' "$metadata_file")
+      phases_total=$(jq -r '.metadata.phases_total // 0' "$metadata_file")
+
+      # 提取completion_data字段（如果存在）
+      completion_summary=$(jq -r '.completion_data.completion_summary // ""' "$metadata_file")
+      roadmap_items=$(jq -c '.completion_data.roadmap_items // []' "$metadata_file")
+  else
+      echo "Error: Invalid or missing metadata file"
+      status="failed"
+  fi
+  ```
+
+  验证元数据包含所需字段：
+  - 状态是其中之一：implemented, partial, failed, blocked
+  - 摘要非空且<100标记
+  - 工件数组存在（源文件、编译PDF、摘要）
+  - 元数据包含session_id、agent_type、委托信息
+
+  ### 5. 后置飞行状态更新
+
+  实现后，根据结果更新任务状态。
+
+  **引用**：`@.claude/context/core/patterns/inline-status-update.md`
+
+  **如果 result.status == "implemented"**：
+
+  更新state.json为"completed"并添加completion_data字段（两步模式用于问题 #1132）：
+  ```bash
+  # 步骤1：更新状态和时间戳
+  jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     --arg status "completed" \
+    '(.active_projects[] | select(.project_number == '$task_number')) |= . + {
+      status: $status,
+      last_updated: $ts,
+      completed: $ts
+    }' specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+
+  # 步骤2：添加completion_summary（始终需要用于已完成任务）
+  if [ -n "$completion_summary" ]; then
+      jq --arg summary "$completion_summary" \
+        '(.active_projects[] | select(.project_number == '$task_number')).completion_summary = $summary' \
+        specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+  fi
+
+  # 步骤3：添加roadmap_items（如果存在且非空）
+  if [ "$roadmap_items" != "[]" ] && [ -n "$roadmap_items" ]; then
+      jq --argjson items "$roadmap_items" \
+        '(.active_projects[] | select(.project_number == '$task_number')).roadmap_items = $items' \
+        specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+  fi
+
+  # 步骤4：过滤掉现有摘要工件（使用"| not"模式避免 != 转义 - 问题 #1132）
+  jq '(.active_projects[] | select(.project_number == '$task_number')).artifacts =
+      [(.active_projects[] | select(.project_number == '$task_number')).artifacts // [] | .[] | select(.type == "summary" | not)]' \
+    specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+
+  # 步骤5：添加新摘要工件
+  jq --arg path "$artifact_path" \
+    '(.active_projects[] | select(.project_number == '$task_number')).artifacts += [{"path": $path, "type": "summary"}]' \
+    specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+  ```
+
+  更新 TODO.md：
+  - 将状态标记从`[IMPLEMENTING]`更改为`[COMPLETED]`
+  - 添加工件链接：`- **Summary**: [implementation-summary-{DATE}.md]({artifact_path})`
+
+  **更新计划文件**（如果存在）：将状态字段更新为`[COMPLETED]`并验证：
+  ```bash
+  plan_file=$(ls -1 "specs/${padded_num}_${project_name}/plans/implementation-"*.md 2>/dev/null | sort -V | tail -1)
+  if [ -n "$plan_file" ] && [ -f "$plan_file" ]; then
+      # 首先尝试项目符号模式，然后非项目符号模式
+      sed -i 's/^\- \*\*Status\*\*: \[.*\]$/- **Status**: [COMPLETED]/' "$plan_file"
+      sed -i 's/^\*\*Status\*\*: \[.*\]$/**Status**: [COMPLETED]/' "$plan_file"
+      # 验证更新
+      if grep -qE '^\*\*Status\*\*: \[COMPLETED\]|^\- \*\*Status\*\*: \[COMPLETED\]' "$plan_file"; then
+          echo "Plan file status updated to [COMPLETED]"
+      else
+          echo "WARNING: Could not verify plan file status update"
+      fi
+  else
+      echo "INFO: No plan file found to update (directory: specs/${padded_num}_${project_name}/plans/)"
+  fi
+  ```
+
+  **如果 result.status == "partial"**：
+
+  更新state.json与恢复点（保持状态为"implementing"）：
+  ```bash
+  jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     --arg phase "$completed_phase" \
+    '(.active_projects[] | select(.project_number == '$task_number')) |= . + {
+      last_updated: $ts,
+      resume_phase: ($phase | tonumber + 1)
+    }' specs/state.json > /tmp/state.json && mv /tmp/state.json specs/state.json
+  ```
+
+  TODO.md保持为`[IMPLEMENTING]`。
+
+  **更新计划文件**（如果存在）：将状态字段更新为`[PARTIAL]`并验证：
+  ```bash
+  plan_file=$(ls -1 "specs/${padded_num}_${project_name}/plans/implementation-"*.md 2>/dev/null | sort -V | tail -1)
+  if [ -n "$plan_file" ] && [ -f "$plan_file" ]; then
+      # 首先尝试项目符号模式，然后非项目符号模式
+      sed -i 's/^\- \*\*Status\*\*: \[.*\]$/- **Status**: [PARTIAL]/' "$plan_file"
+      sed -i 's/^\*\*Status\*\*: \[.*\]$/**Status**: [PARTIAL]/' "$plan_file"
+      # 验证更新
+      if grep -qE '^\*\*Status\*\*: \[PARTIAL\]|^\- \*\*Status\*\*: \[PARTIAL\]' "$plan_file"; then
+          echo "Plan file status updated to [PARTIAL]"
+      else
+          echo "WARNING: Could not verify plan file status update"
+      fi
+  else
+      echo "INFO: No plan file found to update (directory: specs/${padded_num}_${project_name}/plans/)"
+  fi
+  ```
+
+  **失败时**：不运行后置飞行。保持状态为"implementing"以重试。不更新计划文件（留为`[IMPLEMENTING]`以重试）。
+
+  ### 6. Git提交
+
+  使用会话ID提交更改：
+
+  ```bash
+  git add -A
+  git commit -m "task ${task_number}: complete implementation
+
+  Session: ${session_id}
+
+  Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+  ```
+
+  ### 7. 清理
+
+  后置飞行处理后移除标记和元数据文件：
+
+  ```bash
+  rm -f "specs/${padded_num}_${project_name}/.postflight-pending"
+  rm -f "specs/${padded_num}_${project_name}/.postflight-loop-guard"
+  rm -f "specs/${padded_num}_${project_name}/.return-meta.json"
+  ```
+
+  ### 8. 返回简短摘要
+
+  返回一个简短的文本摘要（NOT JSON）描述实现结果。
+
+  ---
+
+  ## 返回格式
+
+  此技能返回一个**简短文本摘要**（NOT JSON）。JSON元数据被写入文件并在内部处理。
+
+  成功返回示例：
+  ```
+  LaTeX implementation completed for task 334:
+  - All 4 phases executed, document compiles cleanly
+  - Created 42-page PDF at docs/logos-manual.pdf
+  - Created summary at specs/334_logos_docs/summaries/implementation-summary-20260118.md
+  - Status updated to [COMPLETED]
+  - Changes committed with session sess_1736700000_abc123
+  ```
+
+  部分返回示例：
+  ```
+  LaTeX implementation partially completed for task 334:
+  - Phases 1-2 of 3 executed
+  - Phase 3 blocked: missing tikz-cd package
+  - Partial summary at specs/334_logos_docs/summaries/implementation-summary-20260118.md
+  - Status remains [IMPLEMENTING] - run /implement 334 to resume
+  ```
+
+  ---
+
+  ## 错误处理
+
+  ### 输入验证错误
+  如果任务未找到、语言错误或状态无效，立即返回失败状态。
+
+  ### 子代理错误
+  直接传递子代理的错误返回。
+
+  ### 超时
+  如果子代理超时（默认3600秒），返回部分状态。

@@ -1,0 +1,232 @@
+name: skillsbot-patents-search-11537
+display_name: patents-search
+display_name_zh: 专利搜索
+description: patents-search from SkillsBot scientific academic catalog
+description_zh: 这是一个AI驱动的专利搜索工具，支持自然语言查询和语义搜索，用于先技术分析、专利景观研究和创新追踪。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/11537
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/11537
+upstream_name: patents-search
+upstream_commit: ""
+prompt: |-
+  ---
+  name: 专利搜索
+  description: 使用自然语言查询搜索全球专利。通过Valyu进行先技术、专利景观和创新追踪。
+  keywords:
+    - 专利
+    - 专利搜索
+    - 先技术
+    - 知识产权
+    - 创新追踪
+    - 语义搜索
+  license: MIT
+  ---
+
+  # 专利搜索
+
+  使用由Valyu语义搜索API驱动的自然语言查询搜索完整的全球专利数据库。
+
+  ## 为什么这个技能强大
+
+  - **无需API参数解析**：只需直接传递自然语言查询 - 无需构造复杂的搜索参数
+  - **语义搜索**：理解查询的含义，不仅仅是关键词匹配
+  - **全文访问**：返回完整的专利信息，包括权利要求、描述和技术细节
+  - **图片链接**：当可用时包括专利图表和图形
+  - **全面覆盖**：访问跨司法管辖区的全球专利数据
+
+  ## 要求
+
+  1. Node.js 18+（使用内置fetch）
+  2. Valyu API密钥，来自 https://platform.valyu.ai（免费10美元积分）
+
+  ## 关键：脚本路径解析
+
+  本文档中的`scripts/search`命令是相对于此技能安装目录的。
+
+  运行任何命令前，使用以下方式定位脚本：
+
+  ```bash
+  PATENTS_SCRIPT=$(find ~/.claude/plugins/cache -name "search" -path "*/patents-search/*/scripts/*" -type f 2>/dev/null | head -1)
+  ```
+
+  然后对所有命令使用完整路径：
+  ```bash
+  $PATENTS_SCRIPT "CRISPR基因编辑方法" 15
+  ```
+
+  ## API密钥设置流程
+
+  当您运行搜索并收到`"setup_required": true`时，遵循此流程：
+
+  1. **向用户询问API密钥：**
+     "要搜索专利，我需要您的Valyu API密钥。免费获取（10美元积分）在 https://platform.valyu.ai"
+
+  2. **一旦用户提供密钥，运行：**
+     ```bash
+     scripts/search setup <api-key>
+     ```
+
+  3. **重试原始搜索。**
+
+  ## 何时使用此技能
+
+  - 先技术搜索和专利景观分析
+  - 技术趋势分析
+  - 竞争对手创新追踪
+  - 专利自由运营分析
+  - 专利权利要求分析和解释
+  - 专利申请策略研究
+
+  ## 输出格式
+
+  ```json
+  {
+    "success": true,
+    "type": "patents_search",
+    "query": "CRISPR基因编辑方法",
+    "result_count": 10,
+    "results": [
+      {
+        "title": "专利标题",
+        "url": "https://patents.google.com/...",
+        "content": "专利权利要求、描述、技术细节...",
+        "source": "patents",
+        "relevance_score": 0.95,
+        "images": ["https://example.com/diagram.png"]
+      }
+    ],
+    "cost": 0.025
+  }
+  ```
+
+  ## 处理结果
+
+  ### 使用jq
+
+  ```bash
+  # 获取专利标题
+  scripts/search "查询" 10 | jq -r '.results[].title'
+
+  # 获取URL
+  scripts/search "查询" 10 | jq -r '.results[].url'
+
+  # 提取完整内容
+  scripts/search "查询" 10 | jq -r '.results[].content'
+  ```
+
+  ## 常见用例
+
+  ### 先技术搜索
+
+  ```bash
+  # 查找先技术
+  scripts/search "锂离子电池电极材料" 50
+  ```
+
+  ### 竞争情报
+
+  ```bash
+  # 搜索竞争对手专利
+  scripts/search "CAR-T细胞疗法制造方法" 20
+  ```
+
+  ### 技术景观
+
+  ```bash
+  # 查找技术趋势
+  scripts/search "量子计算错误纠正专利" 15
+  ```
+
+  ### 自由运营
+
+  ```bash
+  # 搜索阻碍专利
+  scripts/search "mRNA疫苗递送系统" 25
+  ```
+
+  ## 错误处理
+
+  所有命令返回JSON，带有`success`字段：
+
+  ```json
+  {
+    "success": false,
+    "error": "错误消息"
+  }
+  ```
+
+  退出代码：
+  - `0` - 成功
+  - `1` - 错误（检查JSON以获取详情）
+
+  ## API端点
+
+  - 基础URL：`https://api.valyu.ai/v1`
+  - 端点：`/search`
+  - 认证：X-API-Key头部
+
+  ## 架构
+
+  ```
+  scripts/
+  ├── search          # Bash包装器
+  └── search.mjs      # Node.js CLI
+  ```
+
+  使用Node.js内置`fetch()`直接API调用，零外部依赖。
+
+  ## 添加到您的项目
+
+  如果您正在构建AI项目并希望直接将专利搜索集成到您的应用程序中，使用Valyu SDK：
+
+  ### Python集成
+
+  ```python
+  from valyu import Valyu
+
+  client = Valyu(api_key="您的API密钥")
+
+  response = client.search(
+      query="您的搜索查询",
+      included_sources=["valyu/valyu-patents"],
+      max_results=20
+  )
+
+  for result in response["results"]:
+      print(f"标题: {result['title']}")
+      print(f"URL: {result['url']}")
+      print(f"内容: {result['content'][:500]}...")
+  ```
+
+  ### TypeScript集成
+
+  ```typescript
+  import { Valyu } from "valyu-js";
+
+  const client = new Valyu("您的API密钥");
+
+  const response = await client.search({
+    query: "您的搜索查询",
+    includedSources: ["valyu/valyu-patents"],
+    maxResults: 20
+  });
+
+  response.results.forEach((result) => {
+    console.log(`标题: ${result.title}`);
+    console.log(`URL: ${result.url}`);
+    console.log(`内容: ${result.content.substring(0, 500)}...`);
+  });
+  ```
+
+  查看[Valyu文档](https://docs.valyu.ai)获取完整集成示例和SDK参考。

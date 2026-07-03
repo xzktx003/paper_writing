@@ -1,0 +1,66 @@
+name: skillsbot-spinw-magnetic-simulator-1732
+display_name: spinw-magnetic-simulator
+display_name_zh: SpinW磁性模拟器
+description: spinw-magnetic-simulator from SkillsBot scientific academic catalog
+description_zh: SpinW磁性模拟器是一款专门用于磁性材料自旋波计算的科学工具，能够进行磁振子色散分析、中子散射截面计算和磁相图探索。该技能适用于凝聚态物理研究、磁性材料分析、中子散射实验模拟等场景，帮助科研人员快速完成磁性结构的参数化建模和理论计算。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1732
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1732
+upstream_name: spinw-magnetic-simulator
+upstream_commit: ""
+prompt: |
+  ---
+  name: spinw-magnetic-simulator
+  description: 用于磁性材料、磁振子色散和中子散射分析的SpinW自旋波模拟技能
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 凝聚态物理
+    phase: 6
+  ---
+
+  # SpinW 磁性模拟器
+
+  ## 目的
+
+  为磁性材料的SpinW自旋波计算提供专家指导，包括磁振子色散和中子散射截面分析。
+
+  ## 功能
+
+  - 磁性结构定义
+  - 交换耦合参数化
+  - 线性自旋波理论计算
+  - 中子散射截面计算
+  - 磁相图探索
+  - 粉末平均
+
+  ## 使用指南
+
+  1. **结构定义**：定义磁性晶体结构
+  2. **交换耦合**：参数化交换相互作用
+  3. **自旋波理论**：计算磁振子色散
+  4. **中子散射**：计算截面以与实验对比
+  5. **相图**：探索磁相变
+
+  ## 工具/库
+
+  - SpinW (MATLAB)
+  - magnopy

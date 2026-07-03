@@ -1,0 +1,194 @@
+name: skillsbot-surface-analysis-1589
+display_name: surface-analysis
+display_name_zh: 表面分析技能
+description: surface-analysis from SkillsBot scientific academic catalog
+description_zh: 表面分析技能是用于材料表面表征的专业工具，提供XPS深度剖析、AFM成像和接触角测量等功能，用于分析表面成分、化学状态、形貌和界面特性。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1589
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1589
+upstream_name: surface-analysis
+upstream_commit: ""
+prompt: |
+  ---
+  name: surface-analysis
+  description: 用于表面成分、化学状态和形貌分析的技能，包括XPS深度剖析、AFM成像和接触角测量
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 材料科学
+    domain: 科学
+    category: 材料表征
+    priority: high
+    phase: 6
+    tools-libraries:
+      - CasaXPS
+      - Gwyddion
+      - AFM分析软件
+      - ImageJ
+  ---
+
+  # 表面分析技能
+
+  ## 目的
+
+  表面分析技能提供全面的材料表面表征能力，能够对表面成分、化学键合状态、形貌和界面特性进行详细分析，这对于理解表面敏感现象至关重要。
+
+  ## 能力
+
+  - XPS深度剖析和化学状态分析
+  - AFM成像和粗糙度量化
+  - 接触角测量和表面能计算
+  - 轮廓仪数据分析
+  - 表面污染识别
+  - 摩擦学表面分析
+  - 涂层厚度测量
+  - 粘附机理分析
+
+  ## 使用指南
+
+  ### X射线光电子能谱（XPS）
+
+  1. **全谱扫描**
+     - 获取宽扫描（0-1200 eV）以进行元素识别
+     - 识别所有高于检测限（约0.1 at%）的元素
+     - 注意用于电荷参考的污染碳
+
+  2. **高分辨率谱**
+     - 获取感兴趣元素的窄扫描
+     - 使用适当的通能（通常20-50 eV）
+     - 确保足够的信噪比以进行峰拟合
+
+  3. **峰拟合**
+     - 应用Shirley或线性背景
+     - 在物理限制内约束FWHM和峰形
+     - 根据结合能位移分配化学状态
+
+  4. **深度剖析**
+     - 对无机材料使用Ar+溅射
+     - 对有机物考虑使用团簇离子（Ar-cluster, C60）
+     - 监测择优溅射和混合效应
+
+  ### 原子力显微镜（AFM）
+
+  1. **成像模式选择**
+     - 接触模式：硬表面，原子分辨率
+     - 轻敲模式：软样品，减少针尖磨损
+     - 非接触模式：最小的表面相互作用
+
+  2. **图像分析**
+     - 计算粗糙度参数（Ra, RMS, Rmax）
+     - 识别表面特征和缺陷
+     - 测量台阶高度和特征尺寸
+
+  3. **力谱分析**
+     - 获取力-距离曲线
+     - 提取粘附力
+     - 映射力学性能（模量、刚度）
+
+  ### 接触角分析
+
+  1. **测量方法**
+     - 静滴法测量静态接触角
+     - 前进/后退角测量动态行为
+     - Wilhelmy板法测量表面张力
+
+  2. **表面能计算**
+     - Owens-Wendt方法（色散+极性）
+     - Van Oss-Chaudhury-Good方法（酸碱）
+     - 使用多种探针液体（水、二碘甲烷、甲酰胺）
+
+  3. **解释**
+     - 亲水性：接触角 < 90 度
+     - 疏水性：接触角 > 90 度
+     - 超疏水性：接触角 > 150 度
+
+  ## 流程集成
+
+  - MS-003：光谱分析套件
+  - MS-015：薄膜沉积协议
+
+  ## 输入模式
+
+  ```json
+  {
+    "sample_id": "string",
+    "technique": "XPS|AFM|contact_angle|profilometry",
+    "analysis_type": "survey|depth_profile|imaging|force_spectroscopy|wettability",
+    "parameters": {
+      "scan_area": "number (um x um for AFM)",
+      "sputter_depth": "number (nm for XPS)",
+      "probe_liquids": ["string (for contact angle)"]
+    }
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "sample_id": "string",
+    "xps_results": {
+      "elemental_composition": [
+        {
+          "element": "string",
+          "concentration": "number (at%)",
+          "chemical_states": [
+            {
+              "state": "string",
+              "binding_energy": "number (eV)",
+              "fraction": "number (percent)"
+            }
+          ]
+        }
+      ],
+      "depth_profile": {
+        "depth": ["number (nm)"],
+        "composition": {}
+      }
+    },
+    "afm_results": {
+      "roughness": {
+        "Ra": "number (nm)",
+        "RMS": "number (nm)",
+        "Rmax": "number (nm)"
+      },
+      "features": ["string"]
+    },
+    "surface_energy": {
+      "total": "number (mJ/m2)",
+      "dispersive": "number (mJ/m2)",
+      "polar": "number (mJ/m2)"
+    }
+  }
+  ```
+
+  ## 最佳实践
+
+  1. 分析前适当清洁样品（溶剂、等离子体）
+  2. 对于XPS中的绝缘样品，使用电荷中和
+  3. 将XPS结合能参考C 1s峰位于284.8 eV
+  4. 使用台阶高度标准品校准AFM z轴尺度
+  5. 使用新鲜的探针液体进行接触角测量
+  6. 报告测量条件和不确定度
+
+  ## 集成点
+
+  - 与光谱分析连接，获取互补的化学信息
+  - 为薄膜沉积提供过程监控数据
+  - 支持失效分析中的表面污染识别
+  - 与腐蚀评估集成，进行钝化层分析

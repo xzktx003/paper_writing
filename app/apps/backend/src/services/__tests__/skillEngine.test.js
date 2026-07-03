@@ -10,7 +10,7 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
   assert.ok(literature);
   assert.equal(literature.display_name_zh, '文献综述');
   assert.equal(literature.subtitle_en, 'Literature Review');
-  assert.equal(literature.category_zh, '文献');
+  assert.equal(literature.category_zh, '文献检索');
   assert.ok(literature.tags.includes('相关工作'));
   assert.ok(literature.inputs.includes('研究主题'));
   assert.ok(literature.outputs.includes('related work 草稿'));
@@ -23,7 +23,7 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
   assert.ok(polish);
   assert.equal(polish.display_name_zh, '论文润色');
   assert.equal(polish.subtitle_en, 'Academic Polishing');
-  assert.equal(polish.category_zh, '写作');
+  assert.equal(polish.category_zh, '论文写作');
   assert.ok(polish.tags.includes('翻译'));
   assert.ok(polish.tags.includes('AI 痕迹'));
   assert.ok(polish.task_templates.some(template => template.includes('不要新增事实')));
@@ -32,14 +32,14 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
   assert.ok(latexDebugging);
   assert.equal(latexDebugging.display_name_zh, 'LaTeX 编译修复');
   assert.equal(latexDebugging.subtitle_en, 'LaTeX Debugging');
-  assert.equal(latexDebugging.category_zh, '工具');
+  assert.equal(latexDebugging.category_zh, '论文写作');
   assert.ok(latexDebugging.requires_context.includes('latex_error_log'));
 
   const evidenceReview = skills.find(skill => skill.name === 'evidence-review');
   assert.ok(evidenceReview);
   assert.equal(evidenceReview.display_name_zh, '输出审查');
   assert.equal(evidenceReview.subtitle_en, 'Evidence Review');
-  assert.equal(evidenceReview.category_zh, '审查');
+  assert.equal(evidenceReview.category_zh, '同行评审');
   assert.ok(evidenceReview.tags.includes('证据核对'));
   assert.ok(evidenceReview.task_templates.some(template => template.includes('安全采纳包')));
 
@@ -53,7 +53,7 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
   assert.ok(planning);
   assert.equal(planning.display_name_zh, '论文规划');
   assert.equal(planning.subtitle_en, 'Paper Planning');
-  assert.equal(planning.category_zh, '规划');
+  assert.equal(planning.category_zh, '论文写作');
   assert.ok(planning.tags.includes('故事线'));
   assert.ok(planning.task_templates.some(template => template.includes('paper outline')));
 
@@ -61,27 +61,27 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
   assert.ok(grant);
   assert.equal(grant.display_name_zh, '基金申请');
   assert.equal(grant.subtitle_en, 'Grant Proposal Writing');
-  assert.equal(grant.category_zh, '项目申请');
+  assert.equal(grant.category_zh, '基金申请');
 
   const paper2ppt = skills.find(skill => skill.name === 'nature-paper2ppt');
   assert.ok(paper2ppt);
   assert.equal(paper2ppt.display_name_zh, '论文转演示');
   assert.equal(paper2ppt.subtitle_en, 'Paper to Presentation');
-  assert.equal(paper2ppt.category_zh, '图表');
+  assert.equal(paper2ppt.category_zh, '学术会议');
 
   const poster = skills.find(skill => skill.name === 'poster-design');
   assert.ok(poster);
   assert.equal(poster.display_name_zh, '学术海报');
   assert.equal(poster.subtitle_en, 'Academic Poster Design');
-  assert.equal(poster.category_zh, '图表');
+  assert.equal(poster.category_zh, '学术会议');
 });
 
 test('listSkillCategories groups skills for category chips', async () => {
   await loadSkills(null);
   const categories = listSkillCategories();
-  const writing = categories.find(category => category.name === '写作');
-  const literature = categories.find(category => category.name === '文献');
-  const project = categories.find(category => category.name === '项目申请');
+  const writing = categories.find(category => category.name === '论文写作');
+  const literature = categories.find(category => category.name === '文献检索');
+  const project = categories.find(category => category.name === '基金申请');
   assert.ok(writing);
   assert.ok(literature);
   assert.ok(project);
@@ -517,7 +517,7 @@ test('buildSkillNavigator exposes category, tag, risk, and context filters', asy
 
   assert.equal(navigator.title_zh, 'Skill 导航');
   assert.equal(navigator.display.showChineseTitleFirst, true);
-  assert.ok(navigator.categories.some(category => category.name === '文献' && category.recommendedCount > 0));
+  assert.ok(navigator.categories.some(category => category.name === '文献检索' && category.recommendedCount > 0));
   assert.ok(navigator.tagChips.some(tag => tag.name === '相关工作'));
   assert.ok(navigator.contextFilters.some(item => item.key === 'rag_documents_or_references' && item.label_zh.includes('文献')));
   assert.ok(navigator.riskFilters.some(item => item.level === 'medium'));

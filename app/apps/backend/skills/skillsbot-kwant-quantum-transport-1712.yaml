@@ -1,0 +1,67 @@
+name: skillsbot-kwant-quantum-transport-1712
+display_name: kwant-quantum-transport
+display_name_zh: Kwant量子输运计算
+description: kwant-quantum-transport from SkillsBot scientific academic catalog
+description_zh: Kwant量子输运技能专注于介观物理系统的量子输运模拟，提供纳米结构建模、散射矩阵计算、紧束缚哈密顿量构建和能带分析等功能。适用于凝聚态物理研究、纳米器件设计、量子计算材料模拟等领域，支持并行计算和复杂几何结构处理。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1712
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1712
+upstream_name: kwant-quantum-transport
+upstream_commit: ""
+prompt: |
+  ---
+  name: kwant-quantum-transport
+  description: 用于介观物理、散射矩阵计算和纳米结构建模的Kwant量子输运技能
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 凝聚态物理
+    phase: 6
+  ---
+
+  # Kwant量子输运
+
+  ## 目的
+
+  为介观系统的Kwant量子输运计算提供专家指导，包括散射矩阵计算和纳米结构建模。
+
+  ## 能力
+
+  - 任意几何结构的系统构建器
+  - 散射矩阵计算
+  - 朗道尔-布蒂克形式主义
+  - 紧束缚哈密顿量构建
+  - 能带结构可视化
+  - 并行输运计算
+
+  ## 使用指南
+
+  1. **系统定义**：构建包含引线和散射区域的系统
+  2. **哈密顿量**：定义紧束缚哈密顿量
+  3. **散射计算**：计算散射矩阵和电导
+  4. **能带结构**：计算并可视化能带结构
+  5. **并行化**：对大型系统使用并行计算
+
+  ## 工具/库
+
+  - Kwant
+  - NumPy
+  - SciPy

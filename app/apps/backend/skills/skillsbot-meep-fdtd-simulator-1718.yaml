@@ -1,0 +1,67 @@
+name: skillsbot-meep-fdtd-simulator-1718
+display_name: meep-fdtd-simulator
+display_name_zh: MEEPFDTD仿真器
+description: meep-fdtd-simulator from SkillsBot scientific academic catalog
+description_zh: MEEP FDTD仿真器是一款用于光子器件、超材料和波导的电磁场仿真工具，提供几何定义、源配置、边界条件设置、场提取和参数优化等功能。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1718
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1718
+upstream_name: meep-fdtd-simulator
+upstream_commit: ""
+prompt: |
+  ---
+  name: meep-fdtd-simulator
+  description: 用于光子器件、超材料和波导的MEEP电磁FDTD仿真技能
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 光学与光子学
+    phase: 6
+  ---
+
+  # MEEP FDTD 仿真器
+
+  ## 目的
+
+  提供关于MEEP FDTD仿真在光子器件方面的专家指导，包括几何定义、源配置和场提取。
+
+  ## 能力
+
+  - 使用材料库定义几何结构
+  - 源配置（偶极子、高斯、平面波）
+  - 吸收边界条件（PML）
+  - 通量和场提取
+  - 参数扫描和优化
+  - 并行域分解
+
+  ## 使用指南
+
+  1. **几何结构**：使用适当的材料定义器件几何结构
+  2. **源**：配置适当的源类型
+  3. **边界**：设置PML吸收边界
+  4. **监视器**：放置通量监视器和场探头
+  5. **并行化**：对大型仿真使用域分解
+
+  ## 工具/库
+
+  - MEEP
+  - MPB
+  - h5py

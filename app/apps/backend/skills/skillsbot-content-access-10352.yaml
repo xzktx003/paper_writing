@@ -1,0 +1,644 @@
+name: skillsbot-content-access-10352
+display_name: content-access
+display_name_zh: 内容访问
+description: content-access from SkillsBot scientific academic catalog
+description_zh: 内容访问技能专注于提供合法、伦理的方法来获取受限制的网络内容，特别针对学术论文、新闻文章和地理封锁内容。适用于研究人员和记者，帮助他们通过开放获取工具、图书馆数据库、VPN等技术高效访问所需信息。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/10352
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/10352
+upstream_name: content-access
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: 内容访问
+  描述: 访问受付费墙和地理封锁内容的合法方法。适用于研究付费墙后的内容、访问学术论文、绕过地理限制或寻找开放获取替代方案。涵盖Unpaywall、图书馆数据库、VPN以及记者和研究人员的伦理访问策略。
+  ---
+
+  # 内容访问方法论
+
+  用于新闻和研究的访问受限网络内容的伦理和法律方法。
+
+  ## 访问层次（从最优先到最不优先）
+
+  ```
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                      内容访问决策层次                         │
+  ├─────────────────────────────────────────────────────────────────┤
+  │                                                                  │
+  │  1. 完全合法（始终首先尝试）                                  │
+  │     ├─ 图书馆数据库（PressReader、ProQuest、JSTOR）          │
+  │     ├─ 开放获取工具（Unpaywall、CORE、PubMed Central）      │
+  │     ├─ 作者直接联系                                            │
+  │     └─ 馆际互借                                                │
+  │                                                                  │
+  │  2. 合法（浏览器功能）                                        │
+  │     ├─ 阅读器模式（Safari、Firefox、Edge）                    │
+  │     ├─ Wayback Machine存档                                     │
+  │     └─ Google Scholar“所有版本”                               │
+  │                                                                  │
+  │  3. 灰色地带（谨慎使用）                                      │
+  │     ├─ Archive.is用于单个文章                                 │
+  │     ├─ 禁用JavaScript（会破坏功能）                           │
+  │     └─ VPN用于地理封锁内容                                    │
+  │                                                                  │
+  │  4. 不推荐                                                    │
+  │     ├─ 凭证共享                                                │
+  │     ├─ 系统性抓取                                             │
+  │     └─ 绕过内容的商业使用                                     │
+  │                                                                  │
+  └─────────────────────────────────────────────────────────────────┘
+  ```
+
+  ## 学术论文的开放获取工具
+
+  ### Unpaywall浏览器扩展
+
+  Unpaywall查找2000多万篇学术论文的免费合法副本。
+
+  ```python
+  # Unpaywall API（免费，需要电子邮件进行识别）
+  import requests
+
+  def find_open_access(doi: str, email: str) -> dict:
+      """使用Unpaywall API查找论文的开放获取版本。
+
+      参数:
+          doi: 数字对象标识符（例如，“10.1038/nature12373”）
+          email: 您的电子邮件用于API识别
+
+      返回:
+          字典，如果可用则包含最佳开放获取URL
+      """
+      url = f"https://api.unpaywall.org/v2/{doi}?email={email}"
+
+      response = requests.get(url, timeout=30)
+
+      if response.status_code != 200:
+          return {'error': f'状态 {response.status_code}'}
+
+      data = response.json()
+
+      if data.get('is_oa'):
+          best_location = data.get('best_oa_location', {})
+          return {
+              'is_open_access': True,
+              'oa_url': best_location.get('url_for_pdf') or best_location.get('url'),
+              'oa_status': data.get('oa_status'),  # gold, green, bronze, hybrid
+              'host_type': best_location.get('host_type'),  # publisher, repository
+              'version': best_location.get('version')  # publishedVersion, acceptedVersion
+          }
+
+      return {
+          'is_open_access': False,
+          'title': data.get('title'),
+          'journal': data.get('journal_name')
+      }
+
+  # 用法
+  result = find_open_access("10.1038/nature12373", "researcher@example.com")
+  if result.get('is_open_access'):
+      print(f"免费PDF位于: {result['oa_url']}")
+  ```
+
+  ### CORE API（2.95亿篇论文）
+
+  ```python
+  # CORE API - 需要免费API密钥从https://core.ac.uk/获取
+
+  import requests
+
+  class CORESearch:
+      def __init__(self, api_key: str):
+          self.api_key = api_key
+          self.base_url = "https://api.core.ac.uk/v3"
+
+      def search(self, query: str, limit: int = 10) -> list:
+          """在CORE数据库中搜索开放获取论文。"""
+
+          headers = {'Authorization': f'Bearer {self.api_key}'}
+          params = {
+              'q': query,
+              'limit': limit
+          }
+
+          response = requests.get(
+              f"{self.base_url}/search/works",
+              headers=headers,
+              params=params,
+              timeout=30
+          )
+
+          if response.status_code != 200:
+              return []
+
+          data = response.json()
+          results = []
+
+          for item in data.get('results', []):
+              results.append({
+                  'title': item.get('title'),
+                  'authors': [a.get('name') for a in item.get('authors', [])],
+                  'year': item.get('yearPublished'),
+                  'doi': item.get('doi'),
+                  'download_url': item.get('downloadUrl'),
+                  'abstract': item.get('abstract', '')[:500]
+              })
+
+          return results
+
+      def get_by_doi(self, doi: str) -> dict:
+          """通过DOI获取论文。"""
+          headers = {'Authorization': f'Bearer {self.api_key}'}
+
+          response = requests.get(
+              f"{self.base_url}/works/{doi}",
+              headers=headers,
+              timeout=30
+          )
+
+          return response.json() if response.status_code == 200 else {}
+  ```
+
+  ### Semantic Scholar API（2.14亿篇论文）
+
+  ```python
+  # Semantic Scholar API - 免费，基本使用无需密钥
+
+  import requests
+
+  def search_semantic_scholar(query: str, limit: int = 10) -> list:
+      """在Semantic Scholar中搜索具有开放获取链接的论文。"""
+
+      url = "https://api.semanticscholar.org/graph/v1/paper/search"
+      params = {
+          'query': query,
+          'limit': limit,
+          'fields': 'title,authors,year,abstract,openAccessPdf,citationCount'
+      }
+
+      response = requests.get(url, params=params, timeout=30)
+
+      if response.status_code != 200:
+          return []
+
+      results = []
+      for paper in response.json().get('data', []):
+          oa_pdf = paper.get('openAccessPdf', {})
+          results.append({
+              'title': paper.get('title'),
+              'authors': [a.get('name') for a in paper.get('authors', [])],
+              'year': paper.get('year'),
+              'citations': paper.get('citationCount', 0),
+              'open_access_url': oa_pdf.get('url') if oa_pdf else None,
+              'abstract': paper.get('abstract', '')[:500] if paper.get('abstract') else ''
+          })
+
+      return results
+
+  def get_paper_by_doi(doi: str) -> dict:
+      """通过DOI获取论文详情。"""
+      url = f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}"
+      params = {
+          'fields': 'title,authors,year,abstract,openAccessPdf,references,citations'
+      }
+
+      response = requests.get(url, params=params, timeout=30)
+      return response.json() if response.status_code == 200 else {}
+  ```
+
+  ## 浏览器阅读器模式用于软付费墙
+
+  ### 激活阅读器模式
+
+  ```javascript
+  // 书签工具以触发Firefox风格阅读器模式
+  // 适用于一些在阻止前加载内容的软付费墙
+
+  javascript:(function(){
+      // 尝试提取文章内容
+      var article = document.querySelector('article') ||
+                    document.querySelector('[role="main"]') ||
+                    document.querySelector('.article-body') ||
+                    document.querySelector('.post-content');
+
+      if (article) {
+          // 移除付费墙覆盖层
+          document.querySelectorAll('[class*="paywall"], [class*="subscribe"], [id*="paywall"]')
+              .forEach(el => el.remove());
+
+          // 移除固定位置覆盖层
+          document.querySelectorAll('*').forEach(el => {
+              var style = getComputedStyle(el);
+              if (style.position === 'fixed' && style.zIndex > 100) {
+                  el.remove();
+              }
+          });
+
+          // 重新启用滚动
+          document.body.style.overflow = 'auto';
+          document.documentElement.style.overflow = 'auto';
+
+          console.log('覆盖层已移除。内容现在可能可见。');
+      }
+  })();
+  ```
+
+  ### 各浏览器阅读器模式
+
+  | 浏览器 | 如何激活 | 有效性 |
+  |---------|-----------------|---------------|
+  | **Safari** | 点击URL栏中的阅读器图标 | 对软付费墙高 |
+  | **Firefox** | 点击阅读器视图图标（或F9） | 高 |
+  | **Edge** | 点击沉浸式阅读器图标 | 最高 |
+  | **Chrome** | 需要标志：chrome://flags/#enable-reader-mode | 中等 |
+
+  ## 图书馆数据库访问
+
+  ### 通过编程方式检查图书馆访问
+
+  ```python
+  # 大多数图书馆数据库需要身份验证
+  # 这展示了如何构建图书馆API访问模式
+
+  class LibraryAccess:
+      """图书馆数据库的访问模式。"""
+
+      # 常见图书馆数据库端点
+      DATABASES = {
+          'pressreader': {
+              'base': 'https://www.pressreader.com',
+              'auth': 'library_card',
+              'content': '7000+ newspapers/magazines'
+          },
+          'proquest': {
+              'base': 'https://www.proquest.com',
+              'auth': 'institutional',
+              'content': 'news, dissertations, documents'
+          },
+          'jstor': {
+              'base': 'https://www.jstor.org',
+              'auth': 'institutional',
+              'content': 'academic journals, books'
+          },
+          'nexis_uni': {
+              'base': 'https://www.nexisuni.com',
+              'auth': 'institutional',
+              'content': 'legal, news, business'
+          }
+      }
+
+      @staticmethod
+      def get_pressreader_access_methods():
+          """通过图书馆访问PressReader的方式。"""
+          return {
+              'in_library': '连接到图书馆WiFi，访问pressreader.com',
+              'remote': '使用图书馆卡凭证登录',
+              'app': '下载PressReader应用，链接图书馆卡',
+              'note': '访问通常每会话30-48小时'
+          }
+
+  # 馆际互借（ILL）工作流
+  def request_via_ill(paper_info: dict, library_email: str) -> str:
+      """生成馆际互借请求。
+
+      ILL通过大多数图书馆免费，几乎可以获取任何论文。
+      周转时间：通常3-7天。
+      """
+
+      request = f"""
+      馆际互借请求
+
+      标题: {paper_info.get('title')}
+      作者(s): {paper_info.get('authors')}
+      期刊: {paper_info.get('journal')}
+      年份: {paper_info.get('year')}
+      DOI: {paper_info.get('doi')}
+      卷/期: {paper_info.get('volume')}/{paper_info.get('issue')}
+      页码: {paper_info.get('pages')}
+
+      请求者: {library_email}
+      """
+
+      return request.strip()
+  ```
+
+  ## VPN用于地理封锁内容
+
+  ### 何时使用VPN是适当的
+
+  ```markdown
+  ## 记者/研究人员合法VPN使用案例
+
+  ### 适当:
+  - 访问区域特定新闻来源
+  - 研究内容在其他国家的呈现方式
+  - 绕过政府审查（在某些背景下）
+  - 保护来源通信
+  - 验证地理目标内容
+
+  ### 不适当:
+  - 规避合法访问控制
+  - 访问合同禁止查看的内容
+  - 逃避对您账户施加的禁令或阻止
+  ```
+
+  ### VPN服务比较
+
+  | 服务 | 最佳用途 | 隐私 | 速度 | 价格 |
+  |---------|----------|---------|-------|-------|
+  | **ExpressVPN** | 审查绕过 | 优秀 | 快 | $$$ |
+  | **NordVPN** | 一般用途 | 优秀 | 快 | $$ |
+  | **Surfshark** | 预算，无限设备 | 良好 | 好 | $ |
+  | **ProtonVPN** | 隐私导向 | 优秀 | 中等 | $$ |
+  | **Tor浏览器** | 最大匿名性 | 优秀 | 慢 | 免费 |
+
+  ### 检查地理限制状态
+
+  ```python
+  import requests
+
+  def check_geo_access(url: str, regions: list = None) -> dict:
+      """检查URL是否可从不同区域访问。
+
+      注意：这需要VPN/代理服务进行实际测试。
+      此函数展示概念。
+      """
+
+      regions = regions or ['US', 'UK', 'EU', 'JP', 'AU']
+
+      results = {}
+
+      # 直接访问测试
+      try:
+          response = requests.get(url, timeout=10)
+          results['direct'] = {
+              'accessible': response.status_code == 200,
+              'status_code': response.status_code
+          }
+      except Exception as e:
+          results['direct'] = {'accessible': False, 'error': str(e)}
+
+      # 需要VPN/代理集成进行区域测试
+      # results[region] = test_through_proxy(url, region)
+
+      return results
+  ```
+
+  ## 基于存档的访问
+
+  ### 使用Archive.today访问付费墙文章
+
+  ```python
+  import requests
+  from urllib.parse import quote
+
+  def get_archived_article(url: str) -> str:
+      """尝试从Archive.today获取文章。
+
+      Archive.today通常捕获完整文章内容
+      因为它渲染JavaScript并捕获结果。
+
+      法律状态因司法管辖区而异 - 用于研究目的。
+      """
+
+      # 检查现有存档
+      search_url = f"https://archive.today/{quote(url, safe='')}"
+
+      try:
+          response = requests.get(search_url, timeout=30, allow_redirects=True)
+
+          if response.status_code == 200 and 'archive.today' in response.url:
+              return response.url
+
+          # 无现有存档 - 可以请求一个
+          # 注意：这可能违反服务条款，请负责任使用
+          return None
+
+      except Exception:
+          return None
+  ```
+
+  ### Wayback Machine用于历史访问
+
+  ```python
+  def get_wayback_article(url: str) -> str:
+      """从Wayback Machine获取文章。
+
+      100%合法 - Internet Archive是公认的图书馆。
+      可能有文章的较旧版本（付费墙实施前）。
+      """
+
+      # 检查可用性
+      api_url = f"http://archive.org/wayback/available?url={url}"
+
+      try:
+          response = requests.get(api_url, timeout=10)
+          data = response.json()
+
+          snapshot = data.get('archived_snapshots', {}).get('closest', {})
+
+          if snapshot.get('available'):
+              return snapshot['url']
+
+          return None
+      except Exception:
+          return None
+  ```
+
+  ## Google Scholar策略
+
+  ### 查找免费版本
+
+  ```python
+  def find_free_via_scholar(title: str) -> list:
+      """查找免费论文版本的搜索策略。
+
+      Google Scholar通常链接到:
+      - 作者个人网站副本
+      - 机构存储库版本
+      - ResearchGate/Academia.edu上传
+      """
+
+      strategies = [
+          {
+              'method': 'scholar_all_versions',
+              'description': '点击结果下的“所有X版本”',
+              'success_rate': '中-高'
+          },
+          {
+              'method': 'scholar_pdf_link',
+              'description': '在右侧查找[PDF]链接',
+              'success_rate': '中'
+          },
+          {
+              'method': 'title_plus_pdf',
+              'description': f'搜索: “{title}” filetype:pdf',
+              'success_rate': '中'
+          },
+          {
+              'method': 'author_site',
+              'description': '找到作者的学术页面',
+              'success_rate': '中'
+          },
+          {
+              'method': 'preprint_servers',
+              'description': '搜索arXiv、SSRN、bioRxiv',
+              'success_rate': '领域依赖'
+          }
+      ]
+
+      return strategies
+  ```
+
+  ## 直接作者联系
+
+  ### 请求论文的电子邮件模板
+
+  ```python
+  def generate_paper_request_email(paper: dict, requester: dict) -> str:
+      """生成向作者请求论文的专业电子邮件。
+
+      作者通常乐意分享他们的工作。
+      成功率：非常高（70-90%）。
+      """
+
+      template = f"""
+  主题: 请求论文: {paper['title'][:50]}...
+
+  亲爱的博士/教授 {paper['author_last_name']}，
+
+  我是{requester['institution']}的{requester['role']}，正在研究
+  {requester['research_area']}。
+
+  我遇到了您的论文“{paper['title']}”发表在
+  {paper['journal']} ({paper['year']})，并认为它对我的工作
+  {requester['specific_project']}高度相关。
+
+  不幸的是，我无法通过我的机构访问。您是否
+  愿意分享一份副本？
+
+  我很乐意在任何相关出版物中正确引用您的工作。
+
+  感谢您的时间和您对该领域的贡献。
+
+  此致
+  {requester['name']}
+  {requester['title']}
+  {requester['institution']}
+  {requester['email']}
+  """
+
+      return template.strip()
+  ```
+
+  ## 按内容类型的访问策略
+
+  ### 新闻文章
+
+  ```markdown
+  ## 新闻文章访问策略
+
+  1. **图书馆PressReader** - 全球7000+出版物
+  2. **阅读器模式** - 对约50%软付费墙有效
+  3. **Archive.org** - 用于较旧文章
+  4. **Archive.today** - 用于最近文章（灰色地带）
+  5. **Google搜索** - 有时出现缓存版本
+
+  ## 提示:
+  - 许多报纸为.edu邮箱提供免费文章
+  - 新闻稿通常包含与付费墙文章相同的信息
+  - 当地图书馆卡通常包括数字新闻访问
+  - 一些出版物有免费层级（5-10篇文章/月）
+  ```
+
+  ### 学术论文
+
+  ```markdown
+  ## 学术论文访问策略（按顺序）
+
+  1. **Unpaywall扩展** - 首先检查，自动
+  2. **Google Scholar** - 点击“所有版本”，查找[PDF]
+  3. **作者网站** - 检查他们的学术页面
+  4. **机构存储库** - 搜索大学图书馆
+  5. **预印本服务器** - arXiv、SSRN、bioRxiv、medRxiv
+  6. **ResearchGate/Academia.edu** - 作者上传副本
+  7. **CORE.ac.uk** - 2.95亿开放获取论文
+  8. **PubMed Central** - 用于生物医学论文
+  9. **直接联系作者** - 高成功率
+  10. **馆际互借** - 免费，几乎可以获取任何内容
+  ```
+
+  ### 书籍和报告
+
+  ```markdown
+  ## 书籍/报告访问策略
+
+  1. **图书馆数字借阅** - Internet Archive、OverDrive
+  2. **Google Books** - 通常有预览或全文
+  3. **HathiTrust** - 学术图书馆联盟
+  4. **Project Gutenberg** - 公共领域书籍
+  5. **OpenLibrary** - Internet Archive的书籍借阅
+  6. **出版商开放获取** - 一些章节/报告免费
+  7. **作者/组织网站** - 报告通常可用
+  8. **馆际互借** - 实体书籍，扫描章节
+  ```
+
+  ## 法律和伦理框架
+
+  ### 合理使用考虑（美国）
+
+  ```markdown
+  ## 合理使用因素（17 U.S.C. § 107）
+
+  1. **使用的目的和性质**
+     - 变革性使用（评论、批评）优先
+     - 非商业/教育使用优先
+     - 新闻报道通常受保护
+
+  2. **版权作品的性质**
+     - 事实作品（新闻、研究）- 更广泛合理使用
+     - 创意作品（小说、艺术）- 更狭窄合理使用
+
+  3. **使用部分相对于整体的数量**
+     - 仅使用必要部分优先
+     - 作品核心不优先
+
+  4. **对市场的影响**
+     - 不替代购买不优先
+     - 无市场影响优先
+
+  ## 新闻报道特权:
+  新闻报道被明确列为合理使用目的。
+  然而，整篇文章的完全复制仍然有问题。
+  ```
+
+  ### 研究人员最佳实践
+
+  ```markdown
+  ## 伦理内容访问指南
+
+  ### 做:
+  - 首先使用图书馆资源（支持生态系统）
+  - 在规避前尝试开放获取工具
+  - 直接联系作者（他们想要引用）
+  - 无论访问方式如何，正确引用内容
+  - 为常用来源预算订阅费用
+
+  ### 不做:
+  - 共享登录凭证
+  - 系统性下载整个数据库
+  - 使用规避内容用于商业目的
+  - 重新分发付费墙内容
+  - 仅依赖规避方法
+  ```

@@ -1,0 +1,236 @@
+name: skillsbot-literature-search-11540
+display_name: literature-search
+display_name_zh: 文献搜索
+description: literature-search from SkillsBot scientific academic catalog
+description_zh: 通过Valyu语义搜索API，在PubMed、arXiv、bioRxiv、medRxiv等多个科学文献数据库中进行综合搜索，支持自然语言查询。它提供全文访问、图像链接和统一结果，适合科研人员、学生等进行文献检索、跨学科研究和最新发展跟踪。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/11540
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/11540
+upstream_name: literature-search
+upstream_commit: ""
+prompt: |
+  ---
+  名称：文献搜索
+  描述：通过Valyu语义搜索API，在PubMed、arXiv、bioRxiv、medRxiv等主要科学文献数据库中进行全面的跨数据库搜索，支持自然语言查询。
+  关键词：
+    - 文献搜索
+    - 科学文献
+    - 多源搜索
+    - 综合搜索
+    - 研究聚合
+    - 语义搜索
+  许可证：MIT
+  ---
+
+
+  # 文献搜索
+
+  使用自然语言查询，通过Valyu语义搜索API，同时搜索所有主要科学文献数据库（PubMed、arXiv、bioRxiv、medRxiv）。
+
+  ## 此技能的优势
+
+  - **无需API参数解析**：直接传递自然语言查询，无需构建复杂的搜索参数
+  - **语义搜索**：理解查询的含义，不仅仅是关键词匹配
+  - **全文访问**：返回完整的文章内容，不仅仅是摘要
+  - **图像链接**：包含论文中的图表和图像
+  - **全面覆盖**：同时搜索PubMed、arXiv、bioRxiv和medRxiv
+  - **统一结果**：单次查询获取所有来源的结果
+
+  ## 要求
+
+  1. Node.js 18+（使用内置的fetch）
+  2. 从https://platform.valyu.ai获取Valyu API密钥（免费10美元信用）
+
+  ## 关键：脚本路径解析
+
+  本文档中的`scripts/search`命令是相对于此技能的安装目录的。
+
+  运行任何命令之前，使用以下命令定位脚本：
+
+  ```bash
+  LITERATURE_SCRIPT=$(find ~/.claude/plugins/cache -name "search" -path "*/literature-search/*/scripts/*" -type f 2>/dev/null | head -1)
+  ```
+
+  然后对所有命令使用完整路径：
+  ```bash
+  $LITERATURE_SCRIPT "CRISPR基因编辑进展" 15
+  ```
+
+  ## API密钥设置流程
+
+  当运行搜索并收到`"setup_required": true`时，请遵循以下流程：
+
+  1. **向用户请求API密钥：**
+     "要搜索科学文献，我需要您的Valyu API密钥。在https://platform.valyu.ai免费获取（10美元信用）"
+
+  2. **一旦用户提供密钥，运行：**
+     ```bash
+     scripts/search setup <api-key>
+     ```
+
+  3. **重试原始搜索。**
+
+  ## 何时使用此技能
+
+  - 跨所有领域的综合文献回顾
+  - 查找某个主题的所有相关研究
+  - 跨学科科学发现
+  - 结合生物医学、物理学和预印本文献
+  - 跨学科的新兴研究
+
+  ## 输出格式
+
+  ```json
+  {
+    "success": true,
+    "type": "literature_search",
+    "query": "CRISPR基因编辑进展",
+    "result_count": 15,
+    "results": [
+      {
+        "title": "文章标题",
+        "url": "https://...",
+        "content": "完整文章文本，包含图表...",
+        "source": "pubmed|arxiv|biorxiv|medrxiv",
+        "relevance_score": 0.95,
+        "images": ["https://example.com/figure1.jpg"]
+      }
+    ],
+    "cost": 0.025
+  }
+  ```
+
+  ## 处理结果
+
+  ### 使用jq
+
+  ```bash
+  # 获取文章标题
+  scripts/search "查询" 20 | jq -r '.results[].title'
+
+  # 获取URL
+  scripts/search "查询" 20 | jq -r '.results[].url'
+
+  # 提取完整内容
+  scripts/search "查询" 20 | jq -r '.results[].content'
+
+  # 按来源筛选
+  scripts/search "查询" 20 | jq -r '.results[] | select(.source == "arxiv") | .title'
+  ```
+
+  ## 常见用例
+
+  ### 综合文献回顾
+
+  ```bash
+  # 在所有来源中搜索进行彻底回顾
+  scripts/search "细胞衰老机制" 100
+  ```
+
+  ### 跨学科研究
+
+  ```bash
+  # 查找跨多个领域的论文
+  scripts/search "量子计算在药物发现中的应用" 50
+  ```
+
+  ### 最新发展
+
+  ```bash
+  # 获取最新的预印本和出版物
+  scripts/search "蛋白质折叠基础模型" 30
+  ```
+
+  ### 医学研究
+
+  ```bash
+  # 全面搜索生物医学文献
+  scripts/search "免疫治疗检查点抑制剂耐药性" 40
+  ```
+
+  ## 错误处理
+
+  所有命令返回带有`success`字段的JSON：
+
+  ```json
+  {
+    "success": false,
+    "error": "错误消息"
+  }
+  ```
+
+  退出代码：
+  - `0` - 成功
+  - `1` - 错误（检查JSON获取详情）
+
+  ## API端点
+
+  - 基础URL：`https://api.valyu.ai/v1`
+  - 端点：`/search`
+  - 认证：X-API-Key头部
+
+  ## 架构
+
+  ```
+  scripts/
+  ├── search          # Bash包装器
+  └── search.mjs      # Node.js CLI
+  ```
+
+  使用Node.js内置`fetch()`直接API调用，零外部依赖。
+
+  ## 添加到您的项目
+
+  如果您正在构建AI项目并希望将文献搜索直接集成到您的应用程序中，请使用Valyu SDK：
+
+  ### Python集成
+
+  ```python
+  from valyu import Valyu
+
+  client = Valyu(api_key="您的API密钥")
+
+  response = client.search(
+      query="您的搜索查询",
+      included_sources=["valyu/valyu-pubmed", "valyu/valyu-arxiv", "valyu/valyu-biorxiv", "valyu/valyu-medrxiv"],
+      max_results=20
+  )
+
+  for result in response["results"]:
+      print(f"标题: {result['title']}")
+      print(f"URL: {result['url']}")
+      print(f"内容: {result['content'][:500]}...")
+  ```
+
+  ### TypeScript集成
+
+  ```typescript
+  import { Valyu } from "valyu-js";
+
+  const client = new Valyu("您的API密钥");
+
+  const response = await client.search({
+    query: "您的搜索查询",
+    includedSources: ["valyu/valyu-pubmed", "valyu/valyu-arxiv", "valyu/valyu-biorxiv", "valyu/valyu-medrxiv"],
+    maxResults: 20
+  });
+
+  response.results.forEach((result) => {
+    console.log(`标题: ${result.title}`);
+    console.log(`URL: ${result.url}`);
+    console.log(`内容: ${result.content.substring(0, 500)}...`);
+  });
+  ```
+
+  有关完整集成示例和SDK参考，请参阅[Valyu文档](https://docs.valyu.ai)。

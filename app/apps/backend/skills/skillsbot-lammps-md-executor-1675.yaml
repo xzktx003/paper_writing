@@ -1,0 +1,115 @@
+name: skillsbot-lammps-md-executor-1675
+display_name: lammps-md-executor
+display_name_zh: LAMMPS分子动力学模拟器
+description: lammps-md-executor from SkillsBot scientific academic catalog
+description_zh: LAMMPS分子动力学模拟器是一款用于纳米尺度材料系统仿真的专业计算工具。该技能支持力场管理、系统平衡、NVT/NPT系综模拟、轨迹分析和热力学性质计算，广泛应用于材料科学、纳米技术和计算化学领域。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1675
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1675
+upstream_name: lammps-md-executor
+upstream_commit: ""
+prompt: |
+  ---
+  name: lammps-md-executor
+  description: 用于纳米尺度系统模拟的LAMMPS分子动力学技能，支持力场管理
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 计算
+    priority: high
+    phase: 6
+    tools-libraries:
+      - LAMMPS
+      - OVITO
+      - VMD
+      - MDAnalysis
+  ---
+
+  # LAMMPS MD执行器
+
+  ## 目的
+
+  LAMMPS MD执行器技能为纳米尺度系统提供分子动力学模拟能力，通过经典模拟研究结构、力学和热学性质。
+
+  ## 功能
+
+  - 力场选择和参数化
+  - 系统平衡协议
+  - NVT/NPT系综模拟
+  - 轨迹分析
+  - 热导率计算
+  - 力学性质模拟
+
+  ## 使用指南
+
+  ### MD模拟工作流
+
+  1. **系统设置**
+     - 构建初始构型
+     - 分配力场
+     - 能量最小化
+
+  2. **平衡阶段**
+     - NVT温度平衡
+     - NPT密度平衡
+     - 监控平衡指标
+
+  3. **生产阶段**
+     - 运行相应系综
+     - 实时计算性质
+     - 保存轨迹
+
+  ## 流程集成
+
+  - 分子动力学模拟工作流
+  - 多尺度建模集成
+
+  ## 输入模式
+
+  ```json
+  {
+    "structure_file": "string",
+    "force_field": "string (ReaxFF|MEAM|Tersoff|LJ)",
+    "ensemble": "nvt|npt|nve",
+    "temperature": "number (K)",
+    "pressure": "number (atm, for npt)",
+    "timestep": "number (fs)",
+    "total_time": "number (ns)"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "thermodynamic_properties": {
+      "temperature": "number (K)",
+      "pressure": "number (atm)",
+      "total_energy": "number (eV)",
+      "volume": "number (Angstrom^3)"
+    },
+    "structural_properties": {
+      "rdf_file": "string",
+      "msd_file": "string"
+    },
+    "trajectory_file": "string",
+    "equilibrated": "boolean"
+  }
+  ```

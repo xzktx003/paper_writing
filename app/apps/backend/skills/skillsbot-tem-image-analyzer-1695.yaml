@@ -1,0 +1,116 @@
+name: skillsbot-tem-image-analyzer-1695
+display_name: tem-image-analyzer
+display_name_zh: TEM图像分析器
+description: tem-image-analyzer from SkillsBot scientific academic catalog
+description_zh: TEM图像分析器是一款专业的透射电子显微镜图像分析工具，专门用于纳米材料的自动化表征。该技能能够实现纳米颗粒的自动检测与尺寸测量、形貌分类、晶格条纹分析以及选区电子衍射（SAED）标定。
+type: draw
+categories:
+  - scientific-figures
+category_zh: 科研绘图
+subcategory: statistical-plots
+subcategory_zh: 实验数据图
+trigger: manual
+auto_recommend: false
+tags:
+  - 科研绘图
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1695
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1695
+upstream_name: tem-image-analyzer
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: TEM图像分析器
+  描述: 用于纳米颗粒尺寸、形貌和晶体结构评估的透射电子显微镜图像分析技能
+  允许工具:
+    - 读取
+    - 写入
+    - 全局搜索
+    - 文本搜索
+    - Bash
+  元数据:
+    专业领域: 纳米技术
+    应用领域: 科学
+    类别: 显微表征
+    优先级: 高
+    阶段: 6
+    工具库:
+      - ImageJ/Fiji
+      - Gatan DigitalMicrograph
+      - JEMS
+      - CryoSPARC
+  ---
+
+  # TEM图像分析器
+
+  ## 目的
+
+  TEM图像分析器技能提供透射电子显微镜数据的全面分析，用于纳米材料表征，实现自动颗粒检测、尺寸分布分析和晶体结构确定。
+
+  ## 功能
+
+  - 自动颗粒检测与尺寸测量
+  - 形貌分类
+  - 晶格条纹分析
+  - 选区电子衍射（SAED）标定
+  - 高分辨透射电镜（HRTEM）分析
+  - STEM-HAADF成像分析
+
+  ## 使用指南
+
+  ### 图像分析工作流程
+
+  1. **颗粒检测**
+     - 应用适当阈值处理
+     - 使用分水岭算法处理接触颗粒
+     - 统计至少200个颗粒以获得可靠数据
+
+  2. **尺寸测量**
+     - 根据比例尺校准像素尺寸
+     - 测量费雷特直径或等效圆直径
+     - 报告平均值、标准差和分布情况
+
+  3. **晶体学分析**
+     - 标定SAED图谱以确定物相
+     - 从晶格条纹测量晶面间距
+     - 从HRTEM图像确定晶带轴
+
+  ## 流程集成
+
+  - 多模态纳米材料表征流程
+  - 统计颗粒尺寸分布分析
+  - 原位表征实验设计
+
+  ## 输入模式
+
+  ```json
+  {
+    "图像路径": "字符串",
+    "分析类型": "尺寸测量|形貌分析|晶体学分析",
+    "比例尺": {"长度": "数值", "像素数": "数值"},
+    "预期材料": "字符串（用于标定）"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "颗粒统计": {
+      "数量": "数值",
+      "平均尺寸": "数值（纳米）",
+      "标准差": "数值（纳米）",
+      "尺寸分布": {"区间": [], "计数": []}
+    },
+    "形貌": {
+      "形状": [{"类型": "字符串", "比例": "数值"}],
+      "长宽比": "数值"
+    },
+    "晶体学": {
+      "物相": "字符串",
+      "晶面间距": ["数值（纳米）"],
+      "晶带轴": "字符串"
+    }
+  }
+  ```

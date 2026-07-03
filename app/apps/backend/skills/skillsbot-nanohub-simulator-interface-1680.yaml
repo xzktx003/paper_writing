@@ -1,0 +1,102 @@
+name: skillsbot-nanohub-simulator-interface-1680
+display_name: nanohub-simulator-interface
+display_name_zh: NanoHUB纳米科学模拟器接口
+description: nanohub-simulator-interface from SkillsBot scientific academic catalog
+description_zh: NanoHUB 纳米科学模拟器接口是一个专业技能，用于连接和操作在线纳米科学计算与模拟平台。它支持量子点、碳纳米管、纳米线等多种纳米材料的性能模拟、能带结构计算和输运特性分析。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: experiment-planning
+subcategory_zh: 实验方案
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1680
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1680
+upstream_name: nanohub-simulator-interface
+upstream_commit: ""
+prompt: |
+  ---
+  name: nanohub-simulator-interface
+  description: 用于访问教育和研究用纳米科学在线模拟工具的NanoHUB工具接口技能
+  alowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 计算
+    priority: low
+    phase: 6
+    tools-libraries:
+      - NanoHUB API
+      - Rappture toolkit
+  ---
+
+  # NanoHUB 模拟器接口
+
+  ## 目的
+
+  NanoHUB 模拟器接口技能提供对 NanoHUB 在线纳米科学模拟工具的访问，能够快速进行计算并探索纳米尺度现象。
+
+  ## 能力
+
+  - 量子点模拟 (NEMO)
+  - 碳纳米管 (CNT) 属性计算器
+  - 纳米线输运建模
+  - 能带结构可视化
+  - 交互式模拟执行
+  - 结果提取与分析
+
+  ## 使用指南
+
+  ### NanoHUB 集成
+
+  1. **工具选择**
+     - 识别合适的模拟器
+     - 理解输入要求
+     - 检查计算限制
+
+  2. **模拟执行**
+     - 通过 API 提交任务
+     - 监控进度
+     - 检索结果
+
+  3. **分析**
+     - 解析输出文件
+     - 提取关键参数
+     - 可视化结果
+
+  ## 流程集成
+
+  - 多尺度建模集成
+  - 用于纳米材料的 DFT 计算流程
+
+  ## 输入模式
+
+  ```json
+  {
+    "tool_name": "string",
+    "input_parameters": {},
+    "execution_mode": "batch|interactive"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "job_id": "string",
+    "status": "completed|running|failed",
+    "results": {},
+    "output_files": ["string"],
+    "execution_time": "number (seconds)"
+  }
+  ```

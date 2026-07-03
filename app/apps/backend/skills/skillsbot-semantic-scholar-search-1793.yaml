@@ -1,0 +1,68 @@
+name: skillsbot-semantic-scholar-search-1793
+display_name: semantic-scholar-search
+display_name_zh: 语义学者学术搜索
+description: semantic-scholar-search from SkillsBot scientific academic catalog
+description_zh: 语义学者学术搜索技能是一个基于Semantic Scholar API的智能文献检索工具，专门用于高效发现学术论文、分析引用网络、评估作者影响力，并识别研究趋势。它结合关键词与语义搜索，能提取论文摘要，并为用户推荐相关文献，是科研人员、学者和学生进行文献调研和学术探索的得力助手。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1793
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1793
+upstream_name: semantic-scholar-search
+upstream_commit: ""
+prompt: |
+  ---
+  name: semantic-scholar-search
+  description: 使用Semantic Scholar API进行学术文献检索，实现基于引用的论文发现
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+    - WebFetch
+    - WebSearch
+  metadata:
+    specialization: scientific-discovery
+    domain: science
+    category: literature-knowledge
+    phase: 6
+  ---
+
+  # Semantic Scholar 学术搜索
+
+  ## 目的
+
+  提供学术文献搜索能力，利用Semantic Scholar API实现基于引用的论文发现和研究趋势识别。
+
+  ## 功能
+
+  - 关键词和语义搜索论文
+  - 引用网络分析
+  - 作者影响力评分
+  - 研究趋势识别
+  - 基于阅读历史的论文推荐
+  - TLDR摘要提取
+
+  ## 使用指南
+
+  1. **搜索策略**：结合关键词与语义相似性
+  2. **引用分析**：为核心论文构建引用网络
+  3. **作者分析**：识别有影响力的研究者
+  4. **趋势检测**：追踪新兴研究领域
+
+  ## 工具/库
+
+  - Semantic Scholar API
+  - NetworkX
+  - sentence-transformers

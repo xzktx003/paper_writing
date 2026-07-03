@@ -1,0 +1,66 @@
+name: skillsbot-latex-math-formatter-1602
+display_name: latex-math-formatter
+display_name_zh: LaTeX数学公式格式化工具
+description: latex-math-formatter from SkillsBot scientific academic catalog
+description_zh: LaTeX数学公式格式化工具是一款专业的数学文档排版技能，专注于提供高质量的LaTeX数学公式排版解决方案。该工具支持公式对齐、定理环境生成、证明结构编排、交叉引用管理和参考文献生成等功能，适用于学术论文、科研报告和技术文档的出版级排版需求。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: formatting-latex
+subcategory_zh: 格式与 LaTeX
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1602
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1602
+upstream_name: latex-math-formatter
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: latex-数学公式格式化工具
+  描述: 高质量的LaTeX数学排版
+  允许使用的工具:
+    - Bash
+    - 读取
+    - 写入
+    - 编辑
+    - 全局搜索
+    - 文本搜索
+  元数据:
+    专业领域: 数学
+    领域: 科学
+    类别: 文档
+    阶段: 6
+  ---
+
+  # LaTeX数学公式格式化工具
+
+  ## 目的
+
+  为出版级文档提供高质量的LaTeX数学排版能力。
+
+  ## 功能
+
+  - 公式格式化和对齐
+  - 定理环境生成
+  - 证明环境结构化
+  - AMS-LaTeX包使用
+  - 交叉引用管理
+  - 参考文献生成（BibTeX）
+
+  ## 使用指南
+
+  1. **环境选择**: 使用合适的定理/证明环境
+  2. **公式对齐**: 对多行公式应用对齐环境
+  3. **编号**: 保持定理和公式编号的一致性
+  4. **参考文献**: 正确的BibTeX引用格式
+
+  ## 工具/库
+
+  - LaTeX
+  - AMS包
+  - Overleaf API

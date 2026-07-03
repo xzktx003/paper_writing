@@ -1,0 +1,868 @@
+name: skillsbot-eln-8786
+display_name: eln
+display_name_zh: 电子实验笔记本技能
+description: eln from SkillsBot scientific academic catalog
+description_zh: 该技能提供使用org-mode维护专业电子实验笔记本的专家指导，用于科学文档记录、实验设计、数据分析和可重复性研究，提升研究完整性和效率。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/8786
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/8786
+upstream_name: eln
+upstream_commit: ""
+prompt: |
+  ---
+  name: eln
+  description: 使用org-mode维护专业科学文档的电子实验笔记本，基于日期组织，全面记录假设、方法、结果、推理和成果，以实现可重复研究
+  ---
+
+  # 电子实验笔记本（ELN）技能
+
+  该技能提供使用org-mode维护专业电子实验笔记本的专家指导，遵循科学文档、可重复性和研究完整性的最佳实践。
+
+  ## 何时使用此技能
+
+  在以下情况使用此技能：
+  - 创建或更新实验笔记本条目
+  - 记录实验、计算或分析
+  - 记录假设和实验设计
+  - 记录计算工作流
+  - 总结结果并得出结论
+  - 按时间顺序组织研究笔记
+  - 在相关工作间创建交叉引用
+  - 为出版物或报告准备文档
+  - 确保科学工作的可重复性
+  - 维护专业研究记录
+
+  ## 科学文档的核心原则
+
+  ### 1. 按时间顺序组织
+  条目按日期以分层结构组织：
+  ```
+  notebook/
+  ├── 2025/
+  │   ├── 01-一月/
+  │   │   ├── 2025-01-15.org
+  │   │   └── 2025-01-20.org
+  │   └── 02-二月/
+  │       └── 2025-02-03.org
+  ```
+
+  ### 2. 完整文档
+  每个条目应包含：
+  - **做了什么**：工作的详细描述
+  - **为什么做**：假设、动机、推理
+  - **如何做**：方法、程序、参数
+  - **观察到什么**：结果、数据、观察
+  - **意味着什么**：分析、解释、结论
+  - **下一步**：后续工作、提出的问题
+
+  ### 3. 可重复性
+  文档应使任何人（包括未来的自己）能够：
+  - 理解决策背后的推理
+  - 精确重复工作
+  - 访问所有使用的数据和代码
+  - 遵循逻辑链
+
+  ### 4. 专业标准
+  - 清晰和专业地写作
+  - 诚实地对待失败和意外结果
+  - 日期和时间戳所有条目
+  - 永不删除或修改过去的条目（用新条目更正）
+  - 包含足够细节以供独立重复
+
+  ## Org-Mode ELN 结构
+
+  ### 文件组织
+
+  #### 基于日期的文件
+  每天的工作放在一个日期文件中：
+  ```
+  2025-01-15.org    # 单日工作
+  ```
+
+  #### 目录结构
+  ```
+  research-notebook/
+  ├── 2025/
+  │   ├── 01-一月/
+  │   │   ├── 2025-01-15.org
+  │   │   ├── 2025-01-16.org
+  │   │   └── data/
+  │   │       └── 2025-01-15/
+  │   │           ├── experiment_results.csv
+  │   │           └── analysis.png
+  │   └── 02-二月/
+  ├── templates/
+  │   ├── experiment-template.org
+  │   └── calculation-template.org
+  ├── index.org          # 主索引
+  └── README.org         # 项目概述
+  ```
+
+  ### 条目模板结构
+
+  ```org
+  #+TITLE: 实验笔记本 - 2025-01-15
+  #+AUTHOR: 您的姓名
+  #+DATE: [2025-01-15 星期三]
+  #+FILETAGS: :experiment:catalyst:
+  #+STARTUP: overview
+
+  * 每日总结
+  今天完成的工作简要概述。
+
+  * 条目1：假设测试 - Pt上的CO吸附
+  :PROPERTIES:
+  :ID: 2025-01-15-001
+  :PROJECT: Catalyst_Screening
+  :STATUS: In_Progress
+  :RELATED: [[file:2025-01-10.org::*Previous Results]]
+  :END:
+
+  ** 目标
+  您试图完成什么以及为什么？
+
+  ** 假设
+  您期望什么的清晰陈述和推理。
+
+  ** 背景/上下文
+  - 为什么这很重要？
+  - 什么先前工作导致了这个？
+  - 关键问题是什么？
+
+  ** 方法
+  *** 计算设置
+  如何执行工作的详细描述。
+
+  #+BEGIN_SRC python
+  # 包含实际使用的代码
+  from ase.build import fcc111
+  slab = fcc111('Pt', size=(4,4,4), vacuum=10.0)
+  #+END_SRC
+
+  *** 参数
+  - DFT 泛函：PBE
+  - 能量截断：400 eV
+  - k-points：4×4×1
+  - 收敛：0.05 eV/Å
+
+  ** 结果
+  *** 观察
+  实际发生了什么？包括数据、图表、输出。
+
+  #+BEGIN_SRC python :results file
+  # 分析代码
+  import matplotlib.pyplot as plt
+  # ... 绘图代码 ...
+  plt.savefig('data/2025-01-15/adsorption_energy.png')
+  return 'data/2025-01-15/adsorption_energy.png'
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:data/2025-01-15/adsorption_energy.png]]
+
+  *** 数据
+  | 金属 | E_ads (eV) | 位点 |
+  |-------+------------+-------|
+  | Pt    |     -1.82  | fcc   |
+  | Cu    |     -0.95  | hcp   |
+  | Au    |     -0.45  | ontop |
+
+  ** 分析
+  *** 解释
+  这些结果意味着什么？
+
+  *** 与文献比较
+  结果与预期值如何比较？
+
+  *** 意外发现
+  任何令人惊讶或异常的地方？
+
+  ** 结论
+  - 关键发现
+  - 假设支持/拒绝
+  - 结果置信水平
+
+  ** 问题/困难
+  记录遇到的任何问题以及如何解决。
+
+  ** 下一步
+  - [ ] 用不同泛函验证
+  - [ ] 测试更大表面模型
+  - [ ] 计算反应势垒
+
+  ** 参考文献
+  - 先前工作：[[file:2025-01-10.org::*Initial Screening]]
+  - 文献：Smith et al. (2024) DOI:10.1021/xxxxx
+  - 代码：[[file:~/projects/catalyst-screening/run_calculations.py]]
+
+  * 条目2：另一个任务
+  ...
+  ```
+
+  ## ELN 的基本 Org-Mode 功能
+
+  ### 1. 属性抽屉
+  ```org
+  :PROPERTIES:
+  :ID: unique-identifier
+  :PROJECT: Project_Name
+  :STATUS: Planning|In_Progress|Complete|On_Hold
+  :STARTED: [2025-01-15 Wed]
+  :COMPLETED: [2025-01-15 Wed]
+  :RELATED: [[link-to-related-entry]]
+  :DATA: [[file:./data/2025-01-15/results.csv]]
+  :END:
+  ```
+
+  ### 2. 标签
+  使用标签进行分类和过滤：
+  ```org
+  #+FILETAGS: :experiment:simulation:catalyst:DFT:
+  * 条目标题                                              :important:urgent:
+  ```
+
+  常见标签类别：
+  - **类型**: :experiment:, :simulation:, :analysis:, :literature:, :meeting:
+  - **主题**: :catalyst:, :materials:, :synthesis:, :characterization:
+  - **状态**: :todo:, :in_progress:, :done:, :failed:
+  - **优先级**: :urgent:, :important:, :routine:
+
+  ### 3. 链接
+  ```org
+  # 内部链接
+  [[file:2025-01-10.org::*Previous Results]]
+  [[id:2025-01-15-001]]
+
+  # 外部链接
+  [[file:~/data/experiment_001.csv][数据文件]]
+  [[https://doi.org/10.1021/xxxxx][Smith et al. 2024]]
+
+  # 代码链接
+  [[file:~/projects/analysis/plot_results.py]]
+  ```
+
+  ### 4. 代码块
+  ```org
+  #+BEGIN_SRC python :results output :session analysis :exports both
+  import pandas as pd
+  import matplotlib.pyplot as plt
+
+  # 可重复分析代码
+  data = pd.read_csv('data/2025-01-15/results.csv')
+  print(f"平均能量：{data['energy'].mean():.3f} eV")
+  #+END_SRC
+
+  #+RESULTS:
+  : 平均能量：-1.234 eV
+  ```
+
+  ### 5. 表格
+  ```org
+  | 参数      | 值     | 单位 | 注释              |
+  |----------------+-----------+-------+--------------------|
+  | 温度    | 300       | K     | 室温   |
+  | 压力       | 1         | atm   | 标准           |
+  | 覆盖率       | 0.25      | ML    | 1/4 单层      |
+  #+TBLFM: @2$4=从几何计算
+  ```
+
+  ### 6. TODO 项目和复选框
+  ```org
+  ** 下一步
+  - [ ] 运行 k-points 收敛测试
+  - [ ] 与 Lee et al. 的实验数据比较
+  - [X] 计算吸附能量
+  - [ ] 为小组会议撰写结果
+
+  ** TODO 用不同泛函验证结果
+  DEADLINE: <2025-01-20 Fri>
+  :PROPERTIES:
+  :EFFORT: 2h
+  :END:
+  ```
+
+  ### 7. 时间戳
+  ```org
+  # 活动时间戳（出现在议程中）
+  * 与导师会议
+  <2025-01-20 Fri>
+
+  # 非活动时间戳（仅用于文档）
+  计算开始 [2025-01-15 Wed]
+
+  # 日期范围
+  项目持续时间：<2025-01-10 Mon>--<2025-01-30 Mon>
+  ```
+
+  ## 常见条目类型
+
+  ### 1. 实验/计算工作
+
+  ```org
+  * DFT 计算 - 表面弛豫
+  :PROPERTIES:
+  :ID: 2025-01-15-001
+  :PROJECT: Catalyst_Screening
+  :TYPE: Calculation
+  :STATUS: Complete
+  :END:
+
+  ** 目标
+  优化清洁 Pt(111) 表面的几何结构。
+
+  ** 方法
+  - 计算器：VASP
+  - 泛函：PBE
+  - ENCUT：400 eV
+  - k-points：6×6×1 Monkhorst-Pack
+  - 收敛：力 < 0.05 eV/Å
+
+  #+BEGIN_SRC bash
+  # 使用的命令
+  vasp_std > vasp.out
+  #+END_SRC
+
+  ** 结果
+  - 最终能量：-123.45 eV
+  - 弛豫时间：2.5 小时
+  - 在 45 个离子步骤中收敛
+
+  [[file:./data/2025-01-15/surface_relaxation.png]]
+
+  ** 分析
+  表面原子向内弛豫 0.03 Å（0.8% 收缩）。
+  这与文献值一致（Smith 2023：0.02-0.04 Å）。
+
+  ** 结论
+  表面结构已验证。准备进行吸附物计算。
+
+  ** 下一步
+  - [ ] 在 FCC 位点添加 CO 吸附物
+  - [ ] 计算吸附能量
+  ```
+
+  ### 2. 文献综述条目
+
+  ```org
+  * 文献综述 - CO 氧化机理
+  :PROPERTIES:
+  :ID: 2025-01-15-002
+  :TOPIC: Catalysis
+  :STATUS: Complete
+  :END:
+
+  ** 论文
+  Smith, J. et al. (2024) "铂表面上的 CO 氧化"
+  J. Phys. Chem. C, DOI: 10.1021/xxxxx
+
+  ** 关键发现
+  - Pt(111) 上的 CO 吸附能量：-1.5 到 -1.8 eV（实验）
+  - 首选位点：FCC 空心
+  - CO → CO₂ 的势垒：0.8 eV
+
+  ** 与我们工作的相关性
+  他们的实验值为我们 DFT 计算提供了验证目标。
+  我们预测的 -1.82 eV 与实验值非常一致。
+
+  ** 提出的问题
+  - 覆盖率如何影响结合能量？
+  - 阶梯表面呢？
+
+  ** 后续参考文献
+  - [ ] Lee et al. (2023) - 覆盖率效应
+  - [ ] Zhang et al. (2024) - 阶梯位点
+  ```
+
+  ### 3. 数据分析条目
+
+  ```org
+  * 分析 - 比较不同泛函
+  :PROPERTIES:
+  :ID: 2025-01-15-003
+  :PROJECT: Method_Validation
+  :STATUS: Complete
+  :END:
+
+  ** 目标
+  比较 PBE、PBE+D3 和 RPBE 对 CO 吸附能量的影响。
+
+  ** 数据源
+  - PBE：[[file:2025-01-10.org::*PBE Results]]
+  - PBE+D3：[[file:2025-01-12.org::*Dispersion Results]]
+  - RPBE：[[file:2025-01-14.org::*RPBE Calculations]]
+
+  ** 分析代码
+  #+BEGIN_SRC python :results file
+  import pandas as pd
+  import matplotlib.pyplot as plt
+
+  # 编译结果
+  data = {
+      'Functional': ['PBE', 'PBE+D3', 'RPBE'],
+      'E_ads': [-1.82, -2.15, -1.45],
+      'Experiment': [-1.6, -1.6, -1.6]
+  }
+  df = pd.DataFrame(data)
+
+  # 绘图
+  plt.figure(figsize=(8, 5))
+  plt.bar(df['Functional'], df['E_ads'], alpha=0.7, label='计算值')
+  plt.axhline(y=-1.6, color='r', linestyle='--', label='实验值')
+  plt.ylabel('吸附能量 (eV)')
+  plt.legend()
+  plt.tight_layout()
+  plt.savefig('data/2025-01-15/functional_comparison.png', dpi=300)
+  return 'data/2025-01-15/functional_comparison.png'
+  #+END_SRC
+
+  #+RESULTS:
+  [[file:data/2025-01-15/functional_comparison.png]]
+
+  ** 发现
+  | 泛函 | E_ads (eV) | 与实验误差 (eV) |
+  |------------+------------+--------------------|
+  | PBE        |     -1.82  |              -0.22 |
+  | PBE+D3     |     -2.15  |              -0.55 |
+  | RPBE       |     -1.45  |               0.15 |
+  #+TBLFM: $3=$2-(-1.6);%.2f
+
+  ** 结论
+  - PBE 给出合理一致性（在 0.22 eV 内）
+  - PBE+D3 过度结合显著
+  - RPBE 低估结合
+  - **决策**：使用 PBE 进行生产计算
+
+  ** 对先前工作的影响
+  报告结果时需注意 PBE 倾向于轻微过度结合。
+  ```
+
+  ### 4. 会议笔记
+
+  ```org
+  * 小组会议 - 项目讨论
+  :PROPERTIES:
+  :ID: 2025-01-15-004
+  :TYPE: Meeting
+  :ATTENDEES: Prof. Smith, Jane Doe, John Smith
+  :END:
+
+  ** 议程
+  1. 进展更新
+  2. 结果讨论
+  3. 下一步
+
+  ** 我的更新
+  展示了 Pt(111) 上的 CO 吸附结果：
+  - E_ads = -1.82 eV (PBE)
+  - 与实验值（-1.6 eV）良好一致
+
+  ** 反馈
+  - Prof. Smith：用更大表面测试以检查尺寸效应
+  - Jane：与她的实验值比较（下周提供）
+  - 需要包括色散进行比较
+
+  ** 行动项
+  - [ ] 用 6×6×4 平板运行计算
+  - [ ] 为 Jane 的实验比较准备总结
+  - [ ] 阅读 Prof. Smith 建议的论文：Zhang et al. 2024
+
+  ** 下次会议
+  <2025-01-22 Wed 10:00>
+  ```
+
+  ### 5. 问题/调试条目
+
+  ```org
+  * 故障排除 - VASP SCF 收敛问题
+  :PROPERTIES:
+  :ID: 2025-01-15-005
+  :TYPE: Problem
+  :STATUS: Resolved
+  :END:
+
+  ** 问题
+  VASP 计算在 100 个 SCF 步骤后不收敛。
+
+  错误信息：
+  #+BEGIN_EXAMPLE
+  WARNING: Sub-Space-Matrix is not hermitian in DAV
+  #+END_EXAMPLE
+
+  ** 尝试的解决方案
+  1. 增加 NELM 到 200 - 仍然失败
+  2. 更改 ALGO 从 Fast 到 Normal - 无改进
+  3. 减少 SIGMA 从 0.2 到 0.1 - 失败
+  4. **解决方案**：使用 ISMEAR=0（高斯展宽）而不是 ISMEAR=1
+
+  ** 根本原因
+  系统有带隙。Methfessel-Paxton 展宽（ISMEAR=1）不适用。
+  高斯展宽（ISMEAR=0）更适合分子和有带隙的系统。
+
+  ** 解决
+  更改 INCAR：
+  #+BEGIN_EXAMPLE
+  ISMEAR = 0
+  SIGMA = 0.05
+  #+END_EXAMPLE
+
+  计算在 45 个 SCF 步骤中收敛。
+
+  ** 经验教训
+  - 在选择展宽前总是检查系统是否有带隙
+  - 对于分子/绝缘体：使用 ISMEAR=0 或 ISMEAR=-5
+  - 对于金属：ISMEAR=1 或 2 是合适的
+
+  ** 参考文献
+  - VASP Wiki：[[https://www.vasp.at/wiki/index.php/ISMEAR]]
+  ```
+
+  ## 最佳实践
+
+  ### 1. 每日总结
+  每个文件以简要总结开始：
+  ```org
+  * 每日总结
+  今天专注于验证催化剂项目的 DFT 泛函选择。
+  比较了 PBE、PBE+D3 和 RPBE 与实验数据。得出结论
+  PBE 给出最佳一致性。开始了 FCC 金属的大规模筛选。
+
+  关键成就：验证了生产运行的方法论。
+  主要挑战：分子系统的 VASP 收敛问题（已解决）。
+  ```
+
+  ### 2. 诚实文档
+  ```org
+  ** 结果
+  预期：E_ads ≈ -1.5 eV
+  **观察：E_ads = -0.45 eV**
+
+  这与文献值显著不同。
+
+  ** 差异分析
+  可能原因：
+  1. 错误吸附位点？→ 检查：FCC 正确
+  2. 不足 k-points？→ 测试 8×8×1：-0.46 eV（无变化）
+  3. 泛函问题？→ 文献用 PBE，我们用 PBE
+  4. **表面覆盖率？** → 我们 1/16 ML vs 文献 1/4 ML
+
+  ** 解决
+  用更高覆盖率重新运行以匹配文献条件。
+  原始计算仍对低覆盖率极限有效。
+  ```
+
+  ### 3. 版本控制集成
+  ```org
+  ** 计算详情
+  代码版本：catalyst-tools v2.3.1
+  Git 提交：a3f5e2b
+
+  #+BEGIN_SRC bash
+  git log -1 --oneline
+  #+END_SRC
+
+  #+RESULTS:
+  : a3f5e2b 在优化器中修复收敛标准
+  ```
+
+  ### 4. 数据管理
+  ```org
+  ** 数据文件
+  - 原始输出：[[file:./data/2025-01-15/OUTCAR]]
+  - 处理数据：[[file:./data/2025-01-15/results.csv]]
+  - 分析笔记本：[[file:./data/2025-01-15/analysis.ipynb]]
+  - 存档：~/archives/2025/january/calculation_001.tar.gz
+
+  MD5 校验和：
+  - OUTCAR：5d41402abc4b2a76b9719d911017c592
+  - results.csv：7d793037a0760186574b0282f2f435e7
+  ```
+
+  ### 5. 交叉引用
+  ```org
+  ** 相关工作
+  - 背景：[[file:2025-01-05.org::*Literature Review]]
+  - 先前尝试：[[file:2025-01-12.org::*Failed Calculation]]（解释方法变化原因）
+  - 后续：[[file:2025-01-18.org::*Extended Analysis]]
+  - 项目概述：[[file:../index.org::*Catalyst Screening Project]]
+  ```
+
+  ### 6. 可重复性清单
+  每个计算条目应能重复：
+  ```org
+  ** 可重复性信息
+  - [X] 文档化软件版本
+  - [X] 包括或链接输入文件
+  - [X] 指定随机种子（如适用）
+  - [X] 描述计算环境
+  - [X] 包括数据处理代码
+  - [X] 提供分析脚本
+  - [X] 存档关键输出
+
+  环境：
+  - VASP：6.4.2
+  - Python：3.11.4
+  - ASE：3.23.0
+  - NumPy：1.24.3
+  ```
+
+  ## 搜索和检索
+
+  ### 使用 Org-Mode 搜索
+  ```org
+  # 按标签搜索
+  C-c / m    # 匹配标签
+  搜索：experiment+DFT-failed
+
+  # 按 TODO 搜索
+  C-c / t    # 显示 TODOs
+
+  # 按文本搜索
+  C-c / r    # 正则表达式搜索
+
+  # Org-agenda
+  C-c a s    # 跨所有议程文件搜索
+  ```
+
+  ### 创建索引文件
+  ```org
+  #+TITLE: 研究笔记本索引
+  #+STARTUP: overview
+
+  * 项目
+  ** [[file:2025/01-一月/2025-01-15.org::*Catalyst Screening][催化剂筛选项目]]
+  开始：[2025-01-05]
+  状态：活动
+
+  ** 方法验证
+  开始：[2025-01-10]
+  状态：完成
+
+  * 关键结果
+  ** [[file:2025/01-一月/2025-01-15.org::*Functional Comparison][CO 吸附的最佳 DFT 泛函]]
+  结果：首选 PBE（误差 < 0.25 eV）
+
+  * 重要技术
+  ** [[file:2025/01-一月/2025-01-12.org::*Convergence Testing][如何测试 k-points 收敛]]
+  ```
+
+  ## 模板
+
+  ### 快速条目模板
+  ```org
+  * 简短描述
+  :PROPERTIES:
+  :ID: YYYY-MM-DD-NNN
+  :END:
+
+  ** 我做了什么
+
+  ** 为什么
+
+  ** 结果
+
+  ** 下一步
+  ```
+
+  ### 完整研究条目模板
+  ```org
+  * 项目 - 具体任务
+  :PROPERTIES:
+  :ID: YYYY-MM-DD-NNN
+  :PROJECT: Project_Name
+  :STATUS: In_Progress
+  :END:
+
+  ** 目标
+
+  ** 假设
+
+  ** 方法
+
+  ** 结果
+
+  ** 分析
+
+  ** 结论
+
+  ** 下一步
+  ```
+
+  ## 与计算工作流的集成
+
+  ### 嵌入代码
+  ```org
+  #+BEGIN_SRC python :results output :session :exports both
+  from ase.build import molecule
+  from ase.optimize import BFGS
+
+  mol = molecule('H2O')
+  # ... 计算代码 ...
+  print(f"优化能量：{mol.get_potential_energy():.3f} eV")
+  #+END_SRC
+  ```
+
+  ### 捕获输出
+  ```org
+  #+BEGIN_SRC bash :results output
+  cd ~/calculations/calc_001
+  grep "energy" OUTCAR | tail -1
+  #+END_SRC
+
+  #+RESULTS:
+  : 自由能量 = -123.456789 eV
+  ```
+
+  ### 包括图表
+  ```org
+  #+CAPTION: CO 吸附能量 vs 覆盖率
+  #+NAME: fig:ads_energy
+  #+ATTR_ORG: :width 400
+  [[file:./data/2025-01-15/adsorption_plot.png]]
+
+  见图表 [[fig:ads_energy]] 趋势。
+  ```
+
+  ## 专业写作指南
+
+  ### 1. 清晰度
+  - 写完整句子
+  - 对已完成工作用过去时
+  - 对结论用现在时
+  - 避免模糊代词
+
+  ### 2. 精确性
+  - 包括单位：“300 K”而不是“300”
+  - 指定参数：“PBE 泛函”而不是“DFT”
+  - 量化：“减少 15%”而不是“显著减少”
+
+  ### 3. 组织性
+  - 使用分层结构
+  - 每个部分一个概念
+  - 一天内按时间顺序
+  - 跨天逻辑分组
+
+  ### 4. 完整性
+  - 包括负面结果
+  - 记录失败尝试
+  - 解释意外结果
+  - 保留故障排除笔记
+
+  ## 响应模式
+
+  在帮助 ELN 时：
+  1. **建议适当的条目结构**
+  2. **询问澄清问题**关于做了什么、为什么和结果
+  3. **推荐适合任务的 org-mode 功能**
+  4. **确保可重复性** - 检查是否提供足够细节
+  5. **鼓励交叉引用**到相关工作
+  6. **正确格式化代码和数据**
+  7. **包括元数据**（属性、标签、时间戳）
+  8. **保持专业语调**同时有帮助
+  9. **提示结论和下一步**
+  10. **当适当时建议组织改进**
+
+  ## 常见场景
+
+  ### 开始新项目
+  ```org
+  * 项目启动 - 催化剂筛选研究
+  :PROPERTIES:
+  :ID: 2025-01-15-001
+  :PROJECT: Catalyst_Screening
+  :STATUS: Planning
+  :END:
+
+  ** 项目目标
+  通过计算筛选识别 CO 氧化的最佳催化剂。
+
+  ** 背景
+  [文献综述、动机]
+
+  ** 方法
+  1. 用 Pt(111) 基准验证方法
+  2. 筛选 FCC 金属（Cu、Ag、Au、Pt、Pd、Ni）
+  3. 使用 d-band 模型分析趋势
+  4. 用实验验证顶级候选
+
+  ** 成功标准
+  - 识别 2-3 个有前途的候选
+  - 误差 < 0.3 eV vs 实验
+  - 在 [2025-02-28] 前完成
+
+  ** 初始任务
+  - [ ] 设置计算框架
+  - [ ] 运行 Pt(111) 基准
+  - [ ] 比较泛函
+  ```
+
+  ### 记录失败
+  ```org
+  * 失败尝试 - NEB 计算
+  :PROPERTIES:
+  :ID: 2025-01-15-006
+  :STATUS: Failed
+  :END:
+
+  ** 目标
+  计算 Pt(111) 上的 CO 扩散势垒。
+
+  ** 方法
+  7 个图像的 NEB，爬山方法。
+
+  ** 问题
+  20 步后图像发散。最终图像力 > 5 eV/Å。
+
+  ** 分析
+  初始路径猜测差 - CO 移动通过体而不是表面。
+
+  ** 经验教训
+  - 需要更好的初始路径插值
+  - 优化前检查中间图像的几何结构
+  - 表面扩散用更多图像（9-11）
+
+  ** 下次尝试
+  将使用改进的路径生成脚本并验证几何结构。
+  计划在 [[file:2025-01-16.org][明天]]。
+  ```
+
+  ## 存档和长期存储
+
+  ### 月底总结
+  ```org
+  #+TITLE: 2025年1月总结
+  #+DATE: [2025-01-31]
+
+  * 概述
+  完成催化剂项目的 DFT 方法论验证。
+  筛选了 6 个 FCC 金属的 CO 吸附。识别 Pt 和 Pd 为
+  最有希望的候选。
+
+  * 关键成就
+  - 验证 PBE 泛函（误差 < 0.25 eV）
+  - 完成金属筛选
+  - 解决 VASP 收敛问题
+
+  * 生成数据
+  - 24 个 DFT 计算
+  - 180 GB 原始数据（存档到 ~/archives/2025/january/）
+  - 准备 6 个出版物图表
+
+  * 下月目标
+  - 开始反应势垒计算
+  - 与协作者的实验数据比较
+  - 为论文起草结果部分
+  ```
+
+  ### 年终回顾
+  创建综合总结以供轻松检索和报告。

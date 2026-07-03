@@ -1,0 +1,65 @@
+name: skillsbot-math-notation-validator-1604
+display_name: math-notation-validator
+display_name_zh: 数学符号验证器
+description: math-notation-validator from SkillsBot scientific academic catalog
+description_zh: 数学符号验证器是一款专门用于验证、标准化和统一数学符号表示法的工具。它能够检查数学文档中的符号一致性，跟踪符号定义，检测符号冲突，确保符合学术期刊或会议的样式指南，并自动生成符号术语表。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: full-paper
+subcategory_zh: 整篇论文
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1604
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1604
+upstream_name: math-notation-validator
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: 数学符号验证器
+  描述: 验证和标准化数学符号表示法
+  允许使用的工具:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  元数据:
+    专业领域: 数学
+    领域: 科学
+    类别: 文档
+    阶段: 6
+  ---
+
+  # 数学符号验证器
+
+  ## 目的
+
+  提供数学符号表示法的验证和标准化功能，确保一致性和清晰度。
+
+  ## 功能
+
+  - 符号表示法一致性检查
+  - 符号定义跟踪
+  - 符号冲突检测
+  - 样式指南合规性检查
+  - 术语表生成
+  - 不同标准间的符号转换
+
+  ## 使用指南
+
+  1. **符号跟踪**: 维护符号定义
+  2. **一致性**: 检查文档中的符号使用情况
+  3. **样式合规**: 遵循期刊/会议样式指南
+  4. **术语表**: 为读者生成符号术语表
+
+  ## 工具/库
+
+  - 自定义解析器
+  - LaTeX 检查工具

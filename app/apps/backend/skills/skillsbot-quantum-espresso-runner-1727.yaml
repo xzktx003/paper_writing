@@ -1,0 +1,67 @@
+name: skillsbot-quantum-espresso-runner-1727
+display_name: quantum-espresso-runner
+display_name_zh: QuantumESPRESSO材料模拟器
+description: quantum-espresso-runner from SkillsBot scientific academic catalog
+description_zh: 这是一个用于材料科学和凝聚态物理领域的专业技能，专注于使用 Quantum ESPRESSO 软件包进行第一性原理密度泛函理论 (DFT) 计算。它能够辅助用户生成和管理计算输入文件、选择合适的赝势、自动化执行收敛性测试，并支持与 Wannier90、EPW 等工具集成，以…
+type: research
+categories:
+  - exploration-discovery
+category_zh: 探险、发现
+subcategory: ideation
+subcategory_zh: 选题与创意
+trigger: manual
+auto_recommend: false
+tags:
+  - 探险、发现
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1727
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1727
+upstream_name: quantum-espresso-runner
+upstream_commit: ""
+prompt: |
+  ---
+  name: quantum-espresso-runner
+  description: Quantum ESPRESSO DFT 技能，用于平面波赝势计算和材料模拟
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: 物理学
+    domain: 科学
+    category: 数值模拟
+    phase: 6
+  ---
+
+  # Quantum ESPRESSO 运行器
+
+  ## 目的
+
+  提供关于 Quantum ESPRESSO DFT 计算的专家指导，包括输入文件管理、赝势选择和高级性质计算。
+
+  ## 能力
+
+  - 输入文件生成 (pw.x, ph.x, pp.x)
+  - 赝势库管理
+  - 收敛性测试自动化
+  - Wannier90 接口用于紧束缚模型
+  - 输运性质计算
+  - 自旋轨道耦合处理
+
+  ## 使用指南
+
+  1. **输入生成**：为 pw.x, ph.x, pp.x 创建正确的 QE 输入文件
+  2. **赝势**：从库中选择合适的赝势
+  3. **收敛性**：系统地测试截断能和 k 点收敛性
+  4. **Wannier 函数**：与 Wannier90 接口用于紧束缚模型
+  5. **输运**：使用 BoltzTraP 或 EPW 计算输运性质
+
+  ## 工具/库
+
+  - Quantum ESPRESSO
+  - Wannier90
+  - EPW

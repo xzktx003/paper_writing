@@ -1,0 +1,106 @@
+name: skillsbot-mixed-methods-integration-1899
+display_name: mixed-methods-integration
+display_name_zh: 混合方法整合
+description: mixed-methods-integration from SkillsBot scientific academic catalog
+description_zh: 混合方法整合技能是一种研究设计与执行能力，专门用于将定量研究与定性研究方法有机结合。该技能涵盖收敛式设计、解释性顺序式、探索性顺序式等多种混合研究方案，通过数据合并、联合展示等策略实现深度整合。
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1899
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1899
+upstream_name: mixed-methods-integration
+upstream_commit: ""
+prompt: |-
+  ---
+  名称: 混合方法整合
+  描述: 设计和执行收敛式、解释性顺序式和探索性顺序式混合方法研究设计
+  允许工具:
+    - 读取
+    - 写入
+    - 编辑
+    - 搜索
+    - 全局匹配
+    - 命令行
+  ---
+
+  # 混合方法整合技能
+
+  设计和执行混合方法研究，有效整合定量和定性研究方法。
+
+  ## 概述
+
+  混合方法整合技能能够设计和执行收敛式、解释性顺序式、探索性顺序式以及其他混合方法研究设计，通过整合定量和定性方法实现全面理解。
+
+  ## 能力
+
+  ### 设计选择
+  - 收敛式设计
+  - 解释性顺序式设计
+  - 探索性顺序式设计
+  - 嵌入式设计
+  - 变革性设计
+
+  ### 整合策略
+  - 数据合并
+  - 方法连接
+  - 方法构建
+  - 联合展示
+  - 混合方法矩阵
+
+  ### 时序与优先级
+  - 并行收集
+  - 顺序阶段
+  - 优先级确定
+  - 阶段整合
+  - 时间线管理
+
+  ### 质量标准
+  - 合法性标准
+  - 整合严谨性
+  - 推论质量
+  - 设计保真度
+  - 透明度
+
+  ### 报告标准
+  - 联合报告
+  - 并行报告
+  - 分阶段报告
+  - 整合证据
+  - 混合方法符号
+
+  ## 使用指南
+
+  ### 使用时机
+  - 解决复杂问题
+  - 结果三角验证
+  - 开发研究工具
+  - 解释研究结果
+  - 建立全面理解
+
+  ### 最佳实践
+  - 论证设计选择
+  - 明确规划整合
+  - 记录操作流程
+  - 报告整合过程
+  - 保持方法完整性
+
+  ### 整合关联点
+  - 定量方法技能
+  - 定性分析技能
+  - 项目评估技能
+  - 调查设计与实施技能
+
+  ## 参考文献
+
+  - 混合方法研究设计流程
+  - 项目评估流程
+  - 混合方法研究协调员代理

@@ -1,0 +1,67 @@
+name: skillsbot-arxiv-search-interface-1590
+display_name: arxiv-search-interface
+display_name_zh: arXiv数学文献搜索分析工具
+description: arxiv-search-interface from SkillsBot scientific academic catalog
+description_zh: arXiv数学文献搜索分析工具是一款专门用于在arXiv平台上搜索、筛选和分析数学学术文献的专业技能。该工具支持通过arXiv API进行精准查询，可按数学学科分类、日期和作者进行筛选，提供引用网络分析、摘要自动总结、相关论文推荐和版本跟踪等功能。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: 引用与文献管理
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1590
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1590
+upstream_name: arxiv-search-interface
+upstream_commit: ""
+prompt: |
+  ---
+  名称: arxiv搜索接口
+  描述: 在arXiv上搜索和分析数学文献
+  允许使用的工具:
+    - Bash
+    - 读取
+    - 写入
+    - 编辑
+    - 全局搜索
+    - 文本搜索
+    - 网络获取
+    - 网络搜索
+  元数据:
+    专业领域: 数学
+    领域: 科学
+    类别: 研究
+    阶段: 6
+  ---
+
+  # arXiv搜索接口
+
+  ## 目的
+
+  提供arXiv数学文献的搜索和分析功能。
+
+  ## 功能
+
+  - arXiv API查询
+  - 数学学科分类筛选
+  - 引用网络分析
+  - 摘要总结
+  - 相关论文推荐
+  - 版本跟踪
+
+  ## 使用指南
+
+  1. **查询构建**: 使用合适的math.XX分类
+  2. **筛选**: 应用日期和作者筛选器
+  3. **引用分析**: 构建引用网络
+  4. **版本跟踪**: 检查更新版本
+
+  ## 工具/库
+
+  - arXiv API
+  - Semantic Scholar

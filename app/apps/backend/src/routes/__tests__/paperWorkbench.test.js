@@ -112,7 +112,7 @@ test('POST /api/projects/:id/writing-workbench/context returns UI-ready task con
     assert.ok(body.workflowHints.some(hint => hint.code === 'copy-evidence-into-chat'));
     assert.equal(body.projectState.hasRagDocuments, true);
     assert.equal(body.projectState.hasReferences, true);
-    assert.ok(body.skills.categories.some(category => category.name === '文献'));
+    assert.ok(body.skills.categories.some(category => category.name === '文献检索'));
     assert.equal(body.skills.navigator.title_zh, 'Skill 导航');
     assert.equal(body.skills.navigator.selectedSkill, 'literature-review');
     assert.ok(body.skills.navigator.cards.some(card => card.name === 'literature-review' && card.recommended));

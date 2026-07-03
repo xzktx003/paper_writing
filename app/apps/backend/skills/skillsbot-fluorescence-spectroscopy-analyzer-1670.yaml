@@ -1,0 +1,116 @@
+name: skillsbot-fluorescence-spectroscopy-analyzer-1670
+display_name: fluorescence-spectroscopy-analyzer
+display_name_zh: 荧光光谱分析器
+description: fluorescence-spectroscopy-analyzer from SkillsBot scientific academic catalog
+description_zh: 荧光光谱分析器是一款专门用于纳米材料光致发光表征的专业技能工具，主要功能包括量子点表征、FRET（荧光共振能量转移）测量、光致发光分析、量子产率计算和荧光寿命测量。该工具支持激发/发射光谱分析、光稳定性评估和单粒子荧光检测，适用于纳米传感器开发、药物递送系统研究和多模态纳米…
+type: analysis
+categories:
+  - experiment-design
+category_zh: 实验设计
+subcategory: baseline-ablation
+subcategory_zh: 基线、消融与评估
+trigger: manual
+auto_recommend: false
+tags:
+  - 实验设计
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1670
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1670
+upstream_name: fluorescence-spectroscopy-analyzer
+upstream_commit: ""
+prompt: |-
+  ---
+  name: fluorescence-spectroscopy-analyzer
+  description: 用于量子点表征、FRET测量和光致发光分析的荧光光谱技能
+  allowed-tools:
+    - Read
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  metadata:
+    specialization: 纳米技术
+    domain: 科学
+    category: 光谱学
+    priority: high
+    phase: 6
+    tools-libraries:
+      - FluorEssence
+      - Edinburgh Instruments F980
+      - 自定义分析工具
+  ---
+
+  # 荧光光谱分析器
+
+  ## 目的
+
+  荧光光谱分析器技能提供纳米材料全面的光致发光表征，能够分析发射特性、量子产率和能量转移过程。
+
+  ## 能力
+
+  - 激发/发射光谱
+  - 量子产率计算
+  - 荧光寿命测量
+  - FRET效率计算
+  - 光稳定性评估
+  - 单粒子荧光
+
+  ## 使用指南
+
+  ### 荧光分析
+
+  1. **光谱测量**
+     - 获取激发和发射光谱
+     - 校正仪器响应
+     - 识别发射最大值
+
+  2. **量子产率**
+     - 使用积分球或参考标准
+     - 考虑重吸收效应
+     - 报告时注明标准
+
+  3. **寿命测量**
+     - 使用TCSPC进行时间分辨测量
+     - 拟合衰减曲线
+     - 识别多组分
+
+  ## 流程集成
+
+  - 多模态纳米材料表征流程
+  - 纳米传感器开发与验证流程
+  - 纳米颗粒药物递送系统开发
+
+  ## 输入模式
+
+  ```json
+  {
+    "sample_id": "字符串",
+    "excitation_wavelength": "数字 (nm)",
+    "measurement_type": "steady_state|time_resolved|quantum_yield",
+    "reference_standard": "字符串 (可选)"
+  }
+  ```
+
+  ## 输出模式
+
+  ```json
+  {
+    "emission": {
+      "peak_wavelength": "数字 (nm)",
+      "fwhm": "数字 (nm)",
+      "stokes_shift": "数字 (nm)"
+    },
+    "quantum_yield": {
+      "value": "数字",
+      "method": "字符串",
+      "reference": "字符串"
+    },
+    "lifetime": {
+      "tau1": "数字 (ns)",
+      "amplitude1": "数字",
+      "tau2": "数字 (ns, 可选)",
+      "chi_squared": "数字"
+    }
+  }
+  ```

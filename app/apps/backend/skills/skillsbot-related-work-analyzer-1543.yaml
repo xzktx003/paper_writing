@@ -1,0 +1,68 @@
+name: skillsbot-related-work-analyzer-1543
+display_name: related-work-analyzer
+display_name_zh: 相关工作分析器
+description: related-work-analyzer from SkillsBot scientific academic catalog
+description_zh: 这是一个专门用于辅助学术研究的技能，主要功能是帮助理论计算机科学领域的学者高效地分析和整理文献中的“相关工作”部分。它能进行引文网络分析、技术分类、构建结果对比表格、识别研究空白、生成时间线可视化图表，并发现跨研究领域的关联。
+type: writing
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: related-work
+subcategory_zh: 相关工作（Related Work）
+trigger: manual
+auto_recommend: false
+tags:
+  - 论文写作
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1543
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1543
+upstream_name: related-work-analyzer
+upstream_commit: ""
+prompt: |
+  ---
+  name: related-work-analyzer
+  description: 为理论计算机科学论文分析和整理相关工作
+  allowed-tools:
+    - Bash
+    - Read
+    - Write
+    - Edit
+    - Glob
+    - Grep
+  metadata:
+    specialization: computer-science
+    domain: science
+    category: research-documentation
+    phase: 6
+  ---
+
+  # 相关工作分析器
+
+  ## 目的
+
+  为理论计算机科学论文提供分析和整理相关工作的专家指导。
+
+  ## 能力
+
+  - 引文网络分析
+  - 技术分类
+  - 结果对比表
+  - 缺口识别
+  - 时间线可视化
+  - 跨领域连接识别
+
+  ## 使用指南
+
+  1.  **文献检索**：搜索相关论文
+  2.  **分类**：按技术/贡献整理论文
+  3.  **对比**：构建对比表
+  4.  **缺口分析**：识别文献中的空白
+  5.  **定位**：将自身贡献相对于先前工作进行定位
+
+  ## 工具/库
+
+  - Semantic Scholar
+  - DBLP
+  - Google Scholar
+  - 引文分析工具

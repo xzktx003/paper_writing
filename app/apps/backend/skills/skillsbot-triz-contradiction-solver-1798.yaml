@@ -1,0 +1,81 @@
+name: skillsbot-triz-contradiction-solver-1798
+display_name: triz-contradiction-solver
+display_name_zh: TRIZ矛盾解决器技能
+description: triz-contradiction-solver from SkillsBot scientific academic catalog
+description_zh: TRIZ矛盾解决器技能是基于发明问题解决理论（TRIZ）的系统性创新工具，专门用于识别和解决技术矛盾，应用40条发明原理和矛盾矩阵，生成创新解决方案。该技能适用于科学发现、技术研发、设计优化等场景，帮助用户突破思维定式，实现系统性创新。
+type: research
+categories:
+  - exploration-discovery
+category_zh: 探险、发现
+subcategory: ideation
+subcategory_zh: 选题与创意
+trigger: manual
+auto_recommend: false
+tags:
+  - 探险、发现
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/1798
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/1798
+upstream_name: triz-contradiction-solver
+upstream_commit: ""
+prompt: |
+  ---
+  名称: TRIZ矛盾解决器技能
+  描述: 使用TRIZ方法论进行系统性创新的技能
+  允许使用的工具:
+    - 读取
+    - 写入
+    - Bash
+  元数据:
+    专业领域: 科学发现
+    领域: 科学
+    类别: 假设开发
+    技能ID: SK-SCIDISC-011
+  ---
+
+  # TRIZ矛盾解决器技能
+
+  ## 目的
+
+  应用TRIZ（发明问题解决理论）方法论进行系统性创新和解决技术矛盾。
+
+  ## 能力
+
+  - 识别技术矛盾
+  - 应用发明原理
+  - 使用矛盾矩阵
+  - 生成解决方案概念
+  - 评估解决方案
+  - 记录创新过程
+
+  ## 使用指南
+
+  1. 定义问题
+  2. 识别矛盾
+  3. 应用TRIZ原理
+  4. 生成解决方案
+  5. 评估可行性
+  6. 记录成果
+
+  ## 流程集成
+
+  在科学发现工作流程中适用于：
+  - 创新挑战
+  - 技术问题解决
+  - 设计优化
+  - 创造性解决方案
+
+  ## 配置
+
+  - 矛盾参数
+  - 原理选择
+  - 评估标准
+  - 输出格式
+
+  ## 输出成果
+
+  - 矛盾分析
+  - 解决方案概念
+  - 原理应用
+  - 创新报告

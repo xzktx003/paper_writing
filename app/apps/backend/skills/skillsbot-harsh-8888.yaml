@@ -1,0 +1,45 @@
+name: skillsbot-harsh-8888
+display_name: harsh
+display_name_zh: 严厉手稿评审
+description: harsh from SkillsBot scientific academic catalog
+description_zh: 对临床期刊手稿进行全面的批判性评审，识别方法论缺陷和出版标准问题，帮助改进科研质量和贡献生物学见解。
+type: review
+categories:
+  - peer-review
+category_zh: 同行评审
+subcategory: logic-method-review
+subcategory_zh: 逻辑与方法审查
+trigger: manual
+auto_recommend: false
+tags:
+  - 同行评审
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/8888
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/8888
+upstream_name: harsh
+upstream_commit: ""
+prompt: |-
+  ---
+  name: harsh
+  description: 完成对您手稿的全面且毫不留情的批判性评审。评审识别主要的方法论缺陷以及工作未达到高影响力临床期刊出版标准的领域。
+  ---
+
+  # 严厉
+
+  此命令将完成对您手稿的全面且毫不留情的批判性评审。评审识别主要的方法论缺陷以及工作未达到高影响力临床期刊出版标准的领域。
+
+  ## 使用时机
+
+  - 当准备将手稿提交至高影响力临床期刊时
+  - 当您需要关于方法论弱点的诚实反馈时
+  - 当您想在提交前识别出版阻碍问题时
+  - 当寻求提高您工作的科学严谨性时
+
+  ## 指令
+
+  - 阅读 README.md 和 CLAUDE.md 以理解项目目的、设置说明和关键信息
+  - 基于收集的上下文提供项目的简明概述
+  - 专注于 ./result 和 ./manuscripts
+  - 将严厉的批判性评论保存在 ./docs/
+  - 给出解决问题的计划，该计划将贡献有意义的生物学见解

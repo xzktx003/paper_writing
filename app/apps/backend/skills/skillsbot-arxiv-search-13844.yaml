@@ -1,0 +1,124 @@
+name: skillsbot-arxiv-search-13844
+display_name: arxiv-search
+display_name_zh: arXiv搜索技能
+description: arxiv-search from SkillsBot scientific academic catalog
+description_zh: arXiv搜索技能是一个用于搜索arXiv预印本库中学术论文的工具，覆盖物理学、数学、计算机科学、定量生物学等领域，帮助用户快速查找最新研究、预印本和相关文献。适用于文献检索、学术研究和项目开发。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: search-retrieval
+subcategory_zh: 检索与下载
+trigger: manual
+auto_recommend: false
+tags:
+  - 文献检索
+  - SkillsBot
+url: https://www.skillsbot.cn/skill/13844
+source_license: 来源页面未标注，请核对原作者许可
+adapted_from: https://www.skillsbot.cn/skill/13844
+upstream_name: arxiv-search
+upstream_commit: ""
+prompt: |-
+  ---
+  name: arxiv搜索
+  description: 搜索arXiv预印本库，涵盖物理学、数学、计算机科学、定量生物学和相关领域的论文
+  ---
+
+  # arXiv搜索技能
+
+  该技能提供对arXiv的访问，arXiv是一个免费的分发服务和开放获取存档，收录物理学、数学、计算机科学、定量生物学、定量金融、统计学、电气工程、系统科学和经济学等领域的学术文章。
+
+  ## 何时使用此技能
+
+  在需要时使用此技能：
+  - 查找期刊出版前的预印本和最新研究论文
+  - 搜索计算生物学、生物信息学或系统生物学领域的论文
+  - 访问与生物学相关的数学或统计方法论文
+  - 查找应用于生物学问题的机器学习论文
+  - 获取可能尚未在PubMed中收录的最新研究
+
+  ## 如何使用
+
+  该技能提供一个Python脚本，用于搜索arXiv并返回格式化结果。
+
+  ### 基本用法
+
+  **注意：** 始终使用来自技能目录的绝对路径（如系统提示中所示）。
+
+  如果在虚拟环境中运行deepagents：
+  ```bash
+  .venv/bin/python [YOUR_SKILLS_DIR]/arxiv-search/arxiv_search.py "你的搜索查询" [--max-papers N]
+  ```
+
+  或者对于系统Python：
+  ```bash
+  python3 [YOUR_SKILLS_DIR]/arxiv-search/arxiv_search.py "你的搜索查询" [--max-papers N]
+  ```
+
+  将 `[YOUR_SKILLS_DIR]` 替换为系统提示中的绝对技能目录路径（例如，`~/.deepagents/agent/skills` 或完整绝对路径）。
+
+  **参数：**
+  - `query`（必需）：搜索查询字符串（例如，"neural networks protein structure"、"single cell RNA-seq"）
+  - `--max-papers`（可选）：检索的最大论文数（默认：10）
+
+  ### 示例
+
+  搜索机器学习论文：
+  ```bash
+  .venv/bin/python ~/.deepagents/agent/skills/arxiv-search/arxiv_search.py "deep learning drug discovery" --max-papers 5
+  ```
+
+  搜索计算生物学论文：
+  ```bash
+  .venv/bin/python ~/.deepagents/agent/skills/arxiv-search/arxiv_search.py "protein folding prediction"
+  ```
+
+  搜索生物信息学方法：
+  ```bash
+  .venv/bin/python ~/.deepagents/agent/skills/arxiv-search/arxiv_search.py "genome assembly algorithms"
+  ```
+
+  ## 输出格式
+
+  脚本返回格式化结果，包括：
+  - **标题**：论文标题
+  - **摘要**：摘要/概要文本
+
+  每个论文用空行分隔，以提高可读性。
+
+  ## 功能
+
+  - **相关性排序**：结果按与查询的相关性排序
+  - **快速检索**：直接API访问，无需认证
+  - **简单界面**：干净、易于解析的输出
+  - **无需API密钥**：免费访问arXiv数据库
+
+  ## 依赖项
+
+  该技能需要 `arxiv` Python包。如果缺失，脚本会检测并显示错误。
+
+  **如果看到“错误：arxiv包未安装”：**
+
+  如果在虚拟环境中运行deepagents（推荐），使用venv的Python：
+  ```bash
+  .venv/bin/python -m pip install arxiv
+  ```
+
+  或者进行系统范围的安装：
+  ```bash
+  python3 -m pip install arxiv
+  ```
+
+  该包默认不包含在deepagents中，因为它是技能特定的。在首次使用此技能时按需安装。
+
+  ## 注意事项
+
+  - arXiv特别适用于：
+    - 计算机科学（cs.LG、cs.AI、cs.CV）
+    - 定量生物学（q-bio）
+    - 统计学（stat.ML）
+    - 物理学和数学
+  - 论文是预印本，可能未经同行评审
+  - 结果包括最近上传的论文和较旧的论文
+  - 最适合生物学中的计算/理论研究

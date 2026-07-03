@@ -145,9 +145,10 @@ export function SkillPanel({ globalSkills, chapterSkills, onActivateSkill }: Pro
   // Filter skills by search
   const filteredSkills = skills.filter(s => {
     if (!search) return true;
-    const sName = (s.display_name || s.name).toLowerCase();
-    const desc = (s.description || '').toLowerCase();
-    return sName.includes(search.toLowerCase()) || desc.includes(search.toLowerCase());
+    const sName = `${s.display_name || ''} ${(s as any).display_name_zh || ''} ${s.name}`.toLowerCase();
+    const desc = `${s.description || ''} ${s.description_zh || ''}`.toLowerCase();
+    const metadata = `${(s.tags || []).join(' ')} ${(s as any).task_intents?.join(' ') || ''}`.toLowerCase();
+    return sName.includes(search.toLowerCase()) || desc.includes(search.toLowerCase()) || metadata.includes(search.toLowerCase());
   });
 
   const isActive = (name: string) => globalSkills.includes(name) || chapterSkills.includes(name);
@@ -332,9 +333,10 @@ export function SkillPanel({ globalSkills, chapterSkills, onActivateSkill }: Pro
 
             {/* Collapsible category sections */}
             {SKILL_CATEGORIES.map(cat => {
-              const catSkills = filteredSkills.filter(s => 
-                s.categories?.includes(cat.id) || s.type === cat.id
-              );
+              const catSkills = filteredSkills.filter(s => {
+                const categories = s.categories?.length ? s.categories : [s.type];
+                return categories.includes(cat.id);
+              }).sort((a, b) => String(a.subcategory_zh || '').localeCompare(String(b.subcategory_zh || ''), 'zh-Hans-CN'));
               const isExpanded = expandedCategories.has(cat.id);
 
               if (catSkills.length === 0 && search) return null;
@@ -413,6 +415,9 @@ export function SkillPanel({ globalSkills, chapterSkills, onActivateSkill }: Pro
                                 ⬇ GitHub
                               </span>
                             )}
+                          </div>
+                          <div style={{ fontSize: '9px', color: 'var(--accent)', marginBottom: '4px', fontWeight: 600 }}>
+                            {lang === 'zh' ? skill.subcategory_zh : skill.subcategory}
                           </div>
                           
                           {/* Auto-generated or existing description */}
