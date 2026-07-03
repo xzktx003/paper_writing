@@ -1,7 +1,14 @@
 name: reference-management
 display_name: "Reference Management"
+display_name_zh: BibTeX 文献管理
 description: "BibTeX/BibLaTeX bibliography management, citation formatting, and reference organization"
+description_zh: 清理 BibTeX/BibLaTeX 文献库，统一 citation key，检测重复条目和缺失字段，并在核验 DOI、arXiv ID、作者与会议后修复元数据。
 type: utility
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-management
+subcategory_zh: BibTeX 与文献管理
 trigger: manual
 tags: [bibtex, citation, bibliography, references, latex]
 

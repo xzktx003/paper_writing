@@ -1,30 +1,30 @@
 name: alterlab-matplotlib
 display_name: Matplotlib
 display_name_zh: Matplotlib 科研绘图
-description: Builds plots with the matplotlib Python library for full low-level customization, exporting to PNG/PDF/SVG for publication. Use when fine-grained control over every plot element is needed, when creating novel or non-standard plot types, or when integrating plotting into a specific scientific Python workflow. For quick statistical plots use seaborn, for interactive charts use plotly, for publication-ready multi-panel figures with journal styling use scientific-visualization. Part of the AlterLab Academic Skills suite.
+description: Builds plots with the matplotlib Python library (pyplot and the object-oriented Figure/Axes API) for full low-level customization, exporting to PNG/PDF/SVG. Use when fine-grained control over individual plot elements is needed — custom line/scatter/bar/histogram/heatmap/contour/box/violin/3D plots, rcParams and style-sheet tuning, or GridSpec subplot layouts inside a scientific Python workflow. Does NOT cover opinionated journal-ready multi-panel figure workflows (Nature/Science/Cell formatting, colorblind-safe palettes, significance annotations); for those prefer alterlab-scientific-viz instead. Part of the AlterLab Academic Skills suite.
 description_zh: 使用 Matplotlib 精细控制坐标轴、标注、样式和版式，导出 PNG、PDF 或 SVG。
 type: draw
 categories:
   - scientific-figures
 category_zh: 科研绘图
-subcategory: figure-layout
-subcategory_zh: 组图与版式
+subcategory: statistical-plots
+subcategory_zh: 实验数据图
 trigger: manual
 auto_recommend: false
 tags:
   - 科研绘图
   - visualization
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/visualization/alterlab-matplotlib
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/visualization/alterlab-matplotlib
 source_license: BSD-3-Clause
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/visualization/alterlab-matplotlib
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/visualization/alterlab-matplotlib
 upstream_name: alterlab-matplotlib
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/visualization/alterlab-matplotlib
 prompt: |+
   ---
   name: alterlab-matplotlib
-  description: Builds plots with the matplotlib Python library for full low-level customization, exporting to PNG/PDF/SVG for publication. Use when fine-grained control over every plot element is needed, when creating novel or non-standard plot types, or when integrating plotting into a specific scientific Python workflow. For quick statistical plots use seaborn, for interactive charts use plotly, for publication-ready multi-panel figures with journal styling use scientific-visualization. Part of the AlterLab Academic Skills suite.
+  description: Builds plots with the matplotlib Python library (pyplot and the object-oriented Figure/Axes API) for full low-level customization, exporting to PNG/PDF/SVG. Use when fine-grained control over individual plot elements is needed — custom line/scatter/bar/histogram/heatmap/contour/box/violin/3D plots, rcParams and style-sheet tuning, or GridSpec subplot layouts inside a scientific Python workflow. Does NOT cover opinionated journal-ready multi-panel figure workflows (Nature/Science/Cell formatting, colorblind-safe palettes, significance annotations); for those prefer alterlab-scientific-viz instead. Part of the AlterLab Academic Skills suite.
   license: BSD-3-Clause
   allowed-tools: Read Write Edit Bash(python:*)
   compatibility: Requires the matplotlib Python library, version >= 3.9 (pip install 'matplotlib>=3.9'); examples also use numpy, and the histogram-fit example uses scipy. No API key or external service needed.

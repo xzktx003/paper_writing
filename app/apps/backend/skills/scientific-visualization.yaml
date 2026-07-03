@@ -1,6 +1,8 @@
 name: scientific-visualization
 display_name: Scientific Visualization
+display_name_zh: ML 发表级数据图
 description: Publication-ready scientific figure design with matplotlib and seaborn. Use when creating journal submission figures with proper formatting, accessibility, and statistical annotations.
+description_zh: 使用 Matplotlib/Seaborn 为 ML 实验设计折线图、柱状图、消融图、热力图和多面板图，统一尺寸、字体、色盲友好配色与统计标注。
 type: experiment
 trigger: manual
 prompt: |

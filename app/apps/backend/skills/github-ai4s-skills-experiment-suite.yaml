@@ -3,16 +3,16 @@ display_name: Experiment Suite
 display_name_zh: AI 实验套件
 description: Use when the user has a research question and needs a complete experiment package — design document, runnable code, results (measured or simulated with honest provenance), publication-grade figures, structured report. Single-stage, no Python runtime.
 description_zh: 规划并执行基线、消融、敏感性和误差分析等 AI 论文实验。
-type: draw
+type: analysis
 categories:
-  - scientific-figures
-category_zh: 科研绘图
-subcategory: statistical-plots
-subcategory_zh: 实验数据图
+  - experiment-design
+category_zh: 实验设计
+subcategory: baseline-ablation
+subcategory_zh: 基线、消融与评估
 trigger: manual
 auto_recommend: false
 tags:
-  - 科研绘图
+  - 实验设计
   - AI
   - ML
   - CCF-A

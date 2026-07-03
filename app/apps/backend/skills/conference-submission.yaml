@@ -1,6 +1,8 @@
 name: conference-submission
 display_name: "Conference Submission"
+display_name_zh: AI 顶会投稿检查
 description: "Conference paper submission workflow including format compliance, cover letter, and rebuttal preparation"
+description_zh: 按目标 AI/ML 会议检查匿名要求、页数、模板、附录、伦理声明、复现清单和终稿材料，输出投稿前阻塞项与修复顺序。
 type: submission
 trigger: manual
 tags: [submission, conference, format, rebuttal, camera-ready]

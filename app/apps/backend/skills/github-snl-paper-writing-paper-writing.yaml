@@ -7,8 +7,8 @@ type: writing
 categories:
   - paper-writing
 category_zh: 论文写作
-subcategory: abstract
-subcategory_zh: 摘要
+subcategory: full-paper
+subcategory_zh: 整篇论文
 trigger: manual
 auto_recommend: false
 tags:

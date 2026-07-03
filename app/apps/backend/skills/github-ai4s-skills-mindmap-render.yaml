@@ -7,8 +7,8 @@ type: draw
 categories:
   - scientific-figures
 category_zh: 科研绘图
-subcategory: statistical-plots
-subcategory_zh: 实验数据图
+subcategory: architecture-diagrams
+subcategory_zh: 架构图与流程图
 trigger: manual
 auto_recommend: false
 tags:

@@ -1,6 +1,8 @@
 name: paper-self-review
 display_name: "Paper Self-Review"
+display_name_zh: 投稿前论文自审
 description: "Comprehensive quality assurance checklist for papers"
+description_zh: 从贡献一致性、方法完整性、实验充分性、图表、引用、匿名与格式等维度执行投稿前自审，输出按严重程度排序的问题清单。
 type: review
 trigger: manual
 

@@ -1,6 +1,8 @@
 name: latex-debugging
 display_name: "LaTeX Debugging"
+display_name_zh: LaTeX 编译修复
 description: "Diagnose and fix LaTeX or Overleaf compilation errors with minimal, reviewable changes"
+description_zh: 根据首个阻塞错误、日志和模板环境定位 LaTeX/Overleaf 编译故障，给出最小可审查修复并避免破坏会议模板或正文。
 type: tooling
 trigger: manual
 tags: [latex, overleaf, compile-error, pdf]

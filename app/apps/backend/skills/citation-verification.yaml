@@ -1,7 +1,14 @@
 name: citation-verification
 display_name: "Citation Verification"
+display_name_zh: 引用真实性核验
 description: "Verify citations using programmatic scholarly sources"
+description_zh: 从正文提取引用并通过 DOI、Crossref、arXiv 和 Semantic Scholar 等可核验来源检查论文是否真实、元数据是否一致以及引用键是否缺失。
 type: utility
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: citation-verification
+subcategory_zh: 引用真实性核验
 trigger: manual
 
 prompt: |

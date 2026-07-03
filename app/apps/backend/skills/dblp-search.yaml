@@ -1,0 +1,29 @@
+name: dblp-search
+display_name: DBLP Computer Science Search
+display_name_zh: DBLP 计算机文献检索
+description: Search DBLP for computer-science papers, authors, venues, and publication records, with author disambiguation and BibTeX-ready metadata checks.
+description_zh: 使用 DBLP 检索计算机领域论文、作者和会议期刊记录，处理同名作者与预印本/正式版本对应关系，并核对可用于 BibTeX 的出版元数据。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: database-dblp
+subcategory_zh: DBLP 检索
+trigger: manual
+auto_recommend: false
+tags:
+  - DBLP
+  - Computer Science
+  - CCF-A
+  - 文献检索
+prompt: |
+  Use DBLP as the publication-record authority for computer-science venues and authors.
+
+  1. Search by normalized title, author, venue acronym/full name, and year. Use the DBLP Search API or official record pages when tool access permits.
+  2. Resolve author ambiguity using coauthors, affiliation clues, topic history, ORCID, and the DBLP person identifier; never merge authors from names alone.
+  3. Record canonical title, complete author order, venue, volume/issue or proceedings, pages, year, DOI, DBLP URL, and electronic edition URL.
+  4. Link arXiv preprints to the formal conference/journal version when evidence supports the match.
+  5. Cross-check claims and abstracts in the actual paper because DBLP primarily verifies bibliographic metadata.
+  6. Export or construct BibTeX only from verified DBLP/DOI fields. Mark missing fields instead of guessing.
+
+  Output a search summary, disambiguated records, duplicate/version decisions, and verified citation metadata.

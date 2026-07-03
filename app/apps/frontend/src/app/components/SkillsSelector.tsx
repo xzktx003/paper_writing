@@ -16,7 +16,7 @@ export const SKILL_CATEGORIES = [
   { id: 'grant-writing', name: { zh: '基金申请', en: 'Grant Writing' }, icon: '💰', description: { zh: '项目申请书、预算与影响陈述', en: 'Proposals, budgets, and impact statements' } },
   { id: 'peer-review', name: { zh: '同行评审', en: 'Peer Review' }, icon: '🔍', description: { zh: '预审、审稿回复与科研诚信', en: 'Review, rebuttal, and research integrity' } },
   { id: 'open-access', name: { zh: '开放获取', en: 'Open Access' }, icon: '🔓', description: { zh: '预印本、开放数据与开放科学', en: 'Preprints, open data, and open science' } },
-  { id: 'exploration-discovery', name: { zh: '探险、发现', en: 'Exploration & Discovery' }, icon: '🧭', description: { zh: '选题、研究空白与新方向探索', en: 'Topics, research gaps, and new directions' } },
+  { id: 'exploration-discovery', name: { zh: '研究探索', en: 'Research Exploration' }, icon: '🧭', description: { zh: '选题、研究空白与新方向探索', en: 'Topics, research gaps, and new directions' } },
 ];
 
 // Helper to get localized text

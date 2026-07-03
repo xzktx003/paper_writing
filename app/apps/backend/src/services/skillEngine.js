@@ -1366,11 +1366,12 @@ const ACADEMIC_CATEGORY_ZH = {
   'grant-writing': '基金申请',
   'peer-review': '同行评审',
   'open-access': '开放获取',
-  'exploration-discovery': '探险、发现',
+  'exploration-discovery': '研究探索',
 };
 
 const ACADEMIC_SUBCATEGORY_ZH = {
-  'search-retrieval': '检索与下载', 'literature-review': '综述与证据综合', 'citation-management': '引用与文献管理', 'paper-reading': '论文阅读与笔记', 'research-mapping': '研究脉络与发现',
+  'query-strategy': '检索式与筛选策略', 'database-arxiv': 'arXiv 检索', 'database-google-scholar': 'Google Scholar 检索', 'database-semantic-scholar': 'Semantic Scholar 检索', 'database-dblp': 'DBLP 检索',
+  'paper-discovery': '论文发现与追踪', 'search-retrieval': '其他检索与下载', 'literature-review': '综述与证据综合', 'related-work': '相关工作分析', 'citation-management': 'BibTeX 与文献管理', 'citation-verification': '引用真实性核验', 'paper-reading': '论文阅读与信息提取', 'research-mapping': '引用网络与研究脉络',
   'research-question': '研究问题与假设', 'experiment-planning': '实验方案', statistics: '统计分析', 'baseline-ablation': '基线、消融与评估', reproducibility: '复现与透明度', 'data-processing': '数据处理与建模',
   'outline-planning': '大纲与故事线', 'full-paper': '整篇论文', abstract: '摘要', introduction: '引言（Introduction）', 'related-work': '相关工作（Related Work）', method: '方法（Method）', 'experiments-results': '实验与结果', 'discussion-conclusion': '讨论与结论', 'language-polish': '语法、润色与翻译', 'formatting-latex': '格式与 LaTeX',
   'prior-art': '现有技术检索', 'patent-drafting': '专利交底与权利要求', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', captions: '图注与可访问性',
@@ -1442,7 +1443,7 @@ function ensureChineseSkillDescription(candidate, displayNameZh, category) {
 }
 
 function categorySortWeight(category) {
-  const order = ['文献检索', '实验设计', '论文写作', '专利撰写', '科研绘图', '学术会议', '基金申请', '同行评审', '开放获取', '探险、发现'];
+  const order = ['文献检索', '实验设计', '论文写作', '科研绘图', '学术会议', '同行评审', '研究探索'];
   const index = order.indexOf(category);
   return index === -1 ? order.length : index;
 }
@@ -1450,6 +1451,9 @@ function categorySortWeight(category) {
 export function recommendSkills(taskText, options = {}) {
   const query = String(taskText || '').trim();
   if (!query) return [];
+  // This catalog intentionally targets AI/ML/computer-science paper workflows.
+  // Do not recommend a loosely matching paper Skill for explicitly out-of-profile tasks.
+  if (/(?:基金|\bproposal\b|grant proposal|funding proposal|专利|patent|临床|医学|medical|clinical|考古|历史史料|ancient ruins|primary source evaluation)/i.test(query)) return [];
   const projectState = options.projectState || {};
   const queryTokens = tokenizeSkillText(query);
   return listSkills()
@@ -1571,7 +1575,7 @@ function detectPaperTaskIntent(query, skill = {}) {
       intent_zh: '设计论文图表',
       starterId: 'figure-plan',
       words: ['figure', 'caption', '图表', '图注', '画图', '示意图', '流程图', 'matplotlib', 'ROC curve', '配色'],
-      fallbackSkill: 'nature-figure',
+      fallbackSkill: 'scientific-visualization',
       reason_zh: '任务包含论文图表、图注、绘图脚本、流程图或视觉规范。',
       matchedUserWords: ['figure', 'caption', '图表', '图注', '画图', '示意图', '流程图', 'matplotlib', 'ROC', '配色'].filter(word => query.toLowerCase().includes(word.toLowerCase())),
     };
@@ -1591,7 +1595,7 @@ function detectPaperTaskIntent(query, skill = {}) {
       intent_zh: '检索最新相关工作',
       starterId: 'academic-search',
       words: ['找论文', '检索文献', '最新工作', '最新相关工作', '补文献', 'benchmark paper', '加入证据库', '导入证据库', 'academic search', 'search papers', 'semantic scholar'],
-      fallbackSkill: 'nature-academic-search',
+      fallbackSkill: 'literature-search',
       reason_zh: '任务是在扩展候选论文或检索最新相关工作，应先走学术检索而不是直接写综述。',
     },
     {
@@ -1633,7 +1637,7 @@ function detectPaperTaskIntent(query, skill = {}) {
       intent_zh: '图文摘要 / Graphical Abstract',
       starterId: 'figure-plan',
       words: ['graphical abstract', 'visual abstract', '图文摘要', '可视化摘要'],
-      fallbackSkill: 'nature-figure',
+      fallbackSkill: 'scientific-visualization',
       reason_zh: '任务包含 graphical abstract 或图文摘要，应先规划视觉表达和核心信息。',
     },
     {
@@ -1689,7 +1693,7 @@ function detectPaperTaskIntent(query, skill = {}) {
       intent_zh: '设计论文图表',
       starterId: 'figure-plan',
       words: ['figure', 'caption', '图表', '图注', '画图', '示意图', '流程图', 'matplotlib', 'ROC curve', '配色'],
-      fallbackSkill: 'nature-figure',
+      fallbackSkill: 'scientific-visualization',
       reason_zh: '任务包含 figure、图表或图注。',
     },
     {
@@ -1703,7 +1707,7 @@ function detectPaperTaskIntent(query, skill = {}) {
       intent_zh: '论文转演示 / Slides',
       starterId: 'paper2ppt',
       words: ['ppt', 'slides', 'beamer', 'presentation', 'conference talk', '论文转演示', '答辩'],
-      fallbackSkill: 'nature-paper2ppt',
+      fallbackSkill: 'alterlab-scientific-slides',
       reason_zh: '任务包含 PPT、slides、Beamer 或汇报。',
     },
     {
@@ -1719,13 +1723,6 @@ function detectPaperTaskIntent(query, skill = {}) {
       words: ['投稿', '会议', 'conference', 'camera ready', 'page limit', '匿名', 'double blind', 'anonymous', 'pdf metadata', 'submission'],
       fallbackSkill: 'conference-submission',
       reason_zh: '任务包含投稿、会议规则或匿名检查。',
-    },
-    {
-      intent_zh: '基金申请 / Research Proposal',
-      starterId: 'grant-proposal',
-      words: ['基金', '申请书', 'grant', 'proposal', 'funding', 'research plan', '项目申请'],
-      fallbackSkill: 'grant-proposal',
-      reason_zh: '任务包含基金、申请书或研究计划。',
     },
   ];
   const lower = query.toLowerCase();
@@ -1758,13 +1755,12 @@ function starterIdForSkill(skillName = '') {
     'writing-polish': 'paper-polish',
     'evidence-review': 'evidence-review',
     'latex-debugging': 'latex-debug',
-    'nature-academic-search': 'academic-search',
+    'literature-search': 'academic-search',
     'statistical-analysis': 'statistical-analysis',
-    'nature-figure': 'figure-plan',
+    'scientific-visualization': 'figure-plan',
     'conference-submission': 'submission-check',
     'reviewer-response': 'reviewer-response',
-    'grant-proposal': 'grant-proposal',
-    'nature-paper2ppt': 'paper2ppt',
+    'alterlab-scientific-slides': 'paper2ppt',
     'poster-design': 'poster-design',
   }[skillName] || '';
 }
@@ -1817,7 +1813,7 @@ function buildTaskIntentBoundaries(skill = {}, intent = {}) {
 }
 
 function buildIntentAlternativeWhen(skill = {}) {
-  if (skill.name === 'nature-academic-search') return '如果当前证据不够，先用它扩展检索词和候选论文。';
+  if (skill.name === 'literature-search') return '如果当前证据不够，先用它扩展检索词和候选论文。';
   if (skill.name === 'reference-management') return '如果主要问题是 BibTeX、DOI 或 citation key，选它。';
   if (skill.name === 'writing-introduction') return '如果目标从文献综述转成引言动机和贡献链条，选它。';
   if (skill.name === 'statistical-analysis') return '如果重点是指标、显著性或实验可靠性，选它。';
@@ -1897,7 +1893,7 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
     score += 10;
     reasons.push('适合相关工作和文献综合');
   }
-  if (/找论文|检索文献|最新工作|最新相关工作|补文献|academic search|search papers|arxiv|semantic scholar/i.test(query) && skill.name === 'nature-academic-search') {
+  if (/找论文|检索文献|最新工作|最新相关工作|补文献|academic search|search papers|arxiv|semantic scholar/i.test(query) && skill.name === 'literature-search') {
     score += 16;
     reasons.push('适合先检索候选论文、扩展关键词和补充最新相关工作');
   }
@@ -1945,7 +1941,7 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
     score += 22;
     reasons.push('适合统计检验、指标计算、异常值检查和结果可靠性判断');
   }
-  if (isStatisticalTaskQuery(query) && ['writing-results', 'writing-polish', 'nature-figure'].includes(skill.name)) {
+  if (isStatisticalTaskQuery(query) && ['writing-results', 'writing-polish', 'scientific-visualization'].includes(skill.name)) {
     score -= 10;
   }
   if (/title|标题|keyword list|keywords?|关键词/i.test(query) && skill.name === 'writing-abstract') {
@@ -1992,13 +1988,13 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
     score += 10;
     reasons.push('适合只修改 caption 或图注语言，不改变图表事实');
   }
-  if (isLocalPolishQuery(query) && ['writing-abstract', 'literature-review', 'nature-figure', 'evidence-review', 'conference-submission', 'reviewer-response'].includes(skill.name)) {
+  if (isLocalPolishQuery(query) && !isFigureTaskQuery(query) && ['writing-abstract', 'literature-review', 'scientific-visualization', 'evidence-review', 'conference-submission', 'reviewer-response'].includes(skill.name)) {
     score -= 12;
   }
-  if (isLocalPolishQuery(query) && /caption|图注/i.test(query) && skill.name === 'nature-figure') {
+  if (isLocalPolishQuery(query) && !isFigureTaskQuery(query) && /caption|图注/i.test(query) && skill.name === 'scientific-visualization') {
     score -= 12;
   }
-  if (/nature\s*风格英文|nature\s*style\s*(english|writing)|学术风格|写作风格/i.test(query) && skill.name === 'nature-figure') {
+  if (/nature\s*风格英文|nature\s*style\s*(english|writing)|学术风格|写作风格/i.test(query) && skill.name === 'scientific-visualization') {
     score -= 12;
   }
   if (latexDebug && skill.name === 'latex-debugging') {
@@ -2050,7 +2046,7 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
     score += 16;
     reasons.push('适合先检查 PDF/RAG 证据库是否可用于文献写作');
   }
-  if (ragDiagnostic && skill.name === 'nature-academic-search') {
+  if (ragDiagnostic && skill.name === 'literature-search') {
     score += 6;
     reasons.push('RAG 证据不足时可辅助扩展检索词');
   }
@@ -2066,20 +2062,28 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
     score += 12;
     reasons.push('适合统计检验、显著性和置信区间解释');
   }
-  if (/图|figure|caption|示意图|配色/i.test(query) && skill.name === 'nature-figure') {
+  if (/图|figure|caption|示意图|配色/i.test(query) && skill.name === 'scientific-visualization') {
     score += 8;
     reasons.push('适合图表和图注设计');
   }
-  if (isFigureTaskQuery(query) && skill.name === 'nature-figure') {
+  if (isFigureTaskQuery(query) && skill.name === 'scientific-visualization') {
     score += 20;
     reasons.push('适合论文图表生成、流程图、配色、图注和排版检查');
+  }
+  if (/(?:figure|图).{0,24}(?:颜色|配色|color|style|风格)|(?:颜色|配色|color).{0,24}(?:figure|图)/i.test(query) && skill.name === 'scientific-visualization') {
+    score += 18;
+    reasons.push('适合调整论文图表配色和视觉风格');
   }
   if (isFigureTaskQuery(query) && ['writing-polish', 'writing-methodology', 'writing-results', 'evidence-review', 'reviewer-response'].includes(skill.name)) {
     score -= 12;
   }
-  if (/graphical abstract|visual abstract|图文摘要|可视化摘要/i.test(query) && skill.name === 'nature-figure') {
+  if (/graphical abstract|visual abstract|图文摘要|可视化摘要/i.test(query) && skill.name === 'scientific-visualization') {
     score += 14;
     reasons.push('适合规划 graphical abstract 的视觉结构和核心信息');
+  }
+  if (/\bppt\b|slides?|beamer|presentation|conference talk|论文转演示|答辩/i.test(query) && skill.name === 'post-acceptance') {
+    score += 18;
+    reasons.push('适合录用后演讲与幻灯片准备');
   }
   if (/highlights|亮点/i.test(query) && skill.name === 'writing-abstract') {
     score += 12;
@@ -2093,7 +2097,7 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
     score += 20;
     reasons.push('适合把公开版本转换为匿名投稿版本并检查泄露风险');
   }
-  if (/arxiv.{0,24}(anonymous|匿名)|anonymous.{0,24}(version|版本)|匿名版|转成 anonymous/i.test(query) && skill.name === 'nature-academic-search') {
+  if (/arxiv.{0,24}(anonymous|匿名)|anonymous.{0,24}(version|版本)|匿名版|转成 anonymous/i.test(query) && skill.name === 'alterlab-arxiv') {
     score -= 18;
   }
   if (/(?:pdf.{0,16}metadata|metadata).{0,24}(?:匿名|anonymous|double blind|作者信息)|(?:匿名|anonymous|double blind|作者信息).{0,24}(?:pdf.{0,16}metadata|metadata)|double blind|anonymous|匿名风险|作者信息|page limit|camera-ready|camera ready/i.test(query) && skill.name === 'conference-submission') {
@@ -2115,7 +2119,7 @@ function scoreSkillRecommendation(skill, query, queryTokens, projectState) {
   if (reviewerRevision && ['writing-results', 'statistical-analysis'].includes(skill.name)) {
     score -= 10;
   }
-  if (/(?:找|检索).{0,16}(?:benchmark|paper|论文|文献).{0,24}(?:加入|导入|放进).{0,12}(?:证据库|rag|知识库)|benchmark paper/i.test(query) && skill.name === 'nature-academic-search') {
+  if (/(?:找|检索).{0,16}(?:benchmark|paper|论文|文献).{0,24}(?:加入|导入|放进).{0,12}(?:证据库|rag|知识库)|benchmark paper/i.test(query) && skill.name === 'literature-search') {
     score += 20;
     reasons.push('适合先检索候选 benchmark 论文，再决定是否导入证据库');
   }
@@ -2186,7 +2190,7 @@ function requiredContextForRecommendation(skill, query) {
     return ['paper_summary'];
   }
   if (
-    skill.name === 'nature-figure' &&
+    skill.name === 'scientific-visualization' &&
     /(?:figure|fig\.?|图)\s*\.?\s*[A-Z]?\d+[a-z]?|matplotlib|plot\.py|\.csv\b|results\.csv|caption|图注|流程图|示意图|配色|颜色|排版太宽|编号.{0,12}引用|roc\s*curve|柱状图|折线图/i.test(query)
   ) {
     return [];

@@ -7,18 +7,18 @@ type: analysis
 categories:
   - experiment-design
 category_zh: 实验设计
-subcategory: baseline-ablation
-subcategory_zh: 基线、消融与评估
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
 trigger: manual
 auto_recommend: false
 tags:
   - 实验设计
   - data-science
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/data-science/alterlab-scikit-learn
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/data-science/alterlab-scikit-learn
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/data-science/alterlab-scikit-learn
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/data-science/alterlab-scikit-learn
 upstream_name: alterlab-scikit-learn
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/data-science/alterlab-scikit-learn
 prompt: |+

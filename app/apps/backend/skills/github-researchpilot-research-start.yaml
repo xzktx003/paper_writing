@@ -7,24 +7,24 @@ description_zh: |
   ResearchPilot 科研助手[入口]：入口路由
 type: research
 categories:
-  - literature-search
-category_zh: 文献检索
-subcategory: search-retrieval
-subcategory_zh: 检索与下载
+  - exploration-discovery
+category_zh: 研究探索
+subcategory: project-workflow
+subcategory_zh: 科研项目与工作流
 trigger: manual
 auto_recommend: false
 tags:
-  - 文献检索
+  - 研究探索
   - AI
   - ML
   - CCF-A
   - ICLR
   - ICML
-url: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/8d596c41e9da4e272e46e06e08fe4134c291622a/skills/ResearchPilot-Skills-zh/research[START]
+url: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/60749461fb8d0ce7e85e6786f6767d416aec1eac/skills/ResearchPilot-Skills-zh/research[START]
 source_license: LICENSE
-adapted_from: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/8d596c41e9da4e272e46e06e08fe4134c291622a/skills/ResearchPilot-Skills-zh/research[START]
+adapted_from: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/60749461fb8d0ce7e85e6786f6767d416aec1eac/skills/ResearchPilot-Skills-zh/research[START]
 upstream_name: research[START]
-upstream_commit: 8d596c41e9da4e272e46e06e08fe4134c291622a
+upstream_commit: 60749461fb8d0ce7e85e6786f6767d416aec1eac
 resource_root: ../skill-resources/researchpilot
 resource_dir: ../skill-resources/researchpilot/skills/ResearchPilot-Skills-zh/research[START]
 prompt: |-

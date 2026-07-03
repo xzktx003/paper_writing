@@ -8,21 +8,23 @@ describe('Skill Engine', () => {
   it('loads built-in skills from skills directory', async () => {
     await loadSkills(null);
     const skills = listSkills();
-    expect(skills.length).toBeGreaterThanOrEqual(390);
+    expect(skills.length).toBeGreaterThanOrEqual(95);
+    expect(skills.length).toBeLessThanOrEqual(110);
   });
 
   it('loads the AI/ML-focused open-source YAML migrations without MedSci', async () => {
     await loadSkills(null);
     const skills = listSkills();
-    expect(skills.filter(skill => skill.name.startsWith('alterlab-'))).toHaveLength(74);
+    expect(skills.filter(skill => skill.name.startsWith('alterlab-'))).toHaveLength(36);
     expect(skills.filter(skill => skill.name.startsWith('medsci-'))).toHaveLength(0);
-    expect(skills.filter(skill => skill.name.startsWith('skillsbot-')).length).toBeGreaterThanOrEqual(200);
-    expect(skills.filter(skill => skill.name.startsWith('github-')).length).toBeGreaterThanOrEqual(24);
+    expect(['semantic-scholar-search', 'related-work-analyzer', 'scientific-figure-assembly', 'scientific-clarity-checker'].every(name => getSkill(name))).toBe(true);
+    expect(skills.filter(skill => skill.name.startsWith('github-'))).toHaveLength(23);
+    expect(skills.some(skill => /openalex|uspto|ancient-ruins|primary-source-evaluation/i.test(skill.name))).toBe(false);
 
-    expect(getSkill('alterlab-scientific-writing')).toMatchObject({
+    expect(getSkill('alterlab-transformers')).toMatchObject({
       kind: 'yaml',
-      source_license: 'MIT',
-      categories: ['paper-writing'],
+      source_license: 'Apache-2.0',
+      categories: ['experiment-design'],
     });
     expect(getSkill('github-snl-paper-writing-paper-writing')).toMatchObject({
       kind: 'yaml',
@@ -67,9 +69,9 @@ describe('Skill Engine', () => {
   });
 
   it('getSkill returns specific skill by name with prompt', async () => {
-    const skill = getSkill('ml-paper-writing');
+    const skill = getSkill('github-snl-paper-writing-paper-writing');
     expect(skill).toBeTruthy();
-    expect(skill.name).toBe('ml-paper-writing');
+    expect(skill.name).toBe('github-snl-paper-writing-paper-writing');
     expect(skill.type).toBe('writing');
     expect(skill.prompt).toBeTruthy();
   });
@@ -96,9 +98,9 @@ describe('Skill Engine', () => {
   });
 
   it('assemblePrompt combines global and chapter skills', async () => {
-    const prompt = assemblePrompt({ globalSkills: ['ml-paper-writing'], chapterSkills: ['nature-polishing'] });
-    expect(prompt).toContain('ML');
-    expect(prompt).toContain('Nature');
+    const prompt = assemblePrompt({ globalSkills: ['github-snl-paper-writing-paper-writing'], chapterSkills: ['writing-polish'] });
+    expect(prompt).toContain('Paper Writing Skill');
+    expect(prompt).toContain('Academic Polishing');
   });
 
   it('assemblePrompt with no skills returns base prompt', async () => {
@@ -115,11 +117,11 @@ describe('Skill Engine', () => {
     const prompt = assemblePrompt({
       globalSkills: [],
       chapterSkills: [],
-      manualSkills: ['writing-anti-ai', 'nature-polishing'],
+      manualSkills: ['writing-anti-ai', 'writing-polish'],
     });
     expect(prompt.match(/\[Active Skill -/g)).toHaveLength(2);
     expect(prompt).toContain('AI');
-    expect(prompt).toContain('Nature');
+    expect(prompt).toContain('Academic Polishing');
   });
 
   it('loads directory skill packages with manifest, references, and scripts metadata', async () => {

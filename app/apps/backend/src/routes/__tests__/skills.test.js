@@ -44,7 +44,7 @@ test('GET /api/skills/:name returns enriched UI metadata', async () => {
     assert.equal(response.statusCode, 200);
     const body = JSON.parse(response.payload);
     assert.equal(body.name, 'literature-review');
-    assert.equal(body.display_name_zh, '文献综述');
+    assert.equal(body.display_name_zh, 'AI/ML 文献综述');
     assert.equal(body.subtitle_en, 'Literature Review');
     assert.equal(body.category_zh, '文献检索');
     assert.ok(body.inputs.includes('研究主题'));
@@ -74,8 +74,8 @@ test('GET /api/skills/navigation returns Chinese-first skill navigation', async 
     assert.ok(body.navigator.tagChips.some(tag => tag.name === '相关工作'));
     assert.ok(body.navigator.contextFilters.some(item => item.key === 'rag_documents_or_references'));
     assert.equal(body.navigator.cards[0].name, 'literature-review');
-    assert.equal(body.navigator.cards[0].title_zh, '文献综述');
-    assert.equal(body.navigator.cards[0].display_name_zh, '文献综述');
+    assert.equal(body.navigator.cards[0].title_zh, 'AI/ML 文献综述');
+    assert.equal(body.navigator.cards[0].display_name_zh, 'AI/ML 文献综述');
     assert.equal(body.navigator.cards[0].subtitle_en, 'Literature Review');
   } finally {
     await app.close();

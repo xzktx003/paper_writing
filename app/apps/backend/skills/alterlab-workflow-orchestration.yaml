@@ -1,24 +1,24 @@
 name: alterlab-workflow-orchestration
 display_name: Workflow Orchestration — Compose AlterLab Skills into Multi-Agent Workflows
-display_name_zh: Workflow Orchestration 同行评审
+display_name_zh: Workflow Orchestration 科研探索
 description: "Composes existing AlterLab skills into multi-agent agentic workflows using current Claude Code subagent and Claude Agent SDK orchestration patterns: parallel subagent fan-out, sequential pipelines, judge panels, adversarial verification, and loop-until-clean review cycles. Maps each pattern onto real skills (alterlab-research-pipeline, alterlab-deep-research, alterlab-citation-verifier, alterlab-paper-reviewer, alterlab-peer-review) with copyable delegation prompts, agent-definition frontmatter, and SDK query() snippets. Use when the request mentions multi-agent, subagents, agent team, parallel agents, orchestration, pipeline of skills, judge panel, adversarial verification, devil's advocate, loop until clean, chaining skills, dispatching agents, or composing skills into a workflow. Part of the AlterLab Academic Skills suite."
 description_zh: 把多个 Skill 组合为并行代理、顺序流水线、评审面板和循环修复工作流。
-type: review
+type: research
 categories:
-  - peer-review
-category_zh: 同行评审
-subcategory: citation-integrity
-subcategory_zh: 引用与科研诚信
+  - exploration-discovery
+category_zh: 研究探索
+subcategory: project-workflow
+subcategory_zh: 科研项目与工作流
 trigger: manual
 auto_recommend: false
 tags:
-  - 同行评审
+  - 研究探索
   - core
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/core/alterlab-workflow-orchestration
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/core/alterlab-workflow-orchestration
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/core/alterlab-workflow-orchestration
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/core/alterlab-workflow-orchestration
 upstream_name: alterlab-workflow-orchestration
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/core/alterlab-workflow-orchestration
 prompt: |

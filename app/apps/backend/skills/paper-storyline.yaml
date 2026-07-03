@@ -1,6 +1,8 @@
 name: paper-storyline
 display_name: "Paper Storyline"
+display_name_zh: 论文故事线设计
 description: "Structure and organize paper narrative: from scattered ideas to coherent story"
+description_zh: 将零散的研究动机、方法和实验组织成问题—缺口—方案—证据—影响的单一叙事主线，并检查各章节是否共同服务核心贡献。
 type: research
 trigger: manual
 

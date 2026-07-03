@@ -1,6 +1,8 @@
 name: writing-methodology
 display_name: "Methodology Writing"
+display_name_zh: AI/ML 方法章节写作
 description: "Reproducible methodology section with algorithm descriptions, mathematical formulations, and experimental setup"
+description_zh: 撰写可复现的方法章节，统一符号和术语，解释总体框架、关键模块、训练目标、算法步骤、复杂度与实现条件。
 type: writing
 trigger: manual
 tags: [methodology, methods, algorithm, experimental-design, reproducibility]

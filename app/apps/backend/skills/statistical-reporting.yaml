@@ -1,6 +1,8 @@
 name: statistical-reporting
 display_name: Statistical Reporting
+display_name_zh: 实验统计结果写作
 description: Statistical test selection, assumption checking, and APA-formatted reporting. Use when analyzing experimental results or writing results sections.
+description_zh: 将已完成的统计检验写成论文结果段落，准确报告检验量、自由度、p 值、效应量和置信区间，不混淆分析执行与文字表述。
 type: experiment
 trigger: manual
 prompt: |

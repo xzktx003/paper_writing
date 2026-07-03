@@ -1,6 +1,8 @@
 name: results-report
 display_name: "Results Report"
+display_name_zh: 实验运行总结报告
 description: "Post-experiment summary report writing"
+description_zh: 将实验配置、数据版本、指标、失败运行、主要发现和待办事项整理为可追溯的运行总结，不直接扩写成论文结论。
 type: analysis
 trigger: manual
 

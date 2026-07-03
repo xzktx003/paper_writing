@@ -1,6 +1,8 @@
 name: poster-design
 display_name: "Academic Poster Design"
+display_name_zh: AI 会议学术海报
 description: "Conference poster layout design with visual hierarchy, information density optimization, and print-ready specifications"
+description_zh: 将 AI/ML 论文压缩为适合会议交流的海报叙事，规划视觉层级、方法图、关键结果、字号、配色和打印尺寸。
 type: presentation
 trigger: manual
 tags: [poster, conference, layout, visual-design]

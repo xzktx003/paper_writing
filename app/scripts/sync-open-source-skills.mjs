@@ -23,7 +23,7 @@ const categoryNames = {
   'grant-writing': '基金申请',
   'peer-review': '同行评审',
   'open-access': '开放获取',
-  'exploration-discovery': '探险、发现',
+  'exploration-discovery': '研究探索',
 };
 
 const githubSources = [
@@ -34,6 +34,8 @@ const githubSources = [
     skillRoot: '.',
     select: path => path === 'SKILL.md',
     names: { 'paper-writing': ['AI/ML 顶会论文写作', '面向 NeurIPS、ICLR、ICML 等顶会的五阶段论文写作流程，覆盖构思、结构、章节起草、整合、压缩和审稿回复。'] },
+    categories: { 'paper-writing': 'paper-writing' },
+    subcategories: { 'paper-writing': 'full-paper' },
   },
   {
     id: 'ai4s-skills',
@@ -50,6 +52,15 @@ const githubSources = [
       'experiment-suite': ['AI 实验套件', '规划并执行基线、消融、敏感性和误差分析等 AI 论文实验。'],
       'mindmap-render': ['科研思维导图', '把研究问题、方法、证据和实验关系整理为科研思维导图。'],
     },
+    categories: {
+      'research-explorer': 'exploration-discovery', 'literature-survey': 'literature-search', 'integrity-auditor': 'peer-review',
+      'paper-writer': 'paper-writing', 'ai4s-agent': 'exploration-discovery', 'experiment-suite': 'experiment-design', 'mindmap-render': 'scientific-figures',
+    },
+    subcategories: {
+      'research-explorer': 'gap-discovery', 'literature-survey': 'literature-review', 'integrity-auditor': 'citation-integrity',
+      'paper-writer': 'full-paper', 'ai4s-agent': 'project-workflow', 'experiment-suite': 'baseline-ablation', 'mindmap-render': 'architecture-diagrams',
+    },
+    excludeNames: new Set(['paper-writer']),
   },
   {
     id: 'researchpilot',
@@ -58,6 +69,22 @@ const githubSources = [
     skillRoot: 'skills/ResearchPilot-Skills-zh',
     select: path => path.endsWith('/SKILL.md'),
     names: {},
+    categories: {
+      'research[START]': 'exploration-discovery', 'research[A]-exploration': 'literature-search', 'research[B]-idea': 'experiment-design',
+      'research[C]-experiment': 'experiment-design', 'research[D]-implementation': 'experiment-design', 'research[E]-coding': 'experiment-design',
+      'research[F]-iteration': 'experiment-design', 'research[G.0]-plan': 'paper-writing', 'research[G.1]-method': 'paper-writing',
+      'research[G.2]-experiments': 'paper-writing', 'research[G.3]-abstract': 'paper-writing', 'research[G.4]-introduction': 'paper-writing',
+      'research[G.5]-related': 'paper-writing', 'research[G.6]-conclusion': 'paper-writing', 'research[G.7]-review': 'peer-review',
+      'research[G.8]-translate': 'paper-writing',
+    },
+    subcategories: {
+      'research[START]': 'project-workflow', 'research[A]-exploration': 'query-strategy', 'research[B]-idea': 'research-question',
+      'research[C]-experiment': 'experiment-planning', 'research[D]-implementation': 'data-processing', 'research[E]-coding': 'data-processing',
+      'research[F]-iteration': 'baseline-ablation', 'research[G.0]-plan': 'outline-planning', 'research[G.1]-method': 'method',
+      'research[G.2]-experiments': 'experiments-results', 'research[G.3]-abstract': 'abstract', 'research[G.4]-introduction': 'introduction',
+      'research[G.5]-related': 'related-work', 'research[G.6]-conclusion': 'discussion-conclusion', 'research[G.7]-review': 'paper-review',
+      'research[G.8]-translate': 'language-polish',
+    },
   },
 ];
 
@@ -67,9 +94,21 @@ const alterlabSource = {
   web: 'https://github.com/AlterLab-IEU/AlterLab-Academic-Skills',
 };
 
-const alterlabDomains = new Set(['core', 'data-science', 'document-tools', 'methodology', 'research-tools', 'visualization', 'writing-tools']);
-const alterlabDatabaseAllowlist = new Set(['alterlab-arxiv', 'alterlab-datacommons', 'alterlab-openalex', 'alterlab-uspto']);
-const alterlabExclude = new Set(['alterlab-scikit-survival']);
+// Keep only capabilities that directly support AI/ML/LLM research, experiments,
+// paper production, or conference communication. An explicit allowlist prevents
+// broad upstream collections from reintroducing medical, materials, humanities,
+// patent, teaching, or general-purpose web research Skills on the next sync.
+const alterlabAllowlist = new Set([
+  'alterlab-arxiv', 'alterlab-dask', 'alterlab-generate-image',
+  'alterlab-infographics', 'alterlab-latex-posters', 'alterlab-markitdown', 'alterlab-matplotlib', 'alterlab-mermaid',
+  'alterlab-networkx', 'alterlab-open-notebook', 'alterlab-paper-2-web', 'alterlab-pdf-extract',
+  'alterlab-plotly', 'alterlab-polars', 'alterlab-pptx-posters', 'alterlab-preregistration-discipline', 'alterlab-pufferlib',
+  'alterlab-pymc', 'alterlab-pymoo', 'alterlab-pytorch-lightning', 'alterlab-pyzotero',
+  'alterlab-results-transparency', 'alterlab-scientific-schematics', 'alterlab-scientific-slides', 'alterlab-scikit-learn',
+  'alterlab-seaborn', 'alterlab-shap', 'alterlab-stable-baselines3', 'alterlab-statsmodels',
+  'alterlab-test-selection-guard', 'alterlab-timesfm', 'alterlab-torch-geometric', 'alterlab-transformers',
+  'alterlab-umap', 'alterlab-workflow-orchestration', 'alterlab-zarr',
+]);
 const alterlabNonCommercial = new Set(['alterlab-deep-research', 'alterlab-paper-writer', 'alterlab-paper-reviewer', 'alterlab-research-pipeline']);
 const ALTERLAB_CATEGORY_OVERRIDES = {
   'alterlab-academic-career': 'exploration-discovery', 'alterlab-citation-mgmt': 'literature-search', 'alterlab-citation-verifier': 'literature-search',
@@ -79,8 +118,12 @@ const ALTERLAB_CATEGORY_OVERRIDES = {
   'alterlab-research-grants': 'grant-writing', 'alterlab-research-pipeline': 'paper-writing', 'alterlab-scholar-eval': 'peer-review',
   'alterlab-scientific-slides': 'academic-conference', 'alterlab-scientific-writing': 'paper-writing', 'alterlab-thesis-supervisor': 'paper-writing',
   'alterlab-venue-templates': 'academic-conference',
+  'alterlab-open-science': 'open-access', 'alterlab-preregistration-discipline': 'experiment-design',
+  'alterlab-results-transparency': 'experiment-design', 'alterlab-research-ethics': 'peer-review',
+  'alterlab-markitdown': 'literature-search', 'alterlab-workflow-orchestration': 'exploration-discovery',
 };
 const ALTERLAB_NAMES_ZH = {
+  'alterlab-arxiv': 'arXiv 文献检索',
   'alterlab-latex-posters': 'LaTeX 学术海报', 'alterlab-literature-review': '系统文献综述', 'alterlab-paper-2-web': '论文转学术网页',
   'alterlab-peer-review': '论文同行评审', 'alterlab-pptx-posters': 'PPTX 学术海报', 'alterlab-research-grants': '科研基金申请',
   'alterlab-scholar-eval': '学术成果量化评估', 'alterlab-scientific-slides': '科研演讲幻灯片', 'alterlab-scientific-writing': '科学论文写作',
@@ -88,7 +131,23 @@ const ALTERLAB_NAMES_ZH = {
   'alterlab-venue-templates': 'AI 顶会模板与投稿规范', 'alterlab-citation-mgmt': '引用与 BibTeX 管理', 'alterlab-citation-verifier': '引用真实性核验',
   'alterlab-scientific-viz': '发表级科研可视化', 'alterlab-scientific-schematics': '科研架构图与流程图', 'alterlab-statistical-analysis': '科研统计分析',
 };
+const ALTERLAB_NAMES_EN = {
+  'alterlab-arxiv': 'arXiv Literature Search',
+};
 const ALTERLAB_SUBCATEGORY_OVERRIDES = {
+  'alterlab-arxiv': 'database-arxiv',
+  'alterlab-citation-graph': 'research-mapping', 'alterlab-open-notebook': 'paper-reading', 'alterlab-pdf-extract': 'paper-reading',
+  'alterlab-pyzotero': 'citation-management', 'alterlab-open-science': 'open-science',
+  'alterlab-preregistration-discipline': 'reproducibility', 'alterlab-results-transparency': 'reproducibility',
+  'alterlab-research-ethics': 'citation-integrity',
+  'alterlab-markitdown': 'paper-reading', 'alterlab-workflow-orchestration': 'project-workflow',
+  'alterlab-dask': 'data-processing', 'alterlab-polars': 'data-processing', 'alterlab-networkx': 'data-processing',
+  'alterlab-pufferlib': 'data-processing', 'alterlab-pytorch-lightning': 'data-processing', 'alterlab-scikit-learn': 'data-processing',
+  'alterlab-shap': 'data-processing', 'alterlab-stable-baselines3': 'data-processing', 'alterlab-timesfm': 'data-processing',
+  'alterlab-torch-geometric': 'data-processing', 'alterlab-transformers': 'data-processing', 'alterlab-umap': 'data-processing',
+  'alterlab-zarr': 'data-processing', 'alterlab-pymoo': 'experiment-planning', 'alterlab-pymc': 'statistics',
+  'alterlab-statsmodels': 'statistics', 'alterlab-test-selection-guard': 'statistics',
+  'alterlab-matplotlib': 'statistical-plots', 'alterlab-plotly': 'statistical-plots', 'alterlab-seaborn': 'statistical-plots',
   'alterlab-academic-career': 'project-workflow', 'alterlab-citation-mgmt': 'citation-management', 'alterlab-citation-verifier': 'citation-integrity',
   'alterlab-deep-research': 'literature-review', 'alterlab-hypothesis-gen': 'research-question', 'alterlab-latex-posters': 'poster',
   'alterlab-literature-review': 'literature-review', 'alterlab-paper-2-web': 'full-paper', 'alterlab-paper-reviewer': 'paper-review',
@@ -176,7 +235,8 @@ const ALTERLAB_SUMMARIES_ZH = {
 };
 
 const SUBCATEGORY_ZH = {
-  'search-retrieval': '检索与下载', 'literature-review': '综述与证据综合', 'citation-management': '引用与文献管理', 'paper-reading': '论文阅读与笔记', 'research-mapping': '研究脉络与发现',
+  'query-strategy': '检索式与筛选策略', 'database-arxiv': 'arXiv 检索', 'database-google-scholar': 'Google Scholar 检索', 'database-semantic-scholar': 'Semantic Scholar 检索', 'database-dblp': 'DBLP 检索',
+  'paper-discovery': '论文发现与追踪', 'search-retrieval': '其他检索与下载', 'literature-review': '综述与证据综合', 'related-work': '相关工作分析', 'citation-management': 'BibTeX 与文献管理', 'citation-verification': '引用真实性核验', 'paper-reading': '论文阅读与信息提取', 'research-mapping': '引用网络与研究脉络',
   'research-question': '研究问题与假设', 'experiment-planning': '实验方案', 'statistics': '统计分析', 'baseline-ablation': '基线、消融与评估', 'reproducibility': '复现与透明度', 'data-processing': '数据处理与建模',
   'outline-planning': '大纲与故事线', 'full-paper': '整篇论文', 'abstract': '摘要', 'introduction': '引言（Introduction）', 'related-work': '相关工作（Related Work）', 'method': '方法（Method）', 'experiments-results': '实验与结果', 'discussion-conclusion': '讨论与结论', 'language-polish': '语法、润色与翻译', 'formatting-latex': '格式与 LaTeX',
   'prior-art': '现有技术检索', 'patent-drafting': '专利交底与权利要求', 'statistical-plots': '实验数据图', 'architecture-diagrams': '架构图与流程图', 'figure-layout': '组图与版式', 'captions': '图注与可访问性',
@@ -340,8 +400,7 @@ async function syncAlterlab(tempRoot, generated, sourceRecords) {
     const domain = rel.split('/')[1];
     const markdown = await readFile(file, 'utf8');
     const meta = parseSkill(markdown, file);
-    if (!(alterlabDomains.has(domain) || (domain === 'databases' && alterlabDatabaseAllowlist.has(meta.name)))) continue;
-    if (alterlabExclude.has(meta.name)) continue;
+    if (!alterlabAllowlist.has(meta.name)) continue;
     selected.push({ file, rel, markdown, meta });
   }
 
@@ -365,7 +424,7 @@ async function syncAlterlab(tempRoot, generated, sourceRecords) {
     const zhName = alterlabChineseName(item.meta.name, item.markdown, category);
     generated.push({ file: `${item.meta.name}.yaml`, skill: makeYaml({
       name: item.meta.name,
-      displayName: markdownTitle(item.markdown, item.meta.name),
+      displayName: ALTERLAB_NAMES_EN[item.meta.name] || markdownTitle(item.markdown, item.meta.name),
       displayNameZh: zhName,
       description: String(item.meta.description),
       descriptionZh: ALTERLAB_SUMMARIES_ZH[item.meta.name] || `${zhName}提供${categoryNames[category]}所需的具体步骤、检查规则和输出模板。`,
@@ -390,28 +449,48 @@ async function syncGithubSource(source, tempRoot, generated, sourceRecords) {
   const root = join(sourceDir, source.skillRoot);
   const files = await walk(root, path => basename(path) === 'SKILL.md' && source.select(relative(root, path).split('\\').join('/')));
   await copyRepo(sourceDir, join(resourcesDir, source.id));
+  let syncedCount = 0;
   for (const file of files) {
     const markdown = await readFile(file, 'utf8');
     const meta = parseSkill(markdown, file);
     const original = String(meta.name);
+    if (source.excludeNames?.has(original)) continue;
     const pair = source.names[original] || [markdownTitle(markdown, original), String(meta.description)];
     const zhName = /[\u4e00-\u9fff]/.test(pair[0]) ? pair[0] : `${pair[0]} 科研技能`;
     const zhDescription = /[\u4e00-\u9fff]/.test(pair[1]) ? pair[1] : `${zhName}用于 AI/ML 研究的规划、执行或论文写作。`;
-    const category = source.id === 'snl-paper-writing' ? 'paper-writing' : categoryForText(original, `${meta.description} ${zhName}`);
+    const category = source.categories?.[original] || categoryForText(original, `${meta.description} ${zhName}`);
     const relDir = relative(sourceDir, dirname(file)).split('\\').join('/');
     const name = `github-${source.id}-${slugify(original)}`;
     generated.push({ file: `${name}.yaml`, skill: makeYaml({
       name, displayName: markdownTitle(markdown, original), displayNameZh: zhName,
-      description: String(meta.description), descriptionZh: zhDescription, category, prompt: markdown,
+      description: String(meta.description), descriptionZh: zhDescription, category, subcategory: source.subcategories?.[original], prompt: markdown,
       url: `${source.web}/tree/${commit}/${relDir}`, license: String(meta.license || 'MIT'),
       resourceRoot: `../skill-resources/${source.id}`, resourceDir: `../skill-resources/${source.id}/${relDir}`,
       upstreamName: original, commit, tags: ['AI', 'ML', 'CCF-A', 'ICLR', 'ICML'],
     }) });
+    syncedCount += 1;
   }
-  sourceRecords.push({ id: source.id, repository: source.web, commit, skillCount: files.length, syncedAt: now });
+  sourceRecords.push({ id: source.id, repository: source.web, commit, skillCount: syncedCount, syncedAt: now });
 }
 
 const medicalPattern = /(?:pubmed|medrxiv|biorxiv|biomedical|medical|medicine|clinical|care-check|uniprot|bio-research|bio-strategy|strobe|consort|医学|临床|生物医学|病例报告|医疗)/i;
+const skillsBotAllowlist = new Set(['1543', '1793', '8834', '12951']);
+const skillsBotCanonicalNames = {
+  '1543': 'related-work-analyzer',
+  '1793': 'semantic-scholar-search',
+  '8834': 'scientific-figure-assembly',
+  '12951': 'scientific-clarity-checker',
+};
+const skillsBotDisplayNames = {
+  '1543': 'Related Work Analyzer', '1793': 'Semantic Scholar Search',
+  '8834': 'Scientific Figure Assembly', '12951': 'Scientific Clarity Checker',
+};
+const skillsBotDescriptions = {
+  '1543': 'Analyze computer-science related work through technical taxonomy, comparison tables, citation structure, timelines, and research-gap positioning.',
+  '1793': 'Search Semantic Scholar for papers, authors, citations, related work, and trend signals using verifiable API metadata.',
+  '8834': 'Assemble publication-ready multi-panel scientific figures with consistent labels, spacing, dimensions, and export quality.',
+  '12951': 'Audit scientific documents for claim-evidence alignment, logical flow, terminology consistency, quantitative precision, and calibrated certainty.',
+};
 const skillsBotCategoryMap = { '文献检索': 'literature-search', '实验设计': 'experiment-design', '论文写作': 'paper-writing', '专利撰写': 'patent-writing', '科研绘图': 'scientific-figures', '学术会议': 'academic-conference', '基金申请': 'grant-writing', '同行评审': 'peer-review', '开放获取': 'open-access', '探险、发现': 'exploration-discovery', '科研学术': 'exploration-discovery' };
 
 async function fetchJson(url, attempts = 6) {
@@ -432,28 +511,36 @@ async function syncSkillsBot(generated, sourceRecords) {
     for (const record of data?.records || []) records.set(record.id, record);
   }
   let skippedMedical = 0;
+  let skippedOffProfile = 0;
   let fallbackCount = 0;
+  let syncedCount = 0;
   for (const record of records.values()) {
+    if (!skillsBotAllowlist.has(String(record.id))) { skippedOffProfile += 1; continue; }
     const detail = await fetchJson(`${api}/github/file/${record.id}`);
     const item = detail || record;
     if (medicalPattern.test(`${item.enName || ''} ${item.name || ''}`)) { skippedMedical += 1; continue; }
     if (!detail) fallbackCount += 1;
     const original = slugify(item.enName || item.originalName || `skill-${item.id}`) || `skill-${item.id}`;
-    const name = `skillsbot-${original}-${item.id}`;
+    const name = skillsBotCanonicalNames[String(item.id)] || `skillsbot-${original}-${item.id}`;
     const zhName = String(item.name || original).replace(/Skill$/i, '').trim();
     const zhDescription = conciseChineseSummary(item.description, zhName);
     const category = skillsBotCategoryMap[item.categoryName] || 'exploration-discovery';
+    const subcategory = String(item.id) === '1793' ? 'database-semantic-scholar'
+      : String(item.id) === '1543' ? 'related-work'
+        : String(item.id) === '8834' ? 'figure-layout'
+          : String(item.id) === '12951' ? 'logic-method-review' : '';
     const prompt = String(item.detail || `# ${zhName}\n\n${zhDescription}\n\n请先确认用户目标、输入材料和输出格式，再按步骤完成任务并核验结果。`);
     generated.push({ file: `${name}.yaml`, skill: makeYaml({
-      name, displayName: item.enName || original, displayNameZh: zhName,
-      description: item.enName ? `${item.enName} from SkillsBot scientific academic catalog` : zhDescription,
-      descriptionZh: zhDescription, category, prompt,
+      name, displayName: skillsBotDisplayNames[String(item.id)] || item.enName || original, displayNameZh: zhName,
+      description: skillsBotDescriptions[String(item.id)] || (item.enName ? `${item.enName} from SkillsBot scientific academic catalog` : zhDescription),
+      descriptionZh: zhDescription, category, subcategory, prompt,
       url: `https://www.skillsbot.cn/skill/${item.id}`, license: '来源页面未标注，请核对原作者许可',
       upstreamName: item.enName || original, tags: ['SkillsBot', categoryNames[category]],
     }) });
+    syncedCount += 1;
     await new Promise(resolveDelay => setTimeout(resolveDelay, 35));
   }
-  sourceRecords.push({ id: 'skillsbot-scientific-academic', repository: 'https://www.skillsbot.cn/category/79', skillCount: generated.filter(item => item.file.startsWith('skillsbot-')).length, skippedMedical, fallbackCount, syncedAt: now });
+  sourceRecords.push({ id: 'skillsbot-scientific-academic-curated', repository: 'https://www.skillsbot.cn/category/79', skillCount: syncedCount, skippedMedical, skippedOffProfile, fallbackCount, syncedAt: now });
 }
 
 async function replaceGenerated(generated, sourceRecords) {

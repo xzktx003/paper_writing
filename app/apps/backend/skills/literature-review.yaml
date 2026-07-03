@@ -1,7 +1,14 @@
 name: literature-review
 display_name: "Literature Review"
+display_name_zh: AI/ML 文献综述
 description: "Comprehensive literature review with thematic synthesis, citation mapping, and gap identification"
+description_zh: 将 AI/ML 论文按研究问题、方法、数据集和结论进行主题综合，比较关键差异、梳理证据链并识别可写入 Related Work 的研究空白。
 type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: literature-review
+subcategory_zh: 综述与证据综合
 trigger: manual
 tags: [literature-review, synthesis, citation-map, research-gaps]
 

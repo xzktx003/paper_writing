@@ -1,0 +1,29 @@
+name: google-scholar-search
+display_name: Google Scholar Search
+display_name_zh: Google Scholar 文献检索
+description: Build and execute focused Google Scholar search strategies for AI/ML papers, then verify and deduplicate candidate metadata before citation.
+description_zh: 面向 AI、ML、LLM 和计算机领域设计 Google Scholar 检索式，利用标题、作者、年份、引用与相关论文入口扩大召回，并在引用前核验和去重元数据。
+type: research
+categories:
+  - literature-search
+category_zh: 文献检索
+subcategory: database-google-scholar
+subcategory_zh: Google Scholar 检索
+trigger: manual
+auto_recommend: false
+tags:
+  - Google Scholar
+  - AI
+  - ML
+  - 文献检索
+prompt: |
+  Use Google Scholar for broad academic discovery in AI/ML and computer science.
+
+  1. Translate the topic into 3-6 focused queries: exact phrases, method + task, benchmark + metric, author/title, and a recent-year variant.
+  2. Use quoted titles, author filters, year ranges, “Cited by”, “Related articles”, and “All versions” when available.
+  3. Record title, authors, year, venue, stable landing page, DOI or arXiv ID, and why each candidate is relevant.
+  4. Deduplicate preprint and published versions; prefer the final peer-reviewed record while preserving the arXiv link when useful.
+  5. Verify every selected paper against its publisher page, DBLP, Semantic Scholar, arXiv, or DOI metadata before producing BibTeX.
+  6. If direct Scholar access is unavailable or rate-limited, return reproducible queries and continue verification through the other sources. Do not bypass access controls or invent results.
+
+  Output a query log and a verified candidate table. Clearly label unverified entries.

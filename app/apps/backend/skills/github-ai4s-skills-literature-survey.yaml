@@ -3,16 +3,16 @@ display_name: Literature Survey
 display_name_zh: AI 文献综述
 description: Use when the user wants a comprehensive literature survey on a specific research topic. Outputs a complete PDF survey (6–20 pages, 60+ real citations, 100+ recommended) with LaTeX source, taxonomy figures, and a classified literature table. Single-stage, no Python runtime.
 description_zh: 检索、筛选并综合 AI 领域文献，形成可追溯的综述与研究空白。
-type: draw
+type: research
 categories:
-  - scientific-figures
-category_zh: 科研绘图
-subcategory: statistical-plots
-subcategory_zh: 实验数据图
+  - literature-search
+category_zh: 文献检索
+subcategory: literature-review
+subcategory_zh: 综述与证据综合
 trigger: manual
 auto_recommend: false
 tags:
-  - 科研绘图
+  - 文献检索
   - AI
   - ML
   - CCF-A

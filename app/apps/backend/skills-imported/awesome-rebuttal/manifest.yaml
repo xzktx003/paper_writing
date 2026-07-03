@@ -1,6 +1,13 @@
 name: awesome-rebuttal
 display_name: "Awesome Rebuttal"
+display_name_zh: AI/ML 顶会 Rebuttal 工作区
 description: "Global-installable, project-level academic rebuttal strategy skill for AI/ML/CV/NLP/Robotics papers. Use when authors need a workspace-local .awesome-rebuttal state folder, paper/code/review/venue-rule intake, JSON memory, snapshots, LaTeX/template handling for one-page rebuttals, reviewer stance analysis, strategy planning, experiment triage, safe author response drafting, or AC summaries under confirmed venue rules."
+description_zh: 为 AI/ML、视觉、NLP 和机器人论文建立项目级 rebuttal 工作区，管理评审意见、论文与代码证据、会议规则、补实验优先级、版本快照和 AC 摘要，适合复杂多轮答辩。
 type: writing
+categories:
+  - peer-review
+category_zh: 同行评审
+subcategory: rebuttal
+subcategory_zh: 审稿回复
 trigger: manual
 kind: package

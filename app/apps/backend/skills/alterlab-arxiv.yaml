@@ -1,24 +1,24 @@
 name: alterlab-arxiv
-display_name: arXiv Database
-display_name_zh: arXiv 文献工具
+display_name: arXiv Literature Search
+display_name_zh: arXiv 文献检索
 description: Search and retrieve preprints from arXiv via the Atom API by keywords, authors, arXiv IDs, date ranges, or subject categories. Use when finding or fetching papers in physics, mathematics, computer science, quantitative biology, quantitative finance, statistics, electrical engineering, or economics, or resolving an arXiv ID to its metadata and PDF. Part of the AlterLab Academic Skills suite.
 description_zh: 按关键词、作者、编号、日期和学科检索 arXiv，返回论文元数据、摘要与 PDF 地址。
 type: research
 categories:
   - literature-search
 category_zh: 文献检索
-subcategory: paper-reading
-subcategory_zh: 论文阅读与笔记
+subcategory: database-arxiv
+subcategory_zh: arXiv 检索
 trigger: manual
 auto_recommend: false
 tags:
   - 文献检索
   - databases
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/databases/alterlab-arxiv
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/databases/alterlab-arxiv
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/databases/alterlab-arxiv
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/databases/alterlab-arxiv
 upstream_name: alterlab-arxiv
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/databases/alterlab-arxiv
 prompt: |

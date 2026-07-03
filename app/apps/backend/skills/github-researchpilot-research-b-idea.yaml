@@ -5,26 +5,26 @@ description: |
   ResearchPilot 科研助手[阶段 B]：Idea 深化
 description_zh: |
   ResearchPilot 科研助手[阶段 B]：Idea 深化
-type: research
+type: analysis
 categories:
-  - literature-search
-category_zh: 文献检索
-subcategory: search-retrieval
-subcategory_zh: 检索与下载
+  - experiment-design
+category_zh: 实验设计
+subcategory: research-question
+subcategory_zh: 研究问题与假设
 trigger: manual
 auto_recommend: false
 tags:
-  - 文献检索
+  - 实验设计
   - AI
   - ML
   - CCF-A
   - ICLR
   - ICML
-url: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/8d596c41e9da4e272e46e06e08fe4134c291622a/skills/ResearchPilot-Skills-zh/research[B]-idea
+url: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/60749461fb8d0ce7e85e6786f6767d416aec1eac/skills/ResearchPilot-Skills-zh/research[B]-idea
 source_license: LICENSE
-adapted_from: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/8d596c41e9da4e272e46e06e08fe4134c291622a/skills/ResearchPilot-Skills-zh/research[B]-idea
+adapted_from: https://github.com/LMDHQ-0420/ResearchPilot-Skills/tree/60749461fb8d0ce7e85e6786f6767d416aec1eac/skills/ResearchPilot-Skills-zh/research[B]-idea
 upstream_name: research[B]-idea
-upstream_commit: 8d596c41e9da4e272e46e06e08fe4134c291622a
+upstream_commit: 60749461fb8d0ce7e85e6786f6767d416aec1eac
 resource_root: ../skill-resources/researchpilot
 resource_dir: ../skill-resources/researchpilot/skills/ResearchPilot-Skills-zh/research[B]-idea
 prompt: |

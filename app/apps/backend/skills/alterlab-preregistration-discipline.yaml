@@ -7,18 +7,18 @@ type: analysis
 categories:
   - experiment-design
 category_zh: 实验设计
-subcategory: research-question
-subcategory_zh: 研究问题与假设
+subcategory: reproducibility
+subcategory_zh: 复现与透明度
 trigger: manual
 auto_recommend: false
 tags:
   - 实验设计
   - methodology
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/methodology/alterlab-preregistration-discipline
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/methodology/alterlab-preregistration-discipline
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/methodology/alterlab-preregistration-discipline
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/methodology/alterlab-preregistration-discipline
 upstream_name: alterlab-preregistration-discipline
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/methodology/alterlab-preregistration-discipline
 prompt: |

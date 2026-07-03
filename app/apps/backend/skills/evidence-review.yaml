@@ -1,6 +1,8 @@
 name: evidence-review
 display_name: "Evidence Review"
+display_name_zh: AI 输出证据审查
 description: "Review AI-written text, citation grounding, single claims, hallucinated citations, and safe adoption readiness against the current evidence pack"
+description_zh: 将 AI 生成文本逐句对照当前 RAG 证据与原文，识别无依据论断、幻觉引用和过度外推，并生成仅供人工采纳的修改清单。
 type: review
 trigger: manual
 tags: [evidence, review, citation-safety, adoption]

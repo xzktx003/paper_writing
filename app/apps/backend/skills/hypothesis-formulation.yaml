@@ -1,6 +1,8 @@
 name: hypothesis-formulation
 display_name: Hypothesis Formulation
+display_name_zh: 可检验假设构建
 description: Structured scientific hypothesis generation from observations. Use when formulating testable hypotheses, competing explanations, or experimental predictions.
+description_zh: 把 AI/ML 研究观察转化为可证伪假设、竞争解释、可测量预测和判别实验，明确什么结果支持或否定每个假设。
 type: experiment
 trigger: manual
 prompt: |

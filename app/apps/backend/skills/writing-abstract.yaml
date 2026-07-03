@@ -1,6 +1,8 @@
 name: writing-abstract
 display_name: "Abstract Writing"
+display_name_zh: AI/ML 摘要写作
 description: "Structured abstract generation following journal-specific formats (structured/unstructured, 150-300 words)"
+description_zh: 根据问题、方法、关键量化结果和贡献撰写紧凑的 AI/ML 论文摘要，检查正文支持范围、字数和目标会议风格。
 type: writing
 trigger: manual
 tags: [abstract, summary, keywords, structured]

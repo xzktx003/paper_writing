@@ -1,6 +1,8 @@
 name: writing-discussion
 display_name: "Discussion Writing"
+display_name_zh: 讨论与局限性写作
 description: "Interpretation, implications, limitations, and future work in the discussion section"
+description_zh: 解读实验发现的含义、适用条件和异常结果，明确论文局限、潜在风险与未来工作，并区分证据结论和推测。
 type: writing
 trigger: manual
 tags: [discussion, interpretation, limitations, future-work]

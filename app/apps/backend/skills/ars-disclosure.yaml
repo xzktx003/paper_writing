@@ -1,7 +1,14 @@
 name: ars-disclosure
 display_name: "ARS Disclosure"
+display_name_zh: AI 使用声明
 description: "AI usage disclosure statement generation"
+description_zh: 根据目标会议或期刊政策，起草准确、克制且可核查的生成式 AI 使用披露声明，不虚构工具用途或作者责任。
 type: utility
+categories:
+  - academic-conference
+category_zh: 学术会议
+subcategory: submission
+subcategory_zh: 投稿与终稿
 trigger: manual
 
 prompt: |

@@ -1,30 +1,30 @@
 name: alterlab-stable-baselines3
 display_name: Stable Baselines3
 display_name_zh: Stable Baselines3 实验分析
-description: Production-ready reinforcement learning with Stable-Baselines3 — PPO, SAC, DQN, TD3, DDPG, and A2C behind a scikit-learn-like API. Use for standard single-agent RL experiments, quick prototyping, and well-documented algorithm implementations with Gymnasium environments. For high-performance parallel training, multi-agent systems, or custom vectorized environments prefer pufferlib. Part of the AlterLab Academic Skills suite.
+description: Trains single-agent reinforcement learning agents with Stable-Baselines3 — PPO, SAC, DQN, TD3, DDPG, and A2C behind a scikit-learn-like API. Use for standard single-agent RL experiments, quick prototyping, well-documented algorithm implementations on Gymnasium environments, or adding callbacks and evaluation. For high-throughput parallel training, multi-agent systems, or custom vectorized environments prefer alterlab-pufferlib. Part of the AlterLab Academic Skills suite.
 description_zh: 使用 PPO、SAC、DQN、TD3 等算法搭建标准单智能体强化学习实验。
 type: analysis
 categories:
   - experiment-design
 category_zh: 实验设计
-subcategory: baseline-ablation
-subcategory_zh: 基线、消融与评估
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
 trigger: manual
 auto_recommend: false
 tags:
   - 实验设计
   - data-science
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/data-science/alterlab-stable-baselines3
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/data-science/alterlab-stable-baselines3
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/data-science/alterlab-stable-baselines3
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/data-science/alterlab-stable-baselines3
 upstream_name: alterlab-stable-baselines3
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/data-science/alterlab-stable-baselines3
 prompt: |+
   ---
   name: alterlab-stable-baselines3
-  description: Production-ready reinforcement learning with Stable-Baselines3 — PPO, SAC, DQN, TD3, DDPG, and A2C behind a scikit-learn-like API. Use for standard single-agent RL experiments, quick prototyping, and well-documented algorithm implementations with Gymnasium environments. For high-performance parallel training, multi-agent systems, or custom vectorized environments prefer pufferlib. Part of the AlterLab Academic Skills suite.
+  description: Trains single-agent reinforcement learning agents with Stable-Baselines3 — PPO, SAC, DQN, TD3, DDPG, and A2C behind a scikit-learn-like API. Use for standard single-agent RL experiments, quick prototyping, well-documented algorithm implementations on Gymnasium environments, or adding callbacks and evaluation. For high-throughput parallel training, multi-agent systems, or custom vectorized environments prefer alterlab-pufferlib. Part of the AlterLab Academic Skills suite.
   license: MIT
   allowed-tools: Read Write Edit Bash(python:*) Bash(uv:*)
   compatibility: No API key required. Runs locally via `uv run python`; requires the stable-baselines3 and gymnasium Python packages.

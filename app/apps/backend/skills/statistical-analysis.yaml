@@ -1,6 +1,8 @@
 name: statistical-analysis
 display_name: "Statistical Analysis"
+display_name_zh: ML 统计分析
 description: "Comprehensive statistical analysis workflow: test selection, assumption checking, effect sizes, power analysis, and reproducible reporting"
+description_zh: 根据 ML 实验设计选择统计检验，检查假设、功效、效应量、多重比较和置信区间，并生成可复现的分析与报告方案。
 type: analysis
 trigger: manual
 tags: [statistics, hypothesis-testing, effect-size, power, regression]

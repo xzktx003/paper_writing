@@ -8,7 +8,7 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
   const skills = listSkills();
   const literature = skills.find(skill => skill.name === 'literature-review');
   assert.ok(literature);
-  assert.equal(literature.display_name_zh, '文献综述');
+  assert.equal(literature.display_name_zh, 'AI/ML 文献综述');
   assert.equal(literature.subtitle_en, 'Literature Review');
   assert.equal(literature.category_zh, '文献检索');
   assert.ok(literature.tags.includes('相关工作'));
@@ -21,7 +21,7 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
 
   const polish = skills.find(skill => skill.name === 'writing-polish');
   assert.ok(polish);
-  assert.equal(polish.display_name_zh, '论文润色');
+  assert.equal(polish.display_name_zh, 'AI/ML 论文语言润色');
   assert.equal(polish.subtitle_en, 'Academic Polishing');
   assert.equal(polish.category_zh, '论文写作');
   assert.ok(polish.tags.includes('翻译'));
@@ -37,7 +37,7 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
 
   const evidenceReview = skills.find(skill => skill.name === 'evidence-review');
   assert.ok(evidenceReview);
-  assert.equal(evidenceReview.display_name_zh, '输出审查');
+  assert.equal(evidenceReview.display_name_zh, 'AI 输出证据审查');
   assert.equal(evidenceReview.subtitle_en, 'Evidence Review');
   assert.equal(evidenceReview.category_zh, '同行评审');
   assert.ok(evidenceReview.tags.includes('证据核对'));
@@ -45,33 +45,26 @@ test('listSkills exposes Chinese UI metadata for built-in skills', async () => {
 
   const rebuttal = skills.find(skill => skill.name === 'reviewer-response');
   assert.ok(rebuttal);
-  assert.equal(rebuttal.display_name_zh, '审稿回复');
+  assert.equal(rebuttal.display_name_zh, '审稿意见逐点回复');
   assert.equal(rebuttal.subtitle_en, 'Reviewer Response');
   assert.ok(rebuttal.task_templates.some(template => template.includes('reviewer comments')));
 
   const planning = skills.find(skill => skill.name === 'paper-planning');
   assert.ok(planning);
-  assert.equal(planning.display_name_zh, '论文规划');
+  assert.equal(planning.display_name_zh, '论文大纲与写作规划');
   assert.equal(planning.subtitle_en, 'Paper Planning');
   assert.equal(planning.category_zh, '论文写作');
   assert.ok(planning.tags.includes('故事线'));
   assert.ok(planning.task_templates.some(template => template.includes('paper outline')));
 
-  const grant = skills.find(skill => skill.name === 'grant-proposal');
-  assert.ok(grant);
-  assert.equal(grant.display_name_zh, '基金申请');
-  assert.equal(grant.subtitle_en, 'Grant Proposal Writing');
-  assert.equal(grant.category_zh, '基金申请');
-
-  const paper2ppt = skills.find(skill => skill.name === 'nature-paper2ppt');
-  assert.ok(paper2ppt);
-  assert.equal(paper2ppt.display_name_zh, '论文转演示');
-  assert.equal(paper2ppt.subtitle_en, 'Paper to Presentation');
-  assert.equal(paper2ppt.category_zh, '学术会议');
+  assert.ok(skills.some(skill => skill.name === 'google-scholar-search' && skill.subcategory === 'database-google-scholar'));
+  assert.ok(skills.some(skill => skill.name === 'semantic-scholar-search' && skill.subcategory === 'database-semantic-scholar'));
+  assert.ok(skills.some(skill => skill.name === 'dblp-search' && skill.subcategory === 'database-dblp'));
+  assert.ok(!skills.some(skill => /openalex|uspto|ancient-ruins|primary-source-evaluation/i.test(skill.name)));
 
   const poster = skills.find(skill => skill.name === 'poster-design');
   assert.ok(poster);
-  assert.equal(poster.display_name_zh, '学术海报');
+  assert.equal(poster.display_name_zh, 'AI 会议学术海报');
   assert.equal(poster.subtitle_en, 'Academic Poster Design');
   assert.equal(poster.category_zh, '学术会议');
 });
@@ -81,14 +74,14 @@ test('listSkillCategories groups skills for category chips', async () => {
   const categories = listSkillCategories();
   const writing = categories.find(category => category.name === '论文写作');
   const literature = categories.find(category => category.name === '文献检索');
-  const project = categories.find(category => category.name === '基金申请');
+  const project = categories.find(category => category.name === '研究探索');
   assert.ok(writing);
   assert.ok(literature);
   assert.ok(project);
   assert.ok(writing.count > 0);
   assert.ok(literature.skills.some(skill => skill.name === 'literature-review'));
   assert.ok(literature.skills.find(skill => skill.name === 'literature-review').tags.includes('相关工作'));
-  assert.ok(project.skills.some(skill => skill.name === 'grant-proposal' && skill.display_name_zh === '基金申请'));
+  assert.ok(project.skills.some(skill => skill.name === 'research-ideation'));
 });
 
 test('recommendSkills ranks task-relevant skills with reasons and missing context', async () => {
@@ -177,14 +170,14 @@ test('recommendSkills ranks task-relevant skills with reasons and missing contex
   assert.ok(!recommendSkills('reviewer 说 novelty weak，我该补什么')[0].missingContext.includes('target_section_or_file'));
   assert.ok(recommendSkills('帮我把 rebuttal 承诺对应到 main.tex 的修改位置')[0].missingContext.includes('reviewer_comments'));
 
-  assert.equal(recommendSkills('帮我写基金申请书 research plan')[0].skill.name, 'grant-proposal');
-  assert.equal(recommendSkills('帮我检查 proposal 的创新性和可行性')[0].skill.name, 'grant-proposal');
-  assert.equal(recommendSkills('帮我把论文转成 PPT 做 conference talk')[0].skill.name, 'nature-paper2ppt');
-  assert.equal(recommendSkills('帮我生成 Beamer 大纲')[0].skill.name, 'nature-paper2ppt');
+  assert.equal(recommendSkills('帮我写基金申请书 research plan').length, 0);
+  assert.equal(recommendSkills('帮我检查 proposal 的创新性和可行性').length, 0);
+  assert.equal(recommendSkills('帮我把论文转成 PPT 做 conference talk')[0].skill.name, 'post-acceptance');
+  assert.equal(recommendSkills('帮我生成 Beamer 大纲')[0].skill.name, 'post-acceptance');
   assert.equal(recommendSkills('帮我设计学术海报 poster layout')[0].skill.name, 'poster-design');
   assert.equal(recommendSkills('帮我检查 poster 信息是不是太密')[0].skill.name, 'poster-design');
-  assert.equal(recommendSkills('帮我找最新相关工作')[0].skill.name, 'nature-academic-search');
-  assert.equal(recommendSkills('帮我找最新 benchmark paper 并加入证据库')[0].skill.name, 'nature-academic-search');
+  assert.equal(recommendSkills('帮我找最新相关工作')[0].skill.name, 'literature-search');
+  assert.equal(recommendSkills('帮我找最新 benchmark paper 并加入证据库')[0].skill.name, 'literature-search');
   assert.equal(recommendSkills('帮我写 conclusion')[0].skill.name, 'writing-conclusion');
   assert.equal(recommendSkills('帮我做统计显著性检验')[0].skill.name, 'statistical-analysis');
   assert.equal(recommendSkills('帮我检查 ethical statement 和 data availability')[0].skill.name, 'conference-submission');
@@ -194,7 +187,7 @@ test('recommendSkills ranks task-relevant skills with reasons and missing contex
   assert.equal(recommendSkills('帮我写 limitations')[0].skill.name, 'writing-discussion');
   assert.equal(recommendSkills('帮我检查 limitation section')[0].skill.name, 'writing-discussion');
   assert.equal(recommendSkills('帮我写 highlights')[0].skill.name, 'writing-abstract');
-  assert.equal(recommendSkills('帮我写 graphical abstract')[0].skill.name, 'nature-figure');
+  assert.equal(recommendSkills('帮我写 graphical abstract')[0].skill.name, 'scientific-visualization');
   assert.equal(recommendSkills('帮我写 acknowledgements')[0].skill.name, 'conference-submission');
   assert.equal(recommendSkills('帮我写 author contributions')[0].skill.name, 'conference-submission');
   assert.equal(recommendSkills('帮我整理 supplementary material')[0].skill.name, 'conference-submission');
@@ -221,13 +214,13 @@ test('recommendSkills ranks task-relevant skills with reasons and missing contex
   assert.equal(recommendSkills('帮我给 method 起一个小节标题')[0].skill.name, 'writing-methodology');
   assert.equal(recommendSkills('帮我把 table 结果讲成一段论文文字')[0].skill.name, 'writing-results');
   assert.equal(recommendSkills('帮我根据 review 补实验计划')[0].skill.name, 'reviewer-response');
-  assert.equal(recommendSkills('帮我根据 CSV 生成 Figure 3 的柱状图')[0].skill.name, 'nature-figure');
-  assert.equal(recommendSkills('帮我画 ROC curve 并导出 PDF')[0].skill.name, 'nature-figure');
-  assert.equal(recommendSkills('帮我把 ablation results 画成折线图')[0].skill.name, 'nature-figure');
-  assert.equal(recommendSkills('帮我设计 Figure 1 的方法流程图')[0].skill.name, 'nature-figure');
-  assert.equal(recommendSkills('帮我检查 LaTeX table 排版太宽')[0].skill.name, 'nature-figure');
-  assert.equal(recommendSkills('帮我把 Figure 3 的颜色改成 Nature 风格')[0].skill.name, 'nature-figure');
-  assert.equal(recommendSkills('帮我给所有 figure 编号和引用做一致性检查')[0].skill.name, 'nature-figure');
+  assert.equal(recommendSkills('帮我根据 CSV 生成 Figure 3 的柱状图')[0].skill.name, 'scientific-visualization');
+  assert.equal(recommendSkills('帮我画 ROC curve 并导出 PDF')[0].skill.name, 'scientific-visualization');
+  assert.equal(recommendSkills('帮我把 ablation results 画成折线图')[0].skill.name, 'scientific-visualization');
+  assert.equal(recommendSkills('帮我设计 Figure 1 的方法流程图')[0].skill.name, 'scientific-visualization');
+  assert.equal(recommendSkills('帮我检查 LaTeX table 排版太宽')[0].skill.name, 'scientific-visualization');
+  assert.equal(recommendSkills('帮我把 Figure 3 的颜色改成 Nature 风格')[0].skill.name, 'scientific-visualization');
+  assert.equal(recommendSkills('帮我给所有 figure 编号和引用做一致性检查')[0].skill.name, 'scientific-visualization');
   assert.equal(recommendSkills('帮我把 related work 的过渡句写自然一点')[0].skill.name, 'writing-polish');
   assert.equal(recommendSkills('帮我把 Zotero 导出的 bib 清理一下')[0].skill.name, 'reference-management');
   assert.equal(recommendSkills('帮我检查 main.tex 里面有没有未定义引用')[0].skill.name, 'reference-management');
@@ -349,15 +342,14 @@ test('buildTaskIntentGuide explains user-facing paper task intent', async () => 
   const grantGuide = buildTaskIntentGuide('帮我写基金申请书 research plan', {
     projectState: { hasRagDocuments: false, hasReferences: false },
   });
-  assert.equal(grantGuide.intent_zh, '基金申请 / Research Proposal');
-  assert.equal(grantGuide.recommendedSkill.name, 'grant-proposal');
-  assert.equal(grantGuide.recommendedStarterId, 'grant-proposal');
+  assert.equal(grantGuide.status, 'uncertain');
+  assert.equal(grantGuide.recommendedSkill, null);
 
   const slidesGuide = buildTaskIntentGuide('帮我把论文转成 PPT 做 conference talk', {
     projectState: { hasRagDocuments: false, hasReferences: false },
   });
   assert.equal(slidesGuide.intent_zh, '论文转演示 / Slides');
-  assert.equal(slidesGuide.recommendedSkill.name, 'nature-paper2ppt');
+  assert.equal(slidesGuide.recommendedSkill.name, 'post-acceptance');
   assert.equal(slidesGuide.recommendedStarterId, 'paper2ppt');
 
   const posterGuide = buildTaskIntentGuide('帮我设计学术海报 poster layout', {
@@ -371,7 +363,7 @@ test('buildTaskIntentGuide explains user-facing paper task intent', async () => 
     projectState: { hasRagDocuments: false, hasReferences: false },
   });
   assert.equal(searchGuide.intent_zh, '检索最新相关工作');
-  assert.equal(searchGuide.recommendedSkill.name, 'nature-academic-search');
+  assert.equal(searchGuide.recommendedSkill.name, 'literature-search');
   assert.equal(searchGuide.recommendedStarterId, 'academic-search');
   assert.ok(searchGuide.missingContext.some(item => item.key === 'search_query'));
 
@@ -494,7 +486,7 @@ test('buildTaskIntentGuide explains user-facing paper task intent', async () => 
     projectState: { hasRagDocuments: false, hasReferences: false },
   });
   assert.equal(graphicalGuide.intent_zh, '图文摘要 / Graphical Abstract');
-  assert.equal(graphicalGuide.recommendedSkill.name, 'nature-figure');
+  assert.equal(graphicalGuide.recommendedSkill.name, 'scientific-visualization');
   assert.equal(graphicalGuide.recommendedStarterId, 'figure-plan');
 
   const authorContributionGuide = buildTaskIntentGuide('帮我写 author contributions', {
@@ -522,7 +514,7 @@ test('buildSkillNavigator exposes category, tag, risk, and context filters', asy
   assert.ok(navigator.contextFilters.some(item => item.key === 'rag_documents_or_references' && item.label_zh.includes('文献')));
   assert.ok(navigator.riskFilters.some(item => item.level === 'medium'));
   assert.equal(navigator.cards[0].recommended, true);
-  assert.equal(navigator.cards[0].title_zh, '文献综述');
+  assert.equal(navigator.cards[0].title_zh, 'AI/ML 文献综述');
   assert.ok(navigator.cards[0].not_for.length > 0);
   assert.ok(navigator.cards[0].requires_context.some(item => item.key === 'rag_documents_or_references'));
   assert.ok(navigator.cards[0].hoverGuide.title_zh.includes('文献综述'));

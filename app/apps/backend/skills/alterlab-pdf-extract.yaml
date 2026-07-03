@@ -8,17 +8,17 @@ categories:
   - literature-search
 category_zh: 文献检索
 subcategory: paper-reading
-subcategory_zh: 论文阅读与笔记
+subcategory_zh: 论文阅读与信息提取
 trigger: manual
 auto_recommend: false
 tags:
   - 文献检索
   - research-tools
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/research-tools/alterlab-pdf-extract
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/research-tools/alterlab-pdf-extract
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/research-tools/alterlab-pdf-extract
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/research-tools/alterlab-pdf-extract
 upstream_name: alterlab-pdf-extract
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/research-tools/alterlab-pdf-extract
 prompt: |

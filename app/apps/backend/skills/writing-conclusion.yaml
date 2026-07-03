@@ -1,6 +1,8 @@
 name: writing-conclusion
 display_name: "Conclusion Writing"
+display_name_zh: 结论写作
 description: "Strong conclusion sections with contribution summary, impact statement, and future outlook"
+description_zh: 在不重复摘要的前提下总结已验证贡献、结果意义、适用边界与未来工作，避免引入正文未支持的新结论。
 type: writing
 trigger: manual
 tags: [conclusion, summary, outlook, impact]

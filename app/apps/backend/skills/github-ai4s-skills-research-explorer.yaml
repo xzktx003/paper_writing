@@ -5,14 +5,14 @@ description: Use when the user has a vague research direction and wants to explo
 description_zh: 从问题空间、研究空白和可行性出发探索 AI 研究方向。
 type: research
 categories:
-  - literature-search
-category_zh: 文献检索
-subcategory: literature-review
-subcategory_zh: 综述与证据综合
+  - exploration-discovery
+category_zh: 研究探索
+subcategory: gap-discovery
+subcategory_zh: 研究空白
 trigger: manual
 auto_recommend: false
 tags:
-  - 文献检索
+  - 研究探索
   - AI
   - ML
   - CCF-A

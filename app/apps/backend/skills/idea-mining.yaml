@@ -1,7 +1,14 @@
 name: idea-mining
 display_name: "Idea Mining"
+display_name_zh: AI 研究空白挖掘
 description: "Systematically mine research ideas from literature gaps, trends, and cross-domain opportunities"
+description_zh: 从近期 AI/ML 文献的共同假设、失败案例、未覆盖数据和评测缺口中提炼候选研究问题，并评估新颖性、可行性和证据需求。
 type: research
+categories:
+  - exploration-discovery
+category_zh: 研究探索
+subcategory: gap-discovery
+subcategory_zh: 研究空白
 trigger: manual
 
 prompt: |

@@ -7,18 +7,18 @@ type: draw
 categories:
   - scientific-figures
 category_zh: 科研绘图
-subcategory: architecture-diagrams
-subcategory_zh: 架构图与流程图
+subcategory: statistical-plots
+subcategory_zh: 实验数据图
 trigger: manual
 auto_recommend: false
 tags:
   - 科研绘图
   - visualization
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/visualization/alterlab-plotly
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/visualization/alterlab-plotly
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/visualization/alterlab-plotly
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/visualization/alterlab-plotly
 upstream_name: alterlab-plotly
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/visualization/alterlab-plotly
 prompt: |+

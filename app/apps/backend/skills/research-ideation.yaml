@@ -1,7 +1,14 @@
 name: research-ideation
 display_name: "Research Ideation"
+display_name_zh: AI 研究选题构思
 description: "Brainstorm research ideas using 5W1H framework"
+description_zh: 使用 5W1H、约束分析和可行性检查生成 AI/ML 研究选题，明确问题对象、技术机会、预期贡献和最低验证实验。
 type: research
+categories:
+  - exploration-discovery
+category_zh: 研究探索
+subcategory: ideation
+subcategory_zh: 选题与创意
 trigger: manual
 
 prompt: |

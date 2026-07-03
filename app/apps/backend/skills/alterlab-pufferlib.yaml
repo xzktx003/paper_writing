@@ -1,30 +1,30 @@
 name: alterlab-pufferlib
 display_name: PufferLib - High-Performance Reinforcement Learning
 display_name_zh: Pufferlib 实验分析
-description: High-performance reinforcement learning with PufferLib — fast parallel training, vectorized environments, and multi-agent systems achieving 2-10x speedups over standard implementations. Use when scaling RL training, running vectorized or multi-agent setups, or integrating game environments (Atari, Procgen, NetHack). For quick prototyping or standard, well-documented algorithm implementations prefer stable-baselines3. Part of the AlterLab Academic Skills suite.
+description: Scales reinforcement learning with PufferLib — high-throughput parallel training (PuffeRL), vectorized environments, and native multi-agent systems achieving 2-10x speedups over standard implementations. Use when scaling RL to millions of steps per second, running vectorized or multi-agent setups, building custom PufferEnv tasks, or integrating game environments (Atari, Procgen, NetHack, PettingZoo). For standard single-agent algorithm implementations (PPO/SAC/DQN) or quick prototyping prefer alterlab-stable-baselines3. Part of the AlterLab Academic Skills suite.
 description_zh: 使用 PufferLib 构建高吞吐强化学习训练、并行环境和多智能体实验。
 type: analysis
 categories:
   - experiment-design
 category_zh: 实验设计
-subcategory: baseline-ablation
-subcategory_zh: 基线、消融与评估
+subcategory: data-processing
+subcategory_zh: 数据处理与建模
 trigger: manual
 auto_recommend: false
 tags:
   - 实验设计
   - data-science
-url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/data-science/alterlab-pufferlib
+url: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/data-science/alterlab-pufferlib
 source_license: MIT
-adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/858e486e505435a54b46aeabf4bbe5235d68ee8e/skills/data-science/alterlab-pufferlib
+adapted_from: https://github.com/AlterLab-IEU/AlterLab-Academic-Skills/tree/a0064fd54180541785cd1986ad8eb1689b834270/skills/data-science/alterlab-pufferlib
 upstream_name: alterlab-pufferlib
-upstream_commit: 858e486e505435a54b46aeabf4bbe5235d68ee8e
+upstream_commit: a0064fd54180541785cd1986ad8eb1689b834270
 resource_root: ../skill-resources/alterlab
 resource_dir: ../skill-resources/alterlab/skills/data-science/alterlab-pufferlib
 prompt: |+
   ---
   name: alterlab-pufferlib
-  description: High-performance reinforcement learning with PufferLib — fast parallel training, vectorized environments, and multi-agent systems achieving 2-10x speedups over standard implementations. Use when scaling RL training, running vectorized or multi-agent setups, or integrating game environments (Atari, Procgen, NetHack). For quick prototyping or standard, well-documented algorithm implementations prefer stable-baselines3. Part of the AlterLab Academic Skills suite.
+  description: Scales reinforcement learning with PufferLib — high-throughput parallel training (PuffeRL), vectorized environments, and native multi-agent systems achieving 2-10x speedups over standard implementations. Use when scaling RL to millions of steps per second, running vectorized or multi-agent setups, building custom PufferEnv tasks, or integrating game environments (Atari, Procgen, NetHack, PettingZoo). For standard single-agent algorithm implementations (PPO/SAC/DQN) or quick prototyping prefer alterlab-stable-baselines3. Part of the AlterLab Academic Skills suite.
   license: MIT
   allowed-tools: Read Write Edit Bash(python:*) Bash(uv:*)
   compatibility: No API key required. Runs locally via `uv run python`; requires the pufferlib Python package (GPU optional for faster training). Targets PufferLib 3.0.x (the current PyPI release); the dev `4.0` branch has a different, unstable API.

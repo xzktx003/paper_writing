@@ -1,6 +1,8 @@
 name: writing-results
 display_name: "Results & Analysis Writing"
+display_name_zh: 实验与结果章节写作
 description: "Clear results presentation with statistical reporting, figure references, and comparative analysis"
+description_zh: 围绕论文论点组织主实验、基线、消融、敏感性和误差分析，准确引用图表与统计结果，避免把相关性写成因果性。
 type: writing
 trigger: manual
 tags: [results, analysis, tables, statistics, comparison]

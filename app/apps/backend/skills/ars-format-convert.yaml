@@ -1,7 +1,14 @@
 name: ars-format-convert
 display_name: "ARS Format Convert"
+display_name_zh: 论文格式转换
 description: "Convert between LaTeX, DOCX, PDF, Markdown"
+description_zh: 在 LaTeX、Markdown、DOCX 与 PDF 之间规划可审查的格式转换，重点保护公式、引用、图表和章节结构。
 type: utility
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: formatting-latex
+subcategory_zh: 格式与 LaTeX
 trigger: manual
 
 prompt: |

@@ -1,7 +1,14 @@
 name: paper-planning
 display_name: "Paper Planning"
+display_name_zh: 论文大纲与写作规划
 description: "Plan paper structure, writing roadmap, storyline, contribution framing, experiment roadmap, and reviewer-risk checklist before drafting sections"
+description_zh: 在动笔前梳理论文核心论点、章节目标、图表与实验依赖、贡献表述和审稿风险，产出可执行的大纲与写作路线图。
 type: planning
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: outline-planning
+subcategory_zh: 大纲与故事线
 trigger: manual
 tags: [planning, outline, storyline, roadmap]
 

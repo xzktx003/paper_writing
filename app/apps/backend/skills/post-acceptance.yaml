@@ -1,6 +1,8 @@
 name: post-acceptance
 display_name: "Post-Acceptance"
+display_name_zh: 录用后材料准备
 description: "Conference presentation, poster, and promotion prep"
+description_zh: 在论文录用后规划 camera-ready 检查、口头报告、海报、项目页和传播材料，保持所有表述与最终论文证据一致。
 type: utility
 trigger: manual
 

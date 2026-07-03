@@ -1,4 +1,14 @@
 name: paper-review
+display_name: AI/ML Conference Paper Review
+display_name_zh: AI/ML 顶会论文评审
+description_zh: 按 NeurIPS、ICML、ICLR、ACL、AAAI、CVPR 等会议标准评估创新性、技术正确性、实验充分性、可复现性和写作质量，并给出基于原文证据的结构化评审。
+type: review
+categories:
+  - peer-review
+category_zh: 同行评审
+subcategory: paper-review
+subcategory_zh: 论文预审
+trigger: manual
 description: |
   Academic paper reviewing skill for ML/AI conferences. Structured four-phase review process with frontier knowledge, innovation analysis, and verified references.
 license: MIT

@@ -1,7 +1,14 @@
 name: writing-anti-ai
 display_name: "Anti-AI Writing"
+display_name_zh: 去除模板化 AI 文风
 description: "Remove AI writing patterns to sound natural"
+description_zh: 识别空泛拔高、模板过渡、重复总结、模糊归因和机械句式，在不改变技术事实、数值、引用与术语的前提下改成自然学术表达。
 type: utility
+categories:
+  - paper-writing
+category_zh: 论文写作
+subcategory: language-polish
+subcategory_zh: 语法、润色与翻译
 trigger: manual
 
 prompt: |

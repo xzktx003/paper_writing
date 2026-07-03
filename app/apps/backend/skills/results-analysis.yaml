@@ -1,6 +1,8 @@
 name: results-analysis
 display_name: "Results Analysis"
+display_name_zh: ML 实验结果分析
 description: "Strict statistical analysis for ML experiments"
+description_zh: 对 ML 实验表格和日志执行严格比较，检查方差、显著性、效应量、异常结果和消融一致性，并区分数据支持的结论与推测。
 type: analysis
 trigger: manual
 

@@ -1,6 +1,8 @@
 name: writing-introduction
 display_name: "Introduction Writing"
+display_name_zh: AI/ML 引言写作
 description: "Research paper introduction following the CARS model (Create a Research Space) with context, gap, and contribution"
+description_zh: 按背景—问题—结构性缺口—方法直觉—贡献的逻辑撰写 AI/ML 引言，确保贡献与后文实验和证据对应。
 type: writing
 trigger: manual
 tags: [introduction, CARS, motivation, background]

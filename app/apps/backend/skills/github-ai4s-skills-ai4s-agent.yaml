@@ -5,14 +5,14 @@ description: Use when the user wants an end-to-end AI4S research pipeline — br
 description_zh: 编排方向探索、文献、实验、写作和诚信检查的完整科研流程。
 type: research
 categories:
-  - literature-search
-category_zh: 文献检索
-subcategory: literature-review
-subcategory_zh: 综述与证据综合
+  - exploration-discovery
+category_zh: 研究探索
+subcategory: project-workflow
+subcategory_zh: 科研项目与工作流
 trigger: manual
 auto_recommend: false
 tags:
-  - 文献检索
+  - 研究探索
   - AI
   - ML
   - CCF-A

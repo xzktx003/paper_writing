@@ -1,6 +1,8 @@
 name: writing-polish
 display_name: "Academic Polishing"
+display_name_zh: AI/ML 论文语言润色
 description: "Academic language polishing for clarity, flow, tone, grammar, and reviewer-safe revision without changing unsupported meaning"
+description_zh: 改善 AI/ML 论文英文的语法、清晰度、连贯性、时态和学术语气，严格保留公式、引用、数值、术语和原有事实含义。
 type: writing
 trigger: manual
 tags: [polish, language-editing, clarity, grammar]

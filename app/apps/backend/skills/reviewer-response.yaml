@@ -1,6 +1,8 @@
 name: reviewer-response
 display_name: "Reviewer Response"
+display_name_zh: 审稿意见逐点回复
 description: "Structured rebuttal and reviewer response drafting with comment decomposition, evidence-backed replies, and revision action planning"
+description_zh: 拆解每条审稿意见，区分澄清、补实验与承认局限，使用论文和新增证据起草礼貌、直接、可核查的逐点回复及修订计划。
 type: writing
 trigger: manual
 tags: [rebuttal, reviewer-response, revision, peer-review]

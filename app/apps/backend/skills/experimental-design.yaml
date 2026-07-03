@@ -1,6 +1,8 @@
 name: experimental-design
 display_name: Experimental Design
+display_name_zh: ML 实验设计
 description: Best practices for designing reproducible ML experiments. Use when planning ablations, baselines, or controlled experiments.
+description_zh: 为 ML/LLM 论文规划数据集、基线、消融、超参数控制、随机种子、统计检验和计算预算，使每个实验明确支撑一个论文论点。
 type: experiment
 trigger: manual
 prompt: |
