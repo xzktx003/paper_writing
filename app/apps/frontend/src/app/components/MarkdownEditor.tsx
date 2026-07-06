@@ -251,7 +251,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           EditorView.theme({
             '&': { height: '100%' },
             '.cm-scroller': { overflow: 'auto' },
-            '.cm-content': { fontFamily: 'monospace', fontSize: '14px' },
+            '.cm-content': {
+              fontFamily: '"Times New Roman", Times, "Songti SC", SimSun, serif',
+              fontSize: '14px',
+            },
             '.cm-foldGutter': { width: '16px' },
             '.cm-lineNumbers .cm-gutterElement': { padding: '0 4px' },
           }),
