@@ -129,12 +129,12 @@ export function registerCompileRoutes(fastify) {
 
   // Full-paper compile
   fastify.post('/api/compile/full-paper', async (req) => {
-    const { projectId, engine = 'auto', editorMode = 'latex' } = req.body || {};
+    const { projectId, mainFile, engine = 'auto', editorMode = 'latex' } = req.body || {};
     if (!projectId) return { ok: false, error: 'Missing projectId.' };
     if (!ENGINE_OR_AUTO.includes(engine)) {
       return { ok: false, error: `Unsupported engine: ${engine}. Supported: ${ENGINE_OR_AUTO.join(', ')}` };
     }
-    return compileFullPaper({ projectId, engine, editorMode });
+    return compileFullPaper({ projectId, mainFile, engine, editorMode });
   });
 
   // Explicit Markdown compile

@@ -214,6 +214,18 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
  
   const absMain = safeJoin(projectRoot, mainFile);
   await fs.access(absMain);
+  const mainDir = path.dirname(absMain);
+  // TeX resolves local packages relative to the process cwd, not necessarily
+  // relative to a nested entry file. Keep the project root as cwd so legacy
+  // \input{folder/file} paths continue to work, while adding the entry-file
+  // directory recursively for sibling .sty/.bst/.bib, figures and inputs.
+  const texSearchPath = `${mainDir}//:${projectRoot}//:`;
+  const compileEnv = {
+    ...getEngineEnv(),
+    TEXINPUTS: `${texSearchPath}${process.env.TEXINPUTS || ''}`,
+    BIBINPUTS: `${texSearchPath}${process.env.BIBINPUTS || ''}`,
+    BSTINPUTS: `${texSearchPath}${process.env.BSTINPUTS || ''}`,
+  };
  
   const buildRoot = path.join(projectRoot, '.compile');
   await ensureDir(buildRoot);
@@ -248,7 +260,7 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
     // ── Phase 1: First pass (generate .aux with \citation{} entries) ──
     phases.push('latex-pass-1');
     if (onLog) onLog(`\n[Phase 1/4] First LaTeX pass (${engine})...\n`);
-    code = await runSpawn(cmd, args, projectRoot, pushLog);
+    code = await runSpawn(cmd, args, projectRoot, pushLog, compileEnv);
  
     if (needsBibPass) {
       const auxPath = path.join(outDir, `${base}.aux`);
@@ -269,11 +281,7 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
       }
  
       const bibCmd = useBiber ? 'biber' : 'bibtex';
-      const bibEnv = {
-        ...getEngineEnv(),
-        BIBINPUTS: `${projectRoot}:`,
-        BSTINPUTS: `${projectRoot}:`,
-      };
+      const bibEnv = compileEnv;
       const bibArgs = useBiber
         ? [`--input-directory=${projectRoot}`, base]
         : [base];
@@ -290,12 +298,12 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
       // ── Phase 3: Second pass (resolve citations) ──
       phases.push('latex-pass-2');
       if (onLog) onLog(`\n[Phase 3/4] Second LaTeX pass (resolve citations)...\n`);
-      code = await runSpawn(cmd, args, projectRoot, pushLog);
+      code = await runSpawn(cmd, args, projectRoot, pushLog, compileEnv);
  
       // ── Phase 4: Third pass (resolve cross-references) ──
       phases.push('latex-pass-3');
       if (onLog) onLog(`\n[Phase 4/4] Third LaTeX pass (resolve cross-references)...\n`);
-      code = await runSpawn(cmd, args, projectRoot, pushLog);
+      code = await runSpawn(cmd, args, projectRoot, pushLog, compileEnv);
     }
   } catch (err) {
     await fs.rm(outDir, { recursive: true, force: true });
@@ -481,10 +489,23 @@ async function detectMainFile(projectRoot, editorMode) {
  * 3. Persist PDF for preview/download
  * 4. Return full compilation log and metadata
  */
-export async function compileFullPaper({ projectId, engine, editorMode = 'latex', onLog }) {
+export async function compileFullPaper({ projectId, mainFile, engine, editorMode = 'latex', onLog }) {
   const projectRoot = await getProjectRoot(projectId);
- 
-  const resolution = await detectMainFile(projectRoot, editorMode);
+
+  let resolution;
+  if (mainFile) {
+    try {
+      const content = await fs.readFile(safeJoin(projectRoot, mainFile), 'utf8');
+      if (editorMode === 'latex' && !/\\documentclass/.test(content)) {
+        return { ok: false, error: `Selected main file has no \\documentclass: ${mainFile}` };
+      }
+      resolution = { mainFile, generated: false };
+    } catch {
+      return { ok: false, error: `Selected main file not found: ${mainFile}` };
+    }
+  } else {
+    resolution = await detectMainFile(projectRoot, editorMode);
+  }
   if (resolution.ok === false) {
     return resolution;
   }

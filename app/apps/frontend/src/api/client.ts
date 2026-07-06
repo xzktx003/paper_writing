@@ -324,6 +324,7 @@ export function compileProject(payload: {
 
 export function compileFullPaper(payload: {
   projectId: string;
+  mainFile?: string;
   engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latexmk' | 'tectonic' | 'auto';
   editorMode?: 'markdown' | 'latex';
 }) {

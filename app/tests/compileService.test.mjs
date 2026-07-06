@@ -130,6 +130,22 @@ describe('compileService', () => {
       );
     });
 
+    it('adds a nested main-file directory to TeX, BibTeX, and BST search paths', async () => {
+      spawn.mockImplementation(() => createMockProcess(0));
+
+      await runCompile({
+        projectId: 'test-project',
+        mainFile: 'iclr2026/main.tex',
+        engine: 'xelatex',
+      });
+
+      const compileOptions = spawn.mock.calls.find(([command]) => command === 'xelatex')?.[2];
+      expect(compileOptions.cwd).toBe('/tmp/test-project');
+      expect(compileOptions.env.TEXINPUTS).toContain('/tmp/test-project/iclr2026//:');
+      expect(compileOptions.env.BIBINPUTS).toContain('/tmp/test-project/iclr2026//:');
+      expect(compileOptions.env.BSTINPUTS).toContain('/tmp/test-project/iclr2026//:');
+    });
+
     it('calls spawn with correct arguments for tectonic', async () => {
       spawn.mockImplementation(() => createMockProcess(0));
 

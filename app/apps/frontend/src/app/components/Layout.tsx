@@ -119,6 +119,7 @@ export function Layout() {
             projectPath={app.project.path || undefined}
             editorMode={app.project.config?.editor_mode}
             chaptersCount={app.project.config?.chapters?.length || 0}
+            projectFiles={app.project.config?.files || []}
             pendingEdits={app.pendingEdits}
             onAcceptEdit={app.acceptEdit}
             onRejectEdit={app.rejectEdit}

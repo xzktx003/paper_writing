@@ -34,6 +34,7 @@ interface Props {
   projectPath?: string;
   editorMode?: 'markdown' | 'latex';
   chaptersCount?: number;
+  projectFiles?: { path: string; type: 'file' | 'dir' }[];
   pendingEdits?: PendingEdit[];
   onAcceptEdit?: (editId: string) => void;
   onRejectEdit?: (editId: string) => void;
@@ -41,7 +42,7 @@ interface Props {
 
 type PreviewTab = 'preview' | 'translate' | 'diff' | 'pdf';
 
-export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, projectFiles = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const [editorViewMode, setEditorViewMode] = useState<'source' | 'split' | 'rendered'>('split');
   const [editorRatio, setEditorRatio] = useState(0.5);
   const [previewScrollRatio, setPreviewScrollRatio] = useState<number | undefined>(undefined);
@@ -63,12 +64,34 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const scrollSourceRef = useRef<'editor' | 'preview' | null>(null);
   const activeFile = openFiles?.[activeFileIndex];
   const projectId = getPaperAgentProjectId(projectPath);
+  const texFiles = projectFiles
+    .filter(file => file.type === 'file' && file.path.toLowerCase().endsWith('.tex'))
+    .map(file => file.path)
+    .sort((a, b) => a.localeCompare(b));
+  const suggestedMainFile = texFiles.find(file => file === 'main.tex')
+    || texFiles.find(file => file.endsWith('/main.tex'))
+    || texFiles[0]
+    || 'main.tex';
+  const mainFileStorageKey = projectId ? `paper-agent-main-file:${projectId}` : '';
+  const [compileTarget, setCompileTarget] = useState<'main' | 'current'>('main');
+  const [defaultMainFile, setDefaultMainFile] = useState(suggestedMainFile);
   const activeIsImage = !!activeFile && isImagePath(activeFile.filename);
   const activeIsPdf = !!activeFile && isPdfPath(activeFile.filename);
   const activeIsText = !!activeFile && isPreviewableTextPath(activeFile.filename);
   const activeIsDrawio = !!activeFile && isDrawioPath(activeFile.filename);
   const isChapterLike = activeFile?.type === 'chapter' || (activeFile?.type === 'other' && activeIsText);
   const showSource = isChapterLike && (editorViewMode === 'source' || editorViewMode === 'split');
+
+  useEffect(() => {
+    if (!mainFileStorageKey) return;
+    const saved = localStorage.getItem(mainFileStorageKey);
+    setDefaultMainFile(saved && texFiles.includes(saved) ? saved : suggestedMainFile);
+  }, [mainFileStorageKey, suggestedMainFile, projectFiles]);
+
+  const updateDefaultMainFile = useCallback((file: string) => {
+    setDefaultMainFile(file);
+    if (mainFileStorageKey) localStorage.setItem(mainFileStorageKey, file);
+  }, [mainFileStorageKey]);
 
   useEffect(() => {
     const pendingCount = pendingEdits.filter(edit => edit.status === 'pending').length;
@@ -205,7 +228,9 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
     setCompilingAll(true);
     setCompileAllResult(null);
     try {
-      const result = await compileFullPaper({ projectId, engine: 'auto', editorMode });
+      const result = compileTarget === 'current'
+        ? await compileProject({ projectId, mainFile: activeFile?.filename || defaultMainFile, engine: 'auto' })
+        : await compileFullPaper({ projectId, mainFile: defaultMainFile, engine: 'auto', editorMode });
       setCompileAllResult(result);
       if (result.ok && result.pdfUrl) {
         // Add cache-busting timestamp so the browser fetches the fresh PDF
@@ -216,7 +241,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
     } finally {
       setCompilingAll(false);
     }
-  }, [projectId, compilingAll, editorMode]);
+  }, [projectId, compilingAll, editorMode, compileTarget, activeFile?.filename, defaultMainFile]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}>
@@ -286,32 +311,32 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
             {syncScrollEnabled ? 'Sync' : 'Free'}
           </button>
         )}
-        {activeFile && activeFile.type === 'chapter' && (
-          <button
-            onClick={handleCompile}
-            disabled={compiling || !projectId}
-            title="Compile to PDF"
-            style={{
-              marginLeft: '6px',
-              fontSize: '11px',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              padding: '3px 8px',
-              cursor: compiling || !projectId ? 'wait' : 'pointer',
-              background: compiling ? 'var(--accent-soft)' : 'transparent',
-              color: compiling ? 'var(--accent-strong)' : 'var(--text-secondary)',
-              fontWeight: 500,
-              transition: 'all 0.15s',
-            }}
+        {activeFile && activeFile.filename.toLowerCase().endsWith('.tex') && (
+          <select
+            value={compileTarget}
+            onChange={event => setCompileTarget(event.target.value as 'main' | 'current')}
+            title="Choose whether to compile the project's default main file or the current file"
+            style={{ marginLeft: '6px', maxWidth: 112, fontSize: '11px', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 5px', background: 'var(--paper)', color: 'var(--text)' }}
           >
-            {compiling ? 'Compiling...' : 'Compile'}
-          </button>
+            <option value="main">Main document</option>
+            <option value="current">Current file</option>
+          </select>
         )}
-        {activeFile && activeFile.type === 'chapter' && chaptersCount > 1 && (
+        {activeFile && activeFile.filename.toLowerCase().endsWith('.tex') && compileTarget === 'main' && (
+          <select
+            value={defaultMainFile}
+            onChange={event => updateDefaultMainFile(event.target.value)}
+            title="Default main .tex file for this project"
+            style={{ maxWidth: 190, fontSize: '11px', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 5px', background: 'var(--paper)', color: 'var(--text)' }}
+          >
+            {texFiles.map(file => <option key={file} value={file}>{file}</option>)}
+          </select>
+        )}
+        {activeFile && activeFile.filename.toLowerCase().endsWith('.tex') && (
           <button
             onClick={handleCompileAll}
             disabled={compilingAll || !projectId}
-            title="Compile full paper into a single PDF"
+            title={compileTarget === 'main' ? `Compile default main file: ${defaultMainFile}` : `Compile current file: ${activeFile.filename}`}
             style={{
               marginLeft: '4px',
               fontSize: '11px',
@@ -325,7 +350,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
               transition: 'all 0.15s',
             }}
           >
-            {compilingAll ? 'Compiling All...' : compileAllResult?.ok ? `View PDF` : 'Compile All'}
+            {compilingAll ? 'Compiling...' : compileAllResult?.ok ? 'View PDF' : 'Compile'}
           </button>
         )}
       </div>
