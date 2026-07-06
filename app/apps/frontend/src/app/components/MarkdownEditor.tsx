@@ -4,10 +4,29 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine, Decoration, Decor
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
-import { syntaxHighlighting, defaultHighlightStyle, foldGutter, foldKeymap } from '@codemirror/language';
+import { syntaxHighlighting, HighlightStyle, foldGutter, foldKeymap } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 import { searchKeymap } from '@codemirror/search';
 import { autocompletion, completionKeymap, CompletionContext } from '@codemirror/autocomplete';
 import { latexCompletions, bibtexCompletion } from './latexCompletions';
+import { latex } from '../../latex/lang';
+
+const academicHighlightStyle = HighlightStyle.define([
+  { tag: tags.keyword, color: '#7c3aed', fontWeight: '600' },
+  { tag: tags.definitionKeyword, color: '#c026d3', fontWeight: '600' },
+  { tag: tags.heading, color: '#b45309', fontWeight: '700' },
+  { tag: tags.typeName, color: '#0369a1', fontWeight: '600' },
+  { tag: tags.atom, color: '#0f766e' },
+  { tag: tags.variableName, color: '#1d4ed8', fontStyle: 'italic' },
+  { tag: tags.number, color: '#b91c1c' },
+  { tag: tags.link, color: '#2563eb', textDecoration: 'underline' },
+  { tag: tags.labelName, color: '#a21caf' },
+  { tag: tags.url, color: '#0284c7', textDecoration: 'underline' },
+  { tag: tags.comment, color: '#578157', fontStyle: 'italic' },
+  { tag: tags.bracket, color: '#475569', fontWeight: '600' },
+  { tag: tags.operator, color: '#be123c' },
+  { tag: tags.invalid, color: '#dc2626', textDecoration: 'wavy underline' },
+]);
 
 class GhostTextWidget extends WidgetType {
   constructor(readonly text: string) { super(); }
@@ -133,6 +152,7 @@ const aiCompletionKeymap = keymap.of([
 
 interface Props {
   content: string;
+  filename?: string;
   onChange: (content: string) => void;
   onScroll?: (ratio: number) => void;
   scrollRatio?: number;
@@ -145,7 +165,7 @@ export interface MarkdownEditorHandle {
 }
 
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
-  ({ content, onChange, onScroll, scrollRatio, onLineClick }, ref) => {
+  ({ content, filename = '', onChange, onScroll, scrollRatio, onLineClick }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
@@ -198,8 +218,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           highlightActiveLine(),
           history(),
           foldGutter(),
-          syntaxHighlighting(defaultHighlightStyle),
-          markdown({ base: markdownLanguage, codeLanguages: languages }),
+          syntaxHighlighting(academicHighlightStyle),
+          filename.toLowerCase().endsWith('.tex')
+            ? latex()
+            : markdown({ base: markdownLanguage, codeLanguages: languages }),
           autocompletion({
             override: [
               bibtexCompletion,

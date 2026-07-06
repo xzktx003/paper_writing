@@ -400,7 +400,9 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
               {showSource && (
                 <div style={{ width: showPreview ? `${editorRatio * 100}%` : '100%', overflow: 'hidden' }}>
                   <MarkdownEditor
+                    key={activeFile.filename}
                     content={activeFile.content}
+                    filename={activeFile.filename}
                     onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
                     onScroll={editorViewMode === 'split' ? handleEditorScroll : undefined}
                     scrollRatio={editorViewMode === 'split' ? editorScrollRatio : undefined}
