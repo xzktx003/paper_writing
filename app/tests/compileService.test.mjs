@@ -56,7 +56,7 @@ vi.mock('fs', async (importOriginal) => {
 
 const { spawn, execSync } = await import('child_process');
 const { getProjectRoot } = await import('../apps/backend/src/services/projectService.js');
-const { runCompile, SUPPORTED_ENGINES } = await import('../apps/backend/src/services/compileService.js');
+const { runCompile, SUPPORTED_ENGINES, extractMissingTexFile } = await import('../apps/backend/src/services/compileService.js');
 
 function createMockProcess(exitCode = 0, delay = 0) {
   const proc = new EventEmitter();
@@ -92,6 +92,18 @@ describe('compileService', () => {
   describe('SUPPORTED_ENGINES', () => {
     it('exports the list of supported engines', () => {
       expect(SUPPORTED_ENGINES).toEqual(['pdflatex', 'xelatex', 'lualatex', 'latexmk', 'tectonic']);
+    });
+  });
+
+  describe('automatic TeX dependency detection', () => {
+    it('extracts safe missing package files from LaTeX logs', () => {
+      expect(extractMissingTexFile("! LaTeX Error: File `newtxtext.sty' not found.")).toBe('newtxtext.sty');
+      expect(extractMissingTexFile("! LaTeX Error: File `subdir/custom.cls' not found.")).toBe('custom.cls');
+    });
+
+    it('ignores unsupported or unsafe missing file names', () => {
+      expect(extractMissingTexFile("! LaTeX Error: File `figure.png' not found.")).toBeNull();
+      expect(extractMissingTexFile('ordinary compilation error')).toBeNull();
     });
   });
 

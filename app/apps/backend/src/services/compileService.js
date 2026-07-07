@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import path from 'path';
-import { promises as fs } from 'fs';
+import { promises as fs, realpathSync, existsSync } from 'fs';
 import { spawn, execSync } from 'child_process';
 import YAML from 'yaml';
 import { ensureDir } from '../utils/fsUtils.js';
@@ -62,6 +62,59 @@ export { SUPPORTED_ENGINES };
 const MULTI_PASS_ENGINES = ['pdflatex', 'xelatex', 'lualatex'];
  
 const COMPILE_TIMEOUT_MS = 240_000; // 4 minutes per pass
+const MAX_AUTO_INSTALL_ATTEMPTS = 5;
+
+export function extractMissingTexFile(log = '') {
+  const patterns = [
+    /! LaTeX Error: File [`']([^`']+\.(?:sty|cls|def|bst))[`'] not found\./i,
+    /I can't find file [`']([^`']+\.(?:sty|cls|def|bst))[`']/i,
+  ];
+  for (const pattern of patterns) {
+    const match = String(log).match(pattern);
+    if (!match) continue;
+    const filename = path.basename(match[1]);
+    if (/^[a-zA-Z0-9_.+-]+\.(?:sty|cls|def|bst)$/i.test(filename)) return filename;
+  }
+  return null;
+}
+
+function findTinyTexTlmgr(engine) {
+  const lookupEngine = engine === 'latexmk' || engine === 'tectonic' ? 'pdflatex' : engine;
+  try {
+    const executable = execSync(`which ${lookupEngine}`, { env: getEngineEnv(), encoding: 'utf8' }).trim();
+    const resolved = realpathSync(executable);
+    const candidate = path.join(path.dirname(resolved), 'tlmgr');
+    return existsSync(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+async function captureCommand(cmd, args, cwd, env, timeoutMs = COMPILE_TIMEOUT_MS) {
+  let output = '';
+  const code = await runSpawn(cmd, args, cwd, chunk => { output += chunk.toString(); }, env, timeoutMs);
+  return { code, output };
+}
+
+async function installTexDependency({ filename, engine, cwd, env, pushLog }) {
+  const tlmgr = findTinyTexTlmgr(engine);
+  if (!tlmgr) return { ok: false, error: 'TinyTeX tlmgr was not found.' };
+
+  pushLog(`\n[Auto package install] Looking up ${filename}...\n`);
+  const search = await captureCommand(tlmgr, ['search', '--global', '--file', `/${filename}`], cwd, env);
+  const packageMatch = search.output.match(/^([a-zA-Z0-9_.+-]+):\s*$/m);
+  if (search.code !== 0 || !packageMatch) {
+    return { ok: false, error: `No TeX Live package provides ${filename}.` };
+  }
+
+  const packageName = packageMatch[1];
+  pushLog(`[Auto package install] Installing TeX Live package: ${packageName}\n`);
+  const install = await captureCommand(tlmgr, ['install', packageName], cwd, env, 600_000);
+  pushLog(install.output);
+  return install.code === 0
+    ? { ok: true, packageName }
+    : { ok: false, error: `tlmgr failed to install ${packageName}.` };
+}
  
 function runSpawn(cmd, args, cwd, pushLog, env, timeoutMs = COMPILE_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
@@ -158,7 +211,7 @@ export async function detectEngine(projectRoot, mainFile) {
 // Core compilation (single-file, Overleaf-style multi-pass)
 // ---------------------------------------------------------------------------
  
-export async function runCompile({ projectId, mainFile, engine = 'auto', onLog }) {
+export async function runCompile({ projectId, mainFile, engine = 'auto', onLog, _autoInstallAttempt = 0, _autoInstalledPackages = [] }) {
   const projectRoot = await getProjectRoot(projectId);
  
   // Auto-detect engine if set to 'auto'
@@ -342,6 +395,34 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
   await fs.rm(outDir, { recursive: true, force: true });
  
   if (!pdfBase64) {
+    const missingFile = extractMissingTexFile(log);
+    if (missingFile && _autoInstallAttempt < MAX_AUTO_INSTALL_ATTEMPTS) {
+      try {
+        const installed = await installTexDependency({
+          filename: missingFile,
+          engine,
+          cwd: projectRoot,
+          env: compileEnv,
+          pushLog,
+        });
+        if (installed.ok) {
+          const installedPackages = [..._autoInstalledPackages, installed.packageName];
+          if (onLog) onLog(`[Auto package install] Retrying compilation (${_autoInstallAttempt + 1}/${MAX_AUTO_INSTALL_ATTEMPTS})...\n`);
+          const retried = await runCompile({
+            projectId,
+            mainFile,
+            engine,
+            onLog,
+            _autoInstallAttempt: _autoInstallAttempt + 1,
+            _autoInstalledPackages: installedPackages,
+          });
+          return { ...retried, autoInstalledPackages: installedPackages };
+        }
+        pushLog(`[Auto package install] ${installed.error}\n`);
+      } catch (error) {
+        pushLog(`[Auto package install] Failed: ${error.message}\n`);
+      }
+    }
     return { ok: false, error: 'No PDF generated.', log, status: code ?? -1, phases };
   }
   return {
@@ -353,6 +434,7 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
     phases,
     pdfUrl: `/api/projects/${projectId}/blob?path=.compile/output/${base}.pdf`,
     engine,
+    autoInstalledPackages: _autoInstalledPackages,
   };
 }
  

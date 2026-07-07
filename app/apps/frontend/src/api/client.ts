@@ -313,7 +313,7 @@ export function compileProject(payload: {
   mainFile: string;
   engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latexmk' | 'tectonic' | 'auto';
 }) {
-  return request<{ ok: boolean; pdf?: string; log?: string; status?: number; engine?: string; error?: string; pdfUrl?: string; availableEngines?: string[] }>(
+  return request<{ ok: boolean; pdf?: string; log?: string; status?: number; engine?: string; error?: string; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
     `/api/compile`,
     {
       method: 'POST',
@@ -328,7 +328,7 @@ export function compileFullPaper(payload: {
   engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latexmk' | 'tectonic' | 'auto';
   editorMode?: 'markdown' | 'latex';
 }) {
-  return request<{ ok: boolean; pdf?: string; log?: string; status?: number; engine?: string; error?: string; mode?: string; mainFile?: string; generatedMain?: boolean; pdfUrl?: string; availableEngines?: string[] }>(
+  return request<{ ok: boolean; pdf?: string; log?: string; status?: number; engine?: string; error?: string; mode?: string; mainFile?: string; generatedMain?: boolean; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
     `/api/compile/full-paper`,
     {
       method: 'POST',
