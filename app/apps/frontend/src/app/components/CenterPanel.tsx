@@ -75,12 +75,36 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const mainFileStorageKey = projectId ? `paper-agent-main-file:${projectId}` : '';
   const [compileTarget, setCompileTarget] = useState<'main' | 'current'>('main');
   const [defaultMainFile, setDefaultMainFile] = useState(suggestedMainFile);
+  const restoredEditorLayoutRef = useRef<string | null>(null);
   const activeIsImage = !!activeFile && isImagePath(activeFile.filename);
   const activeIsPdf = !!activeFile && isPdfPath(activeFile.filename);
   const activeIsText = !!activeFile && isPreviewableTextPath(activeFile.filename);
   const activeIsDrawio = !!activeFile && isDrawioPath(activeFile.filename);
   const isChapterLike = activeFile?.type === 'chapter' || (activeFile?.type === 'other' && activeIsText);
   const showSource = isChapterLike && (editorViewMode === 'source' || editorViewMode === 'split');
+
+  useEffect(() => {
+    if (!projectPath) return;
+    restoredEditorLayoutRef.current = null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`paper-agent-editor-layout:${projectPath}`) || 'null');
+      if (['source', 'split', 'rendered'].includes(saved?.editorViewMode)) setEditorViewMode(saved.editorViewMode);
+      if (Number.isFinite(saved?.editorRatio)) setEditorRatio(Math.max(0.2, Math.min(0.8, saved.editorRatio)));
+      if (typeof saved?.syncScrollEnabled === 'boolean') setSyncScrollEnabled(saved.syncScrollEnabled);
+      if (saved?.compileTarget === 'main' || saved?.compileTarget === 'current') setCompileTarget(saved.compileTarget);
+    } catch { /* ignore invalid browser state */ }
+    restoredEditorLayoutRef.current = projectPath;
+  }, [projectPath]);
+
+  useEffect(() => {
+    if (!projectPath || restoredEditorLayoutRef.current !== projectPath) return;
+    localStorage.setItem(`paper-agent-editor-layout:${projectPath}`, JSON.stringify({
+      editorViewMode,
+      editorRatio,
+      syncScrollEnabled,
+      compileTarget,
+    }));
+  }, [projectPath, editorViewMode, editorRatio, syncScrollEnabled, compileTarget]);
 
   useEffect(() => {
     if (!mainFileStorageKey) return;

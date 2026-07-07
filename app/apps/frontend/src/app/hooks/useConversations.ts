@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   listConversations, getConversation, createConversation,
   deleteConversation, updateConversation, sendMessage, sendMessageStream,
@@ -41,6 +41,7 @@ export function useConversations(projectId: string | null) {
   const [loading, setLoading] = useState(false);
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ percent: number; stage: string } | null>(null);
+  const restoredConversationRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -55,6 +56,21 @@ export function useConversations(projectId: string | null) {
     setActiveConv(conv);
     setLoading(false);
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || restoredConversationRef.current === projectId) return;
+    restoredConversationRef.current = projectId;
+    setActiveConv(null);
+    const convId = localStorage.getItem(`paper-agent-active-conversation:${projectId}`);
+    if (convId) select(convId).catch(() => localStorage.removeItem(`paper-agent-active-conversation:${projectId}`));
+  }, [projectId, select]);
+
+  useEffect(() => {
+    if (!projectId || restoredConversationRef.current !== projectId) return;
+    const key = `paper-agent-active-conversation:${projectId}`;
+    if (activeConv?.id) localStorage.setItem(key, activeConv.id);
+    else localStorage.removeItem(key);
+  }, [projectId, activeConv?.id]);
 
   const create = useCallback(async (data: { name: string; context_scope: any; active_skills?: string[]; mode?: string; model?: string }) => {
     if (!projectId) return;

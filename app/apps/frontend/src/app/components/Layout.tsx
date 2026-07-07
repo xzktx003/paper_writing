@@ -30,6 +30,36 @@ export function Layout() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(220);
   const [terminalMaximized, setTerminalMaximized] = useState(false);
+  const restoredLayoutRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    const projectPath = app.project.path;
+    if (!projectPath) return;
+    restoredLayoutRef.current = null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`paper-agent-layout:${projectPath}`) || 'null');
+      if (Number.isFinite(saved?.leftWidth)) setLeftWidth(Math.max(LEFT_PANEL_MIN_WIDTH, saved.leftWidth));
+      if (Number.isFinite(saved?.rightWidth)) setRightWidth(Math.max(RIGHT_PANEL_MIN_WIDTH, saved.rightWidth));
+      if (typeof saved?.leftCollapsed === 'boolean') setLeftCollapsed(saved.leftCollapsed);
+      if (typeof saved?.rightCollapsed === 'boolean') setRightCollapsed(saved.rightCollapsed);
+      if (Number.isFinite(saved?.terminalHeight)) setTerminalHeight(Math.max(100, Math.min(600, saved.terminalHeight)));
+      if (typeof saved?.terminalMaximized === 'boolean') setTerminalMaximized(saved.terminalMaximized);
+    } catch { /* ignore invalid browser state */ }
+    restoredLayoutRef.current = projectPath;
+  }, [app.project.path]);
+
+  React.useEffect(() => {
+    const projectPath = app.project.path;
+    if (!projectPath || restoredLayoutRef.current !== projectPath) return;
+    localStorage.setItem(`paper-agent-layout:${projectPath}`, JSON.stringify({
+      leftWidth,
+      rightWidth,
+      leftCollapsed,
+      rightCollapsed,
+      terminalHeight,
+      terminalMaximized,
+    }));
+  }, [app.project.path, leftWidth, rightWidth, leftCollapsed, rightCollapsed, terminalHeight, terminalMaximized]);
 
   const currentChapterSkills = (() => {
     if (app.activeFileIndex < 0) return [];

@@ -30,6 +30,7 @@ interface Props {
 
 export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorder }: Props) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['files', 'sec', 'docs', 'fig', 'img', 'appendix', 'tab']));
+  const restoredTreeRef = useRef<string | null>(null);
   const [fileItems, setFileItems] = useState<FileItem[]>(config.files || []);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: FileTreeNode | null } | null>(null);
   const [clipboardItem, setClipboardItem] = useState<(ClipboardTreeItem & { action: 'copy' | 'cut' }) | null>(null);
@@ -42,6 +43,20 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   const renameInputRef = useRef<HTMLInputElement>(null!);
   const projectId = getPaperAgentProjectId(projectPath);
   const tree = useMemo(() => buildProjectTree(fileItems), [fileItems]);
+
+  useEffect(() => {
+    restoredTreeRef.current = null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`paper-agent-tree:${projectPath}`) || 'null');
+      if (Array.isArray(saved?.expanded)) setExpandedSections(new Set(saved.expanded.filter((item: unknown) => typeof item === 'string')));
+    } catch { /* ignore invalid browser state */ }
+    restoredTreeRef.current = projectPath;
+  }, [projectPath]);
+
+  useEffect(() => {
+    if (restoredTreeRef.current !== projectPath) return;
+    localStorage.setItem(`paper-agent-tree:${projectPath}`, JSON.stringify({ expanded: [...expandedSections] }));
+  }, [projectPath, expandedSections]);
 
   useEffect(() => {
     setFileItems(config.files || []);

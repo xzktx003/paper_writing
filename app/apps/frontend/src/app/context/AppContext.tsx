@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useProject, ProjectConfig } from '../hooks/useProject';
 import { useConversations } from '../hooks/useConversations';
 import { readChapter, writeChapter, readCodeFile } from '../api/projectApi';
@@ -96,6 +96,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
   const [activeFileIndex, setActiveFileIndex] = useState(-1);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [terminalVisible, setTerminalVisible] = useState(false);
+  const restoredWorkspaceRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (project.path) {
@@ -107,13 +108,6 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
       convHook.refresh();
     }
   }, [project.path]);
-
-  useEffect(() => {
-    if (project.config && project.config.chapters.length > 0 && openFiles.length === 0) {
-      const firstChapter = project.config.chapters[0];
-      openFile({ path: firstChapter.file, type: 'chapter' });
-    }
-  }, [project.config]);
 
   const getPaperAgentId = useCallback(() => {
     if (project.path?.startsWith('__paper_agent__:')) {
@@ -157,6 +151,88 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
       return [...prev, { filename: file.path, content, type: file.type, dirty: false }];
     });
   }, [openFiles, project.path, getPaperAgentId]);
+
+  useEffect(() => {
+    if (!project.path || !project.config) return;
+    const projectPath = project.path;
+    if (restoredWorkspaceRef.current === projectPath) return;
+    const storageKey = `paper-agent-workspace:${projectPath}`;
+    restoredWorkspaceRef.current = null;
+    let cancelled = false;
+
+    const restore = async () => {
+      let saved: { tabs?: { path: string; type: OpenFile['type']; dirty?: boolean; draft?: string }[]; activeFile?: string; terminalVisible?: boolean } | null = null;
+      try {
+        saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      } catch { /* ignore invalid browser state */ }
+
+      const fallback = project.config?.chapters?.[0]
+        ? [{ path: project.config.chapters[0].file, type: 'chapter' as const }]
+        : [];
+      const tabs = saved?.tabs?.length ? saved.tabs : fallback;
+      const paId = projectPath.startsWith('__paper_agent__:') ? projectPath.replace('__paper_agent__:', '') : null;
+
+      const restored = await Promise.all(tabs.map(async tab => {
+        let content = '';
+        try {
+          if (paId && (isImagePath(tab.path) || isPdfPath(tab.path))) {
+            content = '';
+          } else if (paId && (isPreviewableTextPath(tab.path) || tab.type === 'other')) {
+            const response = await fetch(`/api/projects/${paId}/file?path=${encodeURIComponent(tab.path)}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            content = data.content || '';
+          } else if (tab.type === 'code') {
+            content = (await readCodeFile(projectPath, tab.path)).content || '';
+          } else {
+            content = (await readChapter(projectPath, tab.path)).content || '';
+          }
+        } catch (error) {
+          console.warn(`Unable to restore tab ${tab.path}:`, error);
+          return null;
+        }
+        return {
+          filename: tab.path,
+          type: tab.type,
+          content: tab.dirty && typeof tab.draft === 'string' ? tab.draft : content,
+          dirty: Boolean(tab.dirty && typeof tab.draft === 'string'),
+        } as OpenFile;
+      }));
+
+      if (cancelled) return;
+      const files = restored.filter((file): file is OpenFile => Boolean(file));
+      setOpenFiles(files);
+      const activeIndex = files.findIndex(file => file.filename === saved?.activeFile);
+      setActiveFileIndex(files.length ? Math.max(0, activeIndex) : -1);
+      if (typeof saved?.terminalVisible === 'boolean') setTerminalVisible(saved.terminalVisible);
+      restoredWorkspaceRef.current = projectPath;
+    };
+
+    restore();
+    return () => { cancelled = true; };
+  }, [project.path, project.config]);
+
+  useEffect(() => {
+    if (!project.path || restoredWorkspaceRef.current !== project.path) return;
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(`paper-agent-workspace:${project.path}`, JSON.stringify({
+          version: 1,
+          activeFile: openFiles[activeFileIndex]?.filename || null,
+          terminalVisible,
+          tabs: openFiles.map(file => ({
+            path: file.filename,
+            type: file.type,
+            dirty: file.dirty,
+            ...(file.dirty ? { draft: file.content } : {}),
+          })),
+        }));
+      } catch (error) {
+        console.warn('Unable to save editor workspace state:', error);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [project.path, openFiles, activeFileIndex, terminalVisible]);
 
   const updateFileContent = useCallback((index: number, content: string) => {
     setOpenFiles(prev => prev.map((f, i) => i === index ? { ...f, content, dirty: true } : f));
