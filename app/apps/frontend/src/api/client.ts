@@ -360,6 +360,20 @@ export function compileProject(payload: {
   );
 }
 
+export function getLatestCompiledPdf(projectId: string, mainFile: string) {
+  const query = new URLSearchParams({ projectId, mainFile }).toString();
+  return request<{
+    ok: boolean;
+    found: boolean;
+    pdfUrl?: string;
+    path?: string;
+    size?: number;
+    updatedAt?: string;
+    version?: number;
+    error?: string;
+  }>(`/api/compile/latest?${query}`, { method: 'GET' });
+}
+
 export function compileFullPaper(payload: {
   projectId: string;
   mainFile?: string;

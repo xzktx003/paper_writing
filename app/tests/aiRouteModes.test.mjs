@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import {
   getToolsForMode, appendModeGuidance, executeTool, buildUserMessageContent,
   buildConversationHistory, buildConversationAttachmentMessages, normalizeProposedFileContent,
+  classifyAIError, buildInterruptedAssistantMessage,
 } from '../apps/backend/src/routes/ai.js';
 import { buildOpenAIMessages } from '../apps/backend/src/services/llmService.js';
 
@@ -87,6 +88,22 @@ describe('AI conversation modes', () => {
     expect(appendModeGuidance('base prompt', 'agent')).toContain('click Accept or Reject');
     expect(appendModeGuidance('base prompt', 'agent')).toContain('Never claim that a file was changed');
     expect(appendModeGuidance('base prompt', 'tools')).toContain('controlled code/ file work');
+  });
+
+  it('distinguishes provider timeouts and preserves interrupted partial output', () => {
+    expect(classifyAIError({ code: 'PROVIDER_CONNECT_TIMEOUT' })).toContain('did not start responding');
+    expect(classifyAIError({ code: 'PROVIDER_STREAM_IDLE_TIMEOUT' })).toContain('stopped producing data');
+    expect(classifyAIError(new Error('aborted'))).toContain('interrupted before completion');
+
+    expect(buildInterruptedAssistantMessage('partial answer', {
+      code: 'PROVIDER_STREAM_IDLE_TIMEOUT',
+    })).toEqual({
+      role: 'assistant',
+      content: 'partial answer\n\n⚠️ Error: AI response stopped producing data before it completed. Please try again.',
+      interrupted: true,
+      error_code: 'PROVIDER_STREAM_IDLE_TIMEOUT',
+    });
+    expect(buildInterruptedAssistantMessage('', new Error('aborted'))).toBeNull();
   });
 });
 

@@ -15,6 +15,38 @@ import crypto from 'crypto';
 
 const ENGINE_OR_AUTO = [...SUPPORTED_ENGINES, 'auto'];
 
+export async function findLatestCompiledPdf({ projectRoot, projectId, mainFile = 'main.tex' }) {
+  const normalizedMainFile = String(mainFile || 'main.tex').replace(/\\/g, '/');
+  safeJoin(projectRoot, normalizedMainFile);
+  const extension = path.posix.extname(normalizedMainFile);
+  const base = path.posix.basename(normalizedMainFile, extension);
+  const sourceDirectory = path.posix.dirname(normalizedMainFile);
+  const candidates = [
+    `.compile/output/${base}.pdf`,
+    sourceDirectory === '.' ? `${base}.pdf` : `${sourceDirectory}/${base}.pdf`,
+  ];
+
+  for (const relativePath of [...new Set(candidates)]) {
+    try {
+      const absolutePath = safeJoin(projectRoot, relativePath);
+      const stat = await fs.stat(absolutePath);
+      if (!stat.isFile()) continue;
+      return {
+        found: true,
+        pdfUrl: `/api/projects/${encodeURIComponent(projectId)}/blob?${new URLSearchParams({ path: relativePath }).toString()}`,
+        path: relativePath,
+        size: stat.size,
+        updatedAt: stat.mtime.toISOString(),
+        version: stat.mtimeMs,
+      };
+    } catch {
+      // Try the next supported output location.
+    }
+  }
+
+  return { found: false };
+}
+
 /**
  * Compile a Markdown file to PDF using pandoc + tectonic.
  */
@@ -102,6 +134,19 @@ async function compileMarkdown({ projectId, mainFile = 'main.md' }) {
 }
 
 export function registerCompileRoutes(fastify) {
+  // Read-only lookup for the latest persisted PDF. This route never compiles.
+  fastify.get('/api/compile/latest', async (req, reply) => {
+    const { projectId, mainFile = 'main.tex' } = req.query || {};
+    if (!projectId) return reply.status(400).send({ ok: false, error: 'Missing projectId.' });
+    try {
+      const projectRoot = await getProjectRoot(projectId);
+      const latest = await findLatestCompiledPdf({ projectRoot, projectId, mainFile });
+      return { ok: true, ...latest };
+    } catch (error) {
+      return reply.status(error.statusCode || 500).send({ ok: false, error: error.message });
+    }
+  });
+
   // Single-file LaTeX or Markdown compile
   fastify.post('/api/compile', async (req) => {
     const { projectId, mainFile = 'main.tex', engine = 'auto', allowPackageInstall } = req.body || {};

@@ -515,16 +515,17 @@ export function useGlobalLanguage(): [Language, (lang: Language) => void] {
 interface CollapsibleDropdownProps {
   skills: SkillInfo[];
   selectedSkills: string[];
-  onSelect: (skillName: string) => void;
+  onSelectMany: (skillNames: string[]) => void;
   onManage?: () => void;
   position?: 'above' | 'below' | 'right';
 }
 
-export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage, position = 'above' }: CollapsibleDropdownProps) {
+export function CollapsibleDropdown({ skills, selectedSkills, onSelectMany, onManage, position = 'above' }: CollapsibleDropdownProps) {
   const [lang, setLang] = useGlobalLanguage();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['paper-writing']));
   const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set());
   const [showDropdown, setShowDropdown] = useState(false);
+  const [pendingSkills, setPendingSkills] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState<React.CSSProperties>({});
@@ -537,6 +538,7 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
       const target = e.target as Node;
       if (dropdownRef.current && !dropdownRef.current.contains(target) && !menuRef.current?.contains(target)) {
         setShowDropdown(false);
+        setPendingSkills(new Set());
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -620,11 +622,37 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
     });
   };
 
+  const togglePendingSkill = (skillName: string) => {
+    setPendingSkills(current => {
+      const next = new Set(current);
+      if (next.has(skillName)) next.delete(skillName);
+      else next.add(skillName);
+      return next;
+    });
+  };
+
+  const closeDropdown = () => {
+    setShowDropdown(false);
+    setPendingSkills(new Set());
+  };
+
+  const applyPendingSkills = () => {
+    if (pendingSkills.size === 0) return;
+    onSelectMany(Array.from(pendingSkills));
+    closeDropdown();
+  };
+
   return (
     <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
       {/* Trigger button */}
       <div 
-        onClick={() => setShowDropdown(!showDropdown)}
+        onClick={() => {
+          if (showDropdown) closeDropdown();
+          else {
+            setPendingSkills(new Set());
+            setShowDropdown(true);
+          }
+        }}
         style={{ 
           display: 'inline-flex', 
           alignItems: 'center', 
@@ -657,7 +685,7 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
               zIndex: 1000,
               background: 'rgba(0, 0, 0, 0.3)',
             }}
-            onClick={() => setShowDropdown(false)}
+            onClick={closeDropdown}
           />
           <div ref={menuRef} style={{
             position: 'fixed',
@@ -794,8 +822,7 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
                                 key={skill.name}
                                 onClick={() => {
                                   if (!selectable) return;
-                                  onSelect(skill.name);
-                                  setShowDropdown(false);
+                                  togglePendingSkill(skill.name);
                                 }}
                                 style={{
                                   padding: '8px 16px 8px 28px',
@@ -811,7 +838,18 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                               >
                                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontWeight: 500 }}>
-                                  <span>{localizedName}</span>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                                    <input
+                                      type="checkbox"
+                                      aria-label={`${lang === 'zh' ? '选择' : 'Select'} ${localizedName}`}
+                                      checked={pendingSkills.has(skill.name)}
+                                      disabled={!selectable}
+                                      readOnly
+                                      tabIndex={-1}
+                                      style={{ margin: 0, pointerEvents: 'none' }}
+                                    />
+                                    <span>{localizedName}</span>
+                                  </span>
                                   {Boolean(skill.source_stars) && (
                                     <span title={t({ zh: '来源仓库 Star（同步时记录）', en: 'Source repository stars at sync time' }, lang)} style={{ flexShrink: 0, color: '#d99a00', fontSize: '9px' }}>
                                       ★ {Number(skill.source_stars).toLocaleString()}
@@ -836,24 +874,30 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
             );
           })}
           
-          {/* Manage button */}
-          <div 
-            onClick={() => { onManage?.(); setShowDropdown(false); }}
-            style={{
-              padding: '10px 12px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              borderTop: '1px solid var(--border)',
-              background: 'var(--bg-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              position: 'sticky',
-              bottom: 0,
-            }}
-          >
-            <span>⚙️</span>
-            <span>{t({ zh: '管理 Skills...', en: 'Manage Skills...' }, lang)}</span>
+          <div style={{ padding: '8px 10px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 6, position: 'sticky', bottom: 0 }}>
+            <button
+              type="button"
+              onClick={closeDropdown}
+              style={{ padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 11 }}
+            >
+              {t({ zh: '取消', en: 'Cancel' }, lang)}
+            </button>
+            <button
+              type="button"
+              onClick={applyPendingSkills}
+              disabled={pendingSkills.size === 0}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--accent)', background: pendingSkills.size > 0 ? 'var(--accent)' : 'var(--border)', color: '#fff', cursor: pendingSkills.size > 0 ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600 }}
+            >
+              {t({ zh: '添加已选', en: 'Add selected' }, lang)} ({pendingSkills.size})
+            </button>
+            <button
+              type="button"
+              onClick={() => { onManage?.(); closeDropdown(); }}
+              title={t({ zh: '管理 Skills...', en: 'Manage Skills...' }, lang)}
+              style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 11 }}
+            >
+              ⚙️
+            </button>
           </div>
           </div>
         </>,
@@ -888,8 +932,8 @@ export function InlineSkillsSelector({ skills, selectedSkills, onChange, onOpenM
     return getLocalizedDisplayName(skill, lang);
   };
 
-  const handleSelect = (skillName: string) => {
-    onChange([...selectedSkills, skillName]);
+  const handleSelectMany = (skillNames: string[]) => {
+    onChange([...selectedSkills, ...skillNames.filter(skillName => !selectedSkills.includes(skillName))]);
   };
 
   const handleDeselect = (skillName: string) => {
@@ -901,7 +945,7 @@ export function InlineSkillsSelector({ skills, selectedSkills, onChange, onOpenM
       <CollapsibleDropdown
         skills={allSkills}
         selectedSkills={selectedSkills}
-        onSelect={handleSelect}
+        onSelectMany={handleSelectMany}
         onManage={onOpenManagement}
         position={position}
       />

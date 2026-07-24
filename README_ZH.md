@@ -188,6 +188,8 @@ npm start
 | `OPENPRISM_LLM_MODEL` | 默认模型名称 | 由你的服务商决定 |
 | `OPENPRISM_API_TOKEN` | 后端 API 访问令牌 | 正常使用必须配置；缺失时除存活/就绪检查和 Provider 元数据外，全部 API fail-closed，`/api/config` 也要求认证 |
 | `OPENPRISM_PROVIDER_ALLOWED_HOSTS` | 临时 Provider 内网 host allowlist | 可选；逗号分隔，只由管理员放行确需测试的内网网关，临时 endpoint 默认拒绝私网和本机地址 |
+| `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` | Provider 响应头等待上限 | 可选，默认 `15000`；只限制建立请求并等到响应头，不限制持续正常输出的回答总时长 |
+| `OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS` | Provider 流空闲上限 | 可选，默认 `120000`；只有连续无新数据达到该时长才中断，持续 token 会重置空闲窗口 |
 | `OPENPRISM_COLLAB_TOKEN_SECRET` / `OPENPRISM_COLLAB_REQUIRE_TOKEN` / `OPENPRISM_COLLAB_TOKEN_TTL` | 协作签名、校验开关和有效期 | 仅启用协作时需要 |
 | `OPENPRISM_MINERU_API_BASE` / `OPENPRISM_MINERU_TOKEN` | MinerU/OCR 服务地址与凭据 | 仅高级 PDF 解析需要 |
 | `OPENPRISM_DRAW_IMAGE_API_KEY` / `OPENPRISM_DRAW_IMAGE_API_BASE` / `OPENPRISM_DRAW_IMAGE_MODEL` | 后端绘图凭据、网关和模型 | 可在 Draw 设置页通过受认证接口保存，密钥不得进入浏览器存储 |
@@ -216,6 +218,8 @@ npm start
 5. 如已有压缩包或远程论文，可上传 `.tex`、`.bib`、图片、PDF，直接导入 ZIP，或通过 arXiv ID / URL 拉取源码。
 6. 打开项目后，在左侧文件树中新建、重命名、移动、上传或下载文件。
 7. 建议让每篇论文保持独立目录，避免编译产物、会话和证据库相互混用。
+
+编辑器右侧的“最终 PDF”只展示最近一次已经生成的 PDF，不会因为打开或反复点击标签而重新编译。需要更新 PDF 时，点击顶部“编译/重新编译”或 PDF 面板中的“重新编译最终 PDF”。Skill 选择器支持先在弹层里勾选多个 Skill，再点击“添加已选”一次加入。
 
 项目源文件在本地目录中是普通文件，可以继续使用 Git、命令行或其他编辑器管理。
 

@@ -199,6 +199,8 @@ The committed template is [`app/.env.example`](app/.env.example). Keep real secr
 | `OPENPRISM_ENABLE_LEGACY_WORKBENCH` | No | Enables the migration-only static workbench only when set to `true`; disabled by default, and the supported UI remains `/projects` |
 | `OPENPRISM_API_TOKEN` | Required for normal use | Protects every non-public API with a Bearer token; without it, project access, writes, model calls, execution, and terminal routes are disabled |
 | `OPENPRISM_PROVIDER_ALLOWED_HOSTS` | No | Comma-separated administrator allowlist for authenticated temporary HTTP Provider endpoints that must reach an internal host; private targets are otherwise rejected |
+| `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` | No | Maximum wait for Provider response headers; default `15000`. It does not cap the total duration of a healthy streaming answer |
+| `OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS` | No | Maximum period with no new Provider response data; default `120000`. Continuous token output resets the idle window |
 | `SEMANTIC_SCHOLAR_API_KEY` | No | Improves Semantic Scholar quota for citation verification |
 | `OPENPRISM_MINERU_API_BASE` | No | MinerU endpoint for PDF conversion |
 | `OPENPRISM_MINERU_TOKEN` | No | MinerU access token |
@@ -343,6 +345,8 @@ It reports citations missing from `.bib`, bibliography entries never cited by th
 5. Generate an image-prompt draft, or skip this step and write the final prompt directly.
 6. Edit the final prompt freely, configure an independent image endpoint/key or reuse the language-model credentials, and generate the image. The final textarea is sent exactly as written without automatically appending paper content.
 7. The result is saved in the current project's `draw/` folder for use from LaTeX.
+
+The editor's **Final PDF** tab only loads the most recently persisted PDF; opening or revisiting the tab never starts a compile. Use the explicit **Compile/Recompile** action when the PDF must be refreshed. The Skill picker supports checking multiple Skills in one menu and adding the batch with **Add selected**.
 
 Skills constrain and enrich the prompt; they do not replace the image API or automatically execute upstream scripts that are not integrated into Paper Agent. Generated figures should still be checked for labels, factual accuracy, typography, accessibility, and venue requirements.
 

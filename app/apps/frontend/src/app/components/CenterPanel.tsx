@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useState, useCallback, useRef, useEffect } from 
 import { useTranslation } from 'react-i18next';
 import { InlineDiffViewer } from './InlineDiffViewer';
 import { getPaperAgentProjectId, isImagePath, isPdfPath, isPreviewableTextPath, isDrawioPath } from '../utils/previewAssets';
-import { compileProject, compileFullPaper, syncTexSourceToPdf } from '../../api/client';
+import { compileProject, compileFullPaper, getLatestCompiledPdf, syncTexSourceToPdf } from '../../api/client';
 import { createConversation, sendMessage } from '../api/conversationApi';
 import { managedProjectRequest } from '../api/projectRequestContext';
 import { AuthenticatedImage, AuthenticatedPdf, openAuthenticatedFile } from './AuthenticatedAsset';
@@ -94,13 +94,15 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
   const [compilingAll, setCompilingAll] = useState(false);
   const [compileAllResult, setCompileAllResult] = useState<CompileResult | null>(null);
   const [compiledPdfUrl, setCompiledPdfUrl] = useState<string | null>(null);
+  const [compiledPdfSource, setCompiledPdfSource] = useState<'cached' | 'fresh' | null>(null);
+  const [loadingLatestPdf, setLoadingLatestPdf] = useState(false);
+  const [latestPdfChecked, setLatestPdfChecked] = useState(false);
   const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
   const previousPendingEditCountRef = useRef(0);
   const [translating, setTranslating] = useState(false);
   const [translationResult, setTranslationResult] = useState<string>('');
   const [translationError, setTranslationError] = useState<string>('');
   const translateConvIdRef = useRef<string | null>(null);
-  const autoCompileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorAreaRef = useRef<HTMLDivElement>(null);
   const scrollSourceRef = useRef<'editor' | 'preview' | null>(null);
   const activeFile = openFiles?.[activeFileIndex];
@@ -246,18 +248,10 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
     }
   }, [projectId, activeFile?.content]);
 
-  // Auto-compile on content change when preview tab is active
-  const handleContentChangeWithAutoCompile = useCallback((index: number, content: string) => {
+  // Editing only changes the source. Full compilation is always user-triggered.
+  const handleContentChange = useCallback((index: number, content: string) => {
     onFileChange(index, content);
-    if (autoCompileTimerRef.current) {
-      clearTimeout(autoCompileTimerRef.current);
-    }
-    autoCompileTimerRef.current = setTimeout(() => {
-      if (previewTab === 'preview' && !compiling && projectId) {
-        handleCompileAll();
-      }
-    }, 2500);
-  }, [onFileChange, previewTab, compiling, projectId]);
+  }, [onFileChange]);
 
 
   const handleEditorPreviewResize = useCallback((e: React.MouseEvent) => {
@@ -304,6 +298,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
       setCompileResult(result);
       if (result.ok && result.pdfUrl) {
         setCompiledPdfUrl(`${result.pdfUrl}&_t=${Date.now()}`);
+        setCompiledPdfSource('fresh');
       }
     } catch (e: any) {
       setCompileResult({ ok: false, error: e.message });
@@ -324,6 +319,8 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
       if (result.ok && result.pdfUrl) {
         // Add cache-busting timestamp so the browser fetches the fresh PDF
         setCompiledPdfUrl(`${result.pdfUrl}&_t=${Date.now()}`);
+        setCompiledPdfSource('fresh');
+        setLatestPdfChecked(true);
       }
     } catch (e: any) {
       setCompileAllResult({ ok: false, error: e.message });
@@ -331,6 +328,32 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
       setCompilingAll(false);
     }
   }, [projectId, compilingAll, editorMode, compileTarget, activeFile?.filename, defaultMainFile]);
+
+  const loadLatestCompiledPdf = useCallback(async () => {
+    if (!projectId || loadingLatestPdf) return;
+    const mainFile = compileTarget === 'current'
+      ? activeFile?.filename || defaultMainFile
+      : defaultMainFile;
+    setLoadingLatestPdf(true);
+    setLatestPdfChecked(false);
+    try {
+      const latest = await getLatestCompiledPdf(projectId, mainFile);
+      if (latest.ok && latest.found && latest.pdfUrl) {
+        const separator = latest.pdfUrl.includes('?') ? '&' : '?';
+        setCompiledPdfUrl(`${latest.pdfUrl}${separator}_t=${latest.version || Date.now()}`);
+        setCompiledPdfSource('cached');
+      } else {
+        setCompiledPdfUrl(null);
+        setCompiledPdfSource(null);
+      }
+    } catch {
+      setCompiledPdfUrl(null);
+      setCompiledPdfSource(null);
+    } finally {
+      setLoadingLatestPdf(false);
+      setLatestPdfChecked(true);
+    }
+  }, [projectId, loadingLatestPdf, compileTarget, activeFile?.filename, defaultMainFile]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}>
@@ -453,7 +476,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
               transition: 'all 0.15s',
             }}
           >
-            {compilingAll ? t('Compiling...') : compileAllResult?.ok ? t('View PDF') : t('Compile')}
+            {compilingAll ? t('Compiling...') : compileAllResult?.ok ? t('Recompile') : t('Compile')}
           </button>
         )}
       </div>
@@ -493,7 +516,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
             <Suspense fallback={<EditorSurfaceLoader />}>
               <DrawioEditor
                 content={activeFile.content}
-                onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
+                onChange={(c) => handleContentChange(activeFileIndex, c)}
                 projectId={projectId}
                 currentFile={activeFile.filename}
               />
@@ -513,7 +536,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                       key={activeFile.filename}
                       content={activeFile.content}
                       filename={activeFile.filename}
-                      onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
+                      onChange={(c) => handleContentChange(activeFileIndex, c)}
                       onScroll={editorViewMode === 'split' ? handleEditorScroll : undefined}
                       scrollRatio={editorViewMode === 'split' ? editorScrollRatio : undefined}
                       onLineClick={handleSyncTeXJump}
@@ -544,7 +567,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                             if (tab === 'translate') handleTranslate();
                             else {
                               setPreviewTab(tab);
-                              if (tab === 'pdf' && !compiledPdfUrl && !compilingAll) handleCompileAll();
+                              if (tab === 'pdf') void loadLatestCompiledPdf();
                             }
                           }}
                           style={{
@@ -575,9 +598,18 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                           <div style={{ padding: '6px 12px', background: 'var(--panel-muted)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                              ✓ {t('Compiled PDF')} ({compileAllResult?.engine || 'pdflatex'})
+                              ✓ {compiledPdfSource === 'cached'
+                                ? t('Previous compiled PDF')
+                                : `${t('Compiled PDF')} (${compileAllResult?.engine || 'pdflatex'})`}
                             </span>
                             <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                onClick={handleCompileAll}
+                                disabled={compilingAll || !projectId}
+                                style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--accent)', background: 'var(--accent)', color: '#fff', fontSize: '10px', cursor: compilingAll || !projectId ? 'wait' : 'pointer' }}
+                              >
+                                {compilingAll ? t('Compiling final PDF…') : t('Recompile final PDF')}
+                              </button>
                               <button
                                 onClick={() => void openAuthenticatedFile(compiledPdfUrl)}
                                 style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text-secondary)', fontSize: '10px', cursor: 'pointer' }}
@@ -613,8 +645,22 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                               disabled={compilingAll || !projectId}
                               style={{ padding: '7px 14px', border: 0, borderRadius: 6, background: 'var(--accent)', color: '#fff', cursor: compilingAll || !projectId ? 'wait' : 'pointer', fontWeight: 600 }}
                             >
-                              {compilingAll ? t('Compiling final PDF…') : t('Compile final PDF')}
+                              {compilingAll
+                                ? t('Compiling final PDF…')
+                                : compiledPdfUrl
+                                  ? t('Recompile final PDF')
+                                  : t('Compile final PDF')}
                             </button>
+                            {loadingLatestPdf && (
+                              <div role="status" style={{ marginTop: 10, color: 'var(--muted)', fontSize: 12 }}>
+                                {t('Loading previous compiled PDF…')}
+                              </div>
+                            )}
+                            {!loadingLatestPdf && latestPdfChecked && (
+                              <div style={{ marginTop: 10, color: 'var(--muted)', fontSize: 11 }}>
+                                {t('No previous compiled PDF was found. Click Compile final PDF to create one.')}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : previewTab === 'preview' ? (

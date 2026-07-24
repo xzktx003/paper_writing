@@ -48,6 +48,13 @@ export interface EditProposalData {
   stats: { added: number; removed: number };
 }
 
+export class AIStreamResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AIStreamResponseError';
+  }
+}
+
 export async function listConversations(projectId: string): Promise<ConversationSummary[]> {
   return apiFetch(`${BASE}/conversations/${projectId}`);
 }
@@ -143,6 +150,7 @@ export async function sendMessageStream(
     let responseLength = 0;
     let eventBuffer = '';
     let finished = false;
+    let terminalError: AIStreamResponseError | null = null;
 
     const dispatchEvent = (block: string) => {
       let eventType = '';
@@ -166,7 +174,8 @@ export async function sendMessageStream(
             break;
           case 'error':
             finished = true;
-            callbacks.onError(data.message || 'Unknown error');
+            terminalError = new AIStreamResponseError(data.message || 'Unknown error');
+            callbacks.onError(terminalError.message);
             break;
         }
       } catch { /* ignore malformed events */ }
@@ -205,7 +214,16 @@ export async function sendMessageStream(
         reject(new Error(message));
         return;
       }
-      if (!finished) callbacks.onError('AI response ended unexpectedly');
+      if (terminalError) {
+        reject(terminalError);
+        return;
+      }
+      if (!finished) {
+        const error = new Error('AI response ended unexpectedly');
+        callbacks.onError(error.message);
+        reject(error);
+        return;
+      }
       resolve();
     };
     xhr.onerror = () => reject(new Error('Network error while uploading attachment'));

@@ -209,6 +209,73 @@ describe('env-backed LLM runtime config', () => {
       await new Promise(resolve => server.close(resolve));
     }
   });
+
+  it('does not apply the response-header timeout to an active streaming body', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain', connection: 'close' });
+      response.write('first');
+      setTimeout(() => response.end('-second'), 80);
+    });
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    const address = server.address();
+    try {
+      const response = await fetchWithProviderEndpointPolicy(`http://provider.test:${address.port}/stream`, {}, {
+        source: 'server',
+        timeoutMs: 30,
+        streamIdleTimeoutMs: 150,
+        lookup: async () => [{ address: '127.0.0.1', family: 4 }],
+      });
+      await expect(response.text()).resolves.toBe('first-second');
+    } finally {
+      server.closeAllConnections?.();
+      await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('classifies waiting-for-headers and response-idle timeouts separately', async () => {
+    const headerServer = createServer(() => {});
+    await new Promise((resolve, reject) => {
+      headerServer.once('error', reject);
+      headerServer.listen(0, '127.0.0.1', resolve);
+    });
+    const headerAddress = headerServer.address();
+    try {
+      await expect(fetchWithProviderEndpointPolicy(`http://provider.test:${headerAddress.port}/headers`, {}, {
+        source: 'server',
+        timeoutMs: 30,
+        streamIdleTimeoutMs: 150,
+        lookup: async () => [{ address: '127.0.0.1', family: 4 }],
+      })).rejects.toMatchObject({ code: 'PROVIDER_CONNECT_TIMEOUT' });
+    } finally {
+      headerServer.closeAllConnections?.();
+      await new Promise(resolve => headerServer.close(resolve));
+    }
+
+    const idleServer = createServer((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain', connection: 'close' });
+      response.write('partial');
+    });
+    await new Promise((resolve, reject) => {
+      idleServer.once('error', reject);
+      idleServer.listen(0, '127.0.0.1', resolve);
+    });
+    const idleAddress = idleServer.address();
+    try {
+      const response = await fetchWithProviderEndpointPolicy(`http://provider.test:${idleAddress.port}/idle`, {}, {
+        source: 'server',
+        timeoutMs: 100,
+        streamIdleTimeoutMs: 30,
+        lookup: async () => [{ address: '127.0.0.1', family: 4 }],
+      });
+      await expect(response.text()).rejects.toMatchObject({ code: 'PROVIDER_STREAM_IDLE_TIMEOUT' });
+    } finally {
+      idleServer.closeAllConnections?.();
+      await new Promise(resolve => idleServer.close(resolve));
+    }
+  });
 });
 
 describe('config persistence safety', () => {

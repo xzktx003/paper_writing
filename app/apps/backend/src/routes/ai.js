@@ -359,8 +359,17 @@ export function buildRagResponseFields(ragResult) {
   };
 }
  
-function classifyAIError(err) {
+export function classifyAIError(err) {
   const status = err.status || err.statusCode;
+  if (err.code === 'PROVIDER_CONNECT_TIMEOUT') {
+    return 'AI service did not start responding before the connection timeout. Please try again.';
+  }
+  if (err.code === 'PROVIDER_STREAM_IDLE_TIMEOUT') {
+    return 'AI response stopped producing data before it completed. Please try again.';
+  }
+  if (err.name === 'AbortError' || /^aborted$/i.test(String(err.message || '').trim())) {
+    return 'AI response was interrupted before completion. Please try again.';
+  }
   switch (status) {
     case 401: return 'Authentication failed. Please check your API key configuration.';
     case 402: return 'API quota exceeded. Please check your billing or upgrade your plan.';
@@ -378,6 +387,18 @@ function classifyAIError(err) {
       }
       return `AI error: ${err.message || String(err)}`;
   }
+}
+
+export function buildInterruptedAssistantMessage(partialText, error) {
+  const content = String(partialText || '').trimEnd();
+  if (!content) return null;
+  const message = classifyAIError(error);
+  return {
+    role: 'assistant',
+    content: `${content}\n\n⚠️ Error: ${message}`,
+    interrupted: true,
+    error_code: error?.code || error?.status || error?.statusCode || 'AI_REQUEST_FAILED',
+  };
 }
  
 export function registerAIRoutes(fastify) {
@@ -426,11 +447,20 @@ export function registerAIRoutes(fastify) {
  
     // Abort LLM request when client disconnects
     const abortController = new AbortController();
-    request.raw.on('close', () => abortController.abort());
+    const abortOnDisconnect = () => {
+      if (!reply.raw.writableEnded) abortController.abort();
+    };
+    request.raw.once('aborted', abortOnDisconnect);
+    reply.raw.once('close', abortOnDisconnect);
  
     const sendEvent = (event, data) => {
       if (abortController.signal.aborted) return;
       reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    let streamedText = '';
+    const forwardToken = (text) => {
+      streamedText += text;
+      sendEvent('token', { text });
     };
  
     try {
@@ -455,7 +485,7 @@ export function registerAIRoutes(fastify) {
         const result = await chatCompletionStream({
           systemPrompt, messages, model: modelOverride, projectId: conversationStoreProjectId,
           signal: abortController.signal,
-          onToken: (text) => sendEvent('token', { text }),
+          onToken: forwardToken,
         });
         await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: result.fullText });
         safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
@@ -469,11 +499,10 @@ export function registerAIRoutes(fastify) {
         sendEvent('done', { fullText: result.fullText, providerProvenance: result.provenance, ...buildRagResponseFields(ragContext) });
       } else {
         // agent/tools mode with streaming
-        let fullText = '';
         const result = await chatCompletionStream({
           systemPrompt, messages, tools: getToolsForMode(conv.mode), model: modelOverride, projectId: conversationStoreProjectId,
           signal: abortController.signal,
-          onToken: (text) => { fullText += text; sendEvent('token', { text }); },
+          onToken: forwardToken,
           onToolUse: async (name, input) => {
             sendEvent('tool_use', { name, input });
             return await executeTool(name, input, resolvedPath);
@@ -502,6 +531,12 @@ export function registerAIRoutes(fastify) {
       }
     } catch (err) {
       if (abortController.signal.aborted) return;
+      const interruptedMessage = buildInterruptedAssistantMessage(streamedText, err);
+      if (interruptedMessage) {
+        await appendMessage(conversationStoreProjectId, convId, interruptedMessage).catch((persistError) => {
+          fastify.log.warn({ error: persistError.message }, 'Unable to persist interrupted AI response');
+        });
+      }
       safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
         status: 'failed',
         scope: { projectId: conversationStoreProjectId, conversationId: convId },

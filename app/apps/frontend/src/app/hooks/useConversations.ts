@@ -3,7 +3,7 @@ import {
   listConversations, getConversation, createConversation,
   deleteConversation, updateConversation, sendMessage, sendMessageStream,
   uploadConversationAttachment, deleteConversationAttachment,
-  Conversation, ConversationSummary, AttachedFileData, EditProposalData
+  Conversation, ConversationSummary, AttachedFileData, EditProposalData, AIStreamResponseError
 } from '../api/conversationApi';
 import { writeFile as writeProjectFile } from '../../api/client';
 import { writeChapter } from '../api/projectApi';
@@ -287,6 +287,13 @@ export function useConversations(projectId: string | null, requestContext: Proje
         },
       });
     } catch (err) {
+      // The backend already recorded the user turn and surfaced the SSE error.
+      // Do not issue a second non-streaming request that would duplicate it.
+      if (err instanceof AIStreamResponseError) {
+        setLoading(false);
+        setUploadProgress(null);
+        return;
+      }
       // Fallback to non-streaming - skip user message since it was already added optimistically
       try {
         await sendRaw(message, projectConfig, files, true);

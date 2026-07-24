@@ -20,7 +20,8 @@ let currentProvider = null;
 let currentLLMConfig = { endpoint: '', apiKey: '', model: '' };
  
 const MAX_FULLTEXT_CHARS = 1_000_000; // 1000K character safety limit
-const PROVIDER_FETCH_TIMEOUT_MS = 15_000;
+const PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS = 15_000;
+const PROVIDER_STREAM_IDLE_TIMEOUT_MS = 120_000;
 const PROVIDER_MAX_REDIRECTS = 3;
 // A dedicated Agent bypasses NODE_USE_ENV_PROXY/globalAgent DNS resolution so
 // the validated address can be pinned into the actual socket connection.
@@ -659,9 +660,13 @@ function createPinnedLookup(hostname, addresses) {
   };
 }
 
-function combineProviderAbortSignal(signal, timeoutMs) {
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+function positiveTimeout(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function providerTimeoutError(message, code) {
+  return Object.assign(new Error(message), { code, statusCode: 504 });
 }
 
 async function writeProviderRequestBody(request, body) {
@@ -688,16 +693,28 @@ async function pinnedProviderFetch(url, init, connection) {
   const parsed = url instanceof URL ? url : new URL(String(url));
   const headers = Object.fromEntries(new Headers(init.headers || {}).entries());
   const transport = parsed.protocol === 'https:' ? https : http;
-  const signal = combineProviderAbortSignal(init.signal, connection.timeoutMs);
   return new Promise((resolve, reject) => {
+    let responseStarted = false;
     const request = transport.request(parsed, {
       method: init.method || 'GET',
       headers,
       agent: parsed.protocol === 'https:' ? providerHttpsAgent : providerHttpAgent,
       lookup: connection.lookup,
-      signal,
+      signal: init.signal,
       ...(parsed.protocol === 'https:' ? { servername: connection.hostname } : {}),
     }, (response) => {
+      responseStarted = true;
+      clearTimeout(responseHeadersTimer);
+      const streamIdleTimeoutMs = positiveTimeout(
+        connection.streamIdleTimeoutMs,
+        PROVIDER_STREAM_IDLE_TIMEOUT_MS,
+      );
+      response.setTimeout(streamIdleTimeoutMs, () => {
+        response.destroy(providerTimeoutError(
+          `Provider response stream was idle for ${streamIdleTimeoutMs} ms.`,
+          'PROVIDER_STREAM_IDLE_TIMEOUT',
+        ));
+      });
       const responseHeaders = new Headers();
       for (const [name, value] of Object.entries(response.headers)) {
         if (Array.isArray(value)) value.forEach(item => responseHeaders.append(name, item));
@@ -711,7 +728,21 @@ async function pinnedProviderFetch(url, init, connection) {
         headers: responseHeaders,
       }));
     });
-    request.once('error', reject);
+    const responseHeadersTimeoutMs = positiveTimeout(
+      connection.timeoutMs,
+      PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS,
+    );
+    const responseHeadersTimer = setTimeout(() => {
+      request.destroy(providerTimeoutError(
+        `Provider did not return response headers within ${responseHeadersTimeoutMs} ms.`,
+        'PROVIDER_CONNECT_TIMEOUT',
+      ));
+    }, responseHeadersTimeoutMs);
+    responseHeadersTimer.unref?.();
+    request.once('error', (error) => {
+      clearTimeout(responseHeadersTimer);
+      if (!responseStarted) reject(error);
+    });
     writeProviderRequestBody(request, init.body).catch(reject);
   });
 }
@@ -742,7 +773,14 @@ export async function fetchWithProviderEndpointPolicy(endpoint, init = {}, {
   allowedHosts = process.env.OPENPRISM_PROVIDER_ALLOWED_HOSTS || '',
   fetchImpl = pinnedProviderFetch,
   maxRedirects = PROVIDER_MAX_REDIRECTS,
-  timeoutMs = PROVIDER_FETCH_TIMEOUT_MS,
+  timeoutMs = positiveTimeout(
+    process.env.OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS,
+    PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS,
+  ),
+  streamIdleTimeoutMs = positiveTimeout(
+    process.env.OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS,
+    PROVIDER_STREAM_IDLE_TIMEOUT_MS,
+  ),
 } = {}) {
   const normalized = normalizeProviderFetchInput(endpoint, init);
   let currentInit = normalized.init;
@@ -753,6 +791,7 @@ export async function fetchWithProviderEndpointPolicy(endpoint, init = {}, {
       addresses: resolved.addresses,
       lookup: createPinnedLookup(resolved.hostname, resolved.addresses),
       timeoutMs,
+      streamIdleTimeoutMs,
     };
     const response = await fetchImpl(resolved.url.href, {
       ...currentInit,

@@ -307,3 +307,5 @@
 - 2026-07-22（当前复核）：CLI Task Agent 的 Provider 列表现在区分 `installed`、`authenticated`、`authStatus` 和真正的 `available`；列表使用受控只读探针，不因服务 Token 未配置而隐瞒安装状态。前端默认优先选择已验证可用的 Provider，不可用项显示原因并禁止创建任务。
 - 2026-07-24：HTTP Provider 的“加载模型”支持使用设置表单中尚未保存的 endpoint 与 API Key，通过受保护的 `POST /api/providers/:providerId/models` 获取当前连接的模型列表；如果表单保持已保存地址且 Key 输入框为空，则安全复用服务器已保存凭证。修改 endpoint 后必须重新输入模型 Key。受信任的 LAN 模型地址仍需通过 `OPENPRISM_PROVIDER_ALLOWED_HOSTS` 精确放行。
 - 2026-07-24：Draw 设置页支持前端保存独立的生图 Base URL、API Key 和模型，也可显式复用语言模型的 Base URL/API Key；凭据只进入受认证的后端配置接口，不写入 localStorage。最终生图 Prompt 始终是可编辑文本框，既可接收 AI 草稿也可直接手写，生成请求严格执行最终文本；OpenAI-compatible 图片接口同时支持 URL 与 `b64_json` 响应，结果保存到当前项目 `draw/`。
+- 2026-07-24：编辑器“最终 PDF”标签改为只读加载最近一次持久化编译产物，点击标签或切换预览不再触发 LaTeX 编译；重新编译只能由“编译/重新编译最终 PDF”按钮显式触发。Skill 选择器支持在同一弹层中复选多个可用 Skill，并通过“添加已选”一次性加入当前会话或 Draw 工作流。
+- 2026-07-24：AI Chat/Agent/Tools 流式响应使用分阶段 Provider 超时：响应头默认等待 15 秒，建立响应后只在连续 120 秒没有新数据时中断，持续生成的长回答不设 15 秒总时长上限；两项可由 `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` 和 `OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS` 配置。流式错误会明确失败并保留已生成的中断回答，不会静默当成成功或自动重复提交用户消息。
