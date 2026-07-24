@@ -1,37 +1,7 @@
-import { readFile, writeFile, mkdir, readdir, stat } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import YAML from 'yaml';
-import { DATA_DIR } from '../config/constants.js';
- 
-export async function getProjectRoot(id) {
-  const directRoot = join(DATA_DIR, id);
-  try {
-    const directStat = await stat(directRoot);
-    if (directStat.isDirectory()) return directRoot;
-  } catch (err) {
-    if (err.code !== 'ENOENT') throw err;
-  }
- 
-  let entries = [];
-  try {
-    entries = await readdir(DATA_DIR, { withFileTypes: true });
-  } catch (err) {
-    if (err.code !== 'ENOENT') throw err;
-  }
- 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const candidateRoot = join(DATA_DIR, entry.name);
-    try {
-      const meta = JSON.parse(await readFile(join(candidateRoot, 'project.json'), 'utf-8'));
-      if (meta?.id === id) return candidateRoot;
-    } catch {
-      // Ignore malformed or missing metadata while resolving by id.
-    }
-  }
- 
-  return directRoot;
-}
+export { getProjectRoot } from './projectLocator.js';
  
 export async function loadProject(projectPath) {
   const configPath = join(projectPath, 'paper.yaml');

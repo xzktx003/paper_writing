@@ -1,11 +1,47 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { MarkdownEditor } from './MarkdownEditor';
-import { RenderedPreviewPane } from './RenderedPreviewPane';
-import { DrawioEditor } from './DrawioEditor';
+import React, { lazy, Suspense, useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InlineDiffViewer } from './InlineDiffViewer';
 import { getPaperAgentProjectId, isImagePath, isPdfPath, isPreviewableTextPath, isDrawioPath } from '../utils/previewAssets';
 import { compileProject, compileFullPaper, syncTexSourceToPdf } from '../../api/client';
 import { createConversation, sendMessage } from '../api/conversationApi';
+import { managedProjectRequest } from '../api/projectRequestContext';
+import { AuthenticatedImage, AuthenticatedPdf, openAuthenticatedFile } from './AuthenticatedAsset';
+
+const MarkdownEditor = lazy(() => import('./MarkdownEditor').then(module => ({ default: module.MarkdownEditor })));
+const RenderedPreviewPane = lazy(() => import('./RenderedPreviewPane').then(module => ({ default: module.RenderedPreviewPane })));
+const DrawioEditor = lazy(() => import('./DrawioEditor').then(module => ({ default: module.DrawioEditor })));
+
+function EditorSurfaceLoader() {
+  const { t } = useTranslation();
+  return <div role="status" style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 12 }}>{t('Loading editor surface…')}</div>;
+}
+
+type CompileDiagnostic = { code: string; message: string; line?: string };
+type CompileResult = {
+  ok: boolean;
+  log?: string;
+  error?: string;
+  status?: 'success' | 'warning' | 'failed';
+  warnings?: CompileDiagnostic[];
+  errors?: CompileDiagnostic[];
+  engine?: string;
+  pdfUrl?: string;
+  availableEngines?: string[];
+  mainFile?: string;
+  generatedMain?: boolean;
+};
+
+function compileTone(result: CompileResult) {
+  if (!result.ok || result.status === 'failed') return 'var(--danger, #ef4444)';
+  if (result.status === 'warning') return 'var(--warning, #d97706)';
+  return 'var(--success, #10b981)';
+}
+
+function compileBackground(result: CompileResult) {
+  if (!result.ok || result.status === 'failed') return 'rgba(239, 68, 68, 0.1)';
+  if (result.status === 'warning') return 'rgba(217, 119, 6, 0.12)';
+  return 'rgba(16, 185, 129, 0.1)';
+}
 
 interface OpenFile {
   filename: string;
@@ -21,12 +57,14 @@ interface PendingEdit {
   new_content: string;
   stats: { added: number; removed: number };
   status: 'pending' | 'accepted' | 'rejected';
+  error?: string;
 }
 
 interface Props {
   openFiles: OpenFile[];
   activeFileIndex: number;
   onFileChange: (index: number, content: string) => void;
+  onFileSave: (index: number) => Promise<void>;
   onTabSelect: (index: number) => void;
   onTabClose: (index: number) => void;
   onToggleTerminal: () => void;
@@ -42,16 +80,19 @@ interface Props {
 
 type PreviewTab = 'preview' | 'translate' | 'diff' | 'pdf';
 
-export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, projectFiles = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSave, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, projectFiles = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+  const { t } = useTranslation();
   const [editorViewMode, setEditorViewMode] = useState<'source' | 'split' | 'rendered'>('split');
   const [editorRatio, setEditorRatio] = useState(0.5);
   const [previewScrollRatio, setPreviewScrollRatio] = useState<number | undefined>(undefined);
   const [editorScrollRatio, setEditorScrollRatio] = useState<number | undefined>(undefined);
   const [syncScrollEnabled, setSyncScrollEnabled] = useState(true);
   const [compiling, setCompiling] = useState(false);
-  const [compileResult, setCompileResult] = useState<{ ok: boolean; log?: string; error?: string; engine?: string; pdfUrl?: string; availableEngines?: string[] } | null>(null);
+  const [compileResult, setCompileResult] = useState<CompileResult | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [compilingAll, setCompilingAll] = useState(false);
-  const [compileAllResult, setCompileAllResult] = useState<{ ok: boolean; log?: string; error?: string; mainFile?: string; generatedMain?: boolean; engine?: string; pdfUrl?: string; availableEngines?: string[] } | null>(null);
+  const [compileAllResult, setCompileAllResult] = useState<CompileResult | null>(null);
   const [compiledPdfUrl, setCompiledPdfUrl] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
   const previousPendingEditCountRef = useRef(0);
@@ -82,6 +123,30 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
   const activeIsDrawio = !!activeFile && isDrawioPath(activeFile.filename);
   const isChapterLike = activeFile?.type === 'chapter' || (activeFile?.type === 'other' && activeIsText);
   const showSource = isChapterLike && (editorViewMode === 'source' || editorViewMode === 'split');
+
+  const saveActiveFile = useCallback(async () => {
+    if (!activeFile || activeFileIndex < 0 || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onFileSave(activeFileIndex);
+    } catch (error) {
+      setSaveError(t('保存失败: {{error}}', { error: error instanceof Error ? error.message : String(error) }));
+    } finally {
+      setSaving(false);
+    }
+  }, [activeFile, activeFileIndex, onFileSave, saving, t]);
+
+  useEffect(() => {
+    const handleSaveShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (activeFile?.dirty) void saveActiveFile();
+      }
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  }, [activeFile?.dirty, saveActiveFile]);
 
   useEffect(() => {
     if (!projectPath) return;
@@ -172,14 +237,14 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
         convId = conv.id;
         translateConvIdRef.current = conv.id;
       }
-      const result = await sendMessage(projectId, convId, projectPath || '', prompt, {});
+      const result = await sendMessage(projectId, convId, managedProjectRequest(projectId), prompt, {});
       setTranslationResult(result.reply || result.message || result.text || '');
     } catch (err: any) {
       setTranslationError(err?.message || String(err));
     } finally {
       setTranslating(false);
     }
-  }, [projectId, activeFile?.content, projectPath]);
+  }, [projectId, activeFile?.content]);
 
   // Auto-compile on content change when preview tab is active
   const handleContentChangeWithAutoCompile = useCallback((index: number, content: string) => {
@@ -291,8 +356,22 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
             <span onClick={(e) => { e.stopPropagation(); onTabClose(i); }} style={{ marginLeft: '8px', color: 'var(--muted)', cursor: 'pointer', opacity: 0.6, fontSize: '13px' }}>×</span>
           </div>
         ))}
+        {activeFile && activeIsText && (
+          <button
+            className="btn ghost"
+            data-testid="manual-save-button"
+            type="button"
+            disabled={!activeFile.dirty || saving}
+            onClick={() => void saveActiveFile()}
+            title={t('手动保存当前文件（Ctrl/Cmd+S）')}
+            style={{ marginLeft: 'auto', flexShrink: 0, padding: '3px 9px', fontSize: 11 }}
+          >
+            {saving ? t('保存中...') : t('保存')}
+          </button>
+        )}
+        {saveError && <small role="alert" style={{ color: 'var(--danger)', flexShrink: 0 }}>{saveError}</small>}
         {activeFile && activeFile.type === 'chapter' && (
-          <div style={{ marginLeft: '8px', display: 'inline-flex', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden', background: 'var(--paper)' }} title="Editor view mode">
+          <div style={{ marginLeft: '8px', display: 'inline-flex', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden', background: 'var(--paper)' }} title={t('Editor view mode')}>
             {(['source', 'split', 'rendered'] as const).map((mode) => (
               <button
                 key={mode}
@@ -310,7 +389,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                   textTransform: 'capitalize',
                 }}
               >
-                {mode === 'rendered' ? 'Rendered' : mode}
+                {t(mode === 'rendered' ? 'Rendered' : mode)}
               </button>
             ))}
           </div>
@@ -318,7 +397,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
         {activeFile && activeFile.type === 'chapter' && editorViewMode === 'split' && (
           <button
             onClick={() => setSyncScrollEnabled(v => !v)}
-            title={syncScrollEnabled ? 'Disable sync scroll' : 'Enable sync scroll'}
+            title={syncScrollEnabled ? t('Disable sync scroll') : t('Enable sync scroll')}
             style={{
               marginLeft: '6px',
               fontSize: '11px',
@@ -332,25 +411,25 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
               transition: 'all 0.15s',
             }}
           >
-            {syncScrollEnabled ? 'Sync' : 'Free'}
+            {syncScrollEnabled ? t('Sync') : t('Free')}
           </button>
         )}
         {activeFile && activeFile.filename.toLowerCase().endsWith('.tex') && (
           <select
             value={compileTarget}
             onChange={event => setCompileTarget(event.target.value as 'main' | 'current')}
-            title="Choose whether to compile the project's default main file or the current file"
+            title={t("Choose whether to compile the project's default main file or the current file")}
             style={{ marginLeft: '6px', maxWidth: 112, fontSize: '11px', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 5px', background: 'var(--paper)', color: 'var(--text)' }}
           >
-            <option value="main">Main document</option>
-            <option value="current">Current file</option>
+            <option value="main">{t('Main document')}</option>
+            <option value="current">{t('Current file')}</option>
           </select>
         )}
         {activeFile && activeFile.filename.toLowerCase().endsWith('.tex') && compileTarget === 'main' && (
           <select
             value={defaultMainFile}
             onChange={event => updateDefaultMainFile(event.target.value)}
-            title="Default main .tex file for this project"
+            title={t('Default main .tex file for this project')}
             style={{ maxWidth: 190, fontSize: '11px', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 5px', background: 'var(--paper)', color: 'var(--text)' }}
           >
             {texFiles.map(file => <option key={file} value={file}>{file}</option>)}
@@ -360,7 +439,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
           <button
             onClick={handleCompileAll}
             disabled={compilingAll || !projectId}
-            title={compileTarget === 'main' ? `Compile default main file: ${defaultMainFile}` : `Compile current file: ${activeFile.filename}`}
+            title={compileTarget === 'main' ? t('Compile default main file: {{file}}', { file: defaultMainFile }) : t('Compile current file: {{file}}', { file: activeFile.filename })}
             style={{
               marginLeft: '4px',
               fontSize: '11px',
@@ -374,7 +453,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
               transition: 'all 0.15s',
             }}
           >
-            {compilingAll ? 'Compiling...' : compileAllResult?.ok ? 'View PDF' : 'Compile'}
+            {compilingAll ? t('Compiling...') : compileAllResult?.ok ? t('View PDF') : t('Compile')}
           </button>
         )}
       </div>
@@ -385,53 +464,61 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
           {activeIsImage ? (
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--paper)', overflow: 'auto' }}>
               {projectId ? (
-                <img
+                <AuthenticatedImage
                   src={`/api/projects/${encodeURIComponent(projectId)}/blob?${new URLSearchParams({ path: activeFile.filename }).toString()}`}
-                  alt={activeFile.filename}
+                  title={activeFile.filename}
+                  loadingLabel={t('Loading protected asset…')}
+                  errorLabel={t('Failed to load protected asset.')}
                   style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--paper)' }}
                 />
               ) : (
-                <div style={{ color: 'var(--muted)', fontSize: 13 }}>Image preview is available for project files.</div>
+                <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('Image preview is available for project files.')}</div>
               )}
             </div>
           ) : activeIsPdf ? (
             <div style={{ flex: 1, minWidth: 0, background: 'var(--paper)', overflow: 'hidden' }}>
               {projectId ? (
-                <embed
+                <AuthenticatedPdf
                   src={`/api/projects/${encodeURIComponent(projectId)}/blob?${new URLSearchParams({ path: activeFile.filename }).toString()}`}
-                  type="application/pdf"
+                  title={activeFile.filename}
+                  loadingLabel={t('Loading protected asset…')}
+                  errorLabel={t('Failed to load protected asset.')}
                   style={{ width: '100%', height: '100%', border: 0 }}
                 />
               ) : (
-                <div style={{ color: 'var(--muted)', fontSize: 13 }}>PDF preview is available for project files.</div>
+                <div style={{ color: 'var(--muted)', fontSize: 13 }}>{t('PDF preview is available for project files.')}</div>
               )}
             </div>
           ) : activeIsDrawio ? (
-            <DrawioEditor
-              content={activeFile.content}
-              onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
-              projectId={projectId}
-              currentFile={activeFile.filename}
-            />
+            <Suspense fallback={<EditorSurfaceLoader />}>
+              <DrawioEditor
+                content={activeFile.content}
+                onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
+                projectId={projectId}
+                currentFile={activeFile.filename}
+              />
+            </Suspense>
           ) : activeFile.type === 'other' && !activeIsText ? (
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--paper)', color: 'var(--muted)', gap: 8 }}>
               <div style={{ fontSize: 36, opacity: 0.3 }}>📎</div>
               <p style={{ margin: 0, fontSize: 13 }}>{activeFile.filename}</p>
-              <p style={{ margin: 0, fontSize: 11, opacity: 0.6 }}>Binary file — no inline preview</p>
+              <p style={{ margin: 0, fontSize: 11, opacity: 0.6 }}>{t('Binary file — no inline preview')}</p>
             </div>
           ) : (
             <>
               {showSource && (
                 <div style={{ width: showPreview ? `${editorRatio * 100}%` : '100%', overflow: 'hidden' }}>
-                  <MarkdownEditor
-                    key={activeFile.filename}
-                    content={activeFile.content}
-                    filename={activeFile.filename}
-                    onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
-                    onScroll={editorViewMode === 'split' ? handleEditorScroll : undefined}
-                    scrollRatio={editorViewMode === 'split' ? editorScrollRatio : undefined}
-                    onLineClick={handleSyncTeXJump}
-                  />
+                  <Suspense fallback={<EditorSurfaceLoader />}>
+                    <MarkdownEditor
+                      key={activeFile.filename}
+                      content={activeFile.content}
+                      filename={activeFile.filename}
+                      onChange={(c) => handleContentChangeWithAutoCompile(activeFileIndex, c)}
+                      onScroll={editorViewMode === 'split' ? handleEditorScroll : undefined}
+                      scrollRatio={editorViewMode === 'split' ? editorScrollRatio : undefined}
+                      onLineClick={handleSyncTeXJump}
+                    />
+                  </Suspense>
                 </div>
               )}
               {showSource && showPreview && (
@@ -452,8 +539,14 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                     <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, padding: '0 8px' }}>
                       {(['preview', 'translate', 'diff', 'pdf'] as PreviewTab[]).map(tab => (
                         <button
-                          key={tab === 'preview' ? 'Preview' : tab === 'translate' ? '翻译' : tab === 'diff' ? 'Diff' : tab === 'pdf' ? 'PDF' : tab}
-                          onClick={() => { if (tab === 'translate') handleTranslate(); else { setPreviewTab(tab); if (tab === 'preview' && !compilingAll) handleCompileAll(); } }}
+                          key={tab}
+                          onClick={() => {
+                            if (tab === 'translate') handleTranslate();
+                            else {
+                              setPreviewTab(tab);
+                              if (tab === 'pdf' && !compiledPdfUrl && !compilingAll) handleCompileAll();
+                            }
+                          }}
                           style={{
                             padding: '5px 10px',
                             border: 'none',
@@ -466,7 +559,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                             textTransform: 'uppercase',
                           }}
                         >
-                          {tab === 'preview' ? 'Preview' : tab === 'translate' ? '翻译' : tab === 'diff' ? 'Diff' : tab === 'pdf' ? 'PDF' : tab}
+                          {tab === 'preview' ? t('Quick Preview') : tab === 'translate' ? t('Translate') : tab === 'diff' ? t('Diff') : tab === 'pdf' ? t('Final PDF') : tab}
                           {tab === 'diff' && pendingEdits.filter(e => e.status === 'pending').length > 0 && (
                             <span style={{ marginLeft: '4px', background: 'var(--accent)', color: '#fff', borderRadius: '8px', padding: '0 5px', fontSize: '10px' }}>
                               {pendingEdits.filter(e => e.status === 'pending').length}
@@ -482,57 +575,85 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                           <div style={{ padding: '6px 12px', background: 'var(--panel-muted)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                              ✓ Compiled PDF ({compileAllResult?.engine || 'pdflatex'})
+                              ✓ {t('Compiled PDF')} ({compileAllResult?.engine || 'pdflatex'})
                             </span>
                             <div style={{ display: 'flex', gap: '6px' }}>
                               <button
-                                onClick={() => window.open(compiledPdfUrl, '_blank')}
+                                onClick={() => void openAuthenticatedFile(compiledPdfUrl)}
                                 style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text-secondary)', fontSize: '10px', cursor: 'pointer' }}
                               >
-                                Open in Tab
+                                {t('Open in Tab')}
                               </button>
                               <button
                                 onClick={() => setCompiledPdfUrl(null)}
                                 style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text-secondary)', fontSize: '10px', cursor: 'pointer' }}
                               >
-                                × Clear
+                                × {t('Clear')}
                               </button>
                             </div>
                           </div>
-                          <embed
+                          <AuthenticatedPdf
                             src={compiledPdfUrl}
-                            type="application/pdf"
-                            style={{ flex: 1, width: '100%', border: 0 }}
+                            title={t('Compiled PDF')}
+                            loadingLabel={t('Loading protected asset…')}
+                            errorLabel={t('Failed to load protected asset.')}
+                            style={{ flex: 1, width: '100%', height: '100%', border: 0 }}
                           />
                         </div>
-                      ) : (previewTab === 'pdf' || previewTab === 'preview') ? (
-                        <RenderedPreviewPane
-                          content={activeFile.content}
-                          filename={activeFile.filename}
-                          projectId={projectId}
-                          currentFile={activeFile.filename}
-                          onScroll={handlePreviewScroll}
-                          scrollRatio={previewScrollRatio}
-                        />
+                      ) : previewTab === 'pdf' ? (
+                        <div style={{ minHeight: '100%', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--paper)' }}>
+                          <div style={{ maxWidth: 420, textAlign: 'center', color: 'var(--text)' }}>
+                            <strong style={{ display: 'block', marginBottom: 8 }}>{t('Final typeset output requires LaTeX compilation')}</strong>
+                            <p style={{ margin: '0 0 14px', color: 'var(--muted)', fontSize: 12, lineHeight: 1.6 }}>
+                              {t('References, packages, fonts, layout, and figures are authoritative only in the compiled PDF.')}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleCompileAll}
+                              disabled={compilingAll || !projectId}
+                              style={{ padding: '7px 14px', border: 0, borderRadius: 6, background: 'var(--accent)', color: '#fff', cursor: compilingAll || !projectId ? 'wait' : 'pointer', fontWeight: 600 }}
+                            >
+                              {compilingAll ? t('Compiling final PDF…') : t('Compile final PDF')}
+                            </button>
+                          </div>
+                        </div>
+                      ) : previewTab === 'preview' ? (
+                        <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                          <div role="note" style={{ padding: '7px 10px', borderBottom: '1px solid #d6b46b', background: '#fffbeb', color: '#604514', fontSize: 11, lineHeight: 1.5, flexShrink: 0 }}>
+                            <strong>{t('Quick approximate preview')}</strong> — {t('useful for editing structure, but not the final typeset result. Use Final PDF to verify references, packages, fonts, layout, and figures.')}
+                          </div>
+                          <div style={{ flex: 1, minHeight: 0 }}>
+                            <Suspense fallback={<EditorSurfaceLoader />}>
+                              <RenderedPreviewPane
+                                content={activeFile.content}
+                                filename={activeFile.filename}
+                                projectId={projectId}
+                                currentFile={activeFile.filename}
+                                onScroll={handlePreviewScroll}
+                                scrollRatio={previewScrollRatio}
+                              />
+                            </Suspense>
+                          </div>
+                        </div>
                       ) : null}
                       
                       {previewTab === 'translate' && (
                         <div style={{ minHeight: '100%', padding: '14px', background: 'var(--paper)', color: 'var(--text)', fontSize: '13px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                          {translating ? '翻译中...' : translationError ? (
+                          {translating ? t('Translating...') : translationError ? (
                             <div style={{ color: 'var(--danger)' }}>{translationError}</div>
-                          ) : translationResult || '点击"翻译"按钮翻译当前文档内容。'}
+                          ) : translationResult || t('Click Translate to translate the current document.')}
                         </div>
                       )}
 {previewTab === 'diff' && (
                         <div style={{ padding: '12px' }}>
                           {pendingEdits.filter(e => e.status === 'pending').length === 0 ? (
                             <div style={{ color: 'var(--muted)', fontSize: '12px', textAlign: 'center', padding: '24px' }}>
-                              No pending edits. Use Agent mode to propose changes.
+                              {t('No pending edits. Use Agent mode to propose changes.')}
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                               <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
-                                DIFF PREVIEW ({pendingEdits.filter(e => e.status === 'pending').length})
+                                {t('Diff Preview')} ({pendingEdits.filter(e => e.status === 'pending').length})
                               </div>
                               {pendingEdits.filter(e => e.status === 'pending').map(edit => (
                                 <InlineDiffViewer
@@ -559,7 +680,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: 'var(--muted)' }}>
           <div style={{ fontSize: '36px', opacity: 0.25 }}>📄</div>
-          <p style={{ margin: 0, fontSize: '13px' }}>Open a file from the project tree</p>
+          <p style={{ margin: 0, fontSize: '13px' }}>{t('Open a file from the project tree')}</p>
         </div>
       )}
 
@@ -573,7 +694,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
             width: '480px',
             maxHeight: '360px',
             background: 'var(--panel)',
-            border: `1px solid ${compileResult.ok ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)'}`,
+            border: `1px solid ${compileTone(compileResult)}`,
             borderRadius: '8px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
             zIndex: 1000,
@@ -584,14 +705,18 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
         >
           <div style={{
             padding: '10px 14px',
-            background: compileResult.ok ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            borderBottom: `1px solid ${compileResult.ok ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)'}`,
+            background: compileBackground(compileResult),
+            borderBottom: `1px solid ${compileTone(compileResult)}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: compileResult.ok ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)' }}>
-              {compileResult.ok ? 'Compile Success' : 'Compile Failed'}
+            <span style={{ fontSize: '12px', fontWeight: 600, color: compileTone(compileResult) }}>
+              {!compileResult.ok || compileResult.status === 'failed'
+                ? t('Compile Failed')
+                : compileResult.status === 'warning'
+                  ? t('Compile Succeeded with Warnings ({{count}})', { count: compileResult.warnings?.length || 0 })
+                  : t('Compile Success')}
             </span>
             <button
               onClick={() => setCompileResult(null)}
@@ -601,6 +726,8 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
             </button>
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px', fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
+            {compileResult.warnings?.map((warning) => `[${warning.code}] ${warning.message}\n`)}
+            {compileResult.errors?.map((error) => `[${error.code}] ${error.message}\n`)}
             {compileResult.log || compileResult.error}
           </div>
         </div>
@@ -616,7 +743,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
             width: '480px',
             maxHeight: '360px',
             background: 'var(--panel)',
-            border: `1px solid ${compileAllResult.ok ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)'}`,
+            border: `1px solid ${compileTone(compileAllResult)}`,
             borderRadius: '8px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
             zIndex: 1000,
@@ -627,14 +754,18 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
         >
           <div style={{
             padding: '10px 14px',
-            background: compileAllResult.ok ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            borderBottom: `1px solid ${compileAllResult.ok ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)'}`,
+            background: compileBackground(compileAllResult),
+            borderBottom: `1px solid ${compileTone(compileAllResult)}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: compileAllResult.ok ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)' }}>
-              {compileAllResult.ok ? `Full Paper Compiled (${compileAllResult.engine || 'pdflatex'})` : 'Full Paper Compile Failed'}
+            <span style={{ fontSize: '12px', fontWeight: 600, color: compileTone(compileAllResult) }}>
+              {!compileAllResult.ok || compileAllResult.status === 'failed'
+                ? t('Full Paper Compile Failed')
+                : compileAllResult.status === 'warning'
+                  ? t('Full Paper Compiled with Warnings ({{count}})', { count: compileAllResult.warnings?.length || 0 })
+                  : t('Full Paper Compiled ({{engine}})', { engine: compileAllResult.engine || 'pdflatex' })}
             </span>
             <button
               onClick={() => setCompileAllResult(null)}
@@ -644,6 +775,8 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onTabSel
             </button>
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px', fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
+            {compileAllResult.warnings?.map((warning) => `[${warning.code}] ${warning.message}\n`)}
+            {compileAllResult.errors?.map((error) => `[${error.code}] ${error.message}\n`)}
             {compileAllResult.log || compileAllResult.error}
           </div>
         </div>

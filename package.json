@@ -2,9 +2,23 @@
   "name": "paper-writer",
   "private": true,
   "version": "0.1.0",
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "npm@11.9.0",
   "scripts": {
-    "start": "node app/apps/backend/src/index.js"
+    "install": "npm --prefix app ci",
+    "dev": "npm --prefix app run dev",
+    "dev:backend": "npm --prefix app run dev:backend",
+    "dev:frontend": "npm --prefix app run dev:frontend",
+    "build": "npm --prefix app run build",
+    "typecheck": "npm --prefix app run typecheck",
+    "start": "npm --prefix app start",
+    "preview": "npm --prefix app run preview",
+    "test": "npm --prefix app test",
+    "test:unit": "npm --prefix app run test:unit",
+    "test:integration": "npm --prefix app run test:integration",
+    "test:e2e": "npm --prefix app run test:e2e",
+    "check": "npm --prefix app run check",
+    "check:full": "npm --prefix app run check:full"
+    ,"release:verify": "npm --prefix app run release:verify"
   },
   "devDependencies": {}
 }

@@ -1,20 +1,31 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ConversationTabs } from './ConversationTabs';
 import { ChatView } from './ChatView';
 import { NewConversationDialog } from './NewConversationDialog';
 import { SkillPanel } from './SkillPanel';
 import { InlineSkillsSelector } from './SkillsSelector';
-import { ReviewReportPanel } from './ReviewReportPanel';
-import { AntiAiPanel } from './AntiAiPanel';
-import { PipelinePanelV2 } from './PipelinePanelV2';
-import { CitationVerificationPanel } from './CitationVerificationPanel';
-import { PaperRagPanel } from './PaperRagPanel';
-import DrawPanel from './DrawPanel';
 import { ConversationSummary, Conversation, structuredReview, detectAntiAi, detectAntiAiDeep, detectAntiAiGPTZero, verifyCitations, crossCheckCitations } from '../api/conversationApi';
 import { PendingEdit } from '../hooks/useConversations';
 import { RagDocumentSelector } from './RagDocumentSelector';
+import type { SkillInfo } from '../api/skillApi';
+import { getPaperAgentProjectId } from '../utils/previewAssets';
+import { managedProjectRequest, projectRequestFromReference } from '../api/projectRequestContext';
 
-type TabType = 'chat' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations';
+const ReviewReportPanel = lazy(() => import('./ReviewReportPanel').then(module => ({ default: module.ReviewReportPanel })));
+const AntiAiPanel = lazy(() => import('./AntiAiPanel').then(module => ({ default: module.AntiAiPanel })));
+const PipelinePanelV2 = lazy(() => import('./PipelinePanelV2').then(module => ({ default: module.PipelinePanelV2 })));
+const CitationVerificationPanel = lazy(() => import('./CitationVerificationPanel').then(module => ({ default: module.CitationVerificationPanel })));
+const PaperRagPanel = lazy(() => import('./PaperRagPanel').then(module => ({ default: module.PaperRagPanel })));
+const CliTaskPanel = lazy(() => import('./CliTaskPanel').then(module => ({ default: module.CliTaskPanel })));
+const DrawPanel = lazy(() => import('./DrawPanel'));
+
+function PanelLoader() {
+  const { t } = useTranslation();
+  return <div role="status" style={{ padding: 16, color: 'var(--muted)', fontSize: 12 }}>{t('Loading panel…')}</div>;
+}
+
+type TabType = 'chat' | 'tasks' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations';
 
 interface AttachedFile {
   id: string;
@@ -36,7 +47,7 @@ interface Props {
   loading: boolean;
   uploadProgress?: { percent: number; stage: string } | null;
   chapters: { file: string }[];
-  skills: { name: string; display_name: string }[];
+  skills: SkillInfo[];
   projectFiles?: { path: string; type: 'file' | 'dir' }[];
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
@@ -61,6 +72,11 @@ interface Props {
 }
 
 export function RightPanel({ conversations, activeConv, loading, uploadProgress, chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onUploadAttachment, onRemoveAttachment, onSetRagDocuments, onSetActiveSkills, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+  const { t } = useTranslation();
+  const managedProjectId = getPaperAgentProjectId(projectPath);
+  const requestContext = useMemo(() => managedProjectId
+    ? managedProjectRequest(managedProjectId)
+    : projectPath ? projectRequestFromReference(projectPath) : null, [managedProjectId, projectPath]);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -102,9 +118,9 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
       await onSetActiveSkills(skillNames);
     } catch (error) {
       setSelectedSkills(previous);
-      setSkillSyncError(error instanceof Error ? error.message : 'Failed to save selected Skills.');
+      setSkillSyncError(error instanceof Error ? error.message : t('Failed to save selected Skills.'));
     }
-  }, [onSetActiveSkills, selectedSkills]);
+  }, [onSetActiveSkills, selectedSkills, t]);
 
   useEffect(() => {
     citationAbortRef.current?.abort();
@@ -118,35 +134,35 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
   }, [projectPath]);
 
   const handleRunReview = useCallback(async () => {
-    if (!projectPath) return;
+    if (!requestContext) return;
     setReviewLoading(true);
-    try { const r = await structuredReview(projectPath); setReviewReport(r); } catch {}
+    try { const r = await structuredReview(requestContext); setReviewReport(r); } catch {}
     setReviewLoading(false);
-  }, [projectPath]);
+  }, [requestContext]);
 
   const handleRunAntiAi = useCallback(async () => {
-    if (!projectPath) return;
+    if (!requestContext) return;
     setAntiAiLoading(true);
-    try { const r = await detectAntiAi(projectPath); setAntiAiReport(r); } catch {}
+    try { const r = await detectAntiAi(requestContext); setAntiAiReport(r); } catch {}
     setAntiAiLoading(false);
-  }, [projectPath]);
+  }, [requestContext]);
 
   const handleRunDeepDetection = useCallback(async () => {
-    if (!projectPath) return;
+    if (!requestContext) return;
     setDeepLoading(true);
-    try { const r = await detectAntiAiDeep(projectPath); setDeepReport(r); } catch {}
+    try { const r = await detectAntiAiDeep(requestContext); setDeepReport(r); } catch {}
     setDeepLoading(false);
-  }, [projectPath]);
+  }, [requestContext]);
 
   const handleRunGPTZero = useCallback(async () => {
-    if (!projectPath) return;
+    if (!requestContext) return;
     setGptzeroLoading(true);
-    try { const r = await detectAntiAiGPTZero(projectPath); setGptzeroReport(r); } catch {}
+    try { const r = await detectAntiAiGPTZero(requestContext); setGptzeroReport(r); } catch {}
     setGptzeroLoading(false);
-  }, [projectPath]);
+  }, [requestContext]);
 
   const handleRunCitationVerification = useCallback(async () => {
-    if (!projectPath) return;
+    if (!requestContext) return;
     const requestId = ++citationRequestRef.current;
     const controller = new AbortController();
     citationAbortRef.current?.abort();
@@ -156,16 +172,16 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
     setCitationVerificationTotal(0);
     setCitationError(null);
     try {
-      const crossCheck = await crossCheckCitations(projectPath, undefined, undefined, controller.signal);
+      const crossCheck = await crossCheckCitations(requestContext, undefined, undefined, controller.signal);
       if (citationRequestRef.current !== requestId) return;
       setCitationVerificationTotal(crossCheck.bibKeys.length);
-      const verification = await verifyCitations(projectPath, undefined, controller.signal);
+      const verification = await verifyCitations(requestContext, undefined, controller.signal);
       if (citationRequestRef.current === requestId) setCitationReport({ ...verification, ...crossCheck });
     } catch (error) {
       if (citationRequestRef.current === requestId) {
         setCitationError(error instanceof DOMException && error.name === 'AbortError'
-          ? 'Verification cancelled.'
-          : error instanceof Error ? error.message : 'Unknown citation verification error');
+          ? t('Verification cancelled.')
+          : error instanceof Error ? error.message : t('Unknown citation verification error'));
       }
     } finally {
       if (citationRequestRef.current === requestId) {
@@ -174,10 +190,10 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
         citationAbortRef.current = null;
       }
     }
-  }, [projectPath]);
+  }, [requestContext]);
 
   const handleRunCrossCheck = useCallback(async () => {
-    if (!projectPath) return;
+    if (!requestContext) return;
     const requestId = ++citationRequestRef.current;
     const controller = new AbortController();
     citationAbortRef.current?.abort();
@@ -186,7 +202,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
     setCitationLoadingAction('cross-check');
     setCitationError(null);
     try {
-      const result = await crossCheckCitations(projectPath, undefined, undefined, controller.signal);
+      const result = await crossCheckCitations(requestContext, undefined, undefined, controller.signal);
       if (citationRequestRef.current === requestId) {
         setCitationReport({
           totalEntries: 0,
@@ -201,7 +217,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
       }
     } catch (error) {
       if (citationRequestRef.current === requestId) {
-        setCitationError(error instanceof Error ? error.message : 'Unknown citation cross-check error');
+        setCitationError(error instanceof Error ? error.message : t('Unknown citation cross-check error'));
       }
     } finally {
       if (citationRequestRef.current === requestId) {
@@ -210,7 +226,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
         citationAbortRef.current = null;
       }
     }
-  }, [projectPath]);
+  }, [requestContext]);
 
   const handleCancelCitationVerification = useCallback(() => {
     citationAbortRef.current?.abort();
@@ -218,7 +234,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
     citationRequestRef.current += 1;
     setCitationLoading(false);
     setCitationLoadingAction(null);
-    setCitationError('Verification cancelled.');
+    setCitationError(t('Verification cancelled.'));
   }, []);
 
   const handleSend = async () => {
@@ -235,7 +251,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
       // Ensure the backend has the latest Skill selection before it assembles the prompt.
       await onSetActiveSkills(selectedSkills);
     } catch (error) {
-      setSkillSyncError(error instanceof Error ? error.message : 'Failed to save selected Skills.');
+      setSkillSyncError(error instanceof Error ? error.message : t('Failed to save selected Skills.'));
       return;
     }
     onSend(messageToSend, transientFiles.length > 0 ? transientFiles : undefined);
@@ -326,7 +342,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
           } : item));
         } catch (error: any) {
           setAttachedFiles(prev => prev.map(item => item.id === id ? {
-            ...item, readStatus: 'error', errorMessage: error?.message || 'PDF 解析失败',
+            ...item, readStatus: 'error', errorMessage: error?.message || t('PDF parsing failed'),
           } : item));
         }
       };
@@ -390,13 +406,14 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
       {/* Tab switcher */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, overflow: 'auto' }}>
         {([
-          { key: 'chat', label: '💬 Chat' },
-          { key: 'draw', label: '🖼️ Draw' },
+          { key: 'chat', label: `💬 ${t('Chat')}` },
+          { key: 'tasks', label: `🛠️ ${t('Tasks')}` },
+          { key: 'draw', label: `🖼️ ${t('Draw')}` },
           { key: 'rag', label: '🔎 RAG' },
-          { key: 'review', label: '📋 Review' },
-          { key: 'citations', label: '📚 Citations' },
-          { key: 'anti-ai', label: '🔍 Anti-AI' },
-          { key: 'pipeline', label: '⚡ Pipeline' },
+          { key: 'review', label: `📋 ${t('Review')}` },
+          { key: 'citations', label: `📚 ${t('Citations')}` },
+          { key: 'anti-ai', label: `🔍 ${t('Anti-AI')}` },
+          { key: 'pipeline', label: `⚡ ${t('Pipeline')}` },
         ] as const).map(tab => (
           <button
             key={tab.key}
@@ -445,15 +462,15 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
               >
                 <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ padding: '2px 8px', borderRadius: '999px', background: 'var(--accent-soft)', color: 'var(--accent-strong)', fontSize: '10px', fontWeight: 600 }}>
-                    {activeConv.context_scope.type === 'chapter' ? `Ch: ${activeConv.context_scope.file}` :
-                     activeConv.context_scope.type === 'global' ? 'Global' : 'Free'}
+                    {activeConv.context_scope.type === 'chapter' ? `${t('Chapter')}: ${activeConv.context_scope.file}` :
+                     activeConv.context_scope.type === 'global' ? t('Global') : t('Free')}
                   </span>
                   <span style={{ padding: '2px 8px', borderRadius: '999px', background: 'var(--bg-secondary)', fontSize: '10px', fontWeight: 500 }}>
                     {activeConv.mode}
                   </span>
                   {isDragOver && (
                     <span style={{ padding: '2px 8px', borderRadius: '999px', background: 'var(--accent)', color: '#fff', fontSize: '10px', fontWeight: 600 }}>
-                      拖放文件到此处
+                      {t('Drop files here')}
                     </span>
                   )}
                   {/* RAG Document selector */}
@@ -471,20 +488,20 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                   />
                   {skillSyncError && (
                     <span style={{ color: 'var(--danger)', fontSize: '10px' }} title={skillSyncError}>
-                      Skill 保存失败
+                      {t('Failed to save Skill')}
                     </span>
                   )}
                 </div>
                 {(activeConv.attachments || []).length > 0 && (
                   <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-strong)', marginBottom: 5 }}>本对话持续使用的 PDF 上下文</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-strong)', marginBottom: 5 }}>{t('Persistent PDF context for this conversation')}</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {(activeConv.attachments || []).map(attachment => (
                         <span key={attachment.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 6, background: 'var(--paper)', fontSize: 10, color: 'var(--text)' }}>
                           📄 {attachment.name}
                           <button
                             onClick={() => removePersistedAttachment(attachment.id)}
-                            title="从对话上下文移除"
+                            title={t('Remove from conversation context')}
                             style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
                           >×</button>
                         </span>
@@ -494,14 +511,14 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                 )}
                 {selectedRagDocs.length > 0 && (
                   <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-strong)', marginBottom: 5 }}>本对话持续检索的 RAG 文档</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-strong)', marginBottom: 5 }}>{t('Persistent RAG documents for this conversation')}</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {selectedRagDocs.map(documentPath => (
                         <span key={documentPath} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 6, background: 'var(--paper)', fontSize: 10, color: 'var(--text)' }}>
                           📚 {documentPath.split('/').pop() || documentPath}
                           <button
                             onClick={() => updateRagDocuments(selectedRagDocs.filter(path => path !== documentPath))}
-                            title="停止在本对话中检索此文档"
+                            title={t('Stop retrieving this document in the conversation')}
                             style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
                           >×</button>
                         </span>
@@ -524,7 +541,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                         alignItems: 'center',
                         gap: '8px',
                       }}>
-                        <span>⏳ 上传中 {uploadProgress ? `${uploadProgress.percent}%` : ''}...</span>
+                        <span>⏳ {t('Uploading...')} {uploadProgress ? `${uploadProgress.percent}%` : ''}</span>
                       </div>
                     )}
                     {attachedFiles.map(file => (
@@ -569,15 +586,15 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                           </div>
                         )}
                         {file.readStatus === 'reading' && (
-                          <div style={{ fontSize: '9px', color: 'var(--accent)', marginTop: 2 }}>读取 {file.readProgress ?? 0}%</div>
+                          <div style={{ fontSize: '9px', color: 'var(--accent)', marginTop: 2 }}>{t('Reading')} {file.readProgress ?? 0}%</div>
                         )}
                         {file.readStatus === 'uploading' && (
                           <div style={{ fontSize: '9px', color: 'var(--accent)', marginTop: 2 }}>
-                            {(file.uploadPercent ?? 0) < 100 ? `上传 ${file.uploadPercent ?? 0}%` : '解析中…'}
+                            {(file.uploadPercent ?? 0) < 100 ? `${t('Upload')} ${file.uploadPercent ?? 0}%` : t('Parsing…')}
                           </div>
                         )}
                         {file.readStatus === 'error' && (
-                          <div title={file.errorMessage} style={{ fontSize: '9px', color: '#dc2626', marginTop: 2 }}>解析失败</div>
+                          <div title={file.errorMessage} style={{ fontSize: '9px', color: '#dc2626', marginTop: 2 }}>{t('Parsing failed')}</div>
                         )}
                         <button
                           onClick={() => removeFile(file.id)}
@@ -588,7 +605,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                             fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             lineHeight: 1,
                           }}
-                          title="Remove file"
+                          title={t('Remove file')}
                         >×</button>
                       </div>
                     ))}
@@ -611,13 +628,13 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                     }}>
                       <span style={{ fontSize: '18px' }}>{uploadProgress?.percent === 100 ? '✅' : '⏳'}</span>
                       <span>
-                        {uploadProgress?.stage === 'uploading' ? '正在上传附件...' :
-                         uploadProgress?.stage === 'processing' ? '附件上传完成，正在解析 PDF...' :
-                         uploadProgress?.stage === 'sending' ? '正在发送消息...' :
-                         uploadProgress?.stage === 'response' ? '等待 AI 响应...' :
-                         uploadProgress?.stage === 'streaming' ? 'AI 正在生成回复...' :
-                         uploadProgress?.stage === 'complete' ? '完成!' :
-                         loading ? '处理中...' : '发送中...'}
+                        {uploadProgress?.stage === 'uploading' ? t('Uploading attachment...') :
+                         uploadProgress?.stage === 'processing' ? t('Attachment uploaded; parsing PDF...') :
+                         uploadProgress?.stage === 'sending' ? t('Sending message...') :
+                         uploadProgress?.stage === 'response' ? t('Waiting for AI response...') :
+                         uploadProgress?.stage === 'streaming' ? t('AI is generating a response...') :
+                         uploadProgress?.stage === 'complete' ? t('Complete!') :
+                         loading ? t('Processing...') : t('Sending...')}
                       </span>
                       {uploadProgress && (
                         <span style={{ marginLeft: 'auto', fontWeight: 'bold' }}>{uploadProgress.percent}%</span>
@@ -634,7 +651,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
-                    placeholder="输入消息... (Enter 发送，Ctrl+V 粘贴图片，或拖拽文件)"
+                    placeholder={t('Type a message... (Enter to send, Ctrl+V to paste images, or drag files)')}
                     style={{
                       width: '100%',
                       minHeight: '56px',
@@ -659,12 +676,13 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                       ref={fileInputRef}
                       type="file"
                       multiple
+                      accept="image/*,.pdf,.txt,.md,.markdown,.json,.csv,text/*,application/json,text/csv"
                       style={{ display: 'none' }}
                       onChange={handleFileUpload}
                     />
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      title="Attach file (PDF, DOC, TXT, etc.)"
+                      title={t('Attach file (PDF, DOC, TXT, etc.)')}
                       style={{
                         border: 'none',
                         background: 'var(--bg-secondary)',
@@ -692,7 +710,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                     />
                     <button
                       onClick={() => imageInputRef.current?.click()}
-                      title="Attach image"
+                      title={t('Attach image')}
                       style={{
                         border: 'none',
                         background: 'var(--bg-secondary)',
@@ -724,7 +742,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                         transition: 'all 0.2s',
                       }}
                     >
-                      Send
+                      {t('Send')}
                     </button>
                   </div>
                 </div>
@@ -733,7 +751,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: 'var(--muted)' }}>
               <div style={{ fontSize: '32px', opacity: 0.3 }}>💬</div>
-              <p style={{ fontSize: '13px', margin: 0 }}>No active conversation</p>
+              <p style={{ fontSize: '13px', margin: 0 }}>{t('No active conversation')}</p>
               <button
                 onClick={() => setShowNewDialog(true)}
                 style={{
@@ -750,36 +768,59 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-soft)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--paper)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
               >
-                + New Conversation
+                + {t('New Conversation')}
+              </button>
+              <button
+                onClick={() => setShowSkillsModal(true)}
+                style={{
+                  padding: '7px 18px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  background: 'var(--panel-muted)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                }}
+              >
+                🧩 {t('Manage Skills')}
               </button>
             </div>
           )}
         </>
-      ) : activeTab === 'rag' ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <PaperRagPanel projectPath={projectPath} />
-        </div>
-      ) : activeTab === 'draw' ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <DrawPanel projectPath={projectPath} chapters={chapters} skills={skills} />
-        </div>
-      ) : activeTab === 'review' ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <ReviewReportPanel report={reviewReport} loading={reviewLoading} onRunReview={handleRunReview} />
-        </div>
-      ) : activeTab === 'anti-ai' ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <AntiAiPanel report={antiAiReport} deepReport={deepReport} gptzeroReport={gptzeroReport} loading={antiAiLoading} deepLoading={deepLoading} gptzeroLoading={gptzeroLoading} onRunDetection={handleRunAntiAi} onRunDeepDetection={handleRunDeepDetection} onRunGPTZero={handleRunGPTZero} />
-        </div>
-      ) : activeTab === 'citations' ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <CitationVerificationPanel report={citationReport} loading={citationLoading} loadingAction={citationLoadingAction} verificationTotal={citationVerificationTotal} error={citationError} onRunVerification={handleRunCitationVerification} onRunCrossCheck={handleRunCrossCheck} onCancel={handleCancelCitationVerification} projectPath={projectPath} />
-        </div>
-      ) : activeTab === 'pipeline' ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <PipelinePanelV2 projectPath={projectPath || ''} chapterScope={activeFile} />
-        </div>
-      ) : null
+      ) : (
+        <Suspense fallback={<PanelLoader />}>
+          {activeTab === 'tasks' ? (
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <CliTaskPanel projectId={managedProjectId} />
+            </div>
+          ) : activeTab === 'rag' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <PaperRagPanel projectPath={projectPath} />
+            </div>
+          ) : activeTab === 'draw' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <DrawPanel projectPath={projectPath} chapters={chapters} skills={skills} />
+            </div>
+          ) : activeTab === 'review' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <ReviewReportPanel report={reviewReport} loading={reviewLoading} onRunReview={handleRunReview} />
+            </div>
+          ) : activeTab === 'anti-ai' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <AntiAiPanel report={antiAiReport} deepReport={deepReport} gptzeroReport={gptzeroReport} loading={antiAiLoading} deepLoading={deepLoading} gptzeroLoading={gptzeroLoading} onRunDetection={handleRunAntiAi} onRunDeepDetection={handleRunDeepDetection} onRunGPTZero={handleRunGPTZero} />
+            </div>
+          ) : activeTab === 'citations' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <CitationVerificationPanel report={citationReport} loading={citationLoading} loadingAction={citationLoadingAction} verificationTotal={citationVerificationTotal} error={citationError} onRunVerification={handleRunCitationVerification} onRunCrossCheck={handleRunCrossCheck} onCancel={handleCancelCitationVerification} projectPath={projectPath} />
+            </div>
+          ) : activeTab === 'pipeline' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {managedProjectId ? <PipelinePanelV2 projectId={managedProjectId} chapterScope={activeFile} /> : null}
+            </div>
+          ) : null}
+        </Suspense>
+      )
       }
 
       {showNewDialog && (
@@ -812,7 +853,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>🧩 管理 Skills</h3>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>🧩 {t('Manage Skills')}</h3>
               <button
                 onClick={() => setShowSkillsModal(false)}
                 style={{
@@ -821,7 +862,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                   color: 'var(--muted)', cursor: 'pointer', fontSize: '12px',
                 }}
               >
-                关闭
+                {t('Close')}
               </button>
             </div>
             <SkillPanel

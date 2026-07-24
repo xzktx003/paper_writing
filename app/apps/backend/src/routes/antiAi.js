@@ -1,7 +1,7 @@
-import { resolveProjectPath } from './ai.js';
 import { chatCompletion } from '../services/llmService.js';
 import { detectWithGPTZero } from '../services/gptzeroService.js';
 import { readProjectContent } from '../services/contentReader.js';
+import { resolveManagedProjectRequest } from '../services/managedProjectContext.js';
  
 // AI-typical terms organized by severity
 const AI_TERMS = {
@@ -155,9 +155,11 @@ function calculateOverallScore(flaggedTerms, sentenceVar, paraUnif, ttr) {
 }
  
 export function registerAntiAiRoutes(fastify) {
-  fastify.post('/api/anti-ai/detect', async (request) => {
-    const { projectPath, content: directContent, chapterScope } = request.body;
-    const resolvedPath = await resolveProjectPath(projectPath);
+  fastify.post('/api/anti-ai/detect', async (request, reply) => {
+    const { content: directContent, chapterScope } = request.body;
+    const { projectRoot: resolvedPath } = await resolveManagedProjectRequest(request, reply, {
+      route: 'anti-ai.detect',
+    });
  
     let content = directContent || '';
     if (!content) {
@@ -194,9 +196,11 @@ export function registerAntiAiRoutes(fastify) {
   });
  
   // LLM deep analysis endpoint
-  fastify.post('/api/anti-ai/deep-detect', async (request) => {
-    const { projectPath, content: directContent, chapterScope } = request.body;
-    const resolvedPath = await resolveProjectPath(projectPath);
+  fastify.post('/api/anti-ai/deep-detect', async (request, reply) => {
+    const { content: directContent, chapterScope } = request.body;
+    const { projectRoot: resolvedPath } = await resolveManagedProjectRequest(request, reply, {
+      route: 'anti-ai.deep-detect',
+    });
  
     let content = directContent || '';
     if (!content) {
@@ -281,9 +285,11 @@ Scoring dimensions:
   });
  
   // GPTZero Playwright-based detection endpoint
-  fastify.post('/api/anti-ai/gptzero-detect', async (request) => {
-    const { projectPath, content: directContent, chapterScope } = request.body;
-    const resolvedPath = await resolveProjectPath(projectPath);
+  fastify.post('/api/anti-ai/gptzero-detect', async (request, reply) => {
+    const { content: directContent, chapterScope } = request.body;
+    const { projectRoot: resolvedPath } = await resolveManagedProjectRequest(request, reply, {
+      route: 'anti-ai.gptzero-detect',
+    });
  
     let content = directContent || '';
     if (!content) {

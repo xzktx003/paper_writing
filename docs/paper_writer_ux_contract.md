@@ -2,11 +2,13 @@
 
 本文档记录 Paper Writer 的 RAG、Skill、Chat / Agent / Tools 前端体验契约。它面向前端实现者，目标是让用户在写论文时不需要理解内部 skill 名称，也能知道证据库是否可靠、该选哪个模式、下一步该做什么。
 
-可运行原型：
+Legacy / Prototype 参考实现：
 
 - `app/apps/frontend/public/paper-writer-workbench.html`
-- 后端可访问路径：`/writing-workbench` 或 `/paper-writer-workbench.html`
-- 这是一个无构建依赖的静态页面，直接调用 `/api/projects/:id/writing-workbench/context` 展示任务路由、Skill 推荐、RAG 摘要、证据片段和最近文档。
+- React `/projects` 是唯一正式产品入口；正式 UI 不得链接该原型。
+- 原型默认关闭。只有设置 `OPENPRISM_ENABLE_LEGACY_WORKBENCH=true` 并重启后端后，才可通过 `/writing-workbench` 或 `/paper-writer-workbench.html` 临时访问。
+- 这是一个迁移期、无构建依赖的静态参考页面，直接调用 `/api/projects/:id/writing-workbench/context` 展示任务路由、Skill 推荐、RAG 摘要、证据片段和最近文档；它不再承担正式产品规范。
+- 独有功能所有权、迁移验收清单和弃用阶段见 [`legacy_workbench_lifecycle.md`](legacy_workbench_lifecycle.md)。
 - 从后端同源打开时，“后端地址”输入框可以留空；如果是直接打开 HTML 文件，需要填写后端 URL。
 - 如果后端启用了 `OPENPRISM_API_TOKEN`，在页面“API Token”输入框填写 token。页面会把 token 保存在当前浏览器 localStorage，并对所有 API 请求追加 `Authorization: Bearer <token>`。
 - 页面提供“加载项目”按钮，调用 `GET /api/projects` 并只展示未归档、未回收站的开放项目。选择项目后自动填入项目 ID。

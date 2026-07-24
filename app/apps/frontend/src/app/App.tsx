@@ -1,6 +1,7 @@
 import { lazy, Suspense, useRef, useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { DeploymentGate } from './components/DeploymentGate';
 import { gsap } from './gsap';
 
 const EditorPage = lazy(() => import('./EditorPage'));
@@ -39,18 +40,20 @@ function PageTransition({ children }: { children: ReactNode }) {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <Suspense fallback={<PageLoader />}>
-        <PageTransition>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/projects" element={<ErrorBoundary><ProjectPage /></ErrorBoundary>} />
-            <Route path="/editor/:projectId" element={<ErrorBoundary><EditorPage /></ErrorBoundary>} />
-            <Route path="/collab" element={<ErrorBoundary><CollabJoinPage /></ErrorBoundary>} />
-            <Route path="*" element={<Navigate to="/projects" replace />} />
-          </Routes>
-        </PageTransition>
-      </Suspense>
-    </ErrorBoundary>
+    <DeploymentGate>
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <PageTransition>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/projects" element={<ErrorBoundary><ProjectPage /></ErrorBoundary>} />
+              <Route path="/editor/:projectId" element={<ErrorBoundary><EditorPage /></ErrorBoundary>} />
+              <Route path="/collab" element={<ErrorBoundary><CollabJoinPage /></ErrorBoundary>} />
+              <Route path="*" element={<Navigate to="/projects" replace />} />
+            </Routes>
+          </PageTransition>
+        </Suspense>
+      </ErrorBoundary>
+    </DeploymentGate>
   );
 }

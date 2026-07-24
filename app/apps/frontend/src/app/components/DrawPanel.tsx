@@ -1,20 +1,64 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InlineSkillsSelector } from './SkillsSelector';
 import { SkillInfo } from '../api/skillApi';
 import { describeFigure, checkVisionCapability } from '../api/paperRagApi';
+import { getCollabToken } from '../../api/client';
+import { getServerAccessToken } from '../../api/serverAccess';
 
-// Types
-interface ApiSettings {
-  provider: 'openai' | 'azure' | 'custom';
-  baseUrl: string;
-  apiKey: string;
-  model: string;
+function authenticatedFetch(url: string, options: RequestInit = {}) {
+  const token = getServerAccessToken() || getCollabToken();
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
 }
 
-interface SavedSetting {
-  id: string;
-  name: string;
-  settings: ApiSettings;
+function AuthenticatedImage({ src, alt, style }: { src: string; alt: string; style?: React.CSSProperties }) {
+  const [objectUrl, setObjectUrl] = useState('');
+
+  useEffect(() => {
+    let disposed = false;
+    let createdUrl = '';
+    authenticatedFetch(src)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+        return response.blob();
+      })
+      .then((blob) => {
+        if (disposed) return;
+        createdUrl = URL.createObjectURL(blob);
+        setObjectUrl(createdUrl);
+      })
+      .catch(() => setObjectUrl(''));
+    return () => {
+      disposed = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [src]);
+
+  return objectUrl ? <img src={objectUrl} alt={alt} style={style} /> : null;
+}
+
+interface DrawServerConfig {
+  draw_image_api_key_set: boolean;
+  draw_image_api_base?: string;
+  draw_image_model?: string;
+  draw_image_use_llm_credentials?: boolean;
+  llm_api_key_set?: boolean;
+  llm_base_url?: string;
+  llm_model?: string;
+}
+
+interface ImageSettings {
+  useLlmCredentials: boolean;
+  apiBase: string;
+  apiKey: string;
+  model: string;
+  apiKeyConfigured: boolean;
 }
 
 interface SelectedFigureRef {
@@ -56,13 +100,10 @@ interface Props {
 }
 
 const STORAGE_KEY = 'draw_panel_state';
-const SETTINGS_KEY = 'draw_saved_settings';
-
 export default function DrawPanel({ projectPath, chapters, skills = [], onFigureGenerated }: Props) {
-  // Derive papers project path: __paper_agent__:projectName -> relative project name
-  // Backend will resolve this using its OPENPRISM_PROJECTS_DIR env var
-  const papersProjectPath = projectPath?.startsWith('__paper_agent__:') 
-    ? projectPath.replace('__paper_agent__:', '')  // just the project name, not absolute path
+  const { t } = useTranslation();
+  const managedProjectId = projectPath?.startsWith('__paper_agent__:')
+    ? projectPath.replace('__paper_agent__:', '')
     : undefined;
   
   // Per-panel skills state
@@ -112,30 +153,49 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
     };
   });
 
-  const [apiSettings, setApiSettings] = useState<ApiSettings>(() => {
-    try {
-      const saved = localStorage.getItem('draw_api_settings');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return {
-      provider: 'openai',
-      baseUrl: '',
-      apiKey: '',
-      model: '',
-    };
+  const [serverConfig, setServerConfig] = useState<DrawServerConfig>({ draw_image_api_key_set: false });
+  const [imageSettings, setImageSettings] = useState<ImageSettings>({
+    useLlmCredentials: false,
+    apiBase: '',
+    apiKey: '',
+    model: 'gpt-image-2',
+    apiKeyConfigured: false,
   });
-
-  const [savedSettings, setSavedSettings] = useState<SavedSetting[]>(() => {
-    try {
-      const saved = localStorage.getItem(SETTINGS_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {}
-    return [];
-  });
-
-  const [editingSetting, setEditingSetting] = useState<SavedSetting | null>(null);
+  const [imageSettingsState, setImageSettingsState] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [imageSettingsMessage, setImageSettingsMessage] = useState('');
   const [selectedTexFiles, setSelectedTexFiles] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState<'generate' | 'edit' | 'settings'>('generate');
+
+  const applyServerConfig = (config: any) => {
+    const nextConfig: DrawServerConfig = {
+      draw_image_api_key_set: Boolean(config.draw_image_api_key_set),
+      draw_image_api_base: config.draw_image_api_base,
+      draw_image_model: config.draw_image_model,
+      draw_image_use_llm_credentials: Boolean(config.draw_image_use_llm_credentials),
+      llm_api_key_set: Boolean(config.llm_api_key_set),
+      llm_base_url: config.llm_base_url,
+      llm_model: config.llm_model,
+    };
+    setServerConfig(nextConfig);
+    setImageSettings({
+      useLlmCredentials: Boolean(config.draw_image_use_llm_credentials),
+      apiBase: config.draw_image_api_base || '',
+      apiKey: '',
+      model: config.draw_image_model || 'gpt-image-2',
+      apiKeyConfigured: Boolean(config.draw_image_api_key_set),
+    });
+    return nextConfig;
+  };
+
+  const loadServerConfig = async () => {
+    const response = await authenticatedFetch('/api/config');
+    if (!response.ok) throw new Error('Config unavailable');
+    return applyServerConfig(await response.json());
+  };
+
+  const imageCredentialsReady = serverConfig.draw_image_use_llm_credentials
+    ? Boolean(serverConfig.llm_api_key_set && serverConfig.llm_base_url)
+    : Boolean(serverConfig.draw_image_api_key_set && serverConfig.draw_image_api_base);
 
   // Persist state to localStorage
   useEffect(() => {
@@ -143,12 +203,50 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
   }, [state]);
 
   useEffect(() => {
-    localStorage.setItem('draw_api_settings', JSON.stringify(apiSettings));
-  }, [apiSettings]);
+    loadServerConfig()
+      .catch(() => setServerConfig({ draw_image_api_key_set: false }));
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(savedSettings));
-  }, [savedSettings]);
+  const saveImageSettings = async () => {
+    if (!imageSettings.model.trim()) {
+      setImageSettingsState('error');
+      setImageSettingsMessage('请输入生图模型名称');
+      return;
+    }
+    if (!imageSettings.useLlmCredentials && !imageSettings.apiBase.trim()) {
+      setImageSettingsState('error');
+      setImageSettingsMessage('请输入生图 API Base URL');
+      return;
+    }
+    if (!imageSettings.useLlmCredentials && !imageSettings.apiKey.trim() && !imageSettings.apiKeyConfigured) {
+      setImageSettingsState('error');
+      setImageSettingsMessage('请输入生图 API Key');
+      return;
+    }
+
+    setImageSettingsState('saving');
+    setImageSettingsMessage('');
+    try {
+      const response = await authenticatedFetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          draw_image_use_llm_credentials: imageSettings.useLlmCredentials,
+          draw_image_api_base: imageSettings.apiBase.trim(),
+          draw_image_api_key: imageSettings.apiKey.trim() || undefined,
+          draw_image_model: imageSettings.model.trim(),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || '保存生图设置失败');
+      await loadServerConfig();
+      setImageSettingsState('success');
+      setImageSettingsMessage('生图设置已保存并立即生效');
+    } catch (error: any) {
+      setImageSettingsState('error');
+      setImageSettingsMessage(error.message || '保存生图设置失败');
+    }
+  };
 
   // Fetch all .tex and .pdf files from project
   useEffect(() => {
@@ -164,8 +262,8 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       try {
         // Fetch both .tex and .pdf files
         const [texResp, pdfResp] = await Promise.all([
-          fetch(`/api/projects/${projectId}/files/list?pattern=*.tex`),
-          fetch(`/api/projects/${projectId}/files/list?pattern=*.pdf`)
+          authenticatedFetch(`/api/projects/${projectId}/files/list?pattern=*.tex`),
+          authenticatedFetch(`/api/projects/${projectId}/files/list?pattern=*.pdf`)
         ]);
         
         let texFiles: string[] = [];
@@ -174,18 +272,16 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
         if (texResp.ok) {
           const texData = await texResp.json();
           texFiles = texData.files || [];
-          console.log('Tex files:', texFiles);
         }
         if (pdfResp.ok) {
           const pdfData = await pdfResp.json();
           pdfFiles = pdfData.files || [];
-          console.log('PDF files:', pdfFiles);
         }
         
         // Combine: .tex files first, then .pdf files
         setProjectFiles([...texFiles, ...pdfFiles]);
-      } catch (e) {
-        console.error('Failed to fetch project files:', e);
+      } catch {
+        console.error('Failed to fetch project files');
       }
     };
     
@@ -197,22 +293,20 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
     if (activeTab !== 'edit') return;
     
     const fetchImages = async () => {
-      console.log('[DrawPanel] Fetching images, projectPath:', projectPath, 'papersProjectPath:', papersProjectPath);
+      if (!managedProjectId) return;
       try {
-        const resp = await fetch(`/api/draw/list-images?projectName=${papersProjectPath || ''}`);
-        console.log('[DrawPanel] API response status:', resp.status);
+        const resp = await authenticatedFetch(`/api/draw/list-images?projectId=${encodeURIComponent(managedProjectId)}`);
         if (resp.ok) {
           const data = await resp.json();
-          console.log('[DrawPanel] Images received:', data.images?.length);
           setEditState(prev => ({ ...prev, availableImages: data.images || [] }));
         }
-      } catch (err) {
-        console.error('Failed to fetch images:', err);
+      } catch {
+        console.error('Failed to fetch images');
       }
     };
     
     fetchImages();
-  }, [activeTab, papersProjectPath]);
+  }, [activeTab, managedProjectId]);
 
   // Add a figure reference
   const addFigureRef = () => {
@@ -244,43 +338,6 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
   // Get all PDF files for selector
   const pdfFiles = projectFiles.filter(f => f.toLowerCase().endsWith('.pdf'));
 
-  // Save current settings
-  const saveCurrentSettings = () => {
-    if (!apiSettings.model.trim()) {
-      setState(prev => ({ ...prev, error: 'Please enter a model name' }));
-      return;
-    }
-    const name = apiSettings.model.trim();
-    const existing = savedSettings.find(s => s.name === name);
-    
-    if (existing) {
-      // Update existing
-      setSavedSettings(prev => prev.map(s => 
-        s.name === name ? { ...s, settings: apiSettings } : s
-      ));
-    } else {
-      // Add new
-      const newSetting: SavedSetting = {
-        id: Date.now().toString(),
-        name,
-        settings: { ...apiSettings },
-      };
-      setSavedSettings(prev => [...prev, newSetting]);
-    }
-    setState(prev => ({ ...prev, error: null }));
-  };
-
-  // Load saved setting
-  const loadSavedSetting = (setting: SavedSetting) => {
-    setApiSettings(setting.settings);
-    setEditingSetting(setting);
-  };
-
-  // Delete saved setting
-  const deleteSavedSetting = (id: string) => {
-    setSavedSettings(prev => prev.filter(s => s.id !== id));
-  };
-
   // Helper for button styles
   const getButtonStyle = (primary?: boolean): React.CSSProperties => ({
     width: '100%', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', fontWeight: 600,
@@ -296,13 +353,13 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
   // Load chapter content
   const loadChapterContent = async (file: string) => {
     try {
-      const response = await fetch(`/api/chapters/content?file=${encodeURIComponent(file)}`);
+      const response = await authenticatedFetch(`/api/chapters/content?file=${encodeURIComponent(file)}`);
       const data = await response.json();
       if (data.content) {
         setState(prev => ({ ...prev, paperContent: data.content }));
       }
-    } catch (err) {
-      console.error('Failed to load chapter:', err);
+    } catch {
+      console.error('Failed to load chapter');
     }
   };
 
@@ -320,21 +377,13 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       ? projectPath.replace('__paper_agent__:', '') 
       : null;
     
-    console.log('[DrawPanel] generatePrompt called', { 
-      projectId, 
-      hasFigureRefs: selectedFigureRefs.length,
-      selectedRefs: selectedFigureRefs.map(r => ({ docName: r.docName, figureNum: r.figureNum }))
-    });
-
     try {
       // Build figure reference context from selected figures
       let figureContext = '';
       
       if (selectedFigureRefs.length > 0 && projectId) {
         // Check if model supports vision
-        console.log('[DrawPanel] Checking vision capability for model:', apiSettings.model);
-        const visionCheck = await checkVisionCapability(apiSettings.model);
-        console.log('[DrawPanel] Vision check result:', visionCheck);
+        const visionCheck = await checkVisionCapability(serverConfig.llm_model || '');
         
         if (visionCheck.supported) {
           // Model supports vision - extract and describe each figure
@@ -347,7 +396,6 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
             );
             
             try {
-              console.log('[DrawPanel] Describing figure:', { projectId, docPath: ref.docPath, figureNum: ref.figureNum });
               // Use figureNum to auto-search the page in PDF
               const result = await describeFigure(
                 projectId, 
@@ -355,7 +403,6 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                 ref.figureNum,
                 state.paperContent || state.figureDescription
               );
-              console.log('[DrawPanel] Figure description result:', result);
               
               if (result.error) {
                 setSelectedFigureRefs(prev => 
@@ -399,7 +446,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
         } else {
           // Model doesn't support vision - show warning and use text-only mode
           setVisionWarning(
-            `⚠️ 当前模型 "${apiSettings.model || 'unknown'}" 不支持多模态/视觉功能。\n` +
+            `⚠️ 当前模型 "${serverConfig.llm_model || 'unknown'}" 不支持多模态/视觉功能。\n` +
             `参考图片将仅以文本引用方式传递，无法进行视觉分析。\n` +
             `如需完整的图片参考功能，请使用多模态模型。`
           );
@@ -416,7 +463,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
         figureContext = `\n\n=== Reference Figures ===\n${figureList}\n\nThese figures should serve as visual reference. Incorporate their style, layout, and content structure into the generated image.`;
       }
 
-      const response = await fetch('/api/draw/generate-prompt', {
+      const response = await authenticatedFetch('/api/draw/generate-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -431,7 +478,6 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       
       if (!response.ok) {
         const errorMsg = data.error || data.hint || `请求失败 (HTTP ${response.status})`;
-        console.error('[DrawPanel] generate-prompt error:', { status: response.status, data });
         throw new Error(errorMsg);
       }
 
@@ -441,7 +487,6 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
         loadingPrompt: false 
       }));
     } catch (err: any) {
-      console.error('[DrawPanel] Caught error:', err);
       setState(prev => ({ 
         ...prev, 
         error: err.message,
@@ -453,27 +498,30 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
   // Step 2: Generate final image using image API
   const generateImage = async () => {
     if (!state.generatedPrompt.trim()) {
-      setState(prev => ({ ...prev, error: 'Please generate prompt first' }));
+      setState(prev => ({ ...prev, error: t('Please generate prompt first') }));
       return;
     }
 
-    if (!apiSettings.apiKey) {
-      setState(prev => ({ ...prev, error: 'Please configure API Key' }));
+    if (!imageCredentialsReady) {
+      setState(prev => ({ ...prev, error: '请先在生图设置中配置可用的 Base URL 和 API Key' }));
       setActiveTab('settings');
+      return;
+    }
+
+    if (!managedProjectId) {
+      setState(prev => ({ ...prev, error: t('Draw requires a managed Paper Agent project') }));
       return;
     }
 
     setState(prev => ({ ...prev, loading: true, error: null, savedPath: null }));
 
     try {
-      const response = await fetch('/api/draw/generate-image', {
+      const response = await authenticatedFetch('/api/draw/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imagePrompt: state.generatedPrompt,
-          paperContent: state.paperContent,
-          apiSettings: apiSettings,
-          projectName: papersProjectPath,
+          imagePrompt: state.generatedPrompt.trim(),
+          projectId: managedProjectId,
         }),
       });
 
@@ -508,13 +556,13 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button style={getTabStyle(activeTab === 'generate')} onClick={() => setActiveTab('generate')}>
-            🎨 Generate
+            🎨 {t('Generate')}
           </button>
           <button style={getTabStyle(activeTab === 'edit')} onClick={() => setActiveTab('edit')}>
-            ✏️ Edit
+            ✏️ {t('Edit')}
           </button>
           <button style={getTabStyle(activeTab === 'settings')} onClick={() => setActiveTab('settings')}>
-            ⚙️ Settings
+            ⚙️ {t('Settings')}
           </button>
         </div>
       </div>
@@ -539,14 +587,14 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
             <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>✨</span>
-                <span>Step 1: Generate Image Prompt</span>
-                <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 400 }}>(uses .env model)</span>
+                <span>{t('Step 1: Generate Image Prompt')}</span>
+                <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 400 }}>({t('uses .env model')})</span>
               </div>
 
               {/* Tex Files selector - multi-select */}
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Select .tex Files (Optional)</label>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>{t('Select .tex Files (Optional)')}</label>
                   <button 
                     style={{ fontSize: '11px', padding: '4px 8px', cursor: 'pointer', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px' }}
                     onClick={async () => {
@@ -556,28 +604,28 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                       for (let i = 0; i < texFiles.length; i++) {
                         if (selectedTexFiles.has(i)) {
                           try {
-                            const resp = await fetch(`/api/chapters/content?file=${encodeURIComponent(texFiles[i])}`);
+                            const resp = await authenticatedFetch(`/api/chapters/content?file=${encodeURIComponent(texFiles[i])}`);
                             const data = await resp.json();
                             if (data.content) {
                               const fileName = texFiles[i].split('/').pop() || texFiles[i];
                               allContent += `\n\n=== ${fileName} ===\n\n` + data.content;
                             }
-                          } catch (e) {
-                            console.error('Failed to load', texFiles[i], e);
+                          } catch {
+                            console.error('Failed to load selected TeX file');
                           }
                         }
                       }
                       setState(prev => ({ ...prev, paperContent: allContent.trim() }));
                     }}
                   >
-                    Load Selected ({selectedTexFiles.size})
+                    {t('Load Selected')} ({selectedTexFiles.size})
                   </button>
                 </div>
                 <div style={{ maxHeight: '100px', overflow: 'auto', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px', background: 'var(--bg-secondary)' }}>
                   {projectFiles.filter(f => f.toLowerCase().endsWith('.tex')).length === 0 ? (
                     <div style={{ fontSize: '11px', color: 'var(--muted)', padding: '4px' }}>
-                      No .tex files found in project<br/>
-                      <span style={{ fontSize: '10px' }}>Total files loaded: {projectFiles.length}</span>
+                      {t('No .tex files found in project')}<br/>
+                      <span style={{ fontSize: '10px' }}>{t('Total files loaded')}: {projectFiles.length}</span>
                     </div>
                   ) : (
                     projectFiles.filter(f => f.toLowerCase().endsWith('.tex')).map((texFile, idx) => {
@@ -609,7 +657,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
               {skills.length > 0 && (
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    🧩 Skills
+                  🧩 {t('Skills')}
                   </label>
                   <div style={{ position: 'relative', zIndex: 50 }}>
                     <InlineSkillsSelector
@@ -625,10 +673,10 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
 
               {/* Paper content */}
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Paper Content</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>{t('Paper Content')}</label>
                 <textarea
                   style={{ width: '100%', minHeight: '100px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical' }}
-                  placeholder="Paste paper section content or paragraphs..."
+                  placeholder={t('Paste paper section content or paragraphs...')}
                   value={state.paperContent}
                   onChange={(e) => setState(prev => ({ ...prev, paperContent: e.target.value }))}
                 />
@@ -637,7 +685,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
               {/* Reference Figures - RAG style: compact layout */}
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                  🖼️ Ref Figures ({selectedFigureRefs.length})
+                  🖼️ {t('Reference Figures')} ({selectedFigureRefs.length})
                 </label>
                 
                 {/* Compact selector row */}
@@ -669,7 +717,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     disabled={!selectedDocument || !figureNumInput.trim()}
                     style={{ padding: '4px 10px', borderRadius: '4px', border: 'none', background: selectedDocument && figureNumInput.trim() ? 'var(--accent)' : 'var(--border)', color: 'white', fontSize: '11px', cursor: selectedDocument && figureNumInput.trim() ? 'pointer' : 'not-allowed' }}
                   >
-                    +Add
+                    +{t('Add')}
                   </button>
                 </div>
                 
@@ -716,7 +764,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                 
                 {selectedFigureRefs.some(r => r.description) && (
                   <div style={{ marginTop: '4px', fontSize: '9px', color: 'var(--muted)' }}>
-                    ✓ = Image analyzed (p = page) | ✕ = Remove
+                    {t('Image analyzed legend')}
                   </div>
                 )}
                 
@@ -742,60 +790,66 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                 onClick={generatePrompt}
                 disabled={state.loadingPrompt || (!state.paperContent.trim() && !state.figureDescription.trim() && selectedFigureRefs.length === 0)}
               >
-                {state.loadingPrompt ? '✨ Generating...' : '✨ Generate Image Prompt'}
+                {state.loadingPrompt ? `✨ ${t('Generating...')}` : `✨ ${t('Generate Image Prompt')}`}
               </button>
             </div>
 
-            {/* Generated prompt display */}
-            {state.generatedPrompt && (
-              <div style={{ background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>📝</span>
-                  <span>Generated Prompt</span>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {state.generatedPrompt}
-                </div>
+            {/* Final prompt: users may write it directly or edit the AI-generated draft. */}
+            <div style={{ background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+              <label htmlFor="draw-final-image-prompt" style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>📝</span>
+                <span>{t('Generated Prompt')}（可直接填写或修改）</span>
+              </label>
+              <textarea
+                id="draw-final-image-prompt"
+                value={state.generatedPrompt}
+                placeholder="直接写入希望执行的生图 Prompt，或先让 AI 生成草稿后再修改。"
+                onChange={(event) => setState(previous => ({
+                  ...previous,
+                  generatedPrompt: event.target.value,
+                }))}
+                style={{ width: '100%', minHeight: '150px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.5, fontFamily: 'inherit', resize: 'vertical' }}
+              />
+              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--muted)' }}>
+                生成图片时会严格使用这里的最终内容，不会自动追加论文正文。
               </div>
-            )}
+            </div>
 
             {/* Step 2: Generate image */}
-            {state.generatedPrompt && (
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>🎨</span>
-                  <span>Step 2: Generate Image</span>
-                  {!apiSettings.apiKey && (
-                    <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 400 }}>API Key required</span>
+                  <span>{t('Step 2: Generate Image')}</span>
+                  {!imageCredentialsReady && (
+                    <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 400 }}>{t('API Key required')}</span>
                   )}
                 </div>
 
                 <button
                   style={getButtonStyle(true)}
                   onClick={generateImage}
-                  disabled={state.loading || !apiSettings.apiKey}
+                  disabled={state.loading || !state.generatedPrompt.trim() || !imageCredentialsReady || !managedProjectId}
                 >
-                  {state.loading ? '🎨 Generating...' : '🎨 Generate Image'}
+                  {state.loading ? `🎨 ${t('Generating...')}` : `🎨 ${t('Generate Image')}`}
                 </button>
 
-                {!apiSettings.apiKey && (
+                {!imageCredentialsReady && (
                   <div style={{ padding: '10px 12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '6px', color: '#3b82f6', fontSize: '13px', marginTop: '12px' }}>
-                    Please configure API Key in Settings tab
+                    请在“设置”页配置独立的生图 Base URL/API Key，或启用“复用语言模型凭证”。
                   </div>
                 )}
               </div>
-            )}
 
             {/* Image preview */}
             {state.imageUrl && (
               <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>✅</span>
-                  <span>Generated Image</span>
+                  <span>{t('Generated Image')}</span>
                   <button
                     onClick={() => {
                       // Extract filename/path from imageUrl and switch to edit tab
-                      // imageUrl format: /api/draw/images/filename.png?projectName=xxx
+                      // The backend returns a managed project URL containing projectId.
                       if (!state.imageUrl) return;
                       const urlParts = state.imageUrl.split('/');
                       const filename = decodeURIComponent(urlParts.pop()?.split('?')[0] || '');
@@ -816,18 +870,18 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                       cursor: 'pointer',
                     }}
                   >
-                    ✏️ Edit this image →
+                    ✏️ {t('Edit this image')} →
                   </button>
                 </div>
                 {state.savedPath && (
                   <div style={{ marginBottom: 12, padding: '9px 11px', borderRadius: 7, background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.35)', color: 'var(--text)', fontSize: 12 }}>
-                    <span style={{ color: '#16a34a', fontWeight: 700 }}>Image saved to: </span>
+                     <span style={{ color: '#16a34a', fontWeight: 700 }}>{t('Image saved to')}: </span>
                     <code style={{ wordBreak: 'break-all' }}>{state.savedPath}</code>
-                    <div style={{ marginTop: 3, color: 'var(--muted)', fontSize: 10 }}>Project folder: draw/</div>
+                     <div style={{ marginTop: 3, color: 'var(--muted)', fontSize: 10 }}>{t('Project folder')}: draw/</div>
                   </div>
                 )}
-                <img 
-                  src={state.imageUrl + (papersProjectPath ? `?projectName=${encodeURIComponent(papersProjectPath)}` : '')} 
+                <AuthenticatedImage
+                  src={state.imageUrl}
                   alt="Generated figure" 
                   style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }} 
                 />
@@ -841,18 +895,19 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
             <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>📁</span>
-                <span>Select Image to Edit</span>
+                 <span>{t('Select Image to Edit')}</span>
                 <button
                   onClick={async () => {
                     // Refresh images list
                     try {
-                      const resp = await fetch(`/api/draw/list-images?projectName=${papersProjectPath || ''}`);
+                      if (!managedProjectId) return;
+                      const resp = await authenticatedFetch(`/api/draw/list-images?projectId=${encodeURIComponent(managedProjectId)}`);
                       if (resp.ok) {
                         const data = await resp.json();
                         setEditState(prev => ({ ...prev, availableImages: data.images || [] }));
                       }
-                    } catch (err) {
-                      console.error('Failed to refresh images:', err);
+                    } catch {
+                      console.error('Failed to refresh images');
                     }
                   }}
                   style={{
@@ -866,7 +921,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     color: 'var(--muted)',
                   }}
                 >
-                  🔄 Refresh
+                   🔄 {t('Refresh')}
                 </button>
               </div>
               
@@ -895,8 +950,8 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                       }}
                       title={img.path || img.filename}
                     >
-                      <img
-                        src={img.url || `/api/draw/images/${img.filename}?projectName=${papersProjectPath || ''}`}
+                      <AuthenticatedImage
+                        src={img.url}
                         alt={img.filename}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -925,7 +980,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
               
               {editState.availableImages.length === 0 && (
                 <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted)', fontSize: '13px', marginBottom: '12px' }}>
-                  No images found in project. Upload one to get started.
+                   {t('No images found in project. Upload one to get started.')}
                 </div>
               )}
               
@@ -947,7 +1002,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)'; }}
               >
                 <span style={{ fontSize: '16px' }}>+</span>
-                <span>Upload New Image</span>
+                 <span>{t('Upload New Image')}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -960,14 +1015,15 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     formData.append('file', file);
                     
                     try {
-                      const resp = await fetch(`/api/draw/upload-image?projectName=${papersProjectPath || ''}`, {
+                      if (!managedProjectId) return;
+                      const resp = await authenticatedFetch(`/api/draw/upload-image?projectId=${encodeURIComponent(managedProjectId)}`, {
                         method: 'POST',
                         body: formData,
                       });
                       const data = await resp.json();
                       if (data.success && data.filename) {
                         // Refresh the image list
-                        const listResp = await fetch(`/api/draw/list-images?projectName=${papersProjectPath || ''}`);
+                        const listResp = await authenticatedFetch(`/api/draw/list-images?projectId=${encodeURIComponent(managedProjectId)}`);
                         if (listResp.ok) {
                           const listData = await listResp.json();
                           setEditState(prev => ({ ...prev, availableImages: listData.images || [], selectedImage: data.filename }));
@@ -975,10 +1031,10 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                           setEditState(prev => ({ ...prev, selectedImage: data.filename }));
                         }
                       } else {
-                        setEditState(prev => ({ ...prev, error: data.error || 'Upload failed' }));
+                        setEditState(prev => ({ ...prev, error: data.error || t('Upload failed') }));
                       }
                     } catch (err) {
-                      setEditState(prev => ({ ...prev, error: 'Upload failed' }));
+                      setEditState(prev => ({ ...prev, error: t('Upload failed') }));
                     }
                     e.target.value = '';
                   }}
@@ -991,7 +1047,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
               <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>✏️</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Editing: {editState.selectedImage}</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t('Editing')}: {editState.selectedImage}</span>
                   <button
                     onClick={() => setEditState(prev => ({ ...prev, selectedImage: '' }))}
                     style={{
@@ -1003,13 +1059,13 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                       cursor: 'pointer',
                       color: '#ef4444',
                     }}
-                    title="Remove selection"
+                    title={t('Remove selection')}
                   >
-                    ✕ Clear
+                    ✕ {t('Clear')}
                   </button>
                 </div>
-                <img
-                  src={`/api/draw/images/${editState.selectedImage}?projectName=${papersProjectPath || ''}`}
+                <AuthenticatedImage
+                  src={`/api/draw/images/${encodeURIComponent(editState.selectedImage)}?projectId=${encodeURIComponent(managedProjectId || '')}`}
                   alt="Selected for editing"
                   style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
                 />
@@ -1020,11 +1076,11 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
             <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>💬</span>
-                <span>Edit Instruction</span>
+                   <span>{t('Edit Instruction')}</span>
               </div>
               <textarea
                 style={{ width: '100%', minHeight: '80px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical' }}
-                placeholder="e.g., Change the background color to light blue, make the arrows thicker, add a title at the top..."
+                 placeholder={t('e.g., Change the background color to light blue, make the arrows thicker, add a title at the top...')}
                 value={editState.editPrompt}
                 onChange={(e) => setEditState(prev => ({ ...prev, editPrompt: e.target.value }))}
               />
@@ -1033,26 +1089,29 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                 style={getButtonStyle(true)}
                 onClick={async () => {
                   if (!editState.selectedImage || !editState.editPrompt.trim()) {
-                    setEditState(prev => ({ ...prev, error: 'Please select an image and enter edit instructions' }));
+                    setEditState(prev => ({ ...prev, error: t('Please select an image and enter edit instructions') }));
                     return;
                   }
-                  if (!apiSettings.apiKey) {
-                    setEditState(prev => ({ ...prev, error: 'Please configure API Key in Settings' }));
+                  if (!imageCredentialsReady) {
+                    setEditState(prev => ({ ...prev, error: '请先在生图设置中配置可用的 Base URL 和 API Key' }));
+                    return;
+                  }
+                  if (!managedProjectId) {
+                    setEditState(prev => ({ ...prev, error: t('Draw requires a managed Paper Agent project') }));
                     return;
                   }
                   
                   setEditState(prev => ({ ...prev, loading: true, error: null }));
                   
                   try {
-                    const response = await fetch('/api/draw/edit-image', {
+                    const response = await authenticatedFetch('/api/draw/edit-image', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         imagePath: editState.selectedImage,
                         editPrompt: editState.editPrompt,
                         paperContent: state.paperContent,
-                        apiSettings: apiSettings,
-                        projectName: papersProjectPath,
+                        projectId: managedProjectId,
                       }),
                     });
                     
@@ -1069,7 +1128,7 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     }));
                     
                     // Update available images list
-                    const refreshResp = await fetch(`/api/draw/list-images?projectName=${papersProjectPath || ''}`);
+                    const refreshResp = await authenticatedFetch(`/api/draw/list-images?projectId=${encodeURIComponent(managedProjectId)}`);
                     const refreshData = await refreshResp.json();
                     if (refreshData.images) {
                       setEditState(prev => ({ ...prev, availableImages: refreshData.images }));
@@ -1082,9 +1141,9 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
                     }));
                   }
                 }}
-                disabled={editState.loading || !editState.selectedImage || !editState.editPrompt.trim() || !apiSettings.apiKey}
+                disabled={editState.loading || !editState.selectedImage || !editState.editPrompt.trim() || !imageCredentialsReady || !managedProjectId}
               >
-                {editState.loading ? '✏️ Editing...' : '✏️ Edit Image'}
+                 {editState.loading ? `✏️ ${t('Editing...')}` : `✏️ ${t('Edit Image')}`}
               </button>
               
               {editState.error && (
@@ -1099,10 +1158,10 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
               <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>✅</span>
-                  <span>Edited Image</span>
+                  <span>{t('Edited Image')}</span>
                 </div>
-                <img
-                  src={editState.resultImageUrl + (papersProjectPath ? `?projectName=${encodeURIComponent(papersProjectPath)}` : '')}
+                <AuthenticatedImage
+                  src={editState.resultImageUrl}
                   alt="Edited result"
                   style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
                 />
@@ -1110,119 +1169,89 @@ export default function DrawPanel({ projectPath, chapters, skills = [], onFigure
             )}
           </>
         ) : (
-          /* API Settings Tab */
+          /* Server-managed Draw Settings */
           <>
-            {/* Saved Settings List */}
-            {savedSettings.length > 0 && (
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>📁</span>
-                  <span>Saved Settings</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {savedSettings.map(setting => (
-                    <div 
-                      key={setting.id}
-                      style={{ 
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 12px', borderRadius: '6px',
-                        background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                        fontSize: '12px'
-                      }}
-                    >
-                      <span 
-                        style={{ cursor: 'pointer', color: 'var(--accent)', fontWeight: 500 }}
-                        onClick={() => loadSavedSetting(setting)}
-                      >
-                        {setting.name}
-                      </span>
-                      <button
-                        style={{ 
-                          padding: '2px 6px', fontSize: '10px', cursor: 'pointer',
-                          background: 'transparent', border: '1px solid var(--border)',
-                          borderRadius: '4px', color: 'var(--text-secondary)'
-                        }}
-                        onClick={() => deleteSavedSetting(setting.id)}
-                        title="Delete"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Current Settings */}
             <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '16px', marginBottom: '16px', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>⚙️</span>
-                <span>Current API Settings</span>
-                {editingSetting && (
-                  <span style={{ fontSize: '11px', color: 'var(--accent)' }}>Loaded: {editingSetting.name}</span>
-                )}
+                <span>{t('Server-managed image API')}</span>
               </div>
-              
-              <div style={{ display: 'grid', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Provider</label>
-                  <select
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
-                    value={apiSettings.provider}
-                    onChange={(e) => setApiSettings(prev => ({ ...prev, provider: e.target.value as any }))}
-                  >
-                    <option value="openai">OpenAI</option>
-                    <option value="azure">Azure</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Base URL</label>
+              <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
+                <label htmlFor="draw-image-use-llm-credentials" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
                   <input
-                    type="text"
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
-                    placeholder={apiSettings.provider === 'azure' ? '' : 'https://api.openai.com/v1'}
-                    value={apiSettings.baseUrl}
-                    onChange={(e) => setApiSettings(prev => ({ ...prev, baseUrl: e.target.value }))}
+                    id="draw-image-use-llm-credentials"
+                    type="checkbox"
+                    checked={imageSettings.useLlmCredentials}
+                    onChange={(event) => setImageSettings(previous => ({
+                      ...previous,
+                      useLlmCredentials: event.target.checked,
+                    }))}
                   />
-                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
-                    {apiSettings.provider === 'azure' ? 'Leave empty for default' : 'e.g., https://api.openai.com/v1'}
-                  </div>
-                </div>
+                  <span>
+                    <strong>复用语言模型的 Base URL 和 API Key</strong>
+                    <span style={{ display: 'block', marginTop: '3px', color: 'var(--muted)', fontSize: '11px' }}>
+                      当前语言模型地址：{serverConfig.llm_base_url || '未配置'}；API Key：{serverConfig.llm_api_key_set ? '已配置' : '未配置'}。
+                    </span>
+                  </span>
+                </label>
+
+                {!imageSettings.useLlmCredentials && (
+                  <>
+                    <div>
+                      <label htmlFor="draw-image-api-base" style={{ display: 'block', fontWeight: 600, marginBottom: '5px' }}>生图 API Base URL</label>
+                      <input
+                        id="draw-image-api-base"
+                        type="url"
+                        value={imageSettings.apiBase}
+                        placeholder="https://api.example.com/v1"
+                        onChange={(event) => setImageSettings(previous => ({ ...previous, apiBase: event.target.value }))}
+                        style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="draw-image-api-key" style={{ display: 'block', fontWeight: 600, marginBottom: '5px' }}>生图 API Key</label>
+                      <input
+                        id="draw-image-api-key"
+                        type="password"
+                        value={imageSettings.apiKey}
+                        placeholder={imageSettings.apiKeyConfigured ? '已配置；留空可保留原 Key' : '请输入 API Key'}
+                        autoComplete="new-password"
+                        onChange={(event) => setImageSettings(previous => ({ ...previous, apiKey: event.target.value }))}
+                        style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>API Key *</label>
+                  <label htmlFor="draw-image-model" style={{ display: 'block', fontWeight: 600, marginBottom: '5px' }}>生图模型</label>
                   <input
-                    type="password"
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
-                    placeholder="sk-... or Azure key"
-                    value={apiSettings.apiKey}
-                    onChange={(e) => setApiSettings(prev => ({ ...prev, apiKey: e.target.value }))}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Model (also used as save name)</label>
-                  <input
+                    id="draw-image-model"
                     type="text"
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
-                    placeholder="gpt-image-2-vip"
-                    value={apiSettings.model}
-                    onChange={(e) => setApiSettings(prev => ({ ...prev, model: e.target.value }))}
+                    value={imageSettings.model}
+                    placeholder="gpt-image-2"
+                    onChange={(event) => setImageSettings(previous => ({ ...previous, model: event.target.value }))}
+                    style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                   />
                 </div>
 
                 <button
-                  style={{ ...getButtonStyle(true), marginTop: '8px' }}
-                  onClick={saveCurrentSettings}
+                  type="button"
+                  onClick={saveImageSettings}
+                  disabled={imageSettingsState === 'saving'}
+                  style={getButtonStyle(true)}
                 >
-                  💾 Save Settings (by Model name)
+                  {imageSettingsState === 'saving' ? '保存中…' : '保存生图设置'}
                 </button>
 
-                <div style={{ fontSize: '12px', color: 'var(--muted)', padding: '8px 0' }}>
-                  <strong>Note:</strong> Step 1 (Generate Prompt) uses .env OPENPRISM_LLM_* config,
-                  <br />Step 2 (Generate Image) uses the API configured above
+                {imageSettingsMessage && (
+                  <div style={{ padding: '9px 10px', borderRadius: '6px', background: imageSettingsState === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)', color: imageSettingsState === 'error' ? '#dc2626' : '#16a34a' }}>
+                    {imageSettingsMessage}
+                  </div>
+                )}
+
+                <div style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+                  API Key 只提交到受认证保护的后端配置接口，不会写入浏览器 localStorage。保存后立即用于下一次生图请求，无需重启服务。
                 </div>
               </div>
             </div>

@@ -5,8 +5,11 @@ import { readChapter, writeChapter, readCodeFile } from '../api/projectApi';
 import { listSkills, reloadSkills, SkillInfo } from '../api/skillApi';
 import { isImagePath, isPdfPath, isPreviewableTextPath } from '../utils/previewAssets';
 import type { OpenFile } from '../types';
+import { externalProjectRequest, managedProjectRequest, type ProjectRequestContext } from '../api/projectRequestContext';
+import { writeFile as writeManagedProjectFile } from '../../api/client';
 
 interface AppState {
+  projectId: string | null;
   project: { path: string | null; config: ProjectConfig | null; loading: boolean; error: string | null };
   openProject: (path: string) => Promise<void>;
   createNewProject: (path: string, config: ProjectConfig) => Promise<void>;
@@ -45,10 +48,28 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
+interface PersistedWorkspaceTab {
+  path: string;
+  type: OpenFile['type'];
+  dirty?: boolean;
+  draft?: string;
+}
+
+interface PersistedWorkspaceState {
+  tabs?: PersistedWorkspaceTab[];
+  activeFile?: string;
+  terminalVisible?: boolean;
+}
+
 export function AppProvider({ children, projectId }: { children: React.ReactNode; projectId?: string }) {
   const { project, open, create, setProject } = useProject();
   const convProjectId = projectId || (project.path ? btoa(project.path).slice(0, 12) : null);
-  const convHook = useConversations(convProjectId);
+  const requestContext: ProjectRequestContext | null = useMemo(() => projectId
+    ? managedProjectRequest(projectId)
+    : project.path && !project.path.startsWith('__paper_agent__:')
+      ? externalProjectRequest(project.path)
+      : null, [projectId, project.path]);
+  const convHook = useConversations(convProjectId, requestContext);
 
   useEffect(() => {
     if (!projectId || project.path) return;
@@ -133,14 +154,14 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
         const data = await res.json();
         content = data.content || '';
       } else if (file.type === 'chapter') {
-        const result = await readChapter(project.path, file.path);
+        const result = requestContext ? await readChapter(requestContext, file.path) : { content: '' };
         content = result.content || '';
       } else if (file.type === 'code') {
         const result = await readCodeFile(project.path, file.path);
         content = result.content || '';
       } else if (file.type === 'other') {
         // non-paper-agent 'other' files: attempt to read via chapter API as fallback
-        const result = await readChapter(project.path, file.path);
+        const result = requestContext ? await readChapter(requestContext, file.path) : { content: '' };
         content = result.content || '';
       }
     } catch (e) {
@@ -161,13 +182,13 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     let cancelled = false;
 
     const restore = async () => {
-      let saved: { tabs?: { path: string; type: OpenFile['type']; dirty?: boolean; draft?: string }[]; activeFile?: string; terminalVisible?: boolean } | null = null;
+      let saved: PersistedWorkspaceState | null = null;
       try {
         saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
       } catch { /* ignore invalid browser state */ }
 
-      const fallback = project.config?.chapters?.[0]
-        ? [{ path: project.config.chapters[0].file, type: 'chapter' as const }]
+      const fallback: PersistedWorkspaceTab[] = project.config?.chapters?.[0]
+        ? [{ path: project.config.chapters[0].file, type: 'chapter' }]
         : [];
       const tabs = saved?.tabs?.length ? saved.tabs : fallback;
       const paId = projectPath.startsWith('__paper_agent__:') ? projectPath.replace('__paper_agent__:', '') : null;
@@ -185,7 +206,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
           } else if (tab.type === 'code') {
             content = (await readCodeFile(projectPath, tab.path)).content || '';
           } else {
-            content = (await readChapter(projectPath, tab.path)).content || '';
+            content = requestContext ? (await readChapter(requestContext, tab.path)).content || '' : '';
           }
         } catch (error) {
           console.warn(`Unable to restore tab ${tab.path}:`, error);
@@ -210,7 +231,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
 
     restore();
     return () => { cancelled = true; };
-  }, [project.path, project.config]);
+  }, [project.path, project.config, requestContext]);
 
   useEffect(() => {
     if (!project.path || restoredWorkspaceRef.current !== project.path) return;
@@ -243,16 +264,12 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     if (!file || !project.path) return;
     const paId = getPaperAgentId();
     if (paId) {
-      await fetch(`/api/projects/${paId}/file`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: file.filename, content: file.content }),
-      });
+      await writeManagedProjectFile(paId, file.filename, file.content);
     } else if (file.type === 'chapter') {
-      await writeChapter(project.path, file.filename, file.content);
+      if (requestContext) await writeChapter(requestContext, file.filename, file.content);
     }
     setOpenFiles(prev => prev.map((f, i) => i === index ? { ...f, dirty: false } : f));
-  }, [openFiles, project.path, getPaperAgentId]);
+  }, [openFiles, project.path, getPaperAgentId, requestContext]);
 
   const closeFile = useCallback((index: number) => {
     setOpenFiles(prev => prev.filter((_, i) => i !== index));
@@ -273,12 +290,12 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
 
   const sendMessage = useCallback(async (message: string, files?: { id: string; dataUrl: string; name: string; type: string; isImage: boolean; size: number }[]) => {
     if (!project.path || !project.config) return;
-    await convHook.send(message, project.path, project.config, files);
+    await convHook.send(message, project.config, files);
   }, [project.path, project.config, convHook]);
 
   const acceptEdit = useCallback(async (editId: string) => {
     const edit = convHook.pendingEdits.find(item => item.id === editId);
-    const accepted = await convHook.acceptEdit(editId, project.path || '');
+    const accepted = await convHook.acceptEdit(editId);
     if (edit && accepted) {
       setOpenFiles(prev => prev.map(file => file.filename === edit.filename
         ? { ...file, content: edit.new_content, dirty: false }
@@ -288,6 +305,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
   const toggleTerminal = useCallback(() => setTerminalVisible(v => !v), []);
 
   const value: AppState = useMemo(() => ({
+    projectId: projectId || null,
     project,
     openProject: open,
     createNewProject: create,

@@ -1,4 +1,6 @@
 import { apiFetch, apiPost, apiPut, apiDelete } from './fetchClient';
+import { getServerAccessToken } from '../../api/serverAccess';
+import { managedProjectRequest, projectRequestBody, type ProjectRequestContext } from './projectRequestContext';
 
 const BASE = '/api';
 
@@ -78,7 +80,7 @@ export async function uploadConversationAttachment(
   file: AttachedFileData,
   onProgress?: (percent: number) => void
 ): Promise<{ ok: true; attachment: ConversationAttachment }> {
-  const token = localStorage.getItem('api_token');
+  const token = getServerAccessToken();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${BASE}/conversations/${projectId}/${convId}/attachments`);
@@ -107,16 +109,16 @@ export async function deleteConversationAttachment(projectId: string, convId: st
   await apiDelete(`${BASE}/conversations/${projectId}/${convId}/attachments/${attachmentId}`);
 }
 
-export async function sendMessage(projectId: string, convId: string, projectPath: string, userMessage: string, projectConfig: any, files?: AttachedFileData[]) {
+export async function sendMessage(conversationProjectId: string, convId: string, context: ProjectRequestContext, userMessage: string, projectConfig: any, files?: AttachedFileData[]) {
   return apiPost(`${BASE}/ai/send`, {
-    projectId, convId, projectPath, userMessage, projectConfig,
+    conversationProjectId, convId, ...projectRequestBody(context), userMessage, projectConfig,
     files: files?.map(f => ({ dataUrl: f.dataUrl, name: f.name, type: f.type, isImage: f.isImage, size: f.size })),
   });
 }
 
 /** SSE streaming version of sendMessage */
 export async function sendMessageStream(
-  projectId: string, convId: string, projectPath: string, userMessage: string, projectConfig: any,
+  conversationProjectId: string, convId: string, context: ProjectRequestContext, userMessage: string, projectConfig: any,
   files: AttachedFileData[] | undefined,
   callbacks: {
     onToken: (text: string) => void;
@@ -128,10 +130,10 @@ export async function sendMessageStream(
     onProgress?: (percent: number, stage: string) => void;
   }
 ) {
-  const token = localStorage.getItem('api_token');
+  const token = getServerAccessToken();
   const hasTransientFiles = Boolean(files?.length);
   const body = JSON.stringify({
-    projectId, convId, projectPath, userMessage, projectConfig,
+    conversationProjectId, convId, ...projectRequestBody(context), userMessage, projectConfig,
     files: files?.map(f => ({ dataUrl: f.dataUrl, name: f.name, type: f.type, isImage: f.isImage, size: f.size })),
   });
 
@@ -214,21 +216,21 @@ export async function sendMessageStream(
 }
 
 // ── Review API ──
-export async function structuredReview(projectPath: string, chapterScope?: string) {
-  return apiPost(`${BASE}/review/structured`, { projectPath, chapterScope });
+export async function structuredReview(context: ProjectRequestContext, chapterScope?: string) {
+  return apiPost(`${BASE}/review/structured`, { ...projectRequestBody(context), chapterScope });
 }
 
 // ── Anti-AI API ──
-export async function detectAntiAi(projectPath: string, content?: string, chapterScope?: string) {
-  return apiPost(`${BASE}/anti-ai/detect`, { projectPath, content, chapterScope });
+export async function detectAntiAi(context: ProjectRequestContext, content?: string, chapterScope?: string) {
+  return apiPost(`${BASE}/anti-ai/detect`, { ...projectRequestBody(context), content, chapterScope });
 }
 
-export async function detectAntiAiDeep(projectPath: string, content?: string, chapterScope?: string) {
-  return apiPost(`${BASE}/anti-ai/deep-detect`, { projectPath, content, chapterScope });
+export async function detectAntiAiDeep(context: ProjectRequestContext, content?: string, chapterScope?: string) {
+  return apiPost(`${BASE}/anti-ai/deep-detect`, { ...projectRequestBody(context), content, chapterScope });
 }
 
-export async function detectAntiAiGPTZero(projectPath: string, content?: string, chapterScope?: string) {
-  return apiPost(`${BASE}/anti-ai/gptzero-detect`, { projectPath, content, chapterScope });
+export async function detectAntiAiGPTZero(context: ProjectRequestContext, content?: string, chapterScope?: string) {
+  return apiPost(`${BASE}/anti-ai/gptzero-detect`, { ...projectRequestBody(context), content, chapterScope });
 }
 
 // ── Pipeline V2 API ──
@@ -275,8 +277,8 @@ export async function listPipelinePresets(): Promise<{ presets: PipelinePreset[]
   return apiFetch(`${BASE}/v2/pipeline/presets`);
 }
 
-export async function startPipelineV2(preset: string, projectPath: string, chapterScope?: string): Promise<PipelineV2> {
-  return apiPost(`${BASE}/v2/pipeline/start`, { preset, projectPath, chapterScope });
+export async function startPipelineV2(preset: string, context: ProjectRequestContext, chapterScope?: string): Promise<PipelineV2> {
+  return apiPost(`${BASE}/v2/pipeline/start`, { preset, ...projectRequestBody(context), chapterScope });
 }
 
 export async function getPipelineV2Status(pipelineId: string): Promise<PipelineV2> {
@@ -345,26 +347,28 @@ export interface FullCitationReport extends VerificationReport, CrossCheckResult
 }
 
 /** Verify all BibTeX entries against academic databases */
-export async function verifyCitations(projectPath: string, bibFile?: string, signal?: AbortSignal): Promise<FullCitationReport> {
+export async function verifyCitations(context: ProjectRequestContext, bibFile?: string, signal?: AbortSignal): Promise<FullCitationReport> {
   return apiFetch(`${BASE}/citations/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectPath, bibFile }),
+    body: JSON.stringify({ ...projectRequestBody(context), bibFile }),
     signal: signal || AbortSignal.timeout(120000),
   });
 }
 
 /** Verify .tex citations and cross-check with .bib */
-export async function verifyTexCitations(projectPath: string, texFile?: string, bibFile?: string): Promise<FullCitationReport> {
-  return apiPost(`${BASE}/citations/verify-tex`, { projectPath, texFile, bibFile });
+export async function verifyTexCitations(context: ProjectRequestContext, texFile?: string, bibFile?: string): Promise<FullCitationReport> {
+  return apiPost(`${BASE}/citations/verify-tex`, { ...projectRequestBody(context), texFile, bibFile });
 }
 
 /** Quick cross-check without external API calls */
-export async function crossCheckCitations(projectPath: string, texFile?: string, bibFile?: string, signal?: AbortSignal): Promise<CrossCheckResult> {
+export async function crossCheckCitations(context: ProjectRequestContext, texFile?: string, bibFile?: string, signal?: AbortSignal): Promise<CrossCheckResult> {
   return apiFetch(`${BASE}/citations/cross-check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectPath, texFile, bibFile }),
+    body: JSON.stringify({ ...projectRequestBody(context), texFile, bibFile }),
     signal,
   });
 }
+
+export { managedProjectRequest };

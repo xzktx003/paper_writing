@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ConversationSummary } from '../api/conversationApi';
 
 interface Props {
@@ -19,6 +20,7 @@ interface ContextMenuState {
 }
 
 export function ConversationTabs({ conversations, activeId, onSelect, onClose, onNew, onRename }: Props) {
+  const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, convId: '', convName: '' });
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -67,11 +69,21 @@ export function ConversationTabs({ conversations, activeId, onSelect, onClose, o
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', overflow: 'auto', padding: '0 6px', width: '100%' }}>
+      <div role="tablist" aria-label={t('Conversations')} style={{ display: 'flex', alignItems: 'center', gap: '2px', overflow: 'auto', padding: '0 6px', width: '100%' }}>
         {conversations.map(conv => (
           <div
             key={conv.id}
+            role="tab"
+            tabIndex={conv.id === activeId ? 0 : -1}
+            aria-selected={conv.id === activeId}
+            data-testid={`conversation-tab-${conv.id}`}
             onClick={() => onSelect(conv.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelect(conv.id);
+              }
+            }}
             onContextMenu={(e) => handleContextMenu(e, conv)}
             style={{
               padding: '5px 12px',
@@ -99,12 +111,17 @@ export function ConversationTabs({ conversations, activeId, onSelect, onClose, o
             ) : (
               <>
                 {conv.name}
-                <span onClick={(e) => { e.stopPropagation(); onClose(conv.id); }} style={{ marginLeft: '6px', color: 'var(--muted)', cursor: 'pointer', opacity: 0.6 }}>×</span>
+                <button
+                  type="button"
+                  aria-label={t('Delete {{name}}', { name: conv.name })}
+                  onClick={(e) => { e.stopPropagation(); onClose(conv.id); }}
+                  style={{ marginLeft: '6px', color: 'var(--muted)', cursor: 'pointer', opacity: 0.6, border: 0, background: 'none', padding: 0 }}
+                >×</button>
               </>
             )}
           </div>
         ))}
-        <button onClick={onNew} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px 8px', color: 'var(--accent)', fontWeight: 600 }}>+</button>
+        <button type="button" aria-label={t('New conversation')} onClick={onNew} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px 8px', color: 'var(--accent)', fontWeight: 600 }}>+</button>
       </div>
 
       {contextMenu.visible && (
@@ -125,10 +142,10 @@ export function ConversationTabs({ conversations, activeId, onSelect, onClose, o
           }}
         >
           <div onClick={handleRenameStart} style={{ padding: '8px 14px', cursor: 'pointer', color: 'var(--text)', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-            Rename
+            {t('Rename')}
           </div>
           <div onClick={() => { onClose(contextMenu.convId); setContextMenu(prev => ({ ...prev, visible: false })); }} style={{ padding: '8px 14px', cursor: 'pointer', color: 'var(--danger)', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-            Delete
+            {t('Delete')}
           </div>
         </div>
       )}

@@ -6,25 +6,19 @@ import YAML from 'yaml';
 import { ensureDir } from '../utils/fsUtils.js';
 import { safeJoin } from '../utils/pathSecurity.js';
 import { getProjectRoot } from './projectService.js';
+import {
+  getCompileEnv as buildCompileEnv,
+  getPandocPdfEngines,
+  getTectonicBinary,
+} from './compileEnvironment.js';
  
 const SUPPORTED_ENGINES = ['pdflatex', 'xelatex', 'lualatex', 'latexmk', 'tectonic'];
  
-// Extra PATH and LD_LIBRARY_PATH entries for user-installed tools
-const USER_HOME = process.env.HOME || '/data01/home/xuzk';
-const EXTRA_PATHS = [`${USER_HOME}/bin`, '/usr/local/bin'].filter(Boolean).join(':');
-const EXTRA_LD_PATH = [
-  `${USER_HOME}/anaconda3/lib`,
-  `${USER_HOME}/bin/tectonic-libs`,
-  '/data01/home/chenzx/anaconda3/lib',
-].join(':');
- 
-function getEngineEnv() {
-  return {
-    ...process.env,
-    PATH: `${EXTRA_PATHS}:${process.env.PATH || ''}`,
-    LD_LIBRARY_PATH: EXTRA_LD_PATH,
-  };
+export function getEngineEnv(baseEnv = process.env) {
+  return buildCompileEnv(baseEnv);
 }
+
+export { getPandocPdfEngines, getTectonicBinary };
  
 // Check which engines are available on the system
 function getAvailableEngines() {
@@ -32,7 +26,18 @@ function getAvailableEngines() {
   const available = [];
   for (const engine of SUPPORTED_ENGINES) {
     try {
-      execSync(`which ${engine}`, { stdio: 'ignore', env });
+      if (engine === 'tectonic') {
+        const configuredBinary = getTectonicBinary(env);
+        if (configuredBinary !== 'tectonic' && (path.isAbsolute(configuredBinary) || configuredBinary.includes(path.sep))) {
+          if (!existsSync(configuredBinary)) throw new Error('Configured Tectonic binary was not found.');
+        } else {
+          const commandName = configuredBinary === 'tectonic' ? engine : configuredBinary;
+          if (!/^[a-zA-Z0-9_.+-]+$/.test(commandName)) throw new Error('Configured Tectonic command name is invalid.');
+          execSync(`which ${commandName}`, { stdio: 'ignore', env });
+        }
+      } else {
+        execSync(`which ${engine}`, { stdio: 'ignore', env });
+      }
       available.push(engine);
     } catch {
       // Engine not found
@@ -50,7 +55,7 @@ function buildCommand(engine, outDir, mainFile) {
     case 'latexmk':
       return { cmd: 'latexmk', args: ['-pdf', '-interaction=nonstopmode', '-synctex=1', `-outdir=${outDir}`, mainFile] };
     case 'tectonic':
-      return { cmd: 'tectonic', args: ['--synctex', '--outdir', outDir, mainFile] };
+      return { cmd: getTectonicBinary(), args: ['--synctex', '--outdir', outDir, mainFile] };
     default:
       return null;
   }
@@ -64,6 +69,10 @@ const MULTI_PASS_ENGINES = ['pdflatex', 'xelatex', 'lualatex'];
 const COMPILE_TIMEOUT_MS = 240_000; // 4 minutes per pass
 const MAX_AUTO_INSTALL_ATTEMPTS = 5;
 
+export function shouldAutoInstallTexDependency(allowPackageInstall = false) {
+  return allowPackageInstall === true;
+}
+
 export function extractMissingTexFile(log = '') {
   const patterns = [
     /! LaTeX Error: File [`']([^`']+\.(?:sty|cls|def|bst))[`'] not found\./i,
@@ -76,6 +85,70 @@ export function extractMissingTexFile(log = '') {
     if (/^[a-zA-Z0-9_.+-]+\.(?:sty|cls|def|bst)$/i.test(filename)) return filename;
   }
   return null;
+}
+
+export function parseCompileDiagnostics(log = '', { pdfGenerated = false, exitCode = 0 } = {}) {
+  const text = String(log || '');
+  const warnings = [];
+  const errors = [];
+  const seenWarnings = new Set();
+  const seenErrors = new Set();
+  const pushUnique = (target, seen, diagnostic) => {
+    const key = `${diagnostic.code}:${diagnostic.message}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    target.push(diagnostic);
+  };
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (/stopping at 6 passes/i.test(line)) {
+      pushUnique(warnings, seenWarnings, {
+        code: 'TECTONIC_MAX_PASSES',
+        message: 'Tectonic stopped after six reruns; the generated PDF may contain unresolved references.',
+        line,
+      });
+      continue;
+    }
+    if (/^!\s*(?:LaTeX|Package) Error:/i.test(line) || /(?:fatal error|emergency stop)/i.test(line)) {
+      pushUnique(errors, seenErrors, { code: 'LATEX_ERROR', message: line, line });
+      continue;
+    }
+    if (/\bwarning:/i.test(line) || /LaTeX Warning:/i.test(line) || /undefined references?/i.test(line)) {
+      pushUnique(warnings, seenWarnings, { code: 'LATEX_WARNING', message: line, line });
+    }
+  }
+
+  if (!pdfGenerated) {
+    pushUnique(errors, seenErrors, {
+      code: 'NO_PDF',
+      message: 'Compilation did not produce a PDF.',
+    });
+  } else if (Number(exitCode) !== 0) {
+    pushUnique(warnings, seenWarnings, {
+      code: 'NONZERO_EXIT_WITH_PDF',
+      message: `The compiler exited with code ${exitCode}, but a PDF was generated.`,
+    });
+  }
+
+  return {
+    status: errors.length > 0 ? 'failed' : warnings.length > 0 ? 'warning' : 'success',
+    errors,
+    warnings,
+  };
+}
+
+function compileFailure(error, extras = {}) {
+  const message = String(error || 'Compilation failed.');
+  return {
+    ok: false,
+    error: message,
+    status: 'failed',
+    errors: [{ code: extras.code || 'COMPILE_FAILED', message }],
+    warnings: [],
+    ...extras,
+  };
 }
 
 function findTinyTexTlmgr(engine) {
@@ -211,7 +284,15 @@ export async function detectEngine(projectRoot, mainFile) {
 // Core compilation (single-file, Overleaf-style multi-pass)
 // ---------------------------------------------------------------------------
  
-export async function runCompile({ projectId, mainFile, engine = 'auto', onLog, _autoInstallAttempt = 0, _autoInstalledPackages = [] }) {
+export async function runCompile({
+  projectId,
+  mainFile,
+  engine = 'auto',
+  onLog,
+  allowPackageInstall = false,
+  _autoInstallAttempt = 0,
+  _autoInstalledPackages = [],
+}) {
   const projectRoot = await getProjectRoot(projectId);
  
   // Auto-detect engine if set to 'auto'
@@ -247,7 +328,10 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
   }
  
   if (!SUPPORTED_ENGINES.includes(engine)) {
-    return { ok: false, error: `Unsupported engine: ${engine}. Supported: ${SUPPORTED_ENGINES.join(', ')}` };
+    return compileFailure(
+      `Unsupported engine: ${engine}. Supported: ${SUPPORTED_ENGINES.join(', ')}`,
+      { code: 'UNSUPPORTED_ENGINE' },
+    );
   }
  
   // Check if the engine is available
@@ -258,16 +342,23 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
       : engine === 'pdflatex'
         ? '\n\nInstall TeX Live: sudo apt install texlive-latex-base (Ubuntu/Debian) or brew install texlive (macOS)'
         : '';
-    return {
-      ok: false,
-      error: `${engine} is not installed on this system.\n\nAvailable engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'none'}${installHint}`,
-      availableEngines,
-    };
+    return compileFailure(
+      `${engine} is not installed on this system.\n\nAvailable engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'none'}${installHint}`,
+      { code: 'ENGINE_NOT_INSTALLED', availableEngines },
+    );
   }
  
   const absMain = safeJoin(projectRoot, mainFile);
   await fs.access(absMain);
   const mainDir = path.dirname(absMain);
+  const buildRoot = path.join(projectRoot, '.compile');
+  await ensureDir(buildRoot);
+  // Tectonic follows the XDG base-directory contract for downloaded bundles.
+  // Keep that cache stable per managed project while retaining an isolated
+  // run output directory, so repeated compiles reuse dependencies without
+  // treating an old PDF as a new successful result.
+  const tectonicCacheDir = path.join(buildRoot, 'tectonic-cache');
+  if (engine === 'tectonic') await ensureDir(tectonicCacheDir);
   // TeX resolves local packages relative to the process cwd, not necessarily
   // relative to a nested entry file. Keep the project root as cwd so legacy
   // \input{folder/file} paths continue to work, while adding the entry-file
@@ -278,10 +369,9 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
     TEXINPUTS: `${texSearchPath}${process.env.TEXINPUTS || ''}`,
     BIBINPUTS: `${texSearchPath}${process.env.BIBINPUTS || ''}`,
     BSTINPUTS: `${texSearchPath}${process.env.BSTINPUTS || ''}`,
+    ...(engine === 'tectonic' ? { XDG_CACHE_HOME: tectonicCacheDir } : {}),
   };
  
-  const buildRoot = path.join(projectRoot, '.compile');
-  await ensureDir(buildRoot);
   const runId = crypto.randomUUID();
   const outDir = path.join(buildRoot, runId);
   await ensureDir(outDir);
@@ -360,7 +450,7 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
     }
   } catch (err) {
     await fs.rm(outDir, { recursive: true, force: true });
-    return { ok: false, error: `${engine} not available: ${err.message}` };
+    return compileFailure(`${engine} not available: ${err.message}`, { code: 'ENGINE_EXECUTION_FAILED' });
   }
  
   // ── Collect outputs ──
@@ -396,7 +486,11 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
  
   if (!pdfBase64) {
     const missingFile = extractMissingTexFile(log);
-    if (missingFile && _autoInstallAttempt < MAX_AUTO_INSTALL_ATTEMPTS) {
+    if (
+      shouldAutoInstallTexDependency(allowPackageInstall)
+      && missingFile
+      && _autoInstallAttempt < MAX_AUTO_INSTALL_ATTEMPTS
+    ) {
       try {
         const installed = await installTexDependency({
           filename: missingFile,
@@ -413,6 +507,7 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
             mainFile,
             engine,
             onLog,
+            allowPackageInstall,
             _autoInstallAttempt: _autoInstallAttempt + 1,
             _autoInstalledPackages: installedPackages,
           });
@@ -423,13 +518,23 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
         pushLog(`[Auto package install] Failed: ${error.message}\n`);
       }
     }
-    return { ok: false, error: 'No PDF generated.', log, status: code ?? -1, phases };
+    const diagnostics = parseCompileDiagnostics(log, { pdfGenerated: false, exitCode: code ?? -1 });
+    return {
+      ok: false,
+      error: 'No PDF generated.',
+      log,
+      ...diagnostics,
+      exitCode: code ?? -1,
+      phases,
+    };
   }
+  const diagnostics = parseCompileDiagnostics(log, { pdfGenerated: true, exitCode: code ?? 0 });
   return {
     ok: true,
     pdf: pdfBase64,
     log,
-    status: code ?? 0,
+    ...diagnostics,
+    exitCode: code ?? 0,
     synctex,
     phases,
     pdfUrl: `/api/projects/${projectId}/blob?path=.compile/output/${base}.pdf`,
@@ -571,7 +676,14 @@ async function detectMainFile(projectRoot, editorMode) {
  * 3. Persist PDF for preview/download
  * 4. Return full compilation log and metadata
  */
-export async function compileFullPaper({ projectId, mainFile, engine, editorMode = 'latex', onLog }) {
+export async function compileFullPaper({
+  projectId,
+  mainFile,
+  engine,
+  editorMode = 'latex',
+  onLog,
+  allowPackageInstall = false,
+}) {
   const projectRoot = await getProjectRoot(projectId);
 
   let resolution;
@@ -606,6 +718,7 @@ export async function compileFullPaper({ projectId, mainFile, engine, editorMode
     mainFile: resolution.mainFile,
     engine: detectedEngine,
     onLog,
+    allowPackageInstall,
   });
  
   return {

@@ -1,5 +1,7 @@
 # 仓库 bug 修复记录
 
+- 2026-07-22：根级 `npm start` 曾因 app workspace 中缺少 `app/.env` 而在 Node 启动前失败。改为按“仓库根 `.env` 兼容层 → `app/.env` 优先覆盖”加载可选 env 文件，并由 `toolchainContract.test.mjs` 防止回归。
+
 - Paper Writer RAG 的 PDF 知识库上传不能把文件 metadata 当作正文索引。修复点：PDF 上传尝试抽取真实文本，生成 `*.extracted.md` 和 `*.rag.json`，索引器跳过二进制 PDF 直接读取，只在存在抽取正文时产生 chunks；文档列表暴露解析状态，避免用户误以为 PDF 正文已可检索。
 
 - 手机端快捷键缺少 Claude / Copilot CLI 常用控制键：`Shift+Tab`、`Ctrl+O`、`Ctrl+E` 和行编辑组合无法从手机触发，且快捷键类型中残留旧 id 有构建失败风险；修复为扩展手机快捷键表，并在本地 tmux 转换层映射到 `BTab`、`C-o`、`C-e`、`C-u/w/k/y` 等 key name。
@@ -302,3 +304,76 @@
 - Paper Writer 后端启动时会因为 `skillEngine`、`compileService`、`projectService` 等运行时代码直接导入 `yaml` 但后端包未声明该生产依赖而报 `ERR_MODULE_NOT_FOUND`。修复为把 `yaml` 加入后端 workspace dependencies，并恢复本地依赖安装，使 `scripts/restart.sh` 能启动健康检查。
 - Paper Writer Draw 系统调用图片 API 时遇到 `Client network socket disconnected before secure TLS connection was established` 会直接失败并把底层 TLS 断连暴露给用户。修复为 Draw HTTP 客户端对 TLS/Socket 瞬断、DNS 临时失败和网关 502/503/504 做有限重试，支持 `OPENPRISM_DRAW_IMAGE_API_BASE` 切换图片 API 网关，并把最终错误改成可执行的网络/代理/证书检查提示。
 - Paper Writer 集成终端打开时报 `Terminal backend unavailable: node-pty native module failed to load`。根因是 Linux 环境缺少 `g++`，`node-pty@1.1.0` 没有 linux-x64 预构建包，安装会退回本机编译并失败，导致后端无法加载 PTY 原生模块。修复为升级后端依赖到带 linux-x64 prebuild 的 `node-pty@1.2.0-beta.14`，并用终端 smoke test 验证可 spawn shell。
+- 2026-07-22：Paper Agent 的危险执行接口不能依赖“用户记得配置 Token”。未设置 `OPENPRISM_API_TOKEN` 时 `/api/code/run`、`/api/code/exec` 和终端必须 fail-closed，只有健康检查与非危险本地流程继续可用；设置后统一执行 Bearer 校验。
+- 2026-07-22：Draw 图片凭证必须只存在后端 `.env` / appConfig，公开配置只暴露掩码和是否配置。Draw 文件接口不能接受客户端目录名，必须以 managed `projectId` 经 `getProjectRoot`、`project.json.id` 和 `safeJoin` 三层约束后访问。
+- 2026-07-22：受管项目身份固定为完整 UUID，磁盘目录是可变的安全可读 `directoryName`；所有模块必须通过 Project Locator 以 `projectId` 解析根目录，不得再次假设“目录名等于项目 ID”。重命名必须持锁、检测目标冲突并在元数据提交失败时回滚目录。
+- 2026-07-22：项目根目录的唯一权威环境变量是 `OPENPRISM_DATA_DIR`。`OPENPRISM_PROJECTS_DIR` 只用于主变量缺失时的旧配置兼容；禁止功能模块单独读取旧变量或自行回退 `$HOME/papers`。
+- 2026-07-22：项目 blob 资源不存在属于可预期的 404，不得让底层 `ENOENT` 变成 500；无扩展名图片探测全部失败和显式文件缺失都返回相同结构化错误，供预览层稳定降级。
+- 2026-07-22：静态 Paper Writer Workbench 是默认关闭的 Legacy / Prototype，不是正式入口。只有 `OPENPRISM_ENABLE_LEGACY_WORKBENCH=true` 才能访问兼容路径；正式 React UI 必须保持无原型链接，独有能力按 `docs/legacy_workbench_lifecycle.md` 迁移后才允许移除旧页。
+- 2026-07-22：Paper RAG 的 HTTP 契约必须覆盖前端真实调用的 index/search，面板统一采用自动索引语义；`.openprism`、`.compile`、`research_corpus` 属于内部或专用资料目录，默认不得混入普通论文文件树。
+- 2026-07-22：活动会话恢复必须按 projectId 隔离，持久化 ID 无效时回退最近有效会话；异步恢复完成前不得清空存储，旧项目的迟到响应不得覆盖新项目。
+- 2026-07-22：Skill 目录是动态 manifest，不允许用固定数量上限充当质量门禁；应验证唯一 ID、manifest 完整性和合法分类，UI 分类由真实非零计数生成。
+- 2026-07-22：移动论文工作区固定采用 Files / Editor / Assistant 互斥视图，小屏不得继续压缩桌面三栏；i18n 切换必须同步 `html.lang`，核心字体栈必须有离线可用 CJK 回退。
+- 2026-07-22：模板选择必须显式以空白项目为默认。所有 manifest/上传模板的 `mainFile` 都必须存在、位于模板根内并包含可识别的 `\\documentclass` 入口。
+- 2026-07-22：编译结果不能只看“是否生成 PDF”；六轮重跑、未解析引用等需要返回结构化 warning，前端必须区分 success、warning、failed。
+- 2026-07-22：Tectonic 依赖缓存必须显式落在受控、可持续复用的 `project/.compile/tectonic-cache`，不能依赖进程默认 HOME；依赖缓存与成功结果缓存必须分离，每次运行仍需在隔离目录实际生成 PDF 后才能更新稳定输出。
+- 2026-07-22：HTML LaTeX 只能标为近似预览；引用、命令和资源无法可靠渲染时应结构化降级，最终排版权威只来自真实编译 PDF。
+- 2026-07-22：EditorPage 初始 chunk 预算固定为 500 KiB；Draw/RAG/审稿/Pipeline/终端/编辑器引擎按需加载，禁止通过提高预算掩盖 bundle 回归。
+- 2026-07-22：Playwright 门禁不得复用开发者 papers 或固定项目 fixture；统一 runner 使用随机 loopback 端口、临时 `OPENPRISM_DATA_DIR`，并在成功或失败后清理进程与产物。
+- 2026-07-22：LLM Provider 必须通过统一 registry 扩展，禁止在设置页硬编码单一 API 类型。Codex/Claude/Copilot CLI 的 executable、参数和 cwd 都由后端固定，cwd 只来自 `projectId`→Project Locator；无 `OPENPRISM_API_TOKEN` 时 CLI 执行面 fail-closed。浏览器服务令牌只能保存在 sessionStorage，并覆盖 fetch/XHR/WebSocket 的同源鉴权闭环。
+- 2026-07-22：Paper Writer 的唯一包管理契约是 npm，唯一依赖锁文件是 `app/package-lock.json`。根命令必须代理到 `app/`，尤其 `npm start` 必须复用 app 的 `--env-file=.env` 语义；禁止重新引入根 pnpm 声明、pnpm 锁文件或吞掉子命令失败码的包装脚本。
+- 2026-07-22：统一环境诊断必须走 `/api/capabilities` 稳定四态契约；固定本地版本探测也属于受保护执行面，未配置 `OPENPRISM_API_TOKEN` 时 fail-closed。能力页不得泄露密钥/绝对路径，不得在默认 GET 中登录 CLI、联网或调用模型，单项失败不得拖成整体 500。
+- 2026-07-22：隔离 E2E 不得继承普通 `OPENPRISM_API_TOKEN`，每次运行应生成独立随机 Token（也允许显式 `OPENPRISM_E2E_API_TOKEN` 覆盖），并将同一值映射到隔离后端、API fixture 和 Playwright sessionStorage。无 Token fail-closed 由独立认证单测覆盖，E2E 不应依赖匿名 CRUD。
+- 2026-07-22：API 鉴权必须 default-deny，不能依赖危险 URL 黑名单；仅 health、脱敏 config 和 Provider metadata 可公开。HTTP Provider 临时 endpoint 与 Key 必须成对来自同一次请求，绝不能把服务器 Key 回退发送到请求提供的地址。
+- 2026-07-22：CLI Provider 的 Chat 权限必须可执行地只读。Codex 使用 `--sandbox read-only`；raw JSON/stream-json 不能作为用户 token。需要改文件的 CLI Agent 必须另建隔离 Diff/Accept/Reject 工作流。
+- 2026-07-22：受管项目必须有存在且 ID 匹配的 `project.json`，项目根和所有路径组件不得是 symlink。GET 列表/tree 必须纯读取，metadata-free 目录只能作为候选，不得自动注册或创建 docs/index。
+- 2026-07-22：隔离 integration/E2E 每次生成独立随机服务 Token并注入请求与 sessionStorage，不继承正式凭据，也不再依赖匿名 CRUD。
+- 2026-07-22：Vite 构建不能替代 TypeScript 门禁。根/app 必须提供真实 `tsc --noEmit`，且 `check` 固定先执行 typecheck；持久化浏览器状态的正常值与 fallback 必须共享同一显式类型，构造 URL 查询参数时不得依赖带 `undefined` 的联合对象推断。
+- 2026-07-22：`tlmgr install` 是会修改宿主 TeX 环境并可能联网的副作用，任何 LaTeX 编译入口都必须默认 fail-closed。只接受当前请求的字面布尔值 `allowPackageInstall: true`，路由要严格归一化，服务递归重试必须继承该授权；缺省、字符串或数字均不得触发包安装。
+- 2026-07-22：正式 React managed-project 主路径固定为 `projectId + relativePath + Project Locator`。`__paper_agent__:<id>` 只能作为有日志和弃用响应头的旧客户端兼容输入；外部 Code/MCP 的绝对 `projectPath` 是独立能力边界，不得重新泄漏到章节、AI、Review、Pipeline、watcher 或 Terminal 的 managed 请求中。
+- 2026-07-22：Paper RAG index 必须按项目串行重建，并用同目录 temp + rename 原子替换。解析失败或基本结构非法的 index 要先保留为 `paper-rag-index.json.corrupt-*` 再自动重建；任何写入失败都不得破坏旧索引。对应回归位于 `app/tests/paperRag.test.mjs`。
+- 2026-07-22：上传模板覆盖必须采用 backup → staging install → atomic manifest → cleanup 的串行事务。提交失败恢复旧目录，manifest 原子替换失败不得改变旧文件，并发提交后目录内容与 manifest 条目必须来自同一请求。对应回归位于 `app/tests/templateContract.test.mjs`。
+- 2026-07-22：浏览器临时 HTTP Provider endpoint 默认必须拒绝 loopback、私网、link-local、metadata 和 reserved 地址，并在每次 redirect 前复核；服务器配置的 LAN endpoint 是管理员信任边界。内部临时网关只允许由 `OPENPRISM_PROVIDER_ALLOWED_HOSTS` 精确放行。回归位于 `app/tests/appConfigEnv.test.mjs`。
+- 2026-07-22：能力诊断的固定版本命令必须使用 detached process group，并复用 AgentProvider 的 SIGTERM→SIGKILL 进程树终止器；不能在超时后只 kill 直接 child。回归位于 `app/tests/capabilityService.test.mjs`。
+- 2026-07-22：生产构建必须生成前后端共享 build ID；后端在启动时固定读取，前端渲染前校验 health build ID + API schema。缺失或不匹配必须阻断工作区，`/api/ready` 单独检查数据根和模板。回归位于 `deploymentHandshake.test.mjs` 和 Playwright capabilities spec。
+- 2026-07-22：`/api/config` 即使掩码 Key 也包含 endpoint、模型和主机路径，必须受 Bearer 保护，不再属于公开 bootstrap allowlist。
+- 2026-07-22：Paper Agent 主工作区的 Center/Right/Draw/Review/Citation/Anti-AI/Pipeline 存在硬编码英文，locale 键集合测试会假绿。七个面板现统一通过 `useTranslation` 渲染核心按钮、状态、错误和空状态；`primaryPanelsI18n.test.mjs` 锁定组件实际调用 `t()`，`primary-panels-i18n.spec.ts` 在隔离后端上创建项目并用 Chromium 逐面板验收中文。
+- 2026-07-22：metadata-free 论文目录不得由 GET 自动注册。项目列表现在消费 `candidates`，显示目录、文件数、建议主文件和样例文件；用户确认后调用 `POST /api/projects/register-existing` 原子写入稳定 UUID metadata，保留原目录。项目行同时展示/复制显示名对应的稳定 ID 与真实目录；路径穿越、隐藏目录、symlink、无论文文件和重复注册均被拒绝。
+- 2026-07-22：编译子进程不得隐式猜测 `HOME/bin`、Conda 或开发者主机路径。默认必须保持 `PATH` / `LD_LIBRARY_PATH` 继承值不变；只有显式 `OPENPRISM_COMPILE_PATH`、`OPENPRISM_COMPILE_LD_LIBRARY_PATH` 才能前置路径，`OPENPRISM_TECTONIC_BINARY` 必须同时作用于直接 Tectonic 和 Pandoc PDF engine。对应回归位于 `app/tests/compileService.test.mjs`。
+- 2026-07-22：Skill execution metadata 的存在性不能用值为 `undefined` 的 UI projection key 推断。`requirements`、`sideEffects`、`costClass` 只有真实声明时才进入 enriched Skill；旧 YAML 未声明时必须保持 `metadataSource: inferred` 和 `readiness: degraded`。静态 dry-run 不执行脚本、网络或模型，不能冒充真实运行。
+- 2026-07-22：Skill 管理必须能在无活动对话时直接进入。过滤后的分类展开状态要检查当前可见 category ID 是否都在 expanded Set 中，不能只比较两个集合的 size；隔离 E2E 位于 `app/tests/e2e/skill-readiness.spec.ts`。
+- 2026-07-22：Paper RAG health 必须是严格只读诊断，缺失/损坏 index 不能在 GET 中创建、隔离或自动重建。索引明确声明 `local-keyword-overlap` 且 `semantic: false`；每次重建更新 generation，相同语料保持 SHA-256 fingerprint 稳定。UI 展示文件/分块计数与逐文件 parser/chars/chunks/warnings/error，显式“修复 / 重建索引”才作为恢复动作。回归位于 `app/tests/paperRag.test.mjs`、路由测试、组件契约和 `app/tests/e2e/rag-health.spec.ts`。
+- 2026-07-22：核心 UI 不得通过 CSS `@import` 或 HTML link 请求 Google Fonts。字体必须使用操作系统本地栈并保留 Noto CJK、PingFang、Microsoft YaHei、Songti/SimSun 和 SF Mono 等回退；回归位于 `app/tests/offlineFonts.test.mjs` 与 `app/tests/e2e/offline-fonts.spec.ts`。
+- 2026-07-22：Provider 首次配置必须把服务器访问 Token 与模型 API Key 分成不同步骤，并解释 HTTP endpoint/credential、CLI 安装登录和显式连接测试。设置页中的 Codex/Claude/Copilot 仍是只读 Chat，不能暗示已经具备文件写入能力；回归位于 `app/tests/providerSettingsContract.test.mjs` 和 `app/tests/e2e/provider-onboarding.spec.ts`。
+- 2026-07-22：Provider 设置字段的可见 label 必须通过 `htmlFor/id` 关联真实输入控件，不能只靠邻近文本；Server Token、Provider、API endpoint、API Key 和 Model 均应能被读屏或 Playwright `getByLabel` 定位。
+- 2026-07-22：源码目录不得保留编辑器备份副本。已删除无人引用的 `SkillsSelector.tsx.bak`；`.gitignore` 和 `app/tests/sourceArtifactPolicy.test.mjs` 锁定 `*.bak`、`*.orig`、`*~`，避免搜索和审查同时命中新旧实现。
+- 2026-07-22：Playwright `.last-run.json` 是本机易过期状态，不能作为仓库发布证据。根目录与 `app/` 的冲突状态文件已删除，`test-results/` 和 `playwright-report/` 统一忽略；隔离 runner 使用 `/tmp` 输出，CI/验收证据另行保存。
+- 2026-07-22：依赖安全修复必须先 `npm explain` 区分生产/开发路径，再做 semver 范围内定向升级，不默认使用 `npm audit fix --force`。当前安全下限：brace-expansion 5.0.7、fast-uri 3.1.4、React Router 6.30.4、shell-quote 1.8.5、tar 7.5.19、Vite 8.0.16；实际 lock 已高于或等于这些版本，`npm audit` 为 0。
+- 2026-07-22：CLI Provider 的普通 Chat 必须继续只读；文件修改只能走独立 CLI Task Agent。Task Agent 使用项目外 base/work 快照、固定文件工具权限、Diff 审查、source fingerprint 漂移阻断、rollback journal 和持久化历史。Reject 不得触碰原项目，Accept 必须先显式确认全部 changed files。
+- 2026-07-22：项目文本读取接口遇到已删除文件必须返回 404，不能把 `ENOENT` 暴露成 500；CLI Task Agent 的删除文件 E2E 锁定该语义。
+- 2026-07-22：Rolldown `codeSplitting.groups.maxSize` 不能用于机械切碎 Markdown/unified 或 CodeMirror 这类存在初始化依赖的模块图。该配置会生成体积合规且资源 200、但浏览器运行时报 `r is not a function/constructor` 的 bundle。应保留组件级 lazy import，并按稳定包边界分组；任何 bundle 优化必须用生产构建 Playwright 同时打开项目页、CodeMirror 和 Markdown/LaTeX preview，不能只依赖构建成功或字符串契约。
+- 2026-07-22：Provider SSRF 校验不能停在“fetch 前查一次 DNS”。校验与实际 socket 若各自解析，或环境代理接管 hostname，都会留下 DNS rebinding 窗口。当前实现使用请求专用 pinned lookup + 独立 direct Agent，把已校验地址注入 TCP/TLS 连接；redirect 每跳重新固定，TLS SNI/证书名继续使用原 hostname。回归必须同时验证 fake transport 收到固定地址和真实 socket 仅调用一次解析器。
+- 2026-07-22：超大 `paperWorkbenchService.js` 的首次行为保持型拆分选择运行环境子域：OCR、PDF 抽取、Playwright 状态、production gates 和 recheck copy text 迁入 `paperWorkbenchRuntimeEnvironment.js`。拆分前先把 Skill picker 测试从硬编码旧中文名改为验证当前推荐 Skill projection，随后保持所有运行时字段和值不变。后续拆分应继续遵循“先绿测试、单一子域、无功能扩张”。
+- 2026-07-22：真实浏览器 Token 首用链路必须在设置页成功应用 Token 后主动刷新父页面项目/模板状态；只刷新设置弹窗会把首次 401 后的空表留在页面中。清除 Token 时也应清空已加载的受保护元数据，避免浏览器内继续显示旧列表。
+- 2026-07-22：sessionStorage Bearer Token 只会进入应用 fetch；受保护的 `<img>`、`<embed>` 和直接 `<a href>` 请求必须先认证 fetch 为 Blob，再用短生命周期 object URL 渲染或下载，禁止把 Token 放入 URL。
+- 2026-07-22：长设置弹窗必须受 viewport 高度约束并让正文内部滚动，否则 flex 居中会把标题栏和关闭按钮推到屏幕外；桌面 E2E 需要实际点击关闭按钮锁定该行为。
+- 2026-07-22：离线字体门禁必须实际打开 LaTeX 预览并禁止所有远程字体/CDN stylesheet，不能只检查项目首页或 Google Fonts；局部组件中的 jsDelivr `@import` 同样会破坏离线一致性。
+- 2026-07-22：Draw.io 外部 iframe 必须使用管理员配置的 HTTP(S) URL、精确 iframe source/origin 校验和精确 postMessage target；加载超时或失败时必须提供重试、离线 XML 编辑和下载，并让这些动作在源码模式中持续可达。
+- 2026-07-22：运行时默认值禁止硬编码工作站 LAN IP。监听继续使用 `0.0.0.0`，Vite/MCP/启动输出使用 loopback fallback 和 `.env` 中的 `OPENPRISM_PUBLIC_HOST`；生产日志不得输出 Prompt、消息、工具结果、项目绝对路径或样例文件路径，诊断只保留脱敏计数和状态。
+- 2026-07-22：随仓库分发的 LaTeX 模板必须全部由 committed manifest 声明真实 `mainFile` 和用户元数据；模板 API 不返回零内容分类，也不返回由前端拥有的 synthetic `all`。磁盘目录扫描只能作为兼容发现，不能代替正式 catalog 元数据。
+- 2026-07-22：Skill `lastRun` 使用数据根下 0600 JSON 持久化；package tests 记录 `package-tests`，真实 AI send/stream 应记录 `model-guided-execution`。账本只存状态、耗时、Provider/model/version、项目相对产物、成本和副作用，不得存 Prompt、模型正文、绝对路径或凭据；运行成功也不改变 readiness 静态判定。
+- 2026-07-22：外部 RAG 不得把来源失败静默折叠为空结果，也不得直接比较引用数和不同供应商 relevance score。API 返回逐来源状态/耗时/数量/错误码，结果保留 native score，并按来源内顺序生成 normalized score；UI 必须同时显示成功、空和失败来源。
+- 2026-07-22：E2E 隔离 runner 只有一个临时后端和数据根，不能安全支持默认 fully-parallel；30 worker 曾出现 23/30，单 worker 30/30。默认配置必须保持 `fullyParallel: false`、`workers: 1`，除非未来先提供 worker 级后端/数据隔离。
+- 2026-07-22：Project Locator 的稳定 ID 回退扫描已增加带 metadata 校验的缓存；缓存不是信任边界，任何 lstat、symlink、缺失文件或 id 不匹配都必须失效并回退扫描。
+- 2026-07-22：Skill run ledger 的 `status: success` 只表示底层 Provider/测试请求完成；`outcome`、`verificationStatus`、`objectiveStatus` 必须继续分开，不能把模型返回或包测试结果当作论文目标通过。
+- 2026-07-22：通用 Provider metadata 不能用服务器 Token 代替 CLI readiness。`/api/providers` 必须使用固定只读 probe 区分 installed/authenticated/unknown，并让设置页禁用没有被明确证明可用的 CLI；无稳定 auth-status 的 CLI 保守不可用，不能显示绿色状态。
+- 2026-07-22：系统能力的固定 `--version` 探针必须保留最小非秘密 HOME/XDG 环境；只传 PATH/LANG 会让依赖用户目录解析的 CLI 假阴性，造成 Provider readiness 与能力页互相矛盾。仍不得继承 Token、Key、密码或完整环境。
+- 2026-07-23：受保护项目首页遇到 401/403 时必须进入明确的服务器访问解锁状态，不能让项目与模板并发错误互相覆盖成“空项目 + Authentication required”。API 客户端要保留 HTTP status/code；正确 Token 应在同一标签页无需刷新恢复项目、模板和受保护资源。
+- 2026-07-23：设置窗口的鉴权请求必须先组成受控 Promise 集合再统一等待，不能在 `Promise.all` 建立拒绝处理前 `await` 其他请求；否则无令牌 401 会成为浏览器 `pageerror`。项目首页解锁刷新也必须捕获并归一化项目/模板加载失败。
+- 2026-07-23：默认项目视图必须覆盖 `papers/` 下全部非回收站受管工程，不能因 archived 标志让磁盘工程看似消失。服务器访问令牌与模型 Provider 配置必须在 UX 上分离；模型不可用不得阻止打开、编辑或保存文件，手动保存由受管项目文件 API 完成。
+- 2026-07-23：项目身份不能只依赖可变的论文标题；列表和搜索必须保留真实目录名与稳定 ID。目录搜索需要归一化大小写、连字符、下划线和空格，以免 `MoE-Prune` 与 `moe_prune` 被用户误认为不同或未映射的项目。
+- 2026-07-23：项目列表状态导航使用四个明确且互斥的产品概念：`all`=全部未删除、`active`=未归档且未删除、`archived`=已归档且未删除、`trash`=已删除。UI 文案对应“全部项目/未归档/已归档/已删除”，不要再用 `mine` 承载多个含义。
+- 2026-07-24：LaTeX 工具链安装在服务继承 PATH 之外时，必须通过本机 `.env` 的 `OPENPRISM_COMPILE_PATH` 显式暴露，不能回退到仅能被 `which` 找到但无法启动的 Tectonic。最终 PDF 验收必须从正式页面真实点击编译，并同时验证成功响应、稳定输出文件、浏览器 PDF 预览/下载、`application/pdf` 与 `%PDF-` 文件头。
+- 2026-07-24：编译产物 URL 也属于受保护资源，不能在最终 PDF 面板中直接交给 `<embed>` 或 `window.open`。必须先通过安装了服务器 Token 的应用 fetch 获取 Blob，再使用可撤销的 `blob:` URL；验收需确认原始 PDF 请求携带 Bearer，页面不存在 `Authentication required`，并从实际嵌入 Blob 读回 `%PDF-` 文件头与非零完整字节。
+- 2026-07-24：HTTP Provider 当前表单测试与模型列表必须使用同一凭据来源。已保存 endpoint 未变化且浏览器 Key 为空时可复用服务器凭证；endpoint 改变后必须重新输入 Key，禁止把服务器 Key 静默发送到新地址。请求侧 LAN endpoint 默认继续拒绝，只有 `OPENPRISM_PROVIDER_ALLOWED_HOSTS` 精确放行后才允许临时 probe/models；正式验收应同时覆盖 Provider probe、模型列表、实际 Chat 和至少一次由模型发起的仓库工具调用。
+- 2026-07-24：Draw 配置必须由受认证前端表单写入后端并按请求动态解析，不能在路由注册时缓存 endpoint/key/model。共享 LLM 凭据时只复用 Base URL/API Key，图片模型保持独立；OpenAI-compatible 图片响应必须兼容 `url` 和 `b64_json`。最终生图 Prompt 以可编辑文本框为唯一事实来源，不自动追加 paperContent，生图 Key 不进入 localStorage 或普通生图请求体。

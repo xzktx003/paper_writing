@@ -9,6 +9,31 @@ export interface RagDocument {
   mimeType?: string;
 }
 
+export type RagHealthStatus = 'healthy' | 'degraded' | 'corrupt' | 'rebuilding';
+
+export interface RagDocumentHealth {
+  path: string;
+  kind: string;
+  parser: string;
+  parseStatus: string;
+  bytes: number;
+  chars: number;
+  chunks: number;
+  warnings: string[];
+  error: string;
+}
+
+export interface RagIndexHealth {
+  status: RagHealthStatus;
+  retrieval: { kind: 'local-keyword-overlap'; label: string; semantic: false };
+  generation: string;
+  fingerprint: string;
+  indexedAt: string;
+  counts: { files: number; indexedFiles: number; failedFiles: number; zeroChunkFiles: number; chunks: number };
+  documents: RagDocumentHealth[];
+  issues: Array<{ code: string; severity: string; message: string }>;
+}
+
 export interface RagSearchResult {
   id: string;
   documentId: string;
@@ -27,7 +52,19 @@ export interface ExternalSearchSource {
   citation_count?: number;
   doi?: string;
   source: 'semantic-scholar' | 'arxiv' | 'crossref' | 'openalex';
+  native_score?: number | null;
+  native_score_basis?: string;
+  normalized_score?: number;
+  score_basis?: string;
   relevance_score?: number;
+}
+
+export interface ExternalSearchSourceStatus {
+  id: string;
+  status: 'ok' | 'empty' | 'error';
+  latencyMs: number;
+  count: number;
+  error: string;
 }
 
 const BASE = '/api/projects';
@@ -46,8 +83,12 @@ export async function addRagDocument(projectId: string, data: { filename: string
   return apiPost(`${BASE}/${projectId}/rag/documents`, data);
 }
 
-export async function indexRagCorpus(projectId: string): Promise<{ ok: boolean; documents: number; chunks: number; indexedAt: string }> {
+export async function indexRagCorpus(projectId: string): Promise<{ ok: boolean; documents: number; chunks: number; indexedAt: string; generation: string; fingerprint: string; retrieval: RagIndexHealth['retrieval'] }> {
   return apiPost(`${BASE}/${projectId}/rag/index`, {});
+}
+
+export async function getRagHealth(projectId: string): Promise<RagIndexHealth> {
+  return apiFetch(`${BASE}/${projectId}/rag/health`);
 }
 
 export async function deleteRagDocument(projectId: string, path: string): Promise<{ ok: boolean }> {
@@ -66,7 +107,7 @@ export async function buildRagContext(projectId: string, query: string, limit = 
 
 /* ── External Search ────────────────────────────────────────── */
 
-export async function searchExternalSources(projectId: string, query: string, options?: { sources?: string; limit?: number }): Promise<{ results: ExternalSearchSource[] }> {
+export async function searchExternalSources(projectId: string, query: string, options?: { sources?: string; limit?: number }): Promise<{ results: ExternalSearchSource[]; sources: ExternalSearchSourceStatus[] }> {
   const params = new URLSearchParams({ q: query });
   if (options?.sources) params.set('sources', options.sources);
   if (options?.limit) params.set('limit', String(options.limit));

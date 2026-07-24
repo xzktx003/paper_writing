@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTranslation } from 'react-i18next';
 import {
   listPipelinePresets,
   startPipelineV2,
@@ -13,9 +14,10 @@ import {
   getPipelineV2Status,
 } from '../api/conversationApi';
 import type { PipelinePreset, PipelineV2, PipelineStageV2 } from '../api/conversationApi';
+import { managedProjectRequest } from '../api/projectRequestContext';
 
 interface Props {
-  projectPath: string;
+  projectId: string;
   chapterScope?: string;
 }
 
@@ -45,7 +47,8 @@ const STATUS_COLORS: Record<string, string> = {
   skipped: '#94a3b8',
 };
 
-export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
+export function PipelinePanelV2({ projectId, chapterScope }: Props) {
+  const { t } = useTranslation();
   const [presets, setPresets] = useState<PipelinePreset[]>([]);
   const [pipeline, setPipeline] = useState<PipelineV2 | null>(null);
   const [selectedPreset, setSelectedPreset] = useState('paper-pipeline');
@@ -60,9 +63,9 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
   }, []);
 
   const handleStart = useCallback(async () => {
-    const result = await startPipelineV2(selectedPreset, projectPath, chapterScope);
+    const result = await startPipelineV2(selectedPreset, managedProjectRequest(projectId), chapterScope);
     if (!('error' in result)) setPipeline(result);
-  }, [selectedPreset, projectPath, chapterScope]);
+  }, [selectedPreset, projectId, chapterScope]);
 
   const handleRunStage = useCallback(async () => {
     if (!pipeline) return;
@@ -131,7 +134,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
     return (
       <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>⚡ Pipeline 2.0</div>
-        <div style={{ color: 'var(--muted)', fontSize: 12 }}>Composable multi-stage workflows with typed executors</div>
+        <div style={{ color: 'var(--muted)', fontSize: 12 }}>{t('Composable multi-stage workflows with typed executors')}</div>
 
         <select
           value={selectedPreset}
@@ -147,7 +150,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
               <div key={i} style={{ padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: 4, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 11 }}>{TYPE_ICONS[s.type] || '?'}</span>
                 <span style={{ fontWeight: 500 }}>{s.name}</span>
-                <span style={{ color: 'var(--muted)', marginLeft: 'auto', fontSize: 10 }}>{s.type}</span>
+                <span style={{ color: 'var(--muted)', marginLeft: 'auto', fontSize: 10 }}>{t(s.type)}</span>
               </div>
             ))}
           </div>
@@ -157,7 +160,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
           onClick={handleStart}
           style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
         >
-          ▶ Start Pipeline
+          ▶ {t('Start Pipeline')}
         </button>
       </div>
     );
@@ -180,9 +183,9 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
             background: isCompleted ? '#22c55e20' : isFailed ? '#ef444420' : isWaiting ? '#f59e0b20' : 'var(--accent-soft)',
             color: isCompleted ? '#22c55e' : isFailed ? '#ef4444' : isWaiting ? '#f59e0b' : 'var(--accent-strong)',
           }}>
-            {isCompleted ? '✓ Done' : isFailed ? '✗ Failed' : isWaiting ? '⏸ Waiting' : isPaused ? '⏸ Paused' : `${pipeline.currentStage + 1}/${pipeline.stages.length}`}
+            {isCompleted ? `✓ ${t('Done')}` : isFailed ? `✗ ${t('Failed')}` : isWaiting ? `⏸ ${t('Waiting')}` : isPaused ? `⏸ ${t('Paused')}` : `${pipeline.currentStage + 1}/${pipeline.stages.length}`}
           </span>
-          <button onClick={handleReset} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--muted)', padding: '2px 4px' }} title="New pipeline">✕</button>
+          <button onClick={handleReset} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--muted)', padding: '2px 4px' }} title={t('New pipeline')}>✕</button>
         </div>
       </div>
 
@@ -223,7 +226,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 13 }}>{TYPE_ICONS[currentStage.type]}</span>
             <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{currentStage.name}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'var(--accent-soft)', color: 'var(--accent-strong)' }}>{currentStage.type}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'var(--accent-soft)', color: 'var(--accent-strong)' }}>{t(currentStage.type)}</span>
           </div>
           <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 4 }}>{currentStage.description}</div>
         </div>
@@ -252,7 +255,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
               <textarea
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
-                placeholder="Optional feedback or edits..."
+                placeholder={t('Optional feedback or edits...')}
                 style={{ width: '100%', minHeight: 48, padding: 6, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text)', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -268,7 +271,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
                       color: action === 'approve' ? '#fff' : action === 'reject' ? '#ef4444' : 'var(--text)',
                     }}
                   >
-                    {action === 'approve' ? '✓ Approve' : action === 'reject' ? '✗ Reject' : action === 'skip' ? '⊘ Skip' : action === 'edit' ? '✎ Edit' : action}
+                    {action === 'approve' ? `✓ ${t('Approve')}` : action === 'reject' ? `✗ ${t('Reject')}` : action === 'skip' ? `⊘ ${t('Skip')}` : action === 'edit' ? `✎ ${t('Edit')}` : t(action)}
                   </button>
                 ))}
               </div>
@@ -281,15 +284,15 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
               <textarea
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
-                placeholder="Feedback for retry..."
+                placeholder={t('Feedback for retry...')}
                 style={{ width: '100%', minHeight: 36, padding: 6, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text)', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', gap: 4 }}>
                 <button onClick={handleRetry} disabled={running} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                  ↻ Retry
+                  ↻ {t('Retry')}
                 </button>
                 <button onClick={handleSkip} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text)', fontSize: 11, cursor: 'pointer' }}>
-                  ⊘ Skip
+                  ⊘ {t('Skip')}
                 </button>
               </div>
             </>
@@ -302,7 +305,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
               disabled={running}
               style={{ padding: '8px 0', borderRadius: 6, border: 'none', background: running ? 'var(--muted)' : 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: running ? 'default' : 'pointer' }}
             >
-              {running ? '⟳ Running...' : `▶ Run ${currentStage.name}`}
+              {running ? `⟳ ${t('Running...')}` : `▶ ${t('Run {{name}}', { name: currentStage.name })}`}
             </button>
           )}
 
@@ -310,12 +313,12 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
           <div style={{ display: 'flex', gap: 4 }}>
             {(pipeline.status === 'running' || isPaused) && (
               <button onClick={handlePauseResume} style={{ flex: 1, padding: '4px 0', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--text)', fontSize: 10, cursor: 'pointer' }}>
-                {isPaused ? '▶ Resume' : '⏸ Pause'}
+                {isPaused ? `▶ ${t('Resume')}` : `⏸ ${t('Pause')}`}
               </button>
             )}
             {pipeline.status === 'running' && (
               <button onClick={handleSkip} style={{ flex: 1, padding: '4px 0', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--paper)', color: 'var(--muted)', fontSize: 10, cursor: 'pointer' }}>
-                ⊘ Skip Stage
+                ⊘ {t('Skip Stage')}
               </button>
             )}
           </div>
@@ -325,7 +328,7 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
       {/* Completed state */}
       {isCompleted && (
         <div style={{ padding: 10, background: '#22c55e15', borderRadius: 6, color: '#22c55e', textAlign: 'center', fontWeight: 600 }}>
-          ✅ Pipeline completed!
+          ✅ {t('Pipeline completed!')}
         </div>
       )}
     </div>
@@ -333,25 +336,26 @@ export function PipelinePanelV2({ projectPath, chapterScope }: Props) {
 }
 
 function StageDetail({ stage }: { stage: PipelineStageV2 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ padding: '6px 10px', background: 'var(--bg-secondary)', borderRadius: 6, fontSize: 11, border: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
         <span>{TYPE_ICONS[stage.type]}</span>
         <span style={{ fontWeight: 600 }}>{stage.name}</span>
-        <span style={{ color: STATUS_COLORS[stage.status], fontWeight: 600, marginLeft: 'auto' }}>{stage.status}</span>
+        <span style={{ color: STATUS_COLORS[stage.status], fontWeight: 600, marginLeft: 'auto' }}>{t(stage.status)}</span>
       </div>
       <div style={{ color: 'var(--muted)' }}>{stage.description}</div>
-      {stage.startedAt && <div style={{ color: 'var(--muted)', marginTop: 2 }}>Started: {new Date(stage.startedAt).toLocaleTimeString()}</div>}
-      {stage.completedAt && <div style={{ color: 'var(--muted)' }}>Completed: {new Date(stage.completedAt).toLocaleTimeString()}</div>}
+      {stage.startedAt && <div style={{ color: 'var(--muted)', marginTop: 2 }}>{t('Started')}: {new Date(stage.startedAt).toLocaleTimeString()}</div>}
+      {stage.completedAt && <div style={{ color: 'var(--muted)' }}>{t('Completed')}: {new Date(stage.completedAt).toLocaleTimeString()}</div>}
       {stage.output && (
         <details style={{ marginTop: 4 }}>
-          <summary style={{ cursor: 'pointer', color: 'var(--accent-strong)' }}>Output</summary>
+          <summary style={{ cursor: 'pointer', color: 'var(--accent-strong)' }}>{t('Output')}</summary>
           <div style={{ maxHeight: 120, overflow: 'auto', marginTop: 4, padding: 4, background: 'var(--paper)', borderRadius: 4, fontSize: 11 }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{stage.output.slice(0, 1000)}</ReactMarkdown>
           </div>
         </details>
       )}
-      {stage.error && <div style={{ color: '#ef4444', marginTop: 2 }}>Error: {stage.error}</div>}
+      {stage.error && <div style={{ color: '#ef4444', marginTop: 2 }}>{t('Error: {{error}}', { error: stage.error })}</div>}
     </div>
   );
 }

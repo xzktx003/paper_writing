@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtemp, rm } from 'fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import {
@@ -13,10 +13,13 @@ describe('Concurrent write protection', () => {
   const originalHome = process.env.HOME;
   let testDir;
   const projectId = 'concurrency-test-project';
+  const options = () => ({ dataDir: testDir });
 
   beforeAll(async () => {
     testDir = await mkdtemp(join(tmpdir(), 'conv-concurrency-'));
-    process.env.HOME = testDir;
+    const projectRoot = join(testDir, projectId);
+    await mkdir(projectRoot, { recursive: true });
+    await writeFile(join(projectRoot, 'project.json'), JSON.stringify({ id: projectId, name: 'Concurrency', directoryName: projectId }), 'utf8');
   });
 
   afterAll(async () => {
@@ -29,14 +32,14 @@ describe('Concurrent write protection', () => {
       name: 'Append Stress',
       context_scope: { type: 'free' },
       mode: 'chat',
-    });
+    }, options());
 
     const promises = Array.from({ length: 20 }, (_, i) =>
-      appendMessage(projectId, conv.id, { role: 'user', content: `msg-${i}` })
+      appendMessage(projectId, conv.id, { role: 'user', content: `msg-${i}` }, options())
     );
     await Promise.all(promises);
 
-    const result = await getConversation(projectId, conv.id);
+    const result = await getConversation(projectId, conv.id, options());
     expect(result.history).toHaveLength(20);
 
     // Verify every message is present (order may vary due to concurrency)
@@ -50,15 +53,15 @@ describe('Concurrent write protection', () => {
       name: 'Original',
       context_scope: { type: 'free' },
       mode: 'chat',
-    });
+    }, options());
 
     const names = Array.from({ length: 10 }, (_, i) => `name-${i}`);
     const promises = names.map((name) =>
-      updateConversation(projectId, conv.id, { name })
+      updateConversation(projectId, conv.id, { name }, options())
     );
     await Promise.all(promises);
 
-    const result = await getConversation(projectId, conv.id);
+    const result = await getConversation(projectId, conv.id, options());
     // The final name must be one of the attempted names (not corrupted)
     expect(names).toContain(result.name);
     // Structural integrity checks
@@ -72,14 +75,14 @@ describe('Concurrent write protection', () => {
       name: 'Read During Write',
       context_scope: { type: 'free' },
       mode: 'chat',
-    });
+    }, options());
 
     // Fire interleaved writes and reads concurrently
     const writePromises = Array.from({ length: 10 }, (_, i) =>
-      appendMessage(projectId, conv.id, { role: 'user', content: `write-${i}` })
+      appendMessage(projectId, conv.id, { role: 'user', content: `write-${i}` }, options())
     );
     const readPromises = Array.from({ length: 10 }, () =>
-      getConversation(projectId, conv.id)
+      getConversation(projectId, conv.id, options())
     );
 
     const results = await Promise.all([...writePromises, ...readPromises]);
@@ -101,7 +104,7 @@ describe('Concurrent write protection', () => {
     }
 
     // Final state should have all 10 messages
-    const final = await getConversation(projectId, conv.id);
+    const final = await getConversation(projectId, conv.id, options());
     expect(final.history).toHaveLength(10);
   });
 });

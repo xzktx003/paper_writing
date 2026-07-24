@@ -1,11 +1,58 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
 import { mkdtemp, rm, writeFile } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-import { registerWorkbenchPrototypeRoutes } from '../workbenchPrototype.js';
+import {
+  isLegacyWorkbenchEnabled,
+  registerWorkbenchPrototypeRoutes,
+} from '../workbenchPrototype.js';
+
+test('workbench prototype routes are disabled by default', async () => {
+  const app = Fastify({ logger: false });
+  registerWorkbenchPrototypeRoutes(app, { env: {} });
+
+  try {
+    for (const url of ['/paper-writer-workbench.html', '/writing-workbench']) {
+      const response = await app.inject({ method: 'GET', url });
+      assert.equal(response.statusCode, 404);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
+test('disabled workbench routes cannot leak through production static serving', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-prototype-static-'));
+  await writeFile(
+    path.join(tempDir, 'paper-writer-workbench.html'),
+    '<!doctype html><title>should not be public</title>',
+    'utf-8',
+  );
+  const app = Fastify({ logger: false });
+  registerWorkbenchPrototypeRoutes(app, { env: {} });
+  await app.register(fastifyStatic, { root: tempDir, prefix: '/' });
+
+  try {
+    const response = await app.inject({ method: 'GET', url: '/paper-writer-workbench.html' });
+    assert.equal(response.statusCode, 404);
+    assert.doesNotMatch(response.payload, /should not be public/);
+  } finally {
+    await app.close();
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('workbench prototype requires an explicit true feature flag', () => {
+  assert.equal(isLegacyWorkbenchEnabled({}), false);
+  assert.equal(isLegacyWorkbenchEnabled({ OPENPRISM_ENABLE_LEGACY_WORKBENCH: '' }), false);
+  assert.equal(isLegacyWorkbenchEnabled({ OPENPRISM_ENABLE_LEGACY_WORKBENCH: 'false' }), false);
+  assert.equal(isLegacyWorkbenchEnabled({ OPENPRISM_ENABLE_LEGACY_WORKBENCH: '1' }), false);
+  assert.equal(isLegacyWorkbenchEnabled({ OPENPRISM_ENABLE_LEGACY_WORKBENCH: 'true' }), true);
+});
 
 test('workbench prototype routes serve the static UX page', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'workbench-prototype-route-'));
@@ -17,13 +64,20 @@ test('workbench prototype routes serve the static UX page', async () => {
   );
 
   const app = Fastify({ logger: false });
-  registerWorkbenchPrototypeRoutes(app, { htmlPath });
+  const registered = registerWorkbenchPrototypeRoutes(app, {
+    htmlPath,
+    env: { OPENPRISM_ENABLE_LEGACY_WORKBENCH: 'true' },
+  });
+  assert.equal(registered, true);
 
   try {
     for (const url of ['/paper-writer-workbench.html', '/writing-workbench']) {
       const response = await app.inject({ method: 'GET', url });
       assert.equal(response.statusCode, 200);
       assert.match(response.headers['content-type'], /text\/html/);
+      assert.equal(response.headers['x-openprism-legacy'], 'true');
+      assert.equal(response.headers['x-robots-tag'], 'noindex, nofollow');
+      assert.equal(response.headers['cache-control'], 'no-store');
       assert.match(response.payload, /论文写作工作台/);
       assert.match(response.payload, /writing-workbench\/context/);
     }
@@ -35,13 +89,16 @@ test('workbench prototype routes serve the static UX page', async () => {
 
 test('workbench prototype default route points at the bundled frontend file', async () => {
   const app = Fastify({ logger: false });
-  registerWorkbenchPrototypeRoutes(app);
+  registerWorkbenchPrototypeRoutes(app, { enabled: true });
 
   try {
     const response = await app.inject({ method: 'GET', url: '/writing-workbench' });
     assert.equal(response.statusCode, 200);
     assert.match(response.headers['content-type'], /text\/html/);
     assert.match(response.payload, /Paper Writer Workbench/);
+    assert.match(response.payload, /Legacy \/ Prototype/);
+    assert.match(response.payload, /href="\/projects"/);
+    assert.match(response.payload, /进入正式项目工作区/);
     assert.match(response.payload, /data-copy-note-template/);
     assert.match(response.payload, /weak-evidence-match/);
     assert.match(response.payload, /missingTerms/);
@@ -78,7 +135,7 @@ test('workbench prototype default route points at the bundled frontend file', as
 
 test('workbench prototype exposes the Paper Agent evidence-to-review controls without browser-only prompts', async () => {
   const app = Fastify({ logger: false });
-  registerWorkbenchPrototypeRoutes(app);
+  registerWorkbenchPrototypeRoutes(app, { enabled: true });
 
   try {
     const response = await app.inject({ method: 'GET', url: '/writing-workbench' });

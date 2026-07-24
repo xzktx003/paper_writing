@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface CitationResult {
   key: string;
@@ -49,23 +50,25 @@ interface Props {
   projectPath?: string;
 }
 
-const STATUS_CONFIG: Record<string, { icon: string; color: string; bg: string; label: string }> = {
-  verified: { icon: '✅', color: '#22c55e', bg: '#22c55e15', label: 'Verified' },
-  title_match: { icon: '🔍', color: '#eab308', bg: '#eab30815', label: 'Title Match' },
-  doi_not_found: { icon: '❌', color: '#ef4444', bg: '#ef444415', label: 'DOI Not Found' },
-  unverifiable: { icon: '⚠️', color: '#f97316', bg: '#f9731615', label: 'Unverifiable' },
+const STATUS_CONFIG: Record<string, { icon: string; color: string; bg: string; labelKey: string }> = {
+  verified: { icon: '✅', color: '#22c55e', bg: '#22c55e15', labelKey: 'Verified' },
+  title_match: { icon: '🔍', color: '#eab308', bg: '#eab30815', labelKey: 'Title Match' },
+  doi_not_found: { icon: '❌', color: '#ef4444', bg: '#ef444415', labelKey: 'DOI Not Found' },
+  unverifiable: { icon: '⚠️', color: '#f97316', bg: '#f9731615', labelKey: 'Unverifiable' },
 };
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.unverifiable;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 4, background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>
-      {cfg.icon} {cfg.label}
+      {cfg.icon} {t(cfg.labelKey)}
     </span>
   );
 }
 
 function ConfidenceBar({ confidence }: { confidence: string }) {
+  const { t } = useTranslation();
   const widths: Record<string, number> = { high: 100, medium: 66, low: 33, none: 0 };
   const colors: Record<string, string> = { high: '#22c55e', medium: '#eab308', low: '#f97316', none: '#ef4444' };
   return (
@@ -73,24 +76,25 @@ function ConfidenceBar({ confidence }: { confidence: string }) {
       <div style={{ height: 3, width: 40, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${widths[confidence] || 0}%`, background: colors[confidence] || '#666', borderRadius: 2 }} />
       </div>
-      <span style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'capitalize' }}>{confidence}</span>
+      <span style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'capitalize' }}>{t(confidence)}</span>
     </div>
   );
 }
 
 function SummaryCards({ report }: { report: FullReport }) {
+  const { t } = useTranslation();
   const cards = [
-    { label: 'Total', value: report.totalEntries, color: 'var(--fg)' },
-    { label: '✅ Verified', value: report.verified, color: '#22c55e' },
-    { label: '🔍 Title Match', value: report.titleMatch, color: '#eab308' },
-    { label: '❌ DOI Missing', value: report.doiNotFound, color: '#ef4444' },
-    { label: '⚠️ Unknown', value: report.unverifiable, color: '#f97316' },
+    { label: t('Total'), value: report.totalEntries, color: 'var(--fg)' },
+    { label: `✅ ${t('Verified')}`, value: report.verified, color: '#22c55e' },
+    { label: `🔍 ${t('Title Match')}`, value: report.titleMatch, color: '#eab308' },
+    { label: `❌ ${t('DOI Missing')}`, value: report.doiNotFound, color: '#ef4444' },
+    { label: `⚠️ ${t('Unknown')}`, value: report.unverifiable, color: '#f97316' },
   ];
   if (report.missingInBib) {
-    cards.push({ label: '📑 Missing in .bib', value: report.missingInBib.length, color: '#ef4444' });
+    cards.push({ label: `📑 ${t('Missing in .bib')}`, value: report.missingInBib.length, color: '#ef4444' });
   }
   if (report.uncitedInBib) {
-    cards.push({ label: '📄 Uncited', value: report.uncitedInBib.length, color: '#f97316' });
+    cards.push({ label: `📄 ${t('Uncited')}`, value: report.uncitedInBib.length, color: '#f97316' });
   }
 
   return (
@@ -106,6 +110,7 @@ function SummaryCards({ report }: { report: FullReport }) {
 }
 
 function CitationItem({ result }: { result: CitationResult }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -122,13 +127,13 @@ function CitationItem({ result }: { result: CitationResult }) {
       {expanded && (
         <div style={{ padding: '4px 8px 8px 30px', fontSize: 10, lineHeight: 1.5, color: 'var(--muted)' }}>
           {result.doi && <div><strong>DOI:</strong> {result.doi}</div>}
-          {result.title && <div><strong>Title:</strong> {result.title}</div>}
-          {result.matchedTitle && <div><strong>Matched:</strong> {result.matchedTitle}</div>}
-          {result.matchedYear && <div><strong>Year:</strong> {result.matchedYear}</div>}
-          {result.matchedJournal && <div><strong>Journal:</strong> {result.matchedJournal}</div>}
+          {result.title && <div><strong>{t('Title')}:</strong> {result.title}</div>}
+          {result.matchedTitle && <div><strong>{t('Matched')}:</strong> {result.matchedTitle}</div>}
+          {result.matchedYear && <div><strong>{t('Year')}:</strong> {result.matchedYear}</div>}
+          {result.matchedJournal && <div><strong>{t('Journal')}:</strong> {result.matchedJournal}</div>}
           {result.sources.length > 0 && (
             <div style={{ marginTop: 4 }}>
-              <strong>Sources:</strong>{' '}
+              <strong>{t('Sources')}:</strong>{' '}
               {result.sources.map(s => (
                 <span key={s.source} style={{ color: s.verified ? '#22c55e' : '#ef4444', marginRight: 6 }}>
                   {s.source} {s.verified ? '✓' : '✗'}{s.error ? ` (${s.error})` : ''}
@@ -143,6 +148,7 @@ function CitationItem({ result }: { result: CitationResult }) {
 }
 
 export function CitationVerificationPanel({ report, loading, loadingAction, verificationTotal, error, onRunVerification, onRunCrossCheck, onCancel, projectPath }: Props) {
+  const { t } = useTranslation();
   const [view, setView] = useState<'summary' | 'verified' | 'missing' | 'uncited'>('summary');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -160,7 +166,7 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 12, gap: 10, overflow: 'auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontWeight: 700, fontSize: 14 }}>📚 Citation Verification</div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>📚 {t('Citation Verification')}</div>
       </div>
 
       {/* Action Buttons */}
@@ -171,7 +177,7 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
           disabled={loading || !projectPath}
           style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--fg)', cursor: loading ? 'wait' : 'pointer', fontSize: 12, fontWeight: 600, opacity: !projectPath ? 0.5 : 1 }}
         >
-          {loading && loadingAction === 'verify' ? '⏳ Verifying...' : '🔍 Verify All Citations'}
+          {loading && loadingAction === 'verify' ? `⏳ ${t('Verifying...')}` : `🔍 ${t('Verify All Citations')}`}
         </button>
         {loading && onCancel && (
           <button
@@ -179,7 +185,7 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
             onClick={onCancel}
             style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #ef444480', background: '#ef444415', color: '#ef4444', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
           >
-            Stop
+            {t('Stop')}
           </button>
         )}
         <button
@@ -188,19 +194,19 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
           disabled={loading || !projectPath}
           style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--fg)', cursor: loading ? 'wait' : 'pointer', fontSize: 12, fontWeight: 600, opacity: !projectPath ? 0.5 : 1 }}
         >
-          {loading && loadingAction === 'cross-check' ? '⏳ Checking...' : '📑 Cross-Check Only'}
+          {loading && loadingAction === 'cross-check' ? `⏳ ${t('Checking...')}` : `📑 ${t('Cross-Check Only')}`}
         </button>
       </div>
 
       {error && (
         <div role="alert" style={{ padding: '9px 10px', background: '#ef444415', border: '1px solid #ef444450', borderRadius: 6, color: '#ef4444', fontSize: 11, lineHeight: 1.5 }}>
-          <strong>Citation verification failed:</strong> {error}
+          {t('Citation verification failed: {{error}}', { error })}
         </div>
       )}
 
       {!projectPath && (
         <div style={{ padding: 10, background: '#eab30815', border: '1px solid #eab30840', borderRadius: 6, fontSize: 11, color: '#eab308', textAlign: 'center' }}>
-          Open a project to enable citation verification
+          {t('Open a project to enable citation verification')}
         </div>
       )}
 
@@ -209,10 +215,10 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
         <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
           <div style={{ marginBottom: 8 }}>
             ⏳ {loadingAction === 'cross-check'
-              ? 'Cross-checking project citations...'
-              : `Verifying ${verificationTotal || 'project'} bibliography entries...`}
+              ? t('Cross-checking project citations...')
+              : t('Verifying {{total}} bibliography entries...', { total: verificationTotal || t('project') })}
           </div>
-          <div style={{ fontSize: 10, marginBottom: 4 }}>Elapsed: {elapsedSeconds}s · timeout: 120s</div>
+          <div style={{ fontSize: 10, marginBottom: 4 }}>{t('Elapsed')}: {elapsedSeconds}s · {t('timeout')}: 120s</div>
           <div style={{ fontSize: 10 }}>CrossRef · Semantic Scholar · OpenAlex</div>
         </div>
       )}
@@ -222,8 +228,8 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
         <>
           {(report.mainFile || report.bibFiles?.length) && (
             <div style={{ padding: '7px 9px', background: 'var(--bg-secondary)', borderRadius: 6, color: 'var(--muted)', fontSize: 10, lineHeight: 1.5 }}>
-              {report.mainFile && <div><strong>Main TeX:</strong> <code>{report.mainFile}</code></div>}
-              {report.bibFiles?.length ? <div><strong>Bibliography:</strong> <code>{report.bibFiles.join(', ')}</code></div> : null}
+              {report.mainFile && <div><strong>{t('Main TeX')}:</strong> <code>{report.mainFile}</code></div>}
+              {report.bibFiles?.length ? <div><strong>{t('Bibliography')}:</strong> <code>{report.bibFiles.join(', ')}</code></div> : null}
             </div>
           )}
           <SummaryCards report={report} />
@@ -231,10 +237,10 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
           {/* Tab Bar */}
           <div style={{ display: 'flex', gap: 2, background: 'var(--bg-secondary)', borderRadius: 6, padding: 2 }}>
             {([
-              { id: 'summary', label: 'Summary' },
-              { id: 'verified', label: `Verified (${report.results?.length || 0})` },
-              { id: 'missing', label: `Missing (${report.missingInBib?.length || 0})` },
-              { id: 'uncited', label: `Uncited (${report.uncitedInBib?.length || 0})` },
+              { id: 'summary', label: t('Summary') },
+              { id: 'verified', label: `${t('Verified')} (${report.results?.length || 0})` },
+              { id: 'missing', label: `${t('Missing')} (${report.missingInBib?.length || 0})` },
+              { id: 'uncited', label: `${t('Uncited')} (${report.uncitedInBib?.length || 0})` },
             ] as const).map(tab => (
               <button
                 key={tab.id}
@@ -257,7 +263,7 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
           {view === 'verified' && report.results && (
             <div style={{ background: 'var(--bg-secondary)', borderRadius: 6, overflow: 'hidden' }}>
               {report.results.length === 0 ? (
-                <div style={{ padding: 12, textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No citations to verify</div>
+                <div style={{ padding: 12, textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>{t('No citations to verify')}</div>
               ) : (
                 report.results.map(r => <CitationItem key={r.key} result={r} />)
               )}
@@ -268,11 +274,11 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
           {view === 'missing' && (
             <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
               {(!report.missingInBib || report.missingInBib.length === 0) ? (
-                <div style={{ textAlign: 'center', color: '#22c55e', fontSize: 12, padding: 8 }}>✅ All cited keys found in .bib file</div>
+                <div style={{ textAlign: 'center', color: '#22c55e', fontSize: 12, padding: 8 }}>✅ {t('All cited keys found in .bib file')}</div>
               ) : (
                 <>
                   <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12, color: '#ef4444' }}>
-                    ⚠️ {report.missingInBib.length} citation(s) in .tex but missing from .bib:
+                    ⚠️ {t('{{count}} citation(s) in .tex but missing from .bib:', { count: report.missingInBib.length })}
                   </div>
                   {report.missingInBib.map(key => (
                     <div key={key} style={{ padding: '3px 0', fontSize: 11 }}>
@@ -288,11 +294,11 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
           {view === 'uncited' && (
             <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
               {(!report.uncitedInBib || report.uncitedInBib.length === 0) ? (
-                <div style={{ textAlign: 'center', color: '#22c55e', fontSize: 12, padding: 8 }}>✅ All .bib entries are cited</div>
+                <div style={{ textAlign: 'center', color: '#22c55e', fontSize: 12, padding: 8 }}>✅ {t('All .bib entries are cited')}</div>
               ) : (
                 <>
                   <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12, color: '#f97316' }}>
-                    📄 {report.uncitedInBib.length} entry(ies) in .bib but never cited:
+                    📄 {t('{{count}} entry(ies) in .bib but never cited:', { count: report.uncitedInBib.length })}
                   </div>
                   {report.uncitedInBib.map(key => (
                     <div key={key} style={{ padding: '3px 0', fontSize: 11 }}>
@@ -310,15 +316,15 @@ export function CitationVerificationPanel({ report, loading, loadingAction, veri
       {!report && !loading && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', gap: 8, padding: 20 }}>
           <div style={{ fontSize: 28 }}>📚</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>Citation Verification</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{t('Citation Verification')}</div>
           <div style={{ fontSize: 11, textAlign: 'center', lineHeight: 1.5 }}>
-            Verify your BibTeX entries against<br />
+            {t('Verify your BibTeX entries against')}<br />
             CrossRef, Semantic Scholar & OpenAlex
           </div>
           <div style={{ fontSize: 10, textAlign: 'center', lineHeight: 1.5, maxWidth: 220 }}>
-            • Detect hallucinated citations<br />
-            • Find missing .bib entries<br />
-            • Identify uncited references
+            • {t('Detect hallucinated citations')}<br />
+            • {t('Find missing .bib entries')}<br />
+            • {t('Identify uncited references')}
           </div>
         </div>
       )}

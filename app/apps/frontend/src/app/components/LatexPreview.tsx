@@ -16,6 +16,39 @@ interface RenderOptions {
   currentFile?: string;
 }
 
+type PreviewIssue = {
+  kind: 'citation' | 'reference' | 'command';
+  value: string;
+};
+
+const APPROXIMATED_COMMANDS = new Set([
+  'documentclass', 'usepackage', 'bibliography', 'bibliographystyle', 'maketitle',
+  'newcommand', 'renewcommand', 'def', 'let', 'setlength', 'addtolength', 'setcounter',
+  'pagestyle', 'thispagestyle', 'DeclareMathOperator', 'title', 'author', 'date', 'thanks',
+  'begin', 'end', 'section', 'subsection', 'subsubsection', 'paragraph', 'caption', 'label',
+  'includegraphics', 'item', 'textbf', 'textit', 'emph', 'underline', 'texttt', 'textsc',
+  'textsf', 'sffamily', 'textrm', 'rmfamily', 'mathbf', 'bfseries', 'mathit', 'itshape',
+  'sout', 'href', 'url', 'text', 'cite', 'citet', 'citep', 'ref', 'eqref', 'footnote',
+  'centering', 'noindent', 'small', 'large', 'Large', 'LARGE', 'huge', 'Huge',
+  'normalsize', 'footnotesize', 'scriptsize', 'tiny', 'raggedright', 'raggedleft',
+  'flushleft', 'flushright', 'clearpage', 'newpage', 'pagebreak', 'linebreak', 'newline',
+  'vspace', 'hspace', 'quad', 'qquad', 'rule', 'hrule', 'input', 'include',
+  'frac', 'dfrac', 'tfrac', 'sqrt', 'sum', 'prod', 'int', 'iint', 'iiint', 'oint',
+  'lim', 'log', 'ln', 'exp', 'sin', 'cos', 'tan', 'min', 'max', 'argmin', 'argmax',
+  'left', 'right', 'middle', 'big', 'Big', 'bigg', 'Bigg', 'overline', 'underline',
+  'hat', 'widehat', 'bar', 'vec', 'dot', 'ddot', 'tilde', 'widetilde', 'mathbf',
+  'mathrm', 'mathsf', 'mathtt', 'mathcal', 'mathbb', 'mathfrak', 'boldsymbol', 'operatorname',
+  'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'varepsilon', 'zeta', 'eta', 'theta',
+  'vartheta', 'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'varpi', 'rho',
+  'varrho', 'sigma', 'varsigma', 'tau', 'upsilon', 'phi', 'varphi', 'chi', 'psi', 'omega',
+  'Gamma', 'Delta', 'Theta', 'Lambda', 'Xi', 'Pi', 'Sigma', 'Upsilon', 'Phi', 'Psi', 'Omega',
+  'infty', 'partial', 'nabla', 'forall', 'exists', 'neg', 'pm', 'mp', 'times', 'div',
+  'cdot', 'circ', 'bullet', 'le', 'leq', 'ge', 'geq', 'ne', 'neq', 'approx', 'sim',
+  'simeq', 'equiv', 'propto', 'in', 'notin', 'subset', 'subseteq', 'supset', 'supseteq',
+  'cup', 'cap', 'setminus', 'land', 'lor', 'oplus', 'otimes', 'to', 'rightarrow',
+  'leftarrow', 'leftrightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow',
+]);
+
 export const LatexPreview = forwardRef<HTMLDivElement, Props>(
   ({ content, projectId, currentFile = '', onScroll, scrollRatio }, ref) => {
     const innerRef = useRef<HTMLDivElement>(null);
@@ -39,6 +72,23 @@ export const LatexPreview = forwardRef<HTMLDivElement, Props>(
     }, [content, prevContent]);
 
     const rendered = useMemo(() => renderLatex(content, { projectId, currentFile }), [content, projectId, currentFile]);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      const cleanups: Array<() => void> = [];
+      container.querySelectorAll<HTMLImageElement>('img[data-preview-asset]').forEach((asset) => {
+        const showFallback = () => {
+          asset.hidden = true;
+          const fallback = asset.parentElement?.querySelector<HTMLElement>('.latex-preview-asset-fallback');
+          if (fallback) fallback.hidden = false;
+        };
+        asset.addEventListener('error', showFallback);
+        if (asset.complete && asset.naturalWidth === 0) showFallback();
+        cleanups.push(() => asset.removeEventListener('error', showFallback));
+      });
+      return () => cleanups.forEach(cleanup => cleanup());
+    }, [rendered]);
 
     useEffect(() => {
       const el = containerRef.current;
@@ -153,7 +203,6 @@ export const LatexPreview = forwardRef<HTMLDivElement, Props>(
 LatexPreview.displayName = 'LatexPreview';
 
 const latexStyles = `
-@import url('https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/fonts.css');
 
 /* LaTeX preview - white background with dark text */
 .latex-preview-page {
@@ -265,6 +314,38 @@ const latexStyles = `
   max-height: 400px;
   object-fit: contain;
 }
+.latex-preview-placeholder {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 0 2px;
+  padding: 1px 5px;
+  border: 1px dashed #b7791f;
+  border-radius: 4px;
+  background: #fff8e6;
+  color: #744210;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86em;
+  text-indent: 0;
+}
+.latex-preview-issues {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid #d6b46b;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #604514;
+  font-size: 12px;
+}
+.latex-preview-issues ul { margin: 6px 0 0; padding-left: 18px; }
+.latex-preview-asset-fallback {
+  padding: 16px;
+  border: 1px dashed #b7791f;
+  border-radius: 4px;
+  background: #fff8e6;
+  color: #744210;
+  overflow-wrap: anywhere;
+}
 .latex-preview-page .latex-figure .latex-caption {
   font-size: 12px;
   color: #555;
@@ -369,6 +450,7 @@ interface SectionCounters {
 
 export function renderLatex(tex: string, options: RenderOptions = {}): string {
   let text = tex;
+  const previewIssues = collectPreviewIssues(tex);
   const counters: SectionCounters = { section: 0, subsection: 0, subsubsection: 0, figure: 0, table: 0, equation: 0, theorem: 0 };
 
   // Remove comments (but not \%)
@@ -534,9 +616,9 @@ export function renderLatex(tex: string, options: RenderOptions = {}): string {
   text = text.replace(/\{\\(LARGE|huge|Huge)\b([\s\S]*?)\}/g, '<span style="font-size:20px">$2</span>');
 
   // Handle citations and references
-  text = text.replace(/\\cite[tp]?\*?(?:\[[^\]]*\])?\{([^}]*)\}/g, '<span class="latex-cite">[$1]</span>');
-  text = text.replace(/\\ref\{([^}]*)\}/g, '<span class="latex-ref">[ref]</span>');
-  text = text.replace(/\\eqref\{([^}]*)\}/g, '<span class="latex-ref">([ref])</span>');
+  text = text.replace(/\\cite[tp]?\*?(?:\[[^\]]*\])?\{([^}]*)\}/g, (_match, keys) => previewPlaceholder('citation', keys, `citation: ${keys}`));
+  text = text.replace(/\\ref\{([^}]*)\}/g, (_match, key) => previewPlaceholder('reference', key, `reference: ${key}`));
+  text = text.replace(/\\eqref\{([^}]*)\}/g, (_match, key) => previewPlaceholder('reference', key, `equation reference: ${key}`));
   text = text.replace(/\\label\{[^}]*\}/g, '');
   text = text.replace(/\\footnote\{([^}]*)\}/g, '<span class="latex-footnote">($1)</span>');
 
@@ -585,7 +667,7 @@ export function renderLatex(tex: string, options: RenderOptions = {}): string {
   text = text.replace(/<p>\s*(<(?:h[1-4]|div|pre|ul|ol|hr|figure|table)[^>]*>)/g, '$1');
   text = text.replace(/(<\/(?:h[1-4]|div|pre|ul|ol|figure|table)>)\s*<\/p>/g, '$1');
 
-  return text;
+  return renderPreviewIssues(previewIssues) + text;
 }
 
 function renderFigureEnv(body: string, num: number, options: RenderOptions): string {
@@ -602,7 +684,7 @@ function renderFigureEnv(body: string, num: number, options: RenderOptions): str
   const captionHtml = caption
     ? `<p class="latex-caption"><strong>Figure ${num}:</strong> ${caption}</p>`
     : '';
-  return `<div class="latex-figure"><img src="${escapeAttr(src)}" alt="${escapeAttr(caption || imagePath)}"/>${captionHtml}</div>`;
+  return renderPreviewAsset(src, imagePath, captionHtml, caption || imagePath);
 }
 
 function renderTableEnv(body: string, num: number): string {
@@ -988,7 +1070,48 @@ function renderImage(imagePath: string, caption: string, options: RenderOptions)
   const captionHtml = caption
     ? `<p class="latex-caption">${escapeHtml(caption)}</p>`
     : '';
-  return `<div class="latex-figure"><img src="${escapeAttr(src)}" alt="${escapeAttr(caption || imagePath)}"/>${captionHtml}</div>`;
+  return renderPreviewAsset(src, imagePath, captionHtml, caption || imagePath);
+}
+
+function renderPreviewAsset(src: string, imagePath: string, captionHtml: string, alt: string): string {
+  const safePath = escapeHtml(imagePath);
+  return `<div class="latex-figure" data-preview-kind="asset" data-preview-value="${escapeAttr(imagePath)}">`
+    + `<img data-preview-asset src="${escapeAttr(src)}" alt="${escapeAttr(alt)}"/>`
+    + `<div class="latex-preview-asset-fallback" hidden>Image unavailable in quick preview: ${safePath}. Compile the final PDF to verify this asset.</div>`
+    + `${captionHtml}</div>`;
+}
+
+function previewPlaceholder(kind: PreviewIssue['kind'], value: string, label: string): string {
+  return `<span class="latex-preview-placeholder" data-preview-kind="${kind}" data-preview-value="${escapeAttr(value)}" title="Resolved only by a full LaTeX compile">${escapeHtml(label)}</span>`;
+}
+
+function collectPreviewIssues(tex: string): PreviewIssue[] {
+  const issues: PreviewIssue[] = [];
+  const seen = new Set<string>();
+  const add = (kind: PreviewIssue['kind'], value: string) => {
+    const normalized = value.trim();
+    const key = `${kind}:${normalized}`;
+    if (!normalized || seen.has(key)) return;
+    seen.add(key);
+    issues.push({ kind, value: normalized });
+  };
+
+  tex.replace(/\\cite[tp]?\*?(?:\[[^\]]*\])?\{([^}]*)\}/g, (_match, value) => { add('citation', value); return _match; });
+  tex.replace(/\\(?:eq)?ref\{([^}]*)\}/g, (_match, value) => { add('reference', value); return _match; });
+  tex.replace(/\\([A-Za-z@]+)\*?(?:\[[^\]]*\])?(?:\{[^{}]*\})?/g, (match, name) => {
+    if (!APPROXIMATED_COMMANDS.has(name) && !/^end[A-Z]/.test(name)) add('command', name);
+    return match;
+  });
+  return issues;
+}
+
+function renderPreviewIssues(issues: PreviewIssue[]): string {
+  const unsupported = issues.filter(issue => issue.kind === 'command');
+  if (unsupported.length === 0) return '';
+  const items = unsupported
+    .map(issue => `<li>${previewPlaceholder('command', issue.value, `unresolved command: \\${issue.value}`)}</li>`)
+    .join('');
+  return `<aside class="latex-preview-issues" role="note"><strong>Approximation notice</strong><ul>${items}</ul></aside>`;
 }
 
 function renderAlgorithmEnv(body: string, num?: number, noNumber?: boolean): string {

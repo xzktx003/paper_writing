@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, stat, writeFile, unlink, mkdtemp, rm } from 'fs/promises';
+import { mkdir, readFile, readdir, rename, stat, writeFile, unlink, mkdtemp, rm } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
@@ -20,6 +20,28 @@ const CHUNK_OVERLAP = 30;
 const EXTRACTION_MARKER = '<!-- paper-rag-extracted-text -->';
 const execFileAsync = promisify(execFile);
 let cachedOcrCapability = null;
+const ragIndexLocks = new Map();
+const ragIndexRebuilding = new Set();
+const LOCAL_RETRIEVAL_PROFILE = Object.freeze({
+  kind: 'local-keyword-overlap',
+  label: 'Local keyword evidence retrieval',
+  semantic: false,
+});
+
+async function withRagIndexLock(projectRoot, operation) {
+  const key = path.resolve(projectRoot);
+  const previous = ragIndexLocks.get(key) || Promise.resolve();
+  let release;
+  const current = new Promise(resolve => { release = resolve; });
+  ragIndexLocks.set(key, current);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (ragIndexLocks.get(key) === current) ragIndexLocks.delete(key);
+  }
+}
  
 export async function addCorpusDocument(projectRoot, { filename, content }) {
   if (!filename || typeof content !== 'string') {
@@ -411,6 +433,20 @@ print(json.dumps(result))
 }
 
 export async function indexProjectCorpus(projectRoot) {
+  return withRagIndexLock(projectRoot, () => withRagIndexRebuilding(projectRoot, () => indexProjectCorpusUnlocked(projectRoot)));
+}
+
+async function withRagIndexRebuilding(projectRoot, operation) {
+  const key = path.resolve(projectRoot);
+  ragIndexRebuilding.add(key);
+  try {
+    return await operation();
+  } finally {
+    ragIndexRebuilding.delete(key);
+  }
+}
+
+async function indexProjectCorpusUnlocked(projectRoot) {
   const files = await collectCorpusFiles(projectRoot);
   const documents = [];
   const chunks = [];
@@ -439,6 +475,7 @@ export async function indexProjectCorpus(projectRoot) {
         mtimeMs: info.mtimeMs,
         kind: 'text',
         parseStatus: 'indexed',
+        parser: 'utf8-text',
         indexedTextChars: content.length,
         contentQuality,
         warnings: contentQuality.warnings || [],
@@ -457,14 +494,158 @@ export async function indexProjectCorpus(projectRoot) {
     chunks.push(...documentChunks);
   }
  
+  const sortedDocuments = documents.sort((a, b) => a.path.localeCompare(b.path));
+  const sortedChunks = chunks.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
   const index = {
     version: 1,
+    generation: crypto.randomUUID(),
+    fingerprint: buildRagFingerprint(sortedDocuments, sortedChunks),
     indexedAt: new Date().toISOString(),
-    documents: documents.sort((a, b) => a.path.localeCompare(b.path)),
-    chunks,
+    retrieval: { ...LOCAL_RETRIEVAL_PROFILE },
+    documents: sortedDocuments,
+    chunks: sortedChunks,
   };
   await writeIndex(projectRoot, index);
   return index;
+}
+
+function buildRagFingerprint(documents, chunks) {
+  const stableDocuments = documents.map(document => ({
+    path: document.path || '',
+    bytes: Number(document.bytes || 0),
+    kind: document.kind || '',
+    parseStatus: document.parseStatus || '',
+    parser: document.parser || '',
+    chars: Number(document.extractedTextChars || document.indexedTextChars || 0),
+    chunks: Number(document.chunks || 0),
+    error: document.extractionError || document.error || '',
+    warnings: Array.isArray(document.warnings) ? [...document.warnings].map(String).sort() : [],
+  }));
+  const stableChunks = chunks.map(chunk => ({
+    id: chunk.id || '',
+    documentId: chunk.documentId || '',
+    text: chunk.text || '',
+    source: {
+      path: chunk.source?.path || '',
+      lineStart: Number(chunk.source?.lineStart || 0),
+      lineEnd: Number(chunk.source?.lineEnd || 0),
+    },
+  }));
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ documents: stableDocuments, chunks: stableChunks }))
+    .digest('hex');
+}
+
+export async function getRagIndexHealth(projectRoot) {
+  const rebuilding = ragIndexRebuilding.has(path.resolve(projectRoot));
+  let index;
+  try {
+    index = parseRagIndex(await readFile(getIndexPath(projectRoot), 'utf-8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return emptyRagHealth(rebuilding ? 'rebuilding' : 'degraded', {
+        code: 'index-missing',
+        severity: 'warning',
+        message: 'The RAG index does not exist yet.',
+      });
+    }
+    if (error.code === 'RAG_INDEX_CORRUPT' || error instanceof SyntaxError) {
+      return emptyRagHealth(rebuilding ? 'rebuilding' : 'corrupt', {
+        code: 'index-corrupt',
+        severity: 'error',
+        message: error instanceof Error ? error.message : 'The RAG index is corrupt.',
+      });
+    }
+    throw error;
+  }
+
+  const documents = index.documents.map(toRagDocumentDiagnostic);
+  const failedFiles = documents.filter(document => isFailedRagDocument(document)).length;
+  const zeroChunkFiles = documents.filter(document => !isFailedRagDocument(document) && document.chunks === 0).length;
+  const indexedFiles = documents.filter(document => !isFailedRagDocument(document) && document.chunks > 0).length;
+  const issues = [];
+  if (!index.generation || !index.fingerprint || index.retrieval?.kind !== LOCAL_RETRIEVAL_PROFILE.kind) {
+    issues.push({
+      code: 'index-metadata-incomplete',
+      severity: 'warning',
+      message: 'Rebuild the index to attach generation, fingerprint, and retrieval metadata.',
+    });
+  }
+  if (documents.length === 0) {
+    issues.push({ code: 'corpus-empty', severity: 'warning', message: 'No corpus documents are indexed.' });
+  }
+  if (failedFiles > 0) {
+    issues.push({ code: 'document-parse-failed', severity: 'error', message: `${failedFiles} document(s) failed to parse.` });
+  }
+  if (zeroChunkFiles > 0) {
+    issues.push({ code: 'document-zero-chunks', severity: 'warning', message: `${zeroChunkFiles} document(s) produced no searchable chunks.` });
+  }
+  if (index.chunks.length === 0) {
+    issues.push({ code: 'index-empty', severity: 'warning', message: 'The index contains no searchable chunks.' });
+  }
+
+  const healthy = documents.length > 0
+    && index.chunks.length > 0
+    && failedFiles === 0
+    && zeroChunkFiles === 0
+    && issues.every(issue => issue.code !== 'index-metadata-incomplete');
+  return {
+    status: rebuilding ? 'rebuilding' : (healthy ? 'healthy' : 'degraded'),
+    retrieval: normalizeRetrievalProfile(index.retrieval),
+    generation: String(index.generation || ''),
+    fingerprint: String(index.fingerprint || ''),
+    indexedAt: String(index.indexedAt || ''),
+    counts: {
+      files: documents.length,
+      indexedFiles,
+      failedFiles,
+      zeroChunkFiles,
+      chunks: index.chunks.length,
+    },
+    documents,
+    issues,
+  };
+}
+
+function emptyRagHealth(status, issue) {
+  return {
+    status,
+    retrieval: { ...LOCAL_RETRIEVAL_PROFILE },
+    generation: '',
+    fingerprint: '',
+    indexedAt: '',
+    counts: { files: 0, indexedFiles: 0, failedFiles: 0, zeroChunkFiles: 0, chunks: 0 },
+    documents: [],
+    issues: [issue],
+  };
+}
+
+function normalizeRetrievalProfile(retrieval) {
+  if (!retrieval || retrieval.kind !== LOCAL_RETRIEVAL_PROFILE.kind) return { ...LOCAL_RETRIEVAL_PROFILE };
+  return {
+    kind: LOCAL_RETRIEVAL_PROFILE.kind,
+    label: String(retrieval.label || LOCAL_RETRIEVAL_PROFILE.label),
+    semantic: false,
+  };
+}
+
+function toRagDocumentDiagnostic(document) {
+  return {
+    path: String(document.path || ''),
+    kind: String(document.kind || 'unknown'),
+    parser: String(document.parser || (document.kind === 'text' ? 'utf8-text' : 'none')),
+    parseStatus: String(document.parseStatus || 'unknown'),
+    bytes: Number(document.bytes || 0),
+    chars: Number(document.extractedTextChars || document.indexedTextChars || 0),
+    chunks: Number(document.chunks || 0),
+    warnings: Array.isArray(document.warnings) ? document.warnings.map(String) : [],
+    error: String(document.extractionError || document.error || ''),
+  };
+}
+
+function isFailedRagDocument(document) {
+  return Boolean(document.error) || ['failed', 'error', 'corrupt'].includes(document.parseStatus);
 }
  
 export async function searchCorpus(projectRoot, query, options = {}) {
@@ -1261,17 +1442,55 @@ function formatCorpusUploadReviewCopyText({ status, label_zh, message_zh, docume
 async function ensureIndex(projectRoot) {
   const indexPath = getIndexPath(projectRoot);
   try {
-    return JSON.parse(await readFile(indexPath, 'utf-8'));
-  } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
-    return indexProjectCorpus(projectRoot);
+    return parseRagIndex(await readFile(indexPath, 'utf-8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT' && error.code !== 'RAG_INDEX_CORRUPT' && !(error instanceof SyntaxError)) {
+      throw error;
+    }
+    return withRagIndexLock(projectRoot, async () => {
+      try {
+        return parseRagIndex(await readFile(indexPath, 'utf-8'));
+      } catch (retryError) {
+        if (retryError.code !== 'ENOENT') {
+          if (retryError.code !== 'RAG_INDEX_CORRUPT' && !(retryError instanceof SyntaxError)) throw retryError;
+          const quarantinePath = `${indexPath}.corrupt-${Date.now()}-${crypto.randomUUID()}`;
+          try {
+            await rename(indexPath, quarantinePath);
+          } catch (renameError) {
+            if (renameError.code !== 'ENOENT') throw renameError;
+          }
+        }
+        return withRagIndexRebuilding(projectRoot, () => indexProjectCorpusUnlocked(projectRoot));
+      }
+    });
   }
 }
- 
+
+function parseRagIndex(content) {
+  const parsed = JSON.parse(content);
+  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.documents) || !Array.isArray(parsed.chunks)) {
+    throw Object.assign(new Error('Paper RAG index has an invalid structure'), { code: 'RAG_INDEX_CORRUPT' });
+  }
+  return parsed;
+}
+
+export async function writeRagIndexAtomic(indexPath, index, fsApi = {}) {
+  const write = fsApi.writeFile || writeFile;
+  const move = fsApi.rename || rename;
+  const remove = fsApi.rm || rm;
+  const tempPath = `${indexPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  try {
+    await write(tempPath, JSON.stringify(index, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    await move(tempPath, indexPath);
+  } finally {
+    await remove(tempPath, { force: true }).catch(() => {});
+  }
+}
+
 async function writeIndex(projectRoot, index) {
   const dir = safeJoin(projectRoot, INDEX_DIR);
   await mkdir(dir, { recursive: true });
-  await writeFile(getIndexPath(projectRoot), JSON.stringify(index, null, 2), 'utf-8');
+  await writeRagIndexAtomic(getIndexPath(projectRoot), index);
 }
  
 function getIndexPath(projectRoot) {
@@ -1894,46 +2113,94 @@ const OPENALEX_API = 'https://api.openalex.org/works';
  * Supported sources: 'semantic-scholar', 'arxiv', 'crossref', 'openalex'
  */
 export async function searchExternalSources(query, options = {}) {
-  const { sources = ['semantic-scholar', 'arxiv'], limit = 5 } = options;
+  const {
+    sources = ['semantic-scholar', 'arxiv'],
+    limit = 5,
+    fetchImpl = fetch,
+    now = () => Date.now(),
+  } = options;
   const results = [];
  
   const searchPromises = sources.map(async (source) => {
+    const startedAt = now();
     try {
+      let items;
       switch (source) {
         case 'semantic-scholar':
-          return await searchSemanticScholar(query, limit);
+          items = await searchSemanticScholar(query, limit, fetchImpl);
+          break;
         case 'arxiv':
-          return await searchArxiv(query, limit);
+          items = await searchArxiv(query, limit, fetchImpl);
+          break;
         case 'crossref':
-          return await searchCrossRef(query, limit);
+          items = await searchCrossRef(query, limit, fetchImpl);
+          break;
         case 'openalex':
-          return await searchOpenAlex(query, limit);
+          items = await searchOpenAlex(query, limit, fetchImpl);
+          break;
         default:
-          return [];
+          throw Object.assign(new Error('Unsupported external source'), { code: 'UNSUPPORTED_SOURCE' });
       }
+      const normalizedItems = items.map((item, index) => ({
+        ...item,
+        normalized_score: 1 / (index + 1),
+        relevance_score: 1 / (index + 1),
+        score_basis: 'source-query-rank',
+      }));
+      return {
+        items: normalizedItems,
+        source: {
+          id: source,
+          status: normalizedItems.length > 0 ? 'ok' : 'empty',
+          latencyMs: Math.max(0, now() - startedAt),
+          count: normalizedItems.length,
+          error: '',
+        },
+      };
     } catch (err) {
-      console.error(`External search error [${source}]:`, err.message);
-      return [];
+      return {
+        items: [],
+        source: {
+          id: source,
+          status: 'error',
+          latencyMs: Math.max(0, now() - startedAt),
+          count: 0,
+          error: String(err.code || err.statusCode || 'SOURCE_REQUEST_FAILED').slice(0, 80),
+        },
+      };
     }
   });
  
   const sourceResults = await Promise.all(searchPromises);
-  for (const items of sourceResults) {
-    results.push(...items);
+  for (const sourceResult of sourceResults) {
+    results.push(...sourceResult.items);
   }
  
-  // Sort by relevance score descending, then limit
-  results.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
-  return results.slice(0, limit);
+  // Cross-source ordering uses only the normalized within-source rank. Native
+  // source scores are preserved for transparency but are not treated as if
+  // citation counts and vendor-specific relevance scores shared one scale.
+  results.sort((a, b) => (b.normalized_score || 0) - (a.normalized_score || 0)
+    || (b.citation_count || 0) - (a.citation_count || 0));
+  return {
+    results: results.slice(0, limit),
+    sources: sourceResults.map(result => result.source),
+  };
 }
  
-async function searchSemanticScholar(query, limit) {
+function requireExternalResponse(response, source) {
+  if (response.ok) return response;
+  throw Object.assign(new Error(`${source} returned HTTP ${response.status}`), {
+    code: `HTTP_${response.status}`,
+    statusCode: response.status,
+  });
+}
+
+async function searchSemanticScholar(query, limit, fetchImpl = fetch) {
   const url = `${SEMANTIC_SCHOLAR_API}?query=${encodeURIComponent(query)}&limit=${limit}&fields=title,authors,year,venue,externalIds,abstract,citationCount,url`;
-  const res = await fetch(url, {
+  const res = requireExternalResponse(await fetchImpl(url, {
     headers: { 'User-Agent': 'PaperWrighting/1.0' },
     signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return [];
+  }), 'semantic-scholar');
   const data = await res.json();
   return (data.data || []).map(paper => ({
     title: paper.title || '',
@@ -1945,17 +2212,17 @@ async function searchSemanticScholar(query, limit) {
     citation_count: paper.citationCount || 0,
     doi: paper.externalIds?.DOI || '',
     source: 'semantic-scholar',
-    relevance_score: paper.citationCount ? Math.min(1, paper.citationCount / 100) : 0.5,
+    native_score: paper.citationCount || 0,
+    native_score_basis: 'citation-count',
   }));
 }
  
-async function searchArxiv(query, limit) {
+async function searchArxiv(query, limit, fetchImpl = fetch) {
   const url = `${ARXIV_API}?search_query=all:${encodeURIComponent(query)}&max_results=${limit}&sortBy=relevance&sortOrder=descending`;
-  const res = await fetch(url, {
+  const res = requireExternalResponse(await fetchImpl(url, {
     headers: { 'User-Agent': 'PaperWrighting/1.0', 'Accept': 'application/xml' },
     signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) return [];
+  }), 'arxiv');
   const xml = await res.text();
  
   // Simple XML parsing without external dependencies
@@ -1984,18 +2251,18 @@ async function searchArxiv(query, limit) {
       citation_count: 0,
       doi: '',
       source: 'arxiv',
-      relevance_score: 0.5,
+      native_score: null,
+      native_score_basis: 'source-query-order',
     };
   });
 }
  
-async function searchCrossRef(query, limit) {
+async function searchCrossRef(query, limit, fetchImpl = fetch) {
   const url = `${CROSSREF_API}?query=${encodeURIComponent(query)}&rows=${limit}&sort=relevance&order=desc`;
-  const res = await fetch(url, {
+  const res = requireExternalResponse(await fetchImpl(url, {
     headers: { 'User-Agent': 'PaperWrighting/1.0 (mailto:research@example.com)' },
     signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return [];
+  }), 'crossref');
   const data = await res.json();
   return (data.message?.items || []).map(item => ({
     title: item.title?.[0] || '',
@@ -2007,17 +2274,17 @@ async function searchCrossRef(query, limit) {
     citation_count: item['is-referenced-by-count'] || 0,
     doi: item.DOI || '',
     source: 'crossref',
-    relevance_score: item.score ? Math.min(1, item.score / 100) : 0.5,
+    native_score: item.score || 0,
+    native_score_basis: 'crossref-score',
   }));
 }
  
-async function searchOpenAlex(query, limit) {
+async function searchOpenAlex(query, limit, fetchImpl = fetch) {
   const url = `${OPENALEX_API}?search=${encodeURIComponent(query)}&per_page=${limit}&sort=relevance_score:desc`;
-  const res = await fetch(url, {
+  const res = requireExternalResponse(await fetchImpl(url, {
     headers: { 'User-Agent': 'PaperWrighting/1.0', 'Accept': 'application/json' },
     signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return [];
+  }), 'openalex');
   const data = await res.json();
   return (data.results || []).map(paper => ({
     title: paper.title || '',
@@ -2029,7 +2296,8 @@ async function searchOpenAlex(query, limit) {
     citation_count: paper.cited_by_count || 0,
     doi: paper.doi || '',
     source: 'openalex',
-    relevance_score: paper.relevance_score || 0.5,
+    native_score: paper.relevance_score || 0,
+    native_score_basis: 'openalex-relevance-score',
   }));
 }
  

@@ -41,6 +41,9 @@ import { registerPaperRagRoutes } from './routes/paperRag.js';
 import { registerPaperWorkbenchRoutes } from './routes/paperWorkbench.js';
 import { registerWorkbenchPrototypeRoutes } from './routes/workbenchPrototype.js';
 import { registerDrawRoutes } from './routes/draw.js';
+import { registerAgentProviderRoutes } from './routes/agentProviders.js';
+import { registerCapabilitiesRoutes } from './routes/capabilities.js';
+import { registerCliTaskRoutes } from './routes/cliTasks.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { registerAuthHook } from './middleware/auth.js';
@@ -73,6 +76,8 @@ fastify.setErrorHandler((error, request, reply) => {
   reply.code(status).send({
     error: error.message || 'Internal Server Error',
     statusCode: status,
+    ...(error.code ? { code: error.code } : {}),
+    ...(error.details ? { details: error.details } : {}),
   });
 });
  
@@ -83,7 +88,9 @@ registerAIRoutes(fastify);
 registerAICompletionRoute(fastify);
 registerSkillRoutes(fastify);
 registerChapterRoutes(fastify);
-registerPaperProjectRoutes(fastify);
+registerPaperProjectRoutes(fastify, {
+  enabled: String(process.env.OPENPRISM_ENABLE_LEGACY_PAPER_API || '').toLowerCase() === 'true',
+});
 registerCodeRoutes(fastify);
 registerConversationRoutes(fastify);
 registerTerminalRoutes(fastify);
@@ -97,10 +104,13 @@ registerAntiAiRoutes(fastify);
 registerPipelineV2Routes(fastify);
 registerCitationVerificationRoutes(fastify);
 registerMcpRoutes(fastify);
-registerPaperRagRoutes(fastify);
+registerPaperRagRoutes(fastify, { getAppConfig: () => appConfig });
 registerPaperWorkbenchRoutes(fastify);
 registerWorkbenchPrototypeRoutes(fastify);
 registerDrawRoutes(fastify, { appConfig });
+registerAgentProviderRoutes(fastify);
+registerCapabilitiesRoutes(fastify, { appConfig });
+registerCliTaskRoutes(fastify);
 
 // Config endpoints
 fastify.get('/api/config', async () => publicAppConfig(appConfig));
@@ -117,35 +127,18 @@ fastify.put('/api/config', async (request) => {
 // Models endpoint: fetch available models from configured LLM provider
 fastify.get('/api/models', async (request, reply) => {
   try {
-    // Try OpenAI-compatible endpoint first (works for both OpenAI and proxied Claude)
-    const baseUrl = appConfig.llm_base_url || appConfig.claude_base_url || '';
-    const apiKey = appConfig.llm_api_key || appConfig.claude_api_key || '';
-    if (!baseUrl && !apiKey) {
-      reply.code(500);
-      return { error: 'No LLM API configured. Set base URL and API key in settings.' };
+    const { agentProviderRegistry } = await import('./services/agentProviderRegistry.js');
+    const provider = appConfig.llm_provider || 'openai-compatible';
+    if (provider.endsWith('-cli')) {
+      return {
+        models: [],
+        provider,
+        capability: { listModels: false },
+        message: 'This CLI does not expose a stable model-list API. Enter a model manually or leave it blank for the CLI default.',
+      };
     }
-    const modelsUrl = `${baseUrl || 'https://api.openai.com/v1'}/models`;
-    const res = await fetch(modelsUrl, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    });
-    if (!res.ok) {
-      // Fallback: try Claude base URL if different
-      if (appConfig.claude_base_url && appConfig.claude_base_url !== baseUrl) {
-        const claudeRes = await fetch(`${appConfig.claude_base_url}/models`, {
-          headers: { 'Authorization': `Bearer ${appConfig.claude_api_key}` },
-        });
-        if (claudeRes.ok) {
-          const data = await claudeRes.json();
-          const models = (data.data || data.models || []).map(m => typeof m === 'string' ? m : m.id);
-          return { models };
-        }
-      }
-      reply.code(500);
-      return { error: `Failed to fetch models: ${res.status} ${res.statusText}` };
-    }
-    const data = await res.json();
-    const models = (data.data || data.models || []).map(m => typeof m === 'string' ? m : m.id);
-    return { models };
+    const models = await agentProviderRegistry.listModels(provider);
+    return { models, provider, capability: { listModels: true } };
   } catch (err) {
     reply.code(500);
     return { error: `Failed to fetch models: ${err.message}` };
@@ -156,7 +149,7 @@ fastify.get('/api/models', async (request, reply) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const frontendDist = join(__dirname, '../../frontend/dist');
-const publicHost = process.env.OPENPRISM_PUBLIC_HOST || '10.30.0.22';
+const publicHost = process.env.OPENPRISM_PUBLIC_HOST || '127.0.0.1';
  
 if (existsSync(frontendDist)) {
   const fastifyStatic = await import('@fastify/static');

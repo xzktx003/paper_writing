@@ -5,6 +5,21 @@ import { listSkills, SkillInfo } from '../api/skillApi';
 // Language type
 export type Language = 'zh' | 'en';
 
+export function isSkillSelectable(skill: Pick<SkillInfo, 'execution'>): boolean {
+  return skill.execution?.readiness !== 'unavailable';
+}
+
+export function getSkillReadinessPresentation(skill: Pick<SkillInfo, 'execution'>, lang: Language) {
+  const status = skill.execution?.readiness || 'degraded';
+  const labels = {
+    ready: { zh: '可用', en: 'Ready' },
+    degraded: { zh: '需检查', en: 'Degraded' },
+    unavailable: { zh: '不可用', en: 'Unavailable' },
+  } as const;
+  const colors = { ready: '#2e7d32', degraded: '#b26a00', unavailable: '#c62828' } as const;
+  return { status, label: labels[status][lang], color: colors[status] };
+}
+
 // Skill categories with i18n
 export const SKILL_CATEGORIES = [
   { id: 'literature-search', name: { zh: '文献检索', en: 'Literature Search' }, icon: '📚', description: { zh: '检索、筛选、综述与引用管理', en: 'Search, screening, synthesis, and citations' } },
@@ -18,6 +33,16 @@ export const SKILL_CATEGORIES = [
   { id: 'open-access', name: { zh: '开放获取', en: 'Open Access' }, icon: '🔓', description: { zh: '预印本、开放数据与开放科学', en: 'Preprints, open data, and open science' } },
   { id: 'exploration-discovery', name: { zh: '研究探索', en: 'Research Exploration' }, icon: '🧭', description: { zh: '选题、研究空白与新方向探索', en: 'Topics, research gaps, and new directions' } },
 ];
+
+export function getPopulatedSkillCategories(skills: Array<Pick<SkillInfo, 'type' | 'categories'>>) {
+  return SKILL_CATEGORIES.flatMap(category => {
+    const count = skills.filter(skill => {
+      const categories = skill.categories?.length ? skill.categories : [skill.type];
+      return categories.includes(category.id);
+    }).length;
+    return count > 0 ? [{ ...category, count }] : [];
+  });
+}
 
 // Helper to get localized text
 export function t(text: { zh: string; en: string } | string | undefined, lang: Language): string {
@@ -274,9 +299,7 @@ const descriptionTranslations: Record<string, { zh: string; en: string }> = {
   'Skill that audits and rewrites content to remove AI writing patterns': { zh: '审核并重写内容以去除AI写作模式的技能', en: 'Skill that audits and rewrites content to remove AI writing patterns' },
   'AI research paper writing assistant with 30+ prompt templates covering full workflow': { zh: 'AI科研论文写作助手，30+提示模板覆盖全流程', en: 'AI research paper writing assistant with 30+ prompt templates covering full workflow' },
   'Generate systematic literature reviews following PRISMA guidelines': { zh: '遵循PRISMA指南生成系统综述', en: 'Generate systematic literature reviews following PRISMA guidelines' },
-  'Multi-perspective peer review with dynamic reviewer personas': { zh: '多角度同行评审，动态评审角色', en: 'Multi-perspective peer review with dynamic reviewer personas' },
   'Structured rebuttal and reviewer response drafting': { zh: '结构化反驳和审稿人回复起草', en: 'Structured rebuttal and reviewer response drafting' },
-  'Verify citations using programmatic scholarly sources': { zh: '使用编程方式验证引用来源', en: 'Verify citations using programmatic scholarly sources' },
   'Grant proposal writing with budget justification and impact statements': { zh: '基金申请写作，含预算论证和影响声明', en: 'Grant proposal writing with budget justification and impact statements' },
   // ===== NEW WRITING SKILL DESCRIPTIONS (SNL-UCSB/paper-writing-skill) =====
   '5-stage academic paper writing pipeline: brainstorming → architecture → section drafts → integration → compression': { zh: '5阶段学术论文写作流程：头脑风暴→架构→章节起草→整合→压缩', en: '5-stage academic paper writing pipeline: brainstorming → architecture → section drafts → integration → compression' },
@@ -505,6 +528,9 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState<React.CSSProperties>({});
+  const visibleCategories = getPopulatedSkillCategories(
+    skills.filter(skill => !selectedSkills.includes(skill.name)),
+  );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -567,7 +593,7 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
 
   // Group skills by category
   const skillsByCategory: Record<string, SkillInfo[]> = {};
-  SKILL_CATEGORIES.forEach(cat => {
+  visibleCategories.forEach(cat => {
     skillsByCategory[cat.id] = skills.filter(s => {
       const categories = s.categories?.length ? s.categories : [s.type];
       return categories.includes(cat.id) && !selectedSkills.includes(s.name);
@@ -688,7 +714,7 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
             </div>
 
             {/* Categories with collapsible sections */}
-            {SKILL_CATEGORIES.map(cat => {
+            {visibleCategories.map(cat => {
             const catSkills = [...(skillsByCategory[cat.id] || [])].sort((a, b) =>
               String(a.subcategory_zh || '').localeCompare(String(b.subcategory_zh || ''), 'zh-Hans-CN') ||
               getLocalizedDisplayName(a, lang).localeCompare(getLocalizedDisplayName(b, lang), lang === 'zh' ? 'zh-Hans-CN' : 'en')
@@ -761,13 +787,20 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
                           </div>
                           {isSubcategoryExpanded && group.skills.map(skill => {
                             const localizedName = getLocalizedDisplayName(skill, lang);
+                            const readiness = getSkillReadinessPresentation(skill, lang);
+                            const selectable = isSkillSelectable(skill);
                             return (
                               <div
                                 key={skill.name}
-                                onClick={() => { onSelect(skill.name); setShowDropdown(false); }}
+                                onClick={() => {
+                                  if (!selectable) return;
+                                  onSelect(skill.name);
+                                  setShowDropdown(false);
+                                }}
                                 style={{
                                   padding: '8px 16px 8px 28px',
-                                  cursor: 'pointer',
+                                  cursor: selectable ? 'pointer' : 'not-allowed',
+                                  opacity: selectable ? 1 : 0.58,
                                   fontSize: '11px',
                                   display: 'flex',
                                   flexDirection: 'column',
@@ -784,6 +817,9 @@ export function CollapsibleDropdown({ skills, selectedSkills, onSelect, onManage
                                       ★ {Number(skill.source_stars).toLocaleString()}
                                     </span>
                                   )}
+                                  <span style={{ flexShrink: 0, color: readiness.color, fontSize: '9px' }}>
+                                    ● {readiness.label}
+                                  </span>
                                 </span>
                                 <span style={{ fontSize: '10px', color: 'var(--accent)' }}>
                                   {generateSkillDescription(skill, lang)}

@@ -1,30 +1,48 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtemp, rm, mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { existsSync } from 'fs';
-import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 
-const BASE = 'http://localhost:8787';
+const BASE = process.env.BACKEND_URL || 'http://localhost:8787';
+const API_TOKEN = String(process.env.OPENPRISM_E2E_API_TOKEN || '').trim();
+const nativeFetch = globalThis.fetch;
+globalThis.fetch = (input, init = {}) => {
+  const url = new URL(input instanceof Request ? input.url : String(input), BASE);
+  if (!API_TOKEN || url.origin !== new URL(BASE).origin || !url.pathname.startsWith('/api/')) {
+    return nativeFetch(input, init);
+  }
+  const headers = new Headers(input instanceof Request ? input.headers : undefined);
+  new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${API_TOKEN}`);
+  return nativeFetch(input, { ...init, headers });
+};
 
-// Compute DATA_DIR to match the backend's constants.js calculation
-// constants.js: REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..')
-// DATA_DIR = path.resolve(REPO_ROOT, '..', 'papers')
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, '..');
-// The test file is in app/tests/, constants.js is in app/apps/backend/src/config/
-// Going up from app/tests/ to app/ is one '..', but constants goes up 4 from config/
-// Both resolve to the same repo root
-const REPO_ROOT = join(__dirname, '..', 'apps', 'backend', 'src', 'config', '..', '..', '..', '..');
-const DATA_DIR = process.env.OPENPRISM_DATA_DIR || join(REPO_ROOT, '..', 'papers');
+const ownsDataDir = !process.env.OPENPRISM_DATA_DIR;
+const DATA_DIR = process.env.OPENPRISM_DATA_DIR || await mkdtemp(join(tmpdir(), 'paper-api-integration-'));
 
 describe('Backend API Integration', () => {
+  afterAll(async () => {
+    if (ownsDataDir) await rm(DATA_DIR, { recursive: true, force: true });
+  });
   describe('Health', () => {
     it('GET /api/health returns ok', async () => {
       const res = await fetch(`${BASE}/api/health`);
       const data = await res.json();
       expect(res.status).toBe(200);
       expect(data.ok).toBe(true);
+      expect(data.build).toEqual(expect.objectContaining({
+        id: expect.any(String),
+        apiSchemaVersion: 2,
+      }));
+    });
+
+    it('GET /api/ready reports deployment readiness separately from liveness', async () => {
+      const res = await fetch(`${BASE}/api/ready`);
+      const data = await res.json();
+      expect(res.status).toBe(200);
+      expect(data).toMatchObject({ ready: true, checks: { dataRoot: true, templates: true } });
     });
   });
 
@@ -58,55 +76,29 @@ describe('Backend API Integration', () => {
     });
 
     it('GET /api/skills/:name returns specific skill', async () => {
-      const res = await fetch(`${BASE}/api/skills/ml-paper-writing`);
+      const listResponse = await fetch(`${BASE}/api/skills`);
+      const [expectedSkill] = await listResponse.json();
+      expect(expectedSkill?.name).toBeTruthy();
+
+      const res = await fetch(`${BASE}/api/skills/${encodeURIComponent(expectedSkill.name)}`);
       const data = await res.json();
       expect(res.status).toBe(200);
-      expect(data.name).toBe('ml-paper-writing');
+      expect(data.name).toBe(expectedSkill.name);
     });
   });
 
-  describe('Paper Projects', () => {
-    let projectPath;
-
-    beforeAll(async () => {
-      await mkdir(DATA_DIR, { recursive: true });
-      projectPath = await mkdtemp(join(DATA_DIR, 'api-paper-test-'));
-    });
-
-    afterAll(async () => {
-      if (projectPath && existsSync(projectPath)) await rm(projectPath, { recursive: true, force: true });
-    });
-
-    it('POST /api/paper/create creates a project', async () => {
+  describe('Legacy Paper Projects', () => {
+    it('keeps absolute-path paper APIs disabled by default', async () => {
       const res = await fetch(`${BASE}/api/paper/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          path: projectPath,
-          config: {
-            title: 'API Test Paper',
-            authors: ['Test Author'],
-            template: 'plain',
-            editor_mode: 'markdown',
-            chapters: [{ file: 'intro.md', skills: [] }],
-            global_skills: ['academic-tone'],
-          },
+          path: join(DATA_DIR, 'legacy-disabled'),
+          config: { title: 'Must not be created' },
         }),
       });
-      const data = await res.json();
-      expect(res.status).toBe(200);
-      expect(data.path).toBe(projectPath);
-    });
-
-    it('POST /api/paper/open loads project config', async () => {
-      const res = await fetch(`${BASE}/api/paper/open`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: projectPath }),
-      });
-      const data = await res.json();
-      expect(res.status).toBe(200);
-      expect(data.config.title).toBe('API Test Paper');
+      expect(res.status).toBe(404);
+      expect(existsSync(join(DATA_DIR, 'legacy-disabled'))).toBe(false);
     });
   });
 
@@ -180,24 +172,33 @@ describe('Backend API Integration', () => {
       if (projectPath && existsSync(projectPath)) await rm(projectPath, { recursive: true, force: true });
     });
 
-    it('POST /api/code/exec runs a command', async () => {
-      const res = await fetch(`${BASE}/api/code/exec`, {
+    it('POST /api/code/exec rejects a request that omits the isolated server token', async () => {
+      const res = await nativeFetch(`${BASE}/api/code/exec`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectPath, command: 'echo "test output"' }),
       });
       const data = await res.json();
-      expect(res.status).toBe(200);
-      expect(data.stdout).toContain('test output');
+      expect(res.status).toBe(401);
+      expect(data.error).toMatch(/authentication/i);
     });
   });
 
   describe('Conversations', () => {
-    const projectId = 'test-conv-api-' + Date.now();
-    const projectPath = join(DATA_DIR, projectId);
+    let projectId;
 
     beforeAll(async () => {
-      await mkdir(projectPath, { recursive: true });
+      const response = await fetch(`${BASE}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `Conversation Integration ${Date.now()}` }),
+      });
+      expect(response.status).toBe(200);
+      projectId = (await response.json()).id;
+    });
+
+    afterAll(async () => {
+      if (projectId) await fetch(`${BASE}/api/projects/${projectId}/permanent`, { method: 'DELETE' });
     });
 
     it('POST /api/conversations/:projectId creates conversation', async () => {

@@ -1,5 +1,26 @@
 import path from 'path';
+import { lstatSync } from 'node:fs';
 import { DATA_DIR } from '../config/constants.js';
+
+function rejectSymbolicLinkComponents(base, resolved) {
+  const relative = path.relative(base, resolved);
+  const components = relative ? relative.split(path.sep).filter(Boolean) : [];
+  let current = base;
+  for (const component of ['', ...components]) {
+    if (component) current = path.join(current, component);
+    try {
+      if (lstatSync(current).isSymbolicLink()) {
+        throw Object.assign(new Error('Symbolic links are not allowed in managed project paths'), {
+          statusCode: 400,
+          code: 'PATH_SYMLINK_NOT_ALLOWED',
+        });
+      }
+    } catch (error) {
+      if (error.code === 'ENOENT') break;
+      throw error;
+    }
+  }
+}
  
 export function safeJoin(base, ...segments) {
   const resolved = path.resolve(base, ...segments);
@@ -7,15 +28,17 @@ export function safeJoin(base, ...segments) {
   if (!resolved.startsWith(normalizedBase + path.sep) && resolved !== normalizedBase) {
     throw Object.assign(new Error('Path traversal detected'), { statusCode: 400 });
   }
+  rejectSymbolicLinkComponents(normalizedBase, resolved);
   return resolved;
 }
  
-export function assertWithinDataDir(projectPath) {
+export function assertWithinDataDir(projectPath, { dataDir = DATA_DIR } = {}) {
   const resolved = path.resolve(projectPath);
-  const normalizedData = path.resolve(DATA_DIR);
+  const normalizedData = path.resolve(dataDir);
   if (!resolved.startsWith(normalizedData + path.sep) && resolved !== normalizedData) {
     throw Object.assign(new Error('Invalid project path'), { statusCode: 400 });
   }
+  rejectSymbolicLinkComponents(normalizedData, resolved);
   return resolved;
 }
  

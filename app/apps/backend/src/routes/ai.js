@@ -1,5 +1,6 @@
 import { chatCompletion, chatWithTools, chatCompletionStream } from '../services/llmService.js';
-import { assemblePrompt } from '../services/skillEngine.js';
+import { assemblePrompt, getSkill } from '../services/skillEngine.js';
+import { recordSkillRun, recordSkillRunsBatch } from '../services/skillReadinessService.js';
 import { appendMessage, getConversation } from '../services/conversationStore.js';
 import { readTextFile, writeTextFile, listDir } from '../services/fileManager.js';
 import { executeScript } from '../services/codeExecutor.js';
@@ -8,9 +9,68 @@ import { safeJoin } from '../utils/pathSecurity.js';
 import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
 import { getProjectRoot } from '../services/projectService.js';
+import { resolveManagedProjectRequest } from '../services/managedProjectContext.js';
 import { diffLines } from 'diff';
 import { buildRagEvidence, buildRagUsageGuidance } from '../services/paperRagService.js';
 import { extractPdfText } from '../services/pdfService.js';
+
+export function normalizeAppliedSkillNames(groups = []) {
+  const names = [];
+  const seen = new Set();
+  for (const group of groups) {
+    for (const value of Array.isArray(group) ? group : []) {
+      const name = String(value || '').trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+export function recordAppliedSkillRuns(skillNames, result = {}, options = {}) {
+  const recordRun = options.recordRun || recordSkillRun;
+  const provenance = result.providerProvenance || {};
+  const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+  const sideEffects = Array.isArray(result.sideEffects) ? result.sideEffects : [];
+  const mode = String(result.mode || 'chat');
+  const status = String(result.status || 'unknown');
+  const errorCode = String(result.errorCode || 'UNKNOWN').slice(0, 64);
+  const summary = status === 'success'
+    ? `Completed ${mode} request with ${artifacts.length} reviewable artifact${artifacts.length === 1 ? '' : 's'}.`
+    : `Failed ${mode} request (${errorCode}).`;
+
+  const entries = normalizeAppliedSkillNames([skillNames]).map((name) => ({ name, result: {
+      status,
+      outcome: status === 'success' ? 'provider_completed' : status === 'failed' ? 'provider_failed' : 'unknown',
+      verificationStatus: 'not_evaluated',
+      objectiveStatus: 'not_evaluated',
+      scope: result.scope || { projectId: result.projectId, conversationId: result.conversationId },
+      kind: 'model-guided-execution',
+      durationMs: Math.max(0, Number(result.durationMs || provenance.durationMs || 0)),
+      summary,
+      provider: provenance.providerId || provenance.provider || result.provider || '',
+      model: provenance.model || result.model || '',
+      version: provenance.version || result.version || '',
+      cost: result.cost || null,
+      artifacts,
+      sideEffects,
+    }}));
+  if (options.recordRun) {
+    for (const entry of entries) recordRun(entry.name, entry.result);
+  } else {
+    recordSkillRunsBatch(entries);
+  }
+}
+
+function safelyRecordAppliedSkillRuns(fastify, skillNames, result) {
+  if (skillNames.length === 0) return;
+  try {
+    recordAppliedSkillRuns(skillNames, result);
+  } catch (error) {
+    fastify.log.warn({ error: error.message, skillCount: skillNames.length }, 'Unable to persist Skill execution ledger');
+  }
+}
  
 export async function resolveProjectPath(projectPath) {
   if (projectPath && projectPath.startsWith('__paper_agent__:')) {
@@ -69,19 +129,22 @@ export async function buildUserMessageContent(userMessage, files) {
           text: `[Attached file: ${file.name}] (PDF document - failed to extract text)`,
         });
       }
+    } else if (mimeType.startsWith('text/') || mimeType.includes('json') || mimeType.includes('csv')) {
+      // Text-like attachments are decoded and sent as content. Never claim
+      // that a file was read when only its filename reached the provider.
+      const decoded = Buffer.from(base64Data, 'base64').toString('utf8');
+      const truncated = decoded.length > 45_000 ? `${decoded.slice(0, 45_000)}\n...(truncated)` : decoded;
+      content.push({
+        type: 'text',
+        text: `[Attached file: ${file.name}]\n\nFile content:\n${truncated}`,
+      });
     } else {
-      // Other non-image files: include as text with filename and type info
-      let fileDescription = `[Attached file: ${file.name}]`;
-      if (mimeType.includes('text') || mimeType.includes('plain')) {
-        fileDescription += ' (Text file)';
-      } else if (mimeType.includes('json')) {
-        fileDescription += ' (JSON file)';
-      } else if (mimeType.includes('csv')) {
-        fileDescription += ' (CSV/spreadsheet)';
-      } else {
-        fileDescription += ` (${mimeType})`;
-      }
-      content.push({ type: 'text', text: fileDescription });
+      throw Object.assign(new Error(`Attachment type is not supported: ${mimeType || file.name}`), {
+        statusCode: 400,
+        code: 'UNSUPPORTED_ATTACHMENT_TYPE',
+        attachment: file.name,
+        mimeType,
+      });
     }
   }
   
@@ -320,12 +383,15 @@ function classifyAIError(err) {
 export function registerAIRoutes(fastify) {
   // ── SSE Streaming endpoint ──────────────────────────────
   fastify.post('/api/ai/stream', async (request, reply) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig, files, rag, model } = request.body;
+    const { projectId, conversationProjectId, convId, userMessage, projectConfig, files, rag, model } = request.body;
+    const conversationStoreProjectId = conversationProjectId || projectId;
     const modelOverride = model || undefined;
 
-    const resolvedPath = await resolveProjectPath(projectPath);
-    const conv = await getConversation(projectId, convId);
-    await appendMessage(projectId, convId, { role: 'user', content: userMessage });
+    const { projectRoot: resolvedPath } = await resolveManagedProjectRequest(request, reply, {
+      route: 'ai.stream',
+    });
+    const conv = await getConversation(conversationStoreProjectId, convId);
+    await appendMessage(conversationStoreProjectId, convId, { role: 'user', content: userMessage });
  
     const globalSkills = projectConfig?.global_skills || [];
     let chapterSkills = [];
@@ -334,6 +400,9 @@ export function registerAIRoutes(fastify) {
       chapterSkills = chapterConfig?.skills || [];
     }
     const manualSkills = Array.isArray(conv.active_skills) ? conv.active_skills : [];
+    const appliedSkillNames = normalizeAppliedSkillNames([globalSkills, chapterSkills, manualSkills])
+      .filter(name => Boolean(getSkill(name)));
+    const skillRunStartedAt = Date.now();
     const systemPrompt = appendModeGuidance(assemblePrompt({ globalSkills, chapterSkills, manualSkills }), conv.mode);
  
     // Auto context injection: read current chapter / paper structure / references
@@ -377,25 +446,32 @@ export function registerAIRoutes(fastify) {
         { role: 'user', content: userContent },
       ];
       
-      // DEBUG: log what we're sending to the LLM
-      console.log('[AI DEBUG] systemPrompt:', JSON.stringify(systemPrompt));
-      console.log('[AI DEBUG] messages count:', messages.length);
-      console.log('[AI DEBUG] user message:', JSON.stringify(userContent).slice(0, 200));
-      console.log('[AI DEBUG] rag context:', ragContext.evidence.context ? 'YES' : 'NO (empty)');
+      fastify.log.debug({
+        messageCount: messages.length,
+        ragEvidenceCount: ragContext.evidence?.sources?.length || 0,
+      }, 'Prepared AI request');
       
       if (conv.mode === 'chat') {
         const result = await chatCompletionStream({
-          systemPrompt, messages, model: modelOverride,
+          systemPrompt, messages, model: modelOverride, projectId: conversationStoreProjectId,
           signal: abortController.signal,
           onToken: (text) => sendEvent('token', { text }),
         });
-        await appendMessage(projectId, convId, { role: 'assistant', content: result.fullText });
-        sendEvent('done', { fullText: result.fullText, ...buildRagResponseFields(ragContext) });
+        await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: result.fullText });
+        safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+          status: 'success',
+          scope: { projectId: conversationStoreProjectId, conversationId: convId },
+          durationMs: Date.now() - skillRunStartedAt,
+          mode: conv.mode,
+          providerProvenance: result.provenance,
+          model: modelOverride,
+        });
+        sendEvent('done', { fullText: result.fullText, providerProvenance: result.provenance, ...buildRagResponseFields(ragContext) });
       } else {
         // agent/tools mode with streaming
         let fullText = '';
         const result = await chatCompletionStream({
-          systemPrompt, messages, tools: getToolsForMode(conv.mode), model: modelOverride,
+          systemPrompt, messages, tools: getToolsForMode(conv.mode), model: modelOverride, projectId: conversationStoreProjectId,
           signal: abortController.signal,
           onToken: (text) => { fullText += text; sendEvent('token', { text }); },
           onToolUse: async (name, input) => {
@@ -412,11 +488,28 @@ export function registerAIRoutes(fastify) {
             sendEvent('tool_result', { name, result: typeof result === 'string' ? result.slice(0, 2000) : String(result).slice(0, 2000) });
           },
         });
-        await appendMessage(projectId, convId, { role: 'assistant', content: result.fullText });
+        await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: result.fullText });
+        safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+          status: 'success',
+          scope: { projectId: conversationStoreProjectId, conversationId: convId },
+          durationMs: Date.now() - skillRunStartedAt,
+          mode: conv.mode,
+          providerProvenance: result.provenance,
+          model: modelOverride,
+          sideEffects: conv.mode === 'agent' ? ['proposes-project-edits'] : ['may-execute-project-tools'],
+        });
         sendEvent('done', { fullText: result.fullText, ...buildRagResponseFields(ragContext) });
       }
     } catch (err) {
       if (abortController.signal.aborted) return;
+      safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+        status: 'failed',
+        scope: { projectId: conversationStoreProjectId, conversationId: convId },
+        durationMs: Date.now() - skillRunStartedAt,
+        mode: conv.mode,
+        errorCode: err.code || err.status || err.statusCode || 'AI_REQUEST_FAILED',
+        model: modelOverride,
+      });
       sendEvent('error', { message: classifyAIError(err), code: err.status || 500 });
     }
  
@@ -424,13 +517,16 @@ export function registerAIRoutes(fastify) {
   });
  
   // ── Legacy non-streaming endpoint ────────────────────────
-  fastify.post('/api/ai/send', async (request) => {
-    const { projectId, convId, projectPath, userMessage, projectConfig, files, rag, model } = request.body;
+  fastify.post('/api/ai/send', async (request, reply) => {
+    const { projectId, conversationProjectId, convId, userMessage, projectConfig, files, rag, model } = request.body;
+    const conversationStoreProjectId = conversationProjectId || projectId;
     const modelOverride = model || undefined;
 
-    const resolvedPath = await resolveProjectPath(projectPath);
-    const conv = await getConversation(projectId, convId);
-    await appendMessage(projectId, convId, { role: 'user', content: userMessage });
+    const { projectRoot: resolvedPath } = await resolveManagedProjectRequest(request, reply, {
+      route: 'ai.send',
+    });
+    const conv = await getConversation(conversationStoreProjectId, convId);
+    await appendMessage(conversationStoreProjectId, convId, { role: 'user', content: userMessage });
 
     const globalSkills = projectConfig?.global_skills || [];
     let chapterSkills = [];
@@ -439,6 +535,9 @@ export function registerAIRoutes(fastify) {
       chapterSkills = chapterConfig?.skills || [];
     }
     const manualSkills = Array.isArray(conv.active_skills) ? conv.active_skills : [];
+    const appliedSkillNames = normalizeAppliedSkillNames([globalSkills, chapterSkills, manualSkills])
+      .filter(name => Boolean(getSkill(name)));
+    const skillRunStartedAt = Date.now();
 
     const systemPrompt = appendModeGuidance(assemblePrompt({ globalSkills, chapterSkills, manualSkills }), conv.mode);
 
@@ -465,11 +564,19 @@ export function registerAIRoutes(fastify) {
 
     try {
       if (conv.mode === 'chat') {
-        const response = await chatCompletion({ systemPrompt, messages, model: modelOverride });
+        const response = await chatCompletion({ systemPrompt, messages, model: modelOverride, projectId: conversationStoreProjectId });
         const textBlock = response.content.find(b => b.type === 'text');
         const assistantMsg = textBlock?.text || '';
-        await appendMessage(projectId, convId, { role: 'assistant', content: assistantMsg });
-        return { reply: assistantMsg, ...buildRagResponseFields(ragContext) };
+        await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: assistantMsg });
+        safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+          status: 'success',
+          scope: { projectId: conversationStoreProjectId, conversationId: convId },
+          durationMs: Date.now() - skillRunStartedAt,
+          mode: conv.mode,
+          providerProvenance: response.provenance,
+          model: modelOverride,
+        });
+        return { reply: assistantMsg, providerProvenance: response.provenance, ...buildRagResponseFields(ragContext) };
       }
  
       if (conv.mode === 'tools' || conv.mode === 'agent') {
@@ -479,6 +586,7 @@ export function registerAIRoutes(fastify) {
           messages,
           tools: getToolsForMode(conv.mode),
           model: modelOverride,
+          projectId: conversationStoreProjectId,
           onToolUse: async (name, input) => {
             const toolResult = await executeTool(name, input, resolvedPath);
             const editProposal = parseEditProposal(name, toolResult);
@@ -489,13 +597,39 @@ export function registerAIRoutes(fastify) {
         const lastContent = result.response.content;
         const textBlock = lastContent.find(b => b.type === 'text');
         const assistantMsg = textBlock?.text || '';
-        await appendMessage(projectId, convId, { role: 'assistant', content: assistantMsg });
+        await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: assistantMsg });
+        safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+          status: 'success',
+          scope: { projectId: conversationStoreProjectId, conversationId: convId },
+          durationMs: Date.now() - skillRunStartedAt,
+          mode: conv.mode,
+          providerProvenance: result.provenance || result.response?.provenance,
+          model: modelOverride,
+          artifacts: editProposals.map(proposal => proposal.filename).filter(Boolean),
+          sideEffects: conv.mode === 'agent' ? ['proposes-project-edits'] : ['may-execute-project-tools'],
+        });
         return { reply: assistantMsg, editProposals, ...buildRagResponseFields(ragContext) };
       }
- 
+
+      safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+        status: 'failed',
+        scope: { projectId: conversationStoreProjectId, conversationId: convId },
+        durationMs: Date.now() - skillRunStartedAt,
+        mode: conv.mode,
+        errorCode: 'UNKNOWN_MODE',
+        model: modelOverride,
+      });
       return { reply: 'Unknown mode' };
     } catch (err) {
       const errorMsg = classifyAIError(err);
+      safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
+        status: 'failed',
+        scope: { projectId: conversationStoreProjectId, conversationId: convId },
+        durationMs: Date.now() - skillRunStartedAt,
+        mode: conv.mode,
+        errorCode: err.code || err.status || err.statusCode || 'AI_REQUEST_FAILED',
+        model: modelOverride,
+      });
       return { reply: errorMsg, error: true, code: err.status || 500 };
     }
   });

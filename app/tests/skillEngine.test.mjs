@@ -1,15 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadSkills, listSkills, getSkill, assemblePrompt } from '../apps/backend/src/services/skillEngine.js';
+import { loadSkills, listSkills, getSkill, assemblePrompt, runSkillTests } from '../apps/backend/src/services/skillEngine.js';
 
 describe('Skill Engine', () => {
   it('loads built-in skills from skills directory', async () => {
     await loadSkills(null);
     const skills = listSkills();
-    expect(skills.length).toBeGreaterThanOrEqual(95);
-    expect(skills.length).toBeLessThanOrEqual(110);
+    expect(skills.length).toBeGreaterThan(0);
+    expect(new Set(skills.map(skill => skill.name)).size).toBe(skills.length);
+  });
+
+  it('keeps the generated Skill catalog consistent with its manifest', async () => {
+    await loadSkills(null);
+    const manifest = JSON.parse(await readFile(
+      new URL('../apps/backend/skills/open-source-skills.manifest.json', import.meta.url),
+      'utf8',
+    ));
+    const generatedFiles = manifest.generatedFiles || [];
+    const generatedNames = generatedFiles.map(filename => filename.replace(/\.ya?ml$/i, ''));
+
+    expect(manifest.totalSkills).toBe(generatedFiles.length);
+    expect(new Set(generatedFiles).size).toBe(generatedFiles.length);
+    for (const name of generatedNames) expect(getSkill(name), name).toBeTruthy();
   });
 
   it('loads the AI/ML-focused open-source YAML migrations without MedSci', async () => {
@@ -163,7 +177,7 @@ describe('Skill Engine', () => {
       const packageDir = join(root, 'paper-spine-lite');
       await mkdir(join(packageDir, 'references'), { recursive: true });
       await mkdir(join(packageDir, 'scripts'), { recursive: true });
-      await writeFile(join(packageDir, 'manifest.yaml'), `name: paper-spine-lite\ndisplay_name: PaperSpine Lite\ndescription: Motivation-first paper writing workflow\ntype: writing\ntrigger: manual\ntags:\n  - spine\n  - motivation\n`);
+      await writeFile(join(packageDir, 'manifest.yaml'), `name: paper-spine-lite\ndisplay_name: PaperSpine Lite\ndescription: Motivation-first paper writing workflow\ntype: writing\ntrigger: manual\nrequirements:\n  commands:\n    - node\n  providerCapabilities:\n    - invoke\nsideEffects:\n  - executes-local-commands\ncostClass: low\ntags:\n  - spine\n  - motivation\n`);
       await writeFile(join(packageDir, 'SKILL.md'), '# PaperSpine Lite\n\nBuild a motivation-first draft from materials.');
       await writeFile(join(packageDir, 'references', 'workflow.md'), 'Workflow notes');
       await writeFile(join(packageDir, 'scripts', 'audit.mjs'), 'console.log("audit")');
@@ -176,8 +190,40 @@ describe('Skill Engine', () => {
       expect(skill.prompt).toContain('motivation-first');
       expect(skill.package.references).toContain('references/workflow.md');
       expect(skill.package.scripts).toContain('scripts/audit.mjs');
-      expect(listSkills().find(s => s.name === 'paper-spine-lite')).toMatchObject({ source: 'custom', kind: 'package' });
+      expect(listSkills().find(s => s.name === 'paper-spine-lite')).toMatchObject({
+        source: 'custom',
+        kind: 'package',
+        requirements: { commands: ['node'], providerCapabilities: ['invoke'] },
+        sideEffects: ['executes-local-commands'],
+        costClass: 'low',
+      });
     } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('runs package tests without a shell and without inheriting server secrets', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'skill-package-safe-test-'));
+    const previousToken = process.env.OPENPRISM_API_TOKEN;
+    try {
+      const packageDir = join(root, 'safe-package');
+      const testsDir = join(packageDir, 'tests');
+      await mkdir(testsDir, { recursive: true });
+      await writeFile(join(packageDir, 'manifest.yaml'), `name: safe-package\ndisplay_name: Safe Package\ndescription: Safe package test\ntype: utility\ntrigger: manual\n`);
+      await writeFile(join(packageDir, 'SKILL.md'), '# Safe package');
+      const testName = 'test file; echo injected.mjs';
+      await writeFile(join(testsDir, testName), `process.stdout.write(process.env.OPENPRISM_API_TOKEN ? 'leaked' : 'safe');`);
+      process.env.OPENPRISM_API_TOKEN = 'must-not-reach-skill-test';
+
+      await loadSkills(root);
+      const result = await runSkillTests('safe-package');
+
+      expect(result).toMatchObject({ passed: 1, failed: 0, skipped: 0 });
+      expect(result.results[0].file).toContain('test file; echo injected.mjs');
+      expect(result.results[0].output).toBe('safe');
+    } finally {
+      if (previousToken === undefined) delete process.env.OPENPRISM_API_TOKEN;
+      else process.env.OPENPRISM_API_TOKEN = previousToken;
       await rm(root, { recursive: true, force: true });
     }
   });

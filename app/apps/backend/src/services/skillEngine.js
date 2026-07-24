@@ -1,14 +1,20 @@
-import { readdir, readFile, mkdir, writeFile, rm, stat } from 'fs/promises';
+import { readdir, readFile, mkdir, writeFile, rm, stat, lstat, mkdtemp } from 'fs/promises';
 import { join, dirname, basename, extname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash, randomUUID } from 'crypto';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
+import { tmpdir } from 'os';
 import YAML from 'yaml';
 import { safeJoin } from '../utils/pathSecurity.js';
+import { DATA_DIR } from '../config/constants.js';
  
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const builtinSkillsDir = join(__dirname, '../../skills');
 const importedSkillsDir = join(__dirname, '../../skills-imported');
+// User-created YAML skills belong to runtime data, never to the shipped
+// built-in catalog.  Keeping this outside the source tree also makes a
+// rebuild/redeploy unable to silently overwrite user definitions.
+const customSkillsDir = join(DATA_DIR, '.skills');
 const SKILL_TRACKER_FILE = join(__dirname, '../../skills-imported/tracker.json');
 let skillRegistry = new Map();
 
@@ -454,14 +460,28 @@ const SKILL_UI_METADATA = {
   },
 };
  
-export async function loadSkills(projectSkillsDir) {
+export async function loadSkills(projectSkillsDir, options = {}) {
+  const resolvedCustomSkillsDir = options.customSkillsDir || customSkillsDir;
   skillRegistry.clear();
+  skillLoadErrors.length = 0;
   await loadSkillsFromDir(builtinSkillsDir, 'builtin');
+  await mkdir(resolvedCustomSkillsDir, { recursive: true });
+  await loadSkillsFromDir(resolvedCustomSkillsDir, 'custom');
   await ensureImportedSkillsDir();
   await loadSkillsFromDir(importedSkillsDir, 'imported');
   if (projectSkillsDir) {
     await loadSkillsFromDir(projectSkillsDir, 'custom');
   }
+}
+
+export function getCustomSkillsDir() {
+  return customSkillsDir;
+}
+
+const skillLoadErrors = [];
+
+export function getSkillLoadErrors() {
+  return skillLoadErrors.map((error) => ({ ...error }));
 }
  
 /* ── Imported Skill Tracker ───────────────────────────────────── */
@@ -695,8 +715,12 @@ async function listRelativeFilesWithTypes(dir, prefix) {
 }
  
 /**
- * Run tests for a skill package in a sandboxed environment.
- * Only allows whitelisted commands and enforces timeouts.
+ * Run tests for a skill package with a constrained command boundary.
+ *
+ * This is not a full OS/container sandbox: package tests are still third-party
+ * code executed by the service account. The boundary deliberately avoids a
+ * shell, rejects symlinked test files, and passes only a small environment
+ * allowlist so a package test cannot inherit server credentials by default.
  */
 export async function runSkillTests(name, options = {}) {
   const skill = skillRegistry.get(name);
@@ -711,44 +735,62 @@ export async function runSkillTests(name, options = {}) {
   }
  
   const timeout = Math.min(options.timeout || 30_000, 120_000);
+  const sandboxHome = await mkdtemp(join(tmpdir(), 'paper-agent-skill-test-'));
+  const testEnv = {
+    PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+    LANG: process.env.LANG || 'C.UTF-8',
+    LC_ALL: process.env.LC_ALL || process.env.LANG || 'C.UTF-8',
+    HOME: sandboxHome,
+    TMPDIR: sandboxHome,
+    TMP: sandboxHome,
+    TEMP: sandboxHome,
+    SKILL_ROOT: skill.package.root,
+    SKILL_NAME: name,
+  };
   const results = [];
- 
-  for (const testFile of testFiles) {
-    const ext = extname(testFile);
-    const fullPath = safeJoin(skill.package.root, testFile);
- 
-    let command;
-    if (ext === '.sh') command = ['bash', fullPath];
-    else if (ext === '.py') command = ['python3', fullPath];
-    else if (ext === '.js' || ext === '.mjs') command = ['node', fullPath];
-    else {
-      results.push({ file: testFile, status: 'skipped', reason: `Unsupported extension: ${ext}` });
-      continue;
+
+  try {
+    for (const testFile of testFiles) {
+      const ext = extname(testFile);
+      const fullPath = safeJoin(testsDir, testFile.replace(/^tests\//, ''));
+      const fileStat = await lstat(fullPath);
+      if (!fileStat.isFile() || fileStat.isSymbolicLink()) {
+        results.push({ file: testFile, status: 'skipped', reason: 'Test file must be a regular non-symlink file.' });
+        continue;
+      }
+
+      let executable;
+      if (ext === '.sh') executable = 'bash';
+      else if (ext === '.py') executable = 'python3';
+      else if (ext === '.js' || ext === '.mjs') executable = process.execPath;
+      else {
+        results.push({ file: testFile, status: 'skipped', reason: `Unsupported extension: ${ext}` });
+        continue;
+      }
+
+      try {
+        const output = execFileSync(executable, [fullPath], {
+          cwd: skill.package.root,
+          timeout,
+          encoding: 'utf-8',
+          maxBuffer: 1024 * 1024,
+          shell: false,
+          env: testEnv,
+        });
+        results.push({ file: testFile, status: 'passed', output: output.trim() });
+      } catch (err) {
+        const stderr = err.stderr || '';
+        const stdout = err.stdout || '';
+        results.push({
+          file: testFile,
+          status: 'failed',
+          output: [stdout.trim(), stderr.trim()].filter(Boolean).join('\n'),
+          error: err.message,
+        });
+      }
     }
- 
-    try {
-      const output = execSync(command.join(' '), {
-        cwd: skill.package.root,
-        timeout,
-        encoding: 'utf-8',
-        maxBuffer: 1024 * 1024,
-        env: {
-          ...process.env,
-          SKILL_ROOT: skill.package.root,
-          SKILL_NAME: name,
-        },
-      });
-      results.push({ file: testFile, status: 'passed', output: output.trim() });
-    } catch (err) {
-      const stderr = err.stderr || '';
-      const stdout = err.stdout || '';
-      results.push({
-        file: testFile,
-        status: 'failed',
-        output: [stdout.trim(), stderr.trim()].filter(Boolean).join('\n'),
-        error: err.message,
-      });
-    }
+  } finally {
+    await rm(sandboxHome, { recursive: true, force: true });
   }
  
   const passed = results.filter(r => r.status === 'passed').length;
@@ -792,24 +834,33 @@ async function loadSkillsFromDir(dir, source) {
   try {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const skill = await loadSkillPackage(join(dir, entry.name), source);
-        if (skill) skillRegistry.set(skill.name, skill);
-        continue;
+      try {
+        if (entry.isDirectory()) {
+          const skill = await loadSkillPackage(join(dir, entry.name), source);
+          if (skill) skillRegistry.set(skill.name, skill);
+          continue;
+        }
+        if (!entry.name.endsWith('.yaml') && !entry.name.endsWith('.yml')) continue;
+        const content = await readFile(join(dir, entry.name), 'utf-8');
+        const skill = YAML.parse(content);
+        if (!skill?.name) continue;
+        const definitionDir = dirname(join(dir, entry.name));
+        if (skill.resource_root) skill._resourceRoot = resolve(definitionDir, skill.resource_root);
+        if (skill.resource_dir) skill._resourceDir = resolve(definitionDir, skill.resource_dir);
+        skill._source = source;
+        skill.kind = skill.kind || 'yaml';
+        skillRegistry.set(skill.name, skill);
+      } catch (error) {
+        skillLoadErrors.push({
+          source: join(dir, entry.name),
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
-      if (!entry.name.endsWith('.yaml') && !entry.name.endsWith('.yml')) continue;
-      const content = await readFile(join(dir, entry.name), 'utf-8');
-      const skill = YAML.parse(content);
-      if (!skill?.name) continue;
-      const definitionDir = dirname(join(dir, entry.name));
-      if (skill.resource_root) skill._resourceRoot = resolve(definitionDir, skill.resource_root);
-      if (skill.resource_dir) skill._resourceDir = resolve(definitionDir, skill.resource_dir);
-      skill._source = source;
-      skill.kind = skill.kind || 'yaml';
-      skillRegistry.set(skill.name, skill);
     }
   } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
+    if (e.code !== 'ENOENT') {
+      skillLoadErrors.push({ source: dir, message: e instanceof Error ? e.message : String(e) });
+    }
   }
 }
  
@@ -1154,6 +1205,15 @@ function enrichSkillForUI(s) {
     risk_level: s.risk_level || ui.risk_level || 'low',
     estimated_time: s.estimated_time || ui.estimated_time || '',
     requires_context: s.requires_context || ui.requires_context || [],
+    ...(s.requirements && typeof s.requirements === 'object'
+      ? { requirements: s.requirements }
+      : {}),
+    ...(s.sideEffects !== undefined || s.side_effects !== undefined
+      ? { sideEffects: s.sideEffects ?? s.side_effects }
+      : {}),
+    ...(s.costClass !== undefined || s.cost_class !== undefined
+      ? { costClass: s.costClass ?? s.cost_class }
+      : {}),
     url: s.url || '',
     source_license: s.source_license || '',
     adapted_from: s.adapted_from || '',

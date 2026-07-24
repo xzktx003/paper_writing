@@ -3,7 +3,6 @@ import { EditorState, StateField, StateEffect } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
 import { syntaxHighlighting, HighlightStyle, foldGutter, foldKeymap } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { searchKeymap } from '@codemirror/search';
@@ -221,7 +220,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           syntaxHighlighting(academicHighlightStyle),
           filename.toLowerCase().endsWith('.tex')
             ? latex()
-            : markdown({ base: markdownLanguage, codeLanguages: languages }),
+            : /\.md(?:own)?$/i.test(filename)
+              ? markdown({ base: markdownLanguage })
+              : [],
           autocompletion({
             override: [
               bibtexCompletion,

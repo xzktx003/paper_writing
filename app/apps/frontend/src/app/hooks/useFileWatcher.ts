@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { getServerAccessToken } from '../../api/serverAccess';
 
 interface FileChangeEvent {
   type: 'file_change';
@@ -7,14 +8,17 @@ interface FileChangeEvent {
   path: string;
 }
 
-export function useFileWatcher(projectPath: string | null, onFileChange: (event: FileChangeEvent) => void) {
+export function useFileWatcher(projectId: string | null, onFileChange: (event: FileChangeEvent) => void) {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!projectPath) return;
+    if (!projectId) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/api/ws/watch?projectPath=${encodeURIComponent(projectPath)}`;
+    const params = new URLSearchParams({ projectId });
+    const token = getServerAccessToken();
+    if (token) params.set('access_token', token);
+    const url = `${protocol}//${window.location.host}/api/ws/watch?${params.toString()}`;
     const ws = new WebSocket(url);
 
     ws.onmessage = (event) => {
@@ -34,5 +38,5 @@ export function useFileWatcher(projectPath: string | null, onFileChange: (event:
       ws.close();
       wsRef.current = null;
     };
-  }, [projectPath, onFileChange]);
+  }, [projectId, onFileChange]);
 }

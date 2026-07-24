@@ -1,4 +1,5 @@
 import { apiFetch, apiPost } from './fetchClient';
+import { managedProjectRequest, projectRequestBody, type ProjectRequestContext } from './projectRequestContext';
 
 const BASE = '/api';
 
@@ -10,21 +11,23 @@ export async function createProject(path: string, config: any) {
   return apiPost(`${BASE}/projects/create`, { path, config });
 }
 
-export async function readChapter(projectPath: string, filename: string) {
-  return apiPost(`${BASE}/chapters/read`, { projectPath, filename });
+export async function readChapter(context: ProjectRequestContext, relativePath: string) {
+  return apiPost(`${BASE}/chapters/read`, { ...projectRequestBody(context), relativePath });
 }
 
-export async function writeChapter(projectPath: string, filename: string, content: string) {
-  return apiPost(`${BASE}/chapters/write`, { projectPath, filename, content });
+export async function writeChapter(context: ProjectRequestContext, relativePath: string, content: string) {
+  return apiPost(`${BASE}/chapters/write`, { ...projectRequestBody(context), relativePath, content });
 }
 
-export async function createChapter(projectPath: string, filename: string) {
-  return apiPost(`${BASE}/chapters/create`, { projectPath, filename });
+export async function createChapter(context: ProjectRequestContext, relativePath: string) {
+  return apiPost(`${BASE}/chapters/create`, { ...projectRequestBody(context), relativePath });
 }
 
-export async function reorderChapters(projectPath: string, order: string[]) {
-  return apiPost(`${BASE}/chapters/reorder`, { projectPath, order });
+export async function reorderChapters(context: ProjectRequestContext, order: string[]) {
+  return apiPost(`${BASE}/chapters/reorder`, { ...projectRequestBody(context), order });
 }
+
+export { managedProjectRequest };
 
 export async function getProjectTree(path: string) {
   return apiPost(`${BASE}/projects/tree`, { path });

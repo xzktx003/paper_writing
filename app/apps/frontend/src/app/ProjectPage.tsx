@@ -15,15 +15,30 @@ import {
   trashProject,
   updateProjectTags,
   permanentDeleteProject,
+  registerExistingProject,
+  setServerAccessToken,
   uploadTemplate
 } from '../api/client';
-import type { ProjectMeta, TemplateMeta, TemplateCategory } from '../api/client';
+import type { ProjectMeta, ProjectCandidate, TemplateMeta, TemplateCategory } from '../api/client';
 import TransferPanel from './TransferPanel';
 import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { SettingsModal } from './components/SettingsModal';
 
-type ViewFilter = 'mine' | 'archived' | 'trash';
+type ViewFilter = 'all' | 'active' | 'archived' | 'trash';
 type SortBy = 'updatedAt' | 'name' | 'createdAt';
+type ServerAccessIssue = 'required' | 'invalid';
+
+function serverAccessIssueFrom(error: unknown): ServerAccessIssue | null {
+  const status = Number((error as { status?: number })?.status || 0);
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (status === 401 || /Authentication required/i.test(message)) return 'required';
+  if (status === 403 || /Invalid token/i.test(message)) return 'invalid';
+  return null;
+}
+
+function compactProjectIdentity(value: string): string {
+  return value.toLocaleLowerCase().replace(/[\s_-]+/g, '');
+}
 
 function formatRelativeTime(iso: string, t: (k: string, o?: Record<string, unknown>) => string): string {
   const now = Date.now();
@@ -48,12 +63,17 @@ export default function ProjectPage() {
   const { theme, setTheme } = useTheme();
 
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
+  const [projectCandidates, setProjectCandidates] = useState<ProjectCandidate[]>([]);
+  const [candidateNames, setCandidateNames] = useState<Record<string, string>>({});
+  const [registeringCandidate, setRegisteringCandidate] = useState<string | null>(null);
   const [templates, setTemplates] = useState<TemplateMeta[]>([]);
   const [categories, setCategories] = useState<TemplateCategory[]>([]);
   const [status, setStatus] = useState('');
+  const [serverAccessIssue, setServerAccessIssue] = useState<ServerAccessIssue | null>(null);
+  const [serverAccessTokenInput, setServerAccessTokenInput] = useState('');
   const [filter, setFilter] = useState('');
 
-  const [viewFilter, setViewFilter] = useState<ViewFilter>('mine');
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('updatedAt');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -102,23 +122,76 @@ export default function ProjectPage() {
   const loadProjects = useCallback(async () => {
     const res = await listProjects();
     setProjects(res.projects || []);
+    setProjectCandidates(res.candidates || []);
+    setCandidateNames((current) => {
+      const next: Record<string, string> = {};
+      for (const candidate of res.candidates || []) {
+        next[candidate.directoryName] = current[candidate.directoryName] || candidate.name;
+      }
+      return next;
+    });
+  }, []);
+
+  const loadTemplates = useCallback(async () => {
+    const res = await listTemplates();
+    setTemplates(res.templates || []);
+    setCategories(res.categories || []);
+  }, []);
+
+  const handleProtectedLoadError = useCallback((error: unknown, fallback: string) => {
+    const issue = serverAccessIssueFrom(error);
+    if (issue) {
+      setProjects([]);
+      setProjectCandidates([]);
+      setTemplates([]);
+      setCategories([]);
+      setServerAccessIssue(issue);
+      setStatus('');
+      return;
+    }
+    setStatus(fallback);
   }, []);
 
   useEffect(() => {
-    loadProjects().catch((err) => setStatus(t('加载项目失败: {{error}}', { error: String(err) })));
-  }, [loadProjects, t]);
+    loadProjects().catch((error) => handleProtectedLoadError(
+      error,
+      t('加载项目失败: {{error}}', { error: String(error) }),
+    ));
+  }, [handleProtectedLoadError, loadProjects, t]);
 
   useEffect(() => {
-    listTemplates()
-      .then((res) => {
-        setTemplates(res.templates || []);
-        setCategories(res.categories || []);
-        if (res.templates?.length && !createTemplate) {
-          setCreateTemplate(res.templates[0].id);
-        }
-      })
-      .catch((err) => setStatus(t('模板加载失败: {{error}}', { error: String(err) })));
-  }, [createTemplate, t]);
+    loadTemplates().catch((error) => handleProtectedLoadError(
+      error,
+      t('模板加载失败: {{error}}', { error: String(error) }),
+    ));
+  }, [handleProtectedLoadError, loadTemplates, t]);
+
+  const handleServerAccessChanged = useCallback(async (tokenApplied: boolean) => {
+    if (!tokenApplied) {
+      setProjects([]);
+      setProjectCandidates([]);
+      setTemplates([]);
+      setCategories([]);
+      setServerAccessIssue('required');
+      setStatus(t('Server access was cleared. Apply a valid token to load protected projects.'));
+      return;
+    }
+    try {
+      await Promise.all([loadProjects(), loadTemplates()]);
+      setServerAccessIssue(null);
+      setStatus('');
+    } catch (error) {
+      handleProtectedLoadError(
+        error,
+        t('加载项目失败: {{error}}', { error: String(error) }),
+      );
+    }
+  }, [handleProtectedLoadError, loadProjects, loadTemplates, t]);
+
+  const createTemplateOptions = useMemo(() => [
+    { value: '', label: t('空白项目') },
+    ...templates.map((template) => ({ value: template.id, label: template.label })),
+  ], [templates, t]);
 
   const allTags = useMemo(() => {
     const s = new Set<string>();
@@ -130,10 +203,22 @@ export default function ProjectPage() {
     let list = projects;
     if (viewFilter === 'archived') list = list.filter((p) => p.archived && !p.trashed);
     else if (viewFilter === 'trash') list = list.filter((p) => p.trashed);
-    else list = list.filter((p) => !p.archived && !p.trashed);
+    else if (viewFilter === 'active') list = list.filter((p) => !p.archived && !p.trashed);
+    else list = list.filter((p) => !p.trashed);
     if (activeTag) list = list.filter((p) => (p.tags || []).includes(activeTag));
     const term = filter.trim().toLowerCase();
-    if (term) list = list.filter((p) => p.name.toLowerCase().includes(term));
+    if (term) {
+      const compactTerm = compactProjectIdentity(term);
+      list = list.filter((project) => [
+        project.name,
+        project.id,
+        project.directoryName || '',
+        project.dirName || '',
+      ].some((identity) => {
+        const normalized = identity.toLocaleLowerCase();
+        return normalized.includes(term) || compactProjectIdentity(normalized).includes(compactTerm);
+      }));
+    }
     list = [...list].sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name);
       if (sortBy === 'createdAt') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -143,10 +228,22 @@ export default function ProjectPage() {
   }, [projects, viewFilter, activeTag, filter, sortBy]);
 
   const viewCounts = useMemo(() => ({
-    mine: projects.filter((p) => !p.archived && !p.trashed).length,
+    all: projects.filter((p) => !p.trashed).length,
+    active: projects.filter((p) => !p.archived && !p.trashed).length,
     archived: projects.filter((p) => p.archived && !p.trashed).length,
     trash: projects.filter((p) => p.trashed).length,
   }), [projects]);
+
+  const handleServerUnlock = async () => {
+    const token = serverAccessTokenInput.trim();
+    if (!token) {
+      setStatus(t('请输入服务器访问令牌。'));
+      return;
+    }
+    setServerAccessToken(token);
+    await handleServerAccessChanged(true);
+    setServerAccessTokenInput('');
+  };
 
   const galleryTemplates = useMemo(() => {
     let list = templates;
@@ -191,6 +288,37 @@ export default function ProjectPage() {
       await loadProjects();
     } catch (err) {
       setStatus(t('重命名失败: {{error}}', { error: String(err) }));
+    }
+  };
+
+  const handleRegisterCandidate = async (candidate: ProjectCandidate) => {
+    const name = (candidateNames[candidate.directoryName] || candidate.name).trim();
+    if (!name) {
+      setStatus(t('请输入项目名称。'));
+      return;
+    }
+    if (!window.confirm(t('确认将目录 {{directory}} 注册为项目“{{name}}”？注册只会写入 project.json，不会移动或删除论文文件。', {
+      directory: candidate.directoryName,
+      name,
+    }))) return;
+    setRegisteringCandidate(candidate.directoryName);
+    try {
+      const result = await registerExistingProject({ directoryName: candidate.directoryName, name });
+      await loadProjects();
+      setStatus(t('已注册项目“{{name}}”，原目录保持不变。', { name: result.project.name }));
+    } catch (error) {
+      setStatus(t('注册现有目录失败: {{error}}', { error: String(error) }));
+    } finally {
+      setRegisteringCandidate(null);
+    }
+  };
+
+  const copyProjectIdentity = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus(t('已复制{{label}}。', { label }));
+    } catch (error) {
+      setStatus(t('复制失败: {{error}}', { error: String(error) }));
     }
   };
 
@@ -354,14 +482,16 @@ export default function ProjectPage() {
 
 
   const navIcons: Record<ViewFilter, React.ReactNode> = {
-    mine: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2H4.5a1 1 0 00-1 1v10a1 1 0 001 1h7a1 1 0 001-1V5.5L9 2z"/><path d="M9 2v3.5h3.5M6 8.5h4M6 11h2.5"/></svg>,
+    all: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2H4.5a1 1 0 00-1 1v10a1 1 0 001 1h7a1 1 0 001-1V5.5L9 2z"/><path d="M9 2v3.5h3.5M6 8.5h4M6 11h2.5"/></svg>,
+    active: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M5 8l2 2 4-4"/></svg>,
     archived: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2.5" width="12" height="3" rx=".5"/><path d="M3 5.5v7.5a1 1 0 001 1h8a1 1 0 001-1V5.5"/><path d="M6.5 8.5h3"/></svg>,
     trash: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4.5h10M6 4.5V3a1 1 0 011-1h2a1 1 0 011 1v1.5"/><path d="M4.5 4.5l.5 8.5a1 1 0 001 1h4a1 1 0 001-1l.5-8.5"/></svg>,
   };
   const navItems: { key: ViewFilter; label: string }[] = [
-    { key: 'mine', label: t('我的项目') },
+    { key: 'all', label: t('全部项目') },
+    { key: 'active', label: t('未归档') },
     { key: 'archived', label: t('已归档') },
-    { key: 'trash', label: t('回收站') },
+    { key: 'trash', label: t('已删除') },
   ];
 
 
@@ -468,7 +598,7 @@ export default function ProjectPage() {
       <div className="project-main">
         <header className="project-main-header">
           <h1 className="project-main-title">
-            {activeTag ? `${t('标签')}: ${activeTag}` : navItems.find((n) => n.key === viewFilter)?.label || t('我的项目')}
+            {activeTag ? `${t('标签')}: ${activeTag}` : navItems.find((n) => n.key === viewFilter)?.label || t('全部项目')}
           </h1>
           <div className="project-main-header-actions">
             {viewFilter === 'trash' && viewCounts.trash > 0 && (
@@ -501,6 +631,50 @@ export default function ProjectPage() {
 
         {status && <div className="status-bar"><div>{status}</div></div>}
 
+        {serverAccessIssue && (
+          <section
+            data-testid="server-access-lock"
+            role="alert"
+            style={{
+              margin: '18px 24px',
+              padding: '18px 20px',
+              border: '1px solid color-mix(in srgb, var(--warning, #d97706) 55%, var(--border))',
+              borderRadius: 12,
+              background: 'color-mix(in srgb, var(--warning, #d97706) 8%, var(--panel))',
+            }}
+          >
+            <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>{t('需要服务器访问令牌')}</h2>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {serverAccessIssue === 'invalid'
+                ? t('当前浏览器标签页保存的服务器访问令牌无效。请重新输入管理员提供的令牌。')
+                : t('项目和模板受到服务器鉴权保护。请输入管理员提供的访问令牌后即可加载，令牌只保存在当前浏览器标签页。')}
+            </p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 620 }}>
+              <label htmlFor="project-server-access-token" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+                {t('Server access token')}
+              </label>
+              <input
+                id="project-server-access-token"
+                className="input"
+                type="password"
+                autoComplete="off"
+                value={serverAccessTokenInput}
+                placeholder={t('输入服务器访问令牌')}
+                onChange={(event) => setServerAccessTokenInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void handleServerUnlock();
+                }}
+              />
+              <button className="btn" type="button" onClick={() => void handleServerUnlock()}>
+                {t('解锁并加载项目')}
+              </button>
+            </div>
+            <small style={{ display: 'block', marginTop: 10, color: 'var(--muted)' }}>
+              {t('服务器令牌只用于访问本服务；模型配置是可选的，不配置模型也可以手动编辑和保存论文。')}
+            </small>
+          </section>
+        )}
+
         <div className="project-toolbar">
           <input
             className="project-search"
@@ -529,6 +703,51 @@ export default function ProjectPage() {
             )}
           </div>
         </div>
+
+        {projectCandidates.length > 0 && (viewFilter === 'all' || viewFilter === 'active') && !activeTag && (
+          <section className="project-candidates" aria-label={t('发现的论文目录')}>
+            <div className="project-candidates-header">
+              <div>
+                <h2>{t('发现的论文目录')}</h2>
+                <p>{t('这些目录包含论文文件，但还没有 project.json。确认注册后系统会生成稳定项目 ID；原目录和论文文件不会移动。')}</p>
+              </div>
+              <span>{projectCandidates.length}</span>
+            </div>
+            <div className="project-candidate-list">
+              {projectCandidates.map((candidate) => (
+                <article className="project-candidate-card" key={candidate.directoryName}>
+                  <div className="project-candidate-details">
+                    <code>{candidate.directoryName}</code>
+                    <div>{t('检测到 {{count}} 个论文文件', { count: candidate.fileCount })}</div>
+                    <div>
+                      {t('建议主文件')}: <code>{candidate.suggestedMainFile || t('未检测到')}</code>
+                    </div>
+                    {candidate.sampleFiles?.length > 0 && (
+                      <div className="project-candidate-samples" title={candidate.sampleFiles.join('\n')}>
+                        {t('文件预览')}: {candidate.sampleFiles.join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                  <label className="project-candidate-name">
+                    <span>{t('项目显示名称')}</span>
+                    <input
+                      className="input"
+                      value={candidateNames[candidate.directoryName] || ''}
+                      onChange={(event) => setCandidateNames((current) => ({ ...current, [candidate.directoryName]: event.target.value }))}
+                    />
+                  </label>
+                  <button
+                    className="btn"
+                    disabled={registeringCandidate === candidate.directoryName}
+                    onClick={() => handleRegisterCandidate(candidate)}
+                  >
+                    {registeringCandidate === candidate.directoryName ? t('注册中...') : t('确认注册')}
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Project Table ── */}
         <div className="project-table-wrapper">
@@ -579,9 +798,20 @@ export default function ProjectPage() {
                         onBlur={() => setRenameState(null)}
                       />
                     ) : (
-                      <span className="project-name-link" onClick={() => navigate(`/editor/${project.id}`)}>
-                        {project.name}
-                      </span>
+                      <div className="project-identity">
+                        <span className="project-name-link" onClick={() => navigate(`/editor/${project.id}`)}>
+                          {project.name}
+                        </span>
+                        {project.archived && <small style={{ color: 'var(--muted)' }}>{t('已归档')}</small>}
+                        <div className="project-identity-meta">
+                          <button className="project-directory-identity" type="button" onClick={() => copyProjectIdentity(project.directoryName || project.dirName || project.id, t('工程文件夹'))} title={t('复制存储目录')}>
+                            {t('工程文件夹')}: <code>{project.directoryName || project.dirName || project.id}</code>
+                          </button>
+                          <button type="button" onClick={() => copyProjectIdentity(project.id, t('项目 ID'))} title={t('复制项目 ID')}>
+                            {t('项目 ID')}: <code>{project.id}</code>
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </td>
                   <td className="col-tags">
@@ -676,15 +906,22 @@ export default function ProjectPage() {
 
       {createOpen && (
         <div className="modal-backdrop" onClick={() => setCreateOpen(false)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-project-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="modal-header">
-              <div>{t('新建项目')}</div>
-              <button className="icon-btn" onClick={() => setCreateOpen(false)}>✕</button>
+              <div id="create-project-dialog-title">{t('新建项目')}</div>
+              <button className="icon-btn" aria-label={t('取消')} onClick={() => setCreateOpen(false)}>✕</button>
             </div>
             <div className="modal-body">
               <div className="field">
-                <label>{t('项目名称')}</label>
+                <label htmlFor="create-project-name">{t('项目名称')}</label>
                 <input
+                  id="create-project-name"
                   className="input"
                   value={createName}
                   onChange={(event) => setCreateName(event.target.value)}
@@ -692,20 +929,33 @@ export default function ProjectPage() {
                 />
               </div>
               <div className="field">
-                <label>{t('模板')}</label>
+                <label id="create-project-template-label">{t('模板')}</label>
                 <div className="ios-select-wrapper">
-                  <button className="ios-select-trigger" onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)}>
-                    <span>{templates.find((tpl) => tpl.id === createTemplate)?.label || '—'}</span>
+                  <button
+                    className="ios-select-trigger"
+                    type="button"
+                    aria-label={`${t('模板')}: ${createTemplateOptions.find((option) => option.value === createTemplate)?.label || t('空白项目')}`}
+                    aria-haspopup="listbox"
+                    aria-expanded={templateDropdownOpen}
+                    onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)}
+                  >
+                    <span>{createTemplateOptions.find((option) => option.value === createTemplate)?.label || t('空白项目')}</span>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={templateDropdownOpen ? 'rotate' : ''}>
                       <path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </button>
                   {templateDropdownOpen && (
-                    <div className="ios-dropdown dropdown-down">
-                      {templates.map((tpl) => (
-                        <div key={tpl.id} className={`ios-dropdown-item ${createTemplate === tpl.id ? 'active' : ''}`} onClick={() => { setCreateTemplate(tpl.id); setTemplateDropdownOpen(false); }}>
-                          {tpl.label}
-                          {createTemplate === tpl.id && (
+                    <div className="ios-dropdown dropdown-down" role="listbox" aria-labelledby="create-project-template-label">
+                      {createTemplateOptions.map((option) => (
+                        <div
+                          key={option.value || 'blank'}
+                          className={`ios-dropdown-item ${createTemplate === option.value ? 'active' : ''}`}
+                          role="option"
+                          aria-selected={createTemplate === option.value}
+                          onClick={() => { setCreateTemplate(option.value); setTemplateDropdownOpen(false); }}
+                        >
+                          {option.label}
+                          {createTemplate === option.value && (
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6.5 11.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           )}
                         </div>
@@ -937,7 +1187,11 @@ export default function ProjectPage() {
         </div>
       )}
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onServerAccessChanged={handleServerAccessChanged}
+      />
     </div>
   );
 }

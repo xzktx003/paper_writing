@@ -71,10 +71,11 @@ describe('Citation verification routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/citations/cross-check',
-      payload: { projectPath },
+      payload: { projectId: 'managed-test-project' },
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers.deprecation).toBeUndefined();
     expect(response.json()).toMatchObject({
       citedKeys: ['root-ref', 'intro-ref', 'detail-ref'],
       missingInBib: [],
@@ -92,12 +93,28 @@ describe('Citation verification routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers.deprecation).toBe('true');
     expect(response.json()).toMatchObject({
       citedKeys: ['root-ref', 'intro-ref', 'detail-ref'],
       missingInBib: [],
       uncitedInBib: ['unused-ref'],
       bibFiles: ['bibliography/library.bib'],
       mainFile: 'main.tex',
+    });
+  });
+
+  it('uses projectId as the primary managed-project contract', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/citations/cross-check',
+      payload: { projectId: 'managed-test-project' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers.deprecation).toBeUndefined();
+    expect(response.json()).toMatchObject({
+      citedKeys: ['root-ref', 'intro-ref', 'detail-ref'],
+      missingInBib: [],
     });
   });
 
@@ -118,7 +135,7 @@ describe('Citation verification routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/citations/cross-check',
-      payload: { projectPath, texFile: '../outside.tex' },
+      payload: { projectId: 'managed-test-project', texFile: '../outside.tex' },
     });
 
     expect(response.statusCode).toBe(400);

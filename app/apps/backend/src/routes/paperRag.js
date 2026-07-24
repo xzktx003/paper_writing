@@ -1,7 +1,8 @@
-import { getProjectRoot as findProjectRoot } from '../services/projectService.js';
+import { getProjectRoot as findProjectRoot } from '../services/projectLocator.js';
 import {
   addCorpusDocument,
   buildRagEvidence,
+  getRagIndexHealth,
   indexProjectCorpus,
   listCorpusDocuments,
   searchCorpus,
@@ -28,8 +29,17 @@ import { sanitizeUploadPath } from '../utils/pathSecurity.js';
 
 const CORPUS_DIR = 'research_corpus';
 
+export function resolveVisionLlmConfig(appConfig = {}, env = process.env, modelOverride = '') {
+  return {
+    baseUrl: appConfig.llm_base_url || env.OPENPRISM_LLM_BASE_URL,
+    apiKey: appConfig.llm_api_key || env.OPENPRISM_LLM_API_KEY,
+    model: modelOverride || appConfig.llm_model || env.OPENPRISM_LLM_MODEL || '',
+  };
+}
+
 export function registerPaperRagRoutes(fastify, options = {}) {
   const resolveProjectRoot = options.resolveProjectRoot || findProjectRoot;
+  const getAppConfig = options.getAppConfig || (() => options.appConfig || fastify.appConfig || {});
   /* ── Documents ──────────────────────────────────────────────── */
  
   fastify.get('/api/projects/:id/rag/documents', async (request) => {
@@ -50,6 +60,36 @@ export function registerPaperRagRoutes(fastify, options = {}) {
     const decodedPath = decodeURIComponent(docPath);
     const result = await deleteCorpusDocument(projectRoot, decodedPath);
     return result;
+  });
+
+  fastify.post('/api/projects/:id/rag/index', async (request) => {
+    const projectRoot = await resolveProjectRoot(request.params.id);
+    const index = await indexProjectCorpus(projectRoot);
+    return {
+      ok: true,
+      documents: index.documents.length,
+      chunks: index.chunks.length,
+      indexedAt: index.indexedAt,
+      generation: index.generation,
+      fingerprint: index.fingerprint,
+      retrieval: index.retrieval,
+    };
+  });
+
+  fastify.get('/api/projects/:id/rag/health', async (request) => {
+    const projectRoot = await resolveProjectRoot(request.params.id);
+    return getRagIndexHealth(projectRoot);
+  });
+
+  fastify.get('/api/projects/:id/rag/search', async (request, reply) => {
+    const query = String(request.query.q || '').trim();
+    if (!query) {
+      return reply.code(400).send({ error: 'Query parameter "q" is required' });
+    }
+    const projectRoot = await resolveProjectRoot(request.params.id);
+    const limit = Math.min(Math.max(Number(request.query.limit || 5) || 5, 1), 20);
+    const results = await searchCorpus(projectRoot, query, { limit });
+    return { results };
   });
  
   /* ── Figures ────────────────────────────────────────────────── */
@@ -97,11 +137,7 @@ export function registerPaperRagRoutes(fastify, options = {}) {
     }
     
     // Get LLM config from app config
-    const llmConfig = {
-      baseUrl: fastify.appConfig?.llm_base_url || process.env.OPENPRISM_LLM_BASE_URL,
-      apiKey: fastify.appConfig?.llm_api_key || process.env.OPENPRISM_LLM_API_KEY,
-      model: fastify.appConfig?.llm_model || process.env.OPENPRISM_LLM_MODEL,
-    };
+    const llmConfig = resolveVisionLlmConfig(getAppConfig(), process.env);
     
     // Check if model supports vision
     if (!modelSupportsVision(llmConfig.model)) {
@@ -145,16 +181,8 @@ export function registerPaperRagRoutes(fastify, options = {}) {
 
   // Check if current model supports vision - actually tests the model
   fastify.get('/api/llm/vision-capable', async (request, reply) => {
-    const model = request.query.model || 
-      fastify.appConfig?.llm_model || 
-      process.env.OPENPRISM_LLM_MODEL ||
-      '';
-    
-    const llmConfig = {
-      baseUrl: fastify.appConfig?.llm_base_url || process.env.OPENPRISM_LLM_BASE_URL,
-      apiKey: fastify.appConfig?.llm_api_key || process.env.OPENPRISM_LLM_API_KEY,
-      model: model,
-    };
+    const llmConfig = resolveVisionLlmConfig(getAppConfig(), process.env, request.query.model || '');
+    const model = llmConfig.model;
     
     // Check if model name suggests vision capability (as hint)
     const nameSuggestsVision = modelSupportsVision(model);
@@ -207,9 +235,8 @@ export function registerPaperRagRoutes(fastify, options = {}) {
     const q = request.query.q || '';
     const sources = (request.query.sources || 'semantic-scholar,arxiv').split(',').map(s => s.trim()).filter(Boolean);
     const limit = Math.min(Number(request.query.limit || 5), 20);
-    if (!q) return { results: [] };
-    const results = await searchExternalSources(q, { sources, limit });
-    return { results };
+    if (!q) return { results: [], sources: [] };
+    return await searchExternalSources(q, { sources, limit });
   });
  
   /* ── File Upload (PDF/Office/Images) ────────────────────────── */

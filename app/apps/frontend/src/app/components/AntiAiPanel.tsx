@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface FlaggedTerm {
   term: string;
@@ -83,8 +84,9 @@ interface Props {
 const SEVERITY_COLORS: Record<string, string> = { high: '#ef4444', medium: '#f97316', low: '#eab308' };
 
 function ScoreGauge({ score, label: customLabel }: { score: number; label?: string }) {
+  const { t } = useTranslation();
   const color = score <= 30 ? '#22c55e' : score <= 60 ? '#eab308' : '#ef4444';
-  const label = customLabel || (score <= 30 ? 'Low AI' : score <= 60 ? 'Moderate' : 'High AI');
+  const label = customLabel || (score <= 30 ? t('Low AI') : score <= 60 ? t('Moderate') : t('High AI'));
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 8 }}>
       <div style={{ position: 'relative', width: 60, height: 60 }}>
@@ -96,7 +98,7 @@ function ScoreGauge({ score, label: customLabel }: { score: number; label?: stri
       </div>
       <div>
         <div style={{ fontWeight: 700, color, fontSize: 14 }}>{label}</div>
-        <div style={{ color: 'var(--muted)', fontSize: 11 }}>AI Writing Detection Score</div>
+        <div style={{ color: 'var(--muted)', fontSize: 11 }}>{t('AI Writing Detection Score')}</div>
       </div>
     </div>
   );
@@ -119,19 +121,20 @@ function DimensionBar({ name, score, evidence }: { name: string; score: number; 
 }
 
 function DeepAnalysisView({ report }: { report: DeepReport }) {
-  if (report.error) return <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>Error: {report.error}</div>;
+  const { t } = useTranslation();
+  if (report.error) return <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>{t('Error: {{error}}', { error: report.error })}</div>;
 
   const dimensionLabels: Record<string, string> = {
-    lexicalDiversity: 'Lexical Diversity',
-    argumentStructure: 'Argument Structure',
-    sentenceVariation: 'Sentence Variation',
-    specificity: 'Specificity',
-    transitionPatterns: 'Transition Patterns',
+    lexicalDiversity: t('Lexical Diversity'),
+    argumentStructure: t('Argument Structure'),
+    sentenceVariation: t('Sentence Variation'),
+    specificity: t('Specificity'),
+    transitionPatterns: t('Transition Patterns'),
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <ScoreGauge score={report.aiProbability} label={`${report.confidence} confidence`} />
+      <ScoreGauge score={report.aiProbability} label={t('{{confidence}} confidence', { confidence: t(report.confidence) })} />
 
       {/* Summary */}
       <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6, fontSize: 12, lineHeight: 1.5 }}>
@@ -140,7 +143,7 @@ function DeepAnalysisView({ report }: { report: DeepReport }) {
 
       {/* Dimensions */}
       <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-        <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>📊 Analysis Dimensions</div>
+        <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>📊 {t('Analysis Dimensions')}</div>
         {report.dimensions && Object.entries(report.dimensions).map(([key, dim]) => (
           <DimensionBar key={key} name={dimensionLabels[key] || key} score={dim.score} evidence={dim.evidence} />
         ))}
@@ -149,7 +152,7 @@ function DeepAnalysisView({ report }: { report: DeepReport }) {
       {/* Flagged Passages */}
       {report.flaggedPassages?.length > 0 && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>🚩 Flagged Passages ({report.flaggedPassages.length})</div>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>🚩 {t('Flagged Passages')} ({report.flaggedPassages.length})</div>
           {report.flaggedPassages.slice(0, 6).map((p, i) => (
             <div key={i} style={{ padding: '4px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: 11 }}>
               <div style={{ color: '#ef4444', fontStyle: 'italic' }}>"{p.text}"</div>
@@ -162,7 +165,7 @@ function DeepAnalysisView({ report }: { report: DeepReport }) {
       {/* Human Traits */}
       {report.humanTraits?.length > 0 && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>✅ Human Traits Detected</div>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>✅ {t('Human Traits Detected')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {report.humanTraits.map((trait, i) => (
               <span key={i} style={{ padding: '2px 8px', borderRadius: 4, background: '#22c55e20', color: '#22c55e', fontSize: 11, border: '1px solid #22c55e40' }}>
@@ -176,7 +179,7 @@ function DeepAnalysisView({ report }: { report: DeepReport }) {
       {/* Rewrite Suggestions */}
       {report.rewriteSuggestions?.length > 0 && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>💡 Rewrite Suggestions</div>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>💡 {t('Rewrite Suggestions')}</div>
           {report.rewriteSuggestions.slice(0, 5).map((s, i) => (
             <div key={i} style={{ padding: '4px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: 11 }}>
               <div style={{ color: '#ef4444', textDecoration: 'line-through', opacity: 0.8 }}>{s.original}</div>
@@ -191,7 +194,8 @@ function DeepAnalysisView({ report }: { report: DeepReport }) {
 }
 
 function GPTZeroView({ report }: { report: GPTZeroReport }) {
-  if (report.error) return <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>Error: {report.error}</div>;
+  const { t } = useTranslation();
+  if (report.error) return <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>{t('Error: {{error}}', { error: report.error })}</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -199,7 +203,7 @@ function GPTZeroView({ report }: { report: GPTZeroReport }) {
 
       {report.verdict && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6, fontSize: 12, lineHeight: 1.5 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 12 }}>Verdict</div>
+          <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 12 }}>{t('Verdict')}</div>
           {report.verdict}
         </div>
       )}
@@ -209,20 +213,20 @@ function GPTZeroView({ report }: { report: GPTZeroReport }) {
         {report.aiProbability != null && (
           <div style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: 6, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: '#ef4444' }}>{report.aiProbability}%</div>
-            <div style={{ color: 'var(--muted)', fontSize: 10 }}>AI Probability</div>
+            <div style={{ color: 'var(--muted)', fontSize: 10 }}>{t('AI Probability')}</div>
           </div>
         )}
         {report.humanProbability != null && (
           <div style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: 6, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: '#22c55e' }}>{report.humanProbability}%</div>
-            <div style={{ color: 'var(--muted)', fontSize: 10 }}>Human Probability</div>
+            <div style={{ color: 'var(--muted)', fontSize: 10 }}>{t('Human Probability')}</div>
           </div>
         )}
       </div>
 
       {report.mixed && (
         <div style={{ padding: '6px 10px', background: '#eab30815', border: '1px solid #eab30840', borderRadius: 6, fontSize: 11, color: '#eab308' }}>
-          Mixed content detected — parts may be AI-generated while others appear human-written.
+          {t('Mixed content detected — parts may be AI-generated while others appear human-written.')}
         </div>
       )}
 
@@ -235,7 +239,7 @@ function GPTZeroView({ report }: { report: GPTZeroReport }) {
       {/* Per-sentence breakdown */}
       {report.sentences && report.sentences.length > 0 && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>Sentence Analysis ({report.sentences.length})</div>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{t('Sentence Analysis')} ({report.sentences.length})</div>
           {report.sentences.slice(0, 10).map((s, i) => {
             const color = s.aiScore <= 30 ? '#22c55e' : s.aiScore <= 60 ? '#eab308' : '#ef4444';
             return (
@@ -254,6 +258,7 @@ function GPTZeroView({ report }: { report: GPTZeroReport }) {
 }
 
 export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLoading, gptzeroLoading, onRunDetection, onRunDeepDetection, onRunGPTZero }: Props) {
+  const { t } = useTranslation();
   const [expandedTerm, setExpandedTerm] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'quick' | 'deep' | 'gptzero'>('quick');
 
@@ -263,11 +268,11 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => setActiveTab('quick')}
             style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: activeTab === 'quick' ? 'var(--accent)' : 'var(--bg-secondary)', color: activeTab === 'quick' ? '#fff' : 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            Quick
+            {t('Quick')}
           </button>
           <button onClick={() => setActiveTab('deep')}
             style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: activeTab === 'deep' ? '#8b5cf6' : 'var(--bg-secondary)', color: activeTab === 'deep' ? '#fff' : 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            Deep
+            {t('Deep')}
           </button>
           <button onClick={() => setActiveTab('gptzero')}
             style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: activeTab === 'gptzero' ? '#0ea5e9' : 'var(--bg-secondary)', color: activeTab === 'gptzero' ? '#fff' : 'var(--muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
@@ -277,19 +282,19 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
           {onRunDetection && activeTab === 'quick' && (
             <button onClick={onRunDetection} disabled={loading}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontSize: 10, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? '...' : report ? 'Re-scan' : 'Scan'}
+              {loading ? '...' : report ? t('Re-scan') : t('Scan')}
             </button>
           )}
           {onRunDeepDetection && activeTab === 'deep' && (
             <button onClick={onRunDeepDetection} disabled={deepLoading}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #8b5cf640', background: 'transparent', color: '#8b5cf6', fontSize: 10, cursor: deepLoading ? 'not-allowed' : 'pointer' }}>
-              {deepLoading ? '...' : deepReport ? 'Re-analyze' : 'Analyze'}
+              {deepLoading ? '...' : deepReport ? t('Re-analyze') : t('Analyze')}
             </button>
           )}
           {onRunGPTZero && activeTab === 'gptzero' && (
             <button onClick={onRunGPTZero} disabled={gptzeroLoading}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #0ea5e940', background: 'transparent', color: '#0ea5e9', fontSize: 10, cursor: gptzeroLoading ? 'not-allowed' : 'pointer' }}>
-              {gptzeroLoading ? '...' : gptzeroReport ? 'Re-detect' : 'Detect'}
+              {gptzeroLoading ? '...' : gptzeroReport ? t('Re-detect') : t('Detect')}
             </button>
           )}
         </div>
@@ -300,18 +305,18 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
           {loading && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>
               <div className="typing-indicator"><span></span><span></span><span></span></div>
-              <p style={{ fontSize: 12, marginTop: 8 }}>Scanning writing patterns...</p>
+              <p style={{ fontSize: 12, marginTop: 8 }}>{t('Scanning writing patterns...')}</p>
             </div>
           )}
-          {!loading && report?.error && <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>Error: {report.error}</div>}
+          {!loading && report?.error && <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>{t('Error: {{error}}', { error: report.error })}</div>}
           {!loading && report && !report.error && (
             <>
               <ScoreGauge score={report.overallScore} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
                 {[
-                  { label: 'Words', value: report.wordCount },
-                  { label: 'Avg Sent.', value: `${report.sentenceVariety?.avg || 0}w` },
-                  { label: 'Uniformity', value: `${report.paragraphUniformity?.score || 0}%` },
+                  { label: t('Words'), value: report.wordCount },
+                  { label: t('Avg Sent.'), value: `${report.sentenceVariety?.avg || 0}w` },
+                  { label: t('Uniformity'), value: `${report.paragraphUniformity?.score || 0}%` },
                 ].map((s, i) => (
                   <div key={i} style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: 6, textAlign: 'center' }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{s.value}</div>
@@ -321,7 +326,7 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
               </div>
               {report.flaggedTerms?.length > 0 && (
                 <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>Flagged Terms ({report.flaggedTerms.length})</div>
+                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{t('Flagged Terms')} ({report.flaggedTerms.length})</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {report.flaggedTerms.map((term, i) => (
                       <button key={i} onClick={() => setExpandedTerm(expandedTerm === i ? null : i)}
@@ -332,9 +337,9 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
                   </div>
                   {expandedTerm !== null && report.flaggedTerms[expandedTerm] && (
                     <div style={{ marginTop: 6, padding: 6, background: 'var(--paper)', borderRadius: 4, fontSize: 11 }}>
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Locations:</div>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('Locations')}:</div>
                       {report.flaggedTerms[expandedTerm].locations.slice(0, 5).map((loc, j) => (
-                        <div key={j} style={{ color: 'var(--muted)' }}>Line {loc.line}: {loc.context.slice(0, 80)}...</div>
+                        <div key={j} style={{ color: 'var(--muted)' }}>{t('Line')} {loc.line}: {loc.context.slice(0, 80)}...</div>
                       ))}
                     </div>
                   )}
@@ -342,7 +347,7 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
               )}
               {report.sentencePatterns?.length > 0 && (
                 <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>Patterns</div>
+                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{t('Patterns')}</div>
                   {report.sentencePatterns.map((p, i) => (
                     <div key={i} style={{ padding: '3px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
                       <span>{p.description}</span>
@@ -353,7 +358,7 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
               )}
               {report.suggestions?.length > 0 && (
                 <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>Suggestions</div>
+                  <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{t('Suggestions')}</div>
                   {report.suggestions.slice(0, 8).map((s, i) => (
                     <div key={i} style={{ padding: '4px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: 12 }}>
                       <div style={{ color: 'var(--muted)', fontSize: 10 }}>{s.location} — {s.reason}</div>
@@ -367,7 +372,7 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
           )}
           {!loading && !report && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
-              No quick scan results yet. Click "Re-scan" above to start.
+              {t('No quick scan results yet. Click "Re-scan" above to start.')}
             </div>
           )}
         </>
@@ -379,13 +384,13 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
           {deepLoading && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>
               <div className="typing-indicator"><span></span><span></span><span></span></div>
-              <p style={{ fontSize: 12, marginTop: 8 }}>Running LLM deep analysis...</p>
+              <p style={{ fontSize: 12, marginTop: 8 }}>{t('Running LLM deep analysis...')}</p>
             </div>
           )}
           {!deepLoading && deepReport && <DeepAnalysisView report={deepReport} />}
           {!deepLoading && !deepReport && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
-              Uses your configured LLM to analyze writing patterns at a semantic level. Click "Re-analyze" above to start.
+              {t('Uses your configured LLM to analyze writing patterns at a semantic level. Click "Re-analyze" above to start.')}
             </div>
           )}
         </>
@@ -397,14 +402,14 @@ export function AntiAiPanel({ report, deepReport, gptzeroReport, loading, deepLo
           {gptzeroLoading && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>
               <div className="typing-indicator"><span></span><span></span><span></span></div>
-              <p style={{ fontSize: 12, marginTop: 8 }}>Running GPTZero detection via Playwright...</p>
-              <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>This may take 15-30 seconds</p>
+              <p style={{ fontSize: 12, marginTop: 8 }}>{t('Running GPTZero detection via Playwright...')}</p>
+              <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{t('This may take 15-30 seconds')}</p>
             </div>
           )}
           {!gptzeroLoading && gptzeroReport && <GPTZeroView report={gptzeroReport} />}
           {!gptzeroLoading && !gptzeroReport && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
-              Uses Playwright to automate GPTZero's web interface. Click "Re-detect" above to start.
+              {t('Uses Playwright to automate GPTZero web interface. Click "Re-detect" above to start.')}
             </div>
           )}
         </>

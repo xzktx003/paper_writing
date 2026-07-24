@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { existsSync } from 'fs';
 import crypto from 'crypto';
-import { getProjectRoot } from '../services/projectService.js';
+import { resolveManagedProjectRequest } from '../services/managedProjectContext.js';
  
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,12 +22,25 @@ function loadPty() {
   return ptyModule;
 }
  
-async function resolveCwd(cwd) {
-  if (cwd && cwd.startsWith('__paper_agent__:')) {
-    const id = cwd.replace('__paper_agent__:', '');
-    return await getProjectRoot(id);
+export async function resolveTerminalCwd(request, options = {}) {
+  if (request.query?.projectId) {
+    return (await resolveManagedProjectRequest(request, null, {
+      source: 'query',
+      route: 'terminal.websocket',
+      ...(options.resolveProjectRoot ? { resolveProjectRoot: options.resolveProjectRoot } : {}),
+    })).projectRoot;
   }
-  if (cwd && existsSync(cwd)) return cwd;
+  if (request.query?.cwd) {
+    const legacyRequest = {
+      ...request,
+      query: { projectPath: request.query.cwd },
+    };
+    return (await resolveManagedProjectRequest(legacyRequest, null, {
+      source: 'query',
+      route: 'terminal.websocket',
+      ...(options.resolveProjectRoot ? { resolveProjectRoot: options.resolveProjectRoot } : {}),
+    })).projectRoot;
+  }
   return process.env.HOME;
 }
  
@@ -72,10 +85,17 @@ function appendToBuffer(entry, data) {
 export function registerTerminalRoutes(fastify) {
   fastify.get('/api/terminal/ws', { websocket: true }, async (connection, request) => {
     const ws = connection;
-    const cwd = await resolveCwd(request.query.cwd);
+    let cwd;
+    try {
+      cwd = await resolveTerminalCwd(request);
+    } catch (error) {
+      try { ws.send(JSON.stringify({ type: 'error', error: error.message })); } catch {}
+      try { ws.close(4003, error.message.slice(0, 120)); } catch {}
+      return;
+    }
     const cols = parseInt(request.query.cols) || 80;
     const rows = parseInt(request.query.rows) || 24;
-    const sessionName = getTerminalSessionName(request.query.cwd || cwd);
+    const sessionName = getTerminalSessionName(request.query.projectId ? `project:${request.query.projectId}` : request.query.cwd || cwd);
  
     let entry = sessionPool.get(sessionName);
  

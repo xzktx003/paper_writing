@@ -23,7 +23,9 @@ function getPublicBaseUrl(request) {
   const forwardedProto = firstHeaderValue(request.headers['x-forwarded-proto']);
   const forwardedHost = firstHeaderValue(request.headers['x-forwarded-host']);
   const protocol = forwardedProto || request.protocol || 'http';
-  const host = forwardedHost || request.headers.host || '10.30.0.22:8787';
+  const fallbackHost = process.env.OPENPRISM_PUBLIC_HOST || '127.0.0.1';
+  const fallbackPort = process.env.OPENPRISM_PORT || process.env.PORT || '8787';
+  const host = forwardedHost || request.headers.host || `${fallbackHost}:${fallbackPort}`;
   return `${protocol}://${host}`;
 }
  

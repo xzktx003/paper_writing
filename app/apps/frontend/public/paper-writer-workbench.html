@@ -48,6 +48,46 @@
       padding: 24px;
     }
 
+    .legacy-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border: 1px solid #e6b85c;
+      border-radius: 8px;
+      background: var(--warn-soft);
+      color: #714400;
+    }
+
+    .legacy-banner strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .legacy-banner p {
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .legacy-banner a {
+      flex: none;
+      border: 1px solid #9a5b00;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #714400;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .legacy-banner a:hover,
+    .legacy-banner a:focus {
+      text-decoration: underline;
+    }
+
     .topbar {
       display: flex;
       align-items: flex-start;
@@ -622,6 +662,13 @@
 </head>
 <body>
   <main class="shell">
+    <aside class="legacy-banner" role="status" aria-label="Legacy Prototype notice">
+      <div>
+        <strong>Legacy / Prototype：此页面不是正式产品界面</strong>
+        <p>仅用于迁移尚未进入 React 工作区的实验能力；数据和交互契约可能变更。</p>
+      </div>
+      <a href="/projects">进入正式项目工作区</a>
+    </aside>
     <header class="topbar">
       <div>
         <h1>论文写作工作台</h1>

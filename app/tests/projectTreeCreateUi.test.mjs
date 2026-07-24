@@ -6,10 +6,10 @@ import { canMoveTreeItem } from '../apps/frontend/src/app/utils/projectTree.js';
 describe('ProjectTree create actions', () => {
   it('exposes context-menu actions for creating files and folders via the project file API', async () => {
     const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/ProjectTree.tsx'), 'utf8');
-    expect(source).toContain('New File');
-    expect(source).toContain('New Folder');
-    expect(source).toContain('Upload');
-    expect(source).toContain('Paste');
+    expect(source).toContain("label={t('New File')}");
+    expect(source).toContain("label={t('New Folder')}");
+    expect(source).toContain("label={t('Upload')}");
+    expect(source).toContain("label={t('Paste')}");
     expect(source).toContain("minHeight: '100%'");
     expect(source).toContain("method: 'POST'");
     expect(source).toContain('/api/projects/${projectId}/file');
@@ -20,7 +20,7 @@ describe('ProjectTree create actions', () => {
 describe('ProjectTree root drop affordance', () => {
   it('shows an explicit root drop target and allows nested items to move to root', async () => {
     const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/ProjectTree.tsx'), 'utf8');
-    expect(source).toContain('Drop here to move to project root');
+    expect(source).toContain("t('Drop here to move to project root')");
     expect(canMoveTreeItem({ path: 'docs/note.md', type: 'file' }, '')).toBe(true);
     expect(canMoveTreeItem({ path: 'docs/nested', type: 'dir' }, '')).toBe(true);
   });
@@ -54,9 +54,10 @@ describe('ProjectTree copy path action', () => {
 describe('ProjectTree download action', () => {
   it('exposes a context-menu download action for files and folders', async () => {
     const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/ProjectTree.tsx'), 'utf8');
-    expect(source).toContain('Download');
+    expect(source).toContain("label={t('Download')}");
     expect(source).toContain('/api/projects/${encodeURIComponent(projectId)}/download');
-    expect(source).toContain('link.download = getBaseName(node.path)');
-    expect(source).toContain('Downloading ${node.path}');
+    expect(source).toContain('downloadAuthenticatedFile(url, getBaseName(node.path))');
+    expect(source).not.toContain('link.href = url');
+    expect(source).toContain("t('Downloading {{path}}', { path: node.path })");
   });
 });

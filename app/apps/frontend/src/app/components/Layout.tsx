@@ -1,13 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { lazy, Suspense, useState, useCallback } from 'react';
 import { gsap } from "../gsap";
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 import { LeftPanel } from './LeftPanel';
 import { CenterPanel } from './CenterPanel';
 import { RightPanel } from './RightPanel';
-import { TerminalPanel } from './TerminalPanel';
 import { useTheme, ThemeToggle, ThemeName, THEMES } from './ThemeToggle';
 import styles from './Layout.module.css';
+
+const TerminalPanel = lazy(() => import('./TerminalPanel').then(module => ({ default: module.TerminalPanel })));
 
 const LEFT_PANEL_DEFAULT_WIDTH = 260;
 const RIGHT_PANEL_DEFAULT_WIDTH = 380;
@@ -15,6 +17,7 @@ const LEFT_PANEL_MIN_WIDTH = 120;
 const RIGHT_PANEL_MIN_WIDTH = 180;
 const CENTER_PANEL_MIN_WIDTH = 360;
 const RESIZE_HANDLE_WIDTH = 5;
+type MobileView = 'files' | 'editor' | 'assistant';
 
 function clampPanelWidth(width: number, minWidth: number, maxWidth: number) {
   return Math.max(minWidth, Math.min(Math.max(minWidth, maxWidth), width));
@@ -24,6 +27,8 @@ export function Layout() {
   const app = useApp();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
+  const [mobileView, setMobileView] = useState<MobileView>('editor');
   const [leftWidth, setLeftWidth] = useState(LEFT_PANEL_DEFAULT_WIDTH);
   const [rightWidth, setRightWidth] = useState(RIGHT_PANEL_DEFAULT_WIDTH);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -101,20 +106,37 @@ export function Layout() {
     return () => ctx.revert();
   }, []);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+    <div className={styles.layoutRoot} data-mobile-view={mobileView}>
+      <nav className={styles.mobileWorkspaceTabs} aria-label={t('Workspace views')}>
+        {([
+          ['files', t('Files')],
+          ['editor', t('Editor')],
+          ['assistant', t('AI Assistant')],
+        ] as [MobileView, string][]).map(([view, label]) => (
+          <button
+            key={view}
+            type="button"
+            aria-pressed={mobileView === view}
+            className={mobileView === view ? styles.mobileWorkspaceTabActive : styles.mobileWorkspaceTab}
+            onClick={() => setMobileView(view)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div className={styles.workspaceRow}>
         {/* Left Panel */}
         {leftCollapsed ? (
-          <div className={styles.collapsedPanel}>
-            <button className={styles.collapseBtn} onClick={() => setLeftCollapsed(false)} title="Expand file tree">▶</button>
+          <div className={styles.collapsedPanel} data-workspace-panel="files">
+            <button className={styles.collapseBtn} onClick={() => setLeftCollapsed(false)} title={t('Expand file tree')}>▶</button>
           </div>
         ) : (
-          <div className="zone-files" style={{ width: leftWidth, minWidth: LEFT_PANEL_MIN_WIDTH, borderRight: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
-            <div className="zone-header" style={{ height: '38px', display: 'flex', alignItems: 'center', padding: '0 10px', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, gap: '6px', position: 'relative' }}>
+          <div className={`zone-files ${styles.workspacePanel} ${styles.filesPanel}`} data-workspace-panel="files" style={{ '--panel-width': `${leftWidth}px` } as React.CSSProperties}>
+            <div className={`zone-header ${styles.zoneHeader}`}>
               <span className="zone-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
-              <button className={styles.backBtn} onClick={() => navigate('/projects')}>← Back</button>
+              <button className={styles.backBtn} onClick={() => navigate('/projects')}>← {t('Back')}</button>
               <ThemeToggle theme={theme} onThemeChange={setTheme} />
-              <button className={styles.collapseBtnSmall} onClick={() => setLeftCollapsed(true)} title="Collapse">◀</button>
+              <button className={styles.collapseBtnSmall} onClick={() => setLeftCollapsed(true)} title={t('Collapse')}>◀</button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <LeftPanel
@@ -137,11 +159,12 @@ export function Layout() {
         )}
 
         {/* Center Panel */}
-        <div className="zone-editor" style={{ flex: 1, overflow: 'hidden', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
+        <div className={`zone-editor ${styles.editorPanel}`} data-workspace-panel="editor">
           <CenterPanel
             openFiles={app.openFiles}
             activeFileIndex={app.activeFileIndex}
             onFileChange={app.updateFileContent}
+            onFileSave={app.saveFile}
             onTabSelect={app.setActiveFileIndex}
             onTabClose={app.closeFile}
             terminalVisible={app.terminalVisible}
@@ -167,15 +190,15 @@ export function Layout() {
 
         {/* Right Panel */}
         {rightCollapsed ? (
-          <div className={styles.collapsedPanelRight}>
-            <button className={styles.collapseBtn} onClick={() => setRightCollapsed(false)} title="Expand conversations">◀</button>
+          <div className={styles.collapsedPanelRight} data-workspace-panel="assistant">
+            <button className={styles.collapseBtn} onClick={() => setRightCollapsed(false)} title={t('Expand conversations')}>◀</button>
           </div>
         ) : (
-          <div className="zone-ai" style={{ width: rightWidth, minWidth: RIGHT_PANEL_MIN_WIDTH, borderLeft: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
-            <div className="zone-header" style={{ height: '38px', display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, position: 'relative' }}>
+          <div className={`zone-ai ${styles.workspacePanel} ${styles.assistantPanel}`} data-workspace-panel="assistant" style={{ '--panel-width': `${rightWidth}px` } as React.CSSProperties}>
+            <div className={`zone-header ${styles.zoneHeader}`}>
               <span className="zone-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginRight: 8 }} />
-              <span className="zone-label" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em' }}>AI Assistant</span>
-              <button className={styles.collapseBtnSmall} onClick={() => setRightCollapsed(true)} title="Collapse">▶</button>
+              <span className="zone-label" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', letterSpacing: '0.02em' }}>{t('AI Assistant')}</span>
+              <button className={styles.collapseBtnSmall} onClick={() => setRightCollapsed(true)} title={t('Collapse')}>▶</button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <RightPanel
@@ -217,15 +240,17 @@ export function Layout() {
           <div style={{ height: terminalMaximized ? '100%' : terminalHeight, flex: terminalMaximized ? 1 : undefined, flexShrink: 0, display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border)' }}>
             <div style={{ height: '28px', background: 'var(--panel-muted)', display: 'flex', alignItems: 'center', padding: '0 12px', gap: '8px', flexShrink: 0 }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 6px #00ff88', flexShrink: 0 }} />
-              <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text)' }}>Terminal</span>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text)' }}>{t('Terminal')}</span>
               <span style={{ color: 'var(--muted)', fontSize: '10px', marginLeft: 'auto', fontFamily: 'monospace' }}>{app.project.path || '/'}</span>
-              <button className={styles.terminalBtn} onClick={() => setTerminalMaximized(!terminalMaximized)} title={terminalMaximized ? 'Restore' : 'Maximize'}>
+              <button className={styles.terminalBtn} onClick={() => setTerminalMaximized(!terminalMaximized)} title={terminalMaximized ? t('Restore') : t('Maximize')}>
                 {terminalMaximized ? '⊡' : '⊞'}
               </button>
-              <button className={styles.terminalCloseBtn} onClick={app.toggleTerminal} title="Close terminal">×</button>
+              <button className={styles.terminalCloseBtn} onClick={app.toggleTerminal} title={t('Close terminal')}>×</button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <TerminalPanel cwd={app.project.path || '/'} />
+              <Suspense fallback={<div role="status" style={{ padding: 12, color: 'var(--muted)' }}>{t('Loading terminal…')}</div>}>
+                {app.projectId ? <TerminalPanel projectId={app.projectId} /> : null}
+              </Suspense>
             </div>
           </div>
         </>
@@ -235,7 +260,7 @@ export function Layout() {
       {!app.terminalVisible && (
         <button
           onClick={app.toggleTerminal}
-          title="Open Terminal"
+          title={t('Open Terminal')}
           style={{
             position: 'fixed',
             bottom: 36,
@@ -312,6 +337,7 @@ function ResizeHandle({ side, leftWidth, rightWidth, onResize }: { side: 'left' 
 }
 
 function StatusBar({ activeFile, theme, onThemeChange }: { activeFile: { filename: string; content: string; type: string; dirty: boolean } | null; theme: ThemeName; onThemeChange: (t: ThemeName) => void }) {
+  const { t } = useTranslation();
   const wordCount = activeFile ? activeFile.content.split(/\s+/).filter(Boolean).length : 0;
   const lineCount = activeFile ? activeFile.content.split('\n').length : 0;
   const charCount = activeFile ? activeFile.content.length : 0;
@@ -322,7 +348,7 @@ function StatusBar({ activeFile, theme, onThemeChange }: { activeFile: { filenam
     : activeFile.filename.endsWith('.bib') ? 'BibTeX'
     : activeFile.filename.endsWith('.json') ? 'JSON'
     : activeFile.filename.endsWith('.yaml') || activeFile.filename.endsWith('.yml') ? 'YAML'
-    : 'Text'
+    : t('Text')
     : '';
 
   return (
@@ -341,10 +367,10 @@ function StatusBar({ activeFile, theme, onThemeChange }: { activeFile: { filenam
       {activeFile && (
         <>
           <span>{fileType}</span>
-          <span>Lines: {lineCount}</span>
-          <span>Words: {wordCount}</span>
-          <span>Chars: {charCount}</span>
-          {activeFile.dirty && <span style={{ color: 'var(--accent-strong)' }}>Modified</span>}
+          <span>{t('Lines')}: {lineCount}</span>
+          <span>{t('Words')}: {wordCount}</span>
+          <span>{t('Chars')}: {charCount}</span>
+          {activeFile.dirty && <span style={{ color: 'var(--accent-strong)' }}>{t('Modified')}</span>}
         </>
       )}
       <span style={{ marginLeft: 'auto', cursor: 'pointer' }} onClick={() => {

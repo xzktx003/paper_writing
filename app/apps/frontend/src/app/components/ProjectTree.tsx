@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ProjectConfig } from '../hooks/useProject';
 import { uploadFiles } from '../../api/client';
 import {
@@ -20,6 +21,7 @@ import {
   normalizeProjectPath,
   removeTreeItem,
 } from '../utils/projectTree';
+import { downloadAuthenticatedFile } from './AuthenticatedAsset';
 
 interface Props {
   projectPath: string;
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorder }: Props) {
+  const { t } = useTranslation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['files', 'sec', 'docs', 'fig', 'img', 'appendix', 'tab']));
   const restoredTreeRef = useRef<string | null>(null);
   const [fileItems, setFileItems] = useState<FileItem[]>(config.files || []);
@@ -120,38 +123,37 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   const copyPath = async (node: FileTreeNode) => {
     const pathToCopy = normalizeProjectPath(node.path);
     const copied = await copyTextToClipboard(pathToCopy);
-    setStatus(copied ? `Copied path: ${pathToCopy}` : `Failed to copy path: ${pathToCopy}`);
+    setStatus(copied ? t('Copied path: {{path}}', { path: pathToCopy }) : t('Failed to copy path: {{path}}', { path: pathToCopy }));
   };
 
-  const downloadItem = (node: FileTreeNode) => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
+  const downloadItem = async (node: FileTreeNode) => {
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
     const params = new URLSearchParams({ path: normalizeProjectPath(node.path) });
     const url = `/api/projects/${encodeURIComponent(projectId)}/download?${params.toString()}`;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = getBaseName(node.path);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setStatus(`Downloading ${node.path}`);
+    setStatus(t('Downloading {{path}}', { path: node.path }));
+    try {
+      await downloadAuthenticatedFile(url, getBaseName(node.path));
+    } catch (cause) {
+      setStatus(t('Download failed: {{error}}', { error: cause instanceof Error ? cause.message : String(cause) }));
+    }
   };
 
   const deleteItem = async (node: FileTreeNode) => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
-    const ok = window.confirm(`Delete ${node.path}?`);
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
+    const ok = window.confirm(t('Delete {{path}}?', { path: node.path }));
     if (!ok) return;
     const res = await fetch(`/api/projects/${projectId}/file?path=${encodeURIComponent(node.path)}`, { method: 'DELETE' });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.ok === false) {
-      setStatus(body.error || `Failed to delete ${node.path}`);
+      setStatus(body.error || t('Failed to delete {{path}}', { path: node.path }));
       return;
     }
     setFileItems(prev => removeTreeItem(prev, node.path));
-    setStatus(`Deleted ${node.path}`);
+    setStatus(t('Deleted {{path}}', { path: node.path }));
   };
 
   const renameItem = async (node: FileTreeNode) => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
     // Start inline rename instead of window.prompt()
     const oldName = getBaseName(node.path);
     setRenamingPath(node.path);
@@ -178,7 +180,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     const oldName = getBaseName(oldPath);
     const trimmed = renameValue.trim();
     if (!trimmed || trimmed === oldName || trimmed.includes('/') || trimmed === '.' || trimmed === '..') {
-      setStatus(!trimmed ? 'Name cannot be empty.' : trimmed === oldName ? '' : 'Invalid file name.');
+      setStatus(!trimmed ? t('Name cannot be empty.') : trimmed === oldName ? '' : t('Invalid file name.'));
       setRenamingPath(null);
       return;
     }
@@ -191,10 +193,10 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.ok === false) {
-      setStatus(body.error || `Failed to rename ${oldPath}`);
+      setStatus(body.error || t('Failed to rename {{path}}', { path: oldPath }));
     } else {
       setFileItems(prev => moveTreeItem(prev, oldPath, newPath));
-      setStatus(`Renamed ${oldName} → ${trimmed}`);
+      setStatus(t('Renamed {{from}} → {{to}}', { from: oldName, to: trimmed }));
     }
     setRenamingPath(null);
   };
@@ -204,7 +206,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   };
 
   const moveItemToFolder = async (source: ClipboardTreeItem, targetFolderPath: string) => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
     if (!canMoveTreeItem(source, targetFolderPath)) return;
     const destinationPath = joinProjectPath(targetFolderPath, getBaseName(source.path));
     const res = await fetch(`/api/projects/${projectId}/rename`, {
@@ -214,17 +216,17 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.ok === false) {
-      setStatus(body.error || `Failed to move ${source.path}`);
+      setStatus(body.error || t('Failed to move {{path}}', { path: source.path }));
       return;
     }
     setFileItems(prev => moveTreeItem(prev, source.path, destinationPath));
     setExpandedSections(prev => new Set(prev).add(targetFolderPath));
-    setStatus(`Moved ${source.path} to ${targetFolderPath || 'project root'}`);
+    setStatus(t('Moved {{path}} to {{target}}', { path: source.path, target: targetFolderPath || t('project root') }));
     if (clipboardItem?.action === 'cut' && clipboardItem.path === source.path) setClipboardItem(null);
   };
 
   const copyItemToFolder = async (source: ClipboardTreeItem, targetFolderPath: string) => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
     const destinationPath = getUniquePastePath(fileItems, targetFolderPath, source.path);
     const res = await fetch(`/api/projects/${projectId}/copy-file`, {
       method: 'POST',
@@ -233,12 +235,12 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.ok === false) {
-      setStatus(body.error || `Failed to copy ${source.path}`);
+      setStatus(body.error || t('Failed to copy {{path}}', { path: source.path }));
       return;
     }
     setFileItems(prev => copyTreeItem(prev, source.path, destinationPath));
     setExpandedSections(prev => new Set(prev).add(targetFolderPath));
-    setStatus(`Copied ${source.path} to ${destinationPath}`);
+    setStatus(t('Copied {{from}} to {{to}}', { from: source.path, to: destinationPath }));
   };
 
   const pasteIntoFolder = async (targetFolderPath: string) => {
@@ -248,14 +250,14 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   };
 
   const createItem = async (targetFolderPath: string, type: 'file' | 'folder') => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
-    const label = type === 'folder' ? 'folder' : 'file';
-    const rawName = window.prompt(`New ${label} name`);
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
+    const label = type === 'folder' ? t('folder') : t('file');
+    const rawName = window.prompt(t('New {{type}} name', { type: label }));
     if (rawName === null) return;
     const name = rawName.trim();
-    if (!name) return setStatus(`New ${label} name is required.`);
+    if (!name) return setStatus(t('New {{type}} name is required.', { type: label }));
     if (name === '.' || name === '..' || normalizeProjectPath(name) !== name || name.includes('/')) {
-      return setStatus(`New ${label} name cannot contain path separators.`);
+      return setStatus(t('New {{type}} name cannot contain path separators.', { type: label }));
     }
     const destinationPath = joinProjectPath(targetFolderPath, name);
     const res = await fetch(`/api/projects/${projectId}/file`, {
@@ -265,7 +267,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.ok === false) {
-      setStatus(body.error || `Failed to create ${destinationPath}`);
+      setStatus(body.error || t('Failed to create {{path}}', { path: destinationPath }));
       return;
     }
     const itemType: FileItem['type'] = type === 'folder' ? 'dir' : 'file';
@@ -275,7 +277,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
       if (itemType === 'dir') next.add(destinationPath);
       return next;
     });
-    setStatus(`Created ${destinationPath}`);
+    setStatus(t('Created {{path}}', { path: destinationPath }));
     if (itemType === 'file') onFileSelect({ path: destinationPath, type: getFileSelectType(destinationPath) });
   };
 
@@ -286,7 +288,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   };
 
   const triggerUpload = (targetFolder: string) => {
-    if (!projectId) return setStatus('File operations are only available for managed projects.');
+    if (!projectId) return setStatus(t('File operations are only available for managed projects.'));
 
     const input = document.createElement('input');
     input.type = 'file';
@@ -299,7 +301,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
 
       document.body.removeChild(input);
       setUploading(true);
-      setStatus('Uploading...');
+      setStatus(t('Uploading...'));
 
       try {
         const result = await uploadFiles(projectId, Array.from(files), targetFolder || undefined);
@@ -314,12 +316,12 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
             setExpandedSections(prev => new Set(prev).add(targetFolder));
           }
 
-          setStatus(`Uploaded ${result.files.length} file(s)`);
+          setStatus(t('Uploaded {{count}} file(s)', { count: result.files.length }));
         } else {
-          setStatus('Upload failed');
+          setStatus(t('Upload failed'));
         }
       } catch (err) {
-        setStatus(`Upload error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        setStatus(t('Upload error: {{error}}', { error: err instanceof Error ? err.message : t('Unknown error') }));
       } finally {
         setUploading(false);
       }
@@ -332,20 +334,20 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
   // Refresh file list from server
   const refreshFiles = async () => {
     if (!projectId) return;
-    setStatus('Refreshing...');
+    setStatus(t('Refreshing...'));
     try {
       const res = await fetch(`/api/projects/${projectId}/files`);
       if (res.ok) {
         const data = await res.json();
         if (data.files) {
           setFileItems(data.files);
-          setStatus(`Loaded ${data.files.length} files`);
+          setStatus(t('Loaded {{count}} files', { count: data.files.length }));
         }
       } else {
-        setStatus('Failed to refresh');
+        setStatus(t('Failed to refresh'));
       }
     } catch {
-      setStatus('Refresh error');
+      setStatus(t('Refresh error'));
     }
   };
 
@@ -370,11 +372,11 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
           style={{ padding: '4px 8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <span>{expandedSections.has('files') ? '▼' : '▶'}</span>
-          <span>Files</span>
+          <span>{t('Files')}</span>
           {projectId && (
             <button
               type="button"
-              title="Upload files"
+              title={t('Upload files')}
               disabled={uploading}
               onClick={(e) => {
                 e.stopPropagation();
@@ -398,13 +400,13 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
               onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-strong)'; e.currentTarget.style.background = 'var(--accent-soft)'; }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'transparent'; }}
             >
-              {uploading ? '⏳ Uploading...' : '↑ Upload'}
+              {uploading ? `⏳ ${t('Uploading...')}` : `↑ ${t('Upload')}`}
             </button>
           )}
           {projectId && (
             <button
               type="button"
-              title="Refresh file list"
+              title={t('Refresh file list')}
               onClick={(e) => {
                 e.stopPropagation();
                 void refreshFiles();
@@ -433,7 +435,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
         {expandedSections.has('files') && (
           <div style={{ paddingLeft: '6px' }}>
             {tree.length === 0 ? (
-              <div style={{ padding: '4px 8px 4px 18px', color: 'var(--muted)', fontSize: '12px' }}>No files</div>
+              <div style={{ padding: '4px 8px 4px 18px', color: 'var(--muted)', fontSize: '12px' }}>{t('No files')}</div>
             ) : tree.map((node) => (
               <TreeNode
                 key={node.path}
@@ -487,7 +489,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
                   fontSize: 12,
                 }}
               >
-                Drop here to move to project root
+                {t('Drop here to move to project root')}
               </div>
             )}
           </div>
@@ -693,6 +695,7 @@ interface ContextMenuProps {
 }
 
 function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onDownload, onCopy, onCut, onRename, onCreateFile, onCreateFolder, onUpload, onPaste, onDelete, onClose }: ContextMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState({ x, y });
 
@@ -756,26 +759,26 @@ function ContextMenu({ x, y, node, clipboardItem, onCopyPath, onDownload, onCopy
     >
       {node && (
         <>
-          <MenuItem label="Copy Path" onClick={() => run(() => void onCopyPath(node))} />
-          <MenuItem label="Download" onClick={() => run(() => onDownload(node))} />
-          <MenuItem label="Copy" onClick={() => run(() => onCopy(node))} />
-          <MenuItem label="Cut" onClick={() => run(() => onCut(node))} />
-          <MenuItem label="Rename" onClick={() => run(() => onRename(node))} />
+          <MenuItem label={t('Copy Path')} onClick={() => run(() => void onCopyPath(node))} />
+          <MenuItem label={t('Download')} onClick={() => run(() => onDownload(node))} />
+          <MenuItem label={t('Copy')} onClick={() => run(() => onCopy(node))} />
+          <MenuItem label={t('Cut')} onClick={() => run(() => onCut(node))} />
+          <MenuItem label={t('Rename')} onClick={() => run(() => onRename(node))} />
           <MenuDivider />
         </>
       )}
-      <MenuItem label="Paste" disabled={!canPaste} onClick={() => run(() => onPaste(targetFolderPath))} />
+      <MenuItem label={t('Paste')} disabled={!canPaste} onClick={() => run(() => onPaste(targetFolderPath))} />
       {canCreateChildren && (
         <>
-          <MenuItem label="New File" onClick={() => run(() => void onCreateFile(createTargetFolderPath ?? ''))} />
-          <MenuItem label="New Folder" onClick={() => run(() => void onCreateFolder(createTargetFolderPath ?? ''))} />
-          <MenuItem label="Upload" onClick={() => run(() => onUpload(createTargetFolderPath ?? ''))} />
+          <MenuItem label={t('New File')} onClick={() => run(() => void onCreateFile(createTargetFolderPath ?? ''))} />
+          <MenuItem label={t('New Folder')} onClick={() => run(() => void onCreateFolder(createTargetFolderPath ?? ''))} />
+          <MenuItem label={t('Upload')} onClick={() => run(() => onUpload(createTargetFolderPath ?? ''))} />
         </>
       )}
       {node && (
         <>
           <MenuDivider />
-          <MenuItem label="Delete" danger onClick={() => run(() => void onDelete(node))} />
+          <MenuItem label={t('Delete')} danger onClick={() => run(() => void onDelete(node))} />
         </>
       )}
     </div>

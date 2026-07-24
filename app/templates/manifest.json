@@ -3,7 +3,7 @@
     {
       "id": "acl",
       "label": "ACL",
-      "mainFile": "main.tex",
+      "mainFile": "acl_latex.tex",
       "category": "academic",
       "description": "ACL 会议论文模板，适用于自然语言处理领域",
       "descriptionEn": "ACL conference paper template for NLP research",
@@ -42,6 +42,34 @@
       "descriptionEn": "ICML conference paper skeleton template for machine learning",
       "tags": ["ICML", "Machine Learning"],
       "author": "Paper Agent",
+      "featured": true
+    },
+    {
+      "id": "arxiv",
+      "label": "arXiv",
+      "mainFile": "template.tex",
+      "category": "academic",
+      "description": "arXiv 预印本论文模板，适用于公开预印本发布",
+      "descriptionEn": "arXiv preprint template for public manuscript distribution",
+      "tags": [
+        "arXiv",
+        "Preprint"
+      ],
+      "author": "arXiv community template",
+      "featured": false
+    },
+    {
+      "id": "iclr2026__1_",
+      "label": "ICLR 2026",
+      "mainFile": "iclr2026/iclr2026_conference.tex",
+      "category": "academic",
+      "description": "ICLR 2026 会议投稿模板",
+      "descriptionEn": "ICLR 2026 conference submission template",
+      "tags": [
+        "ICLR",
+        "Machine Learning"
+      ],
+      "author": "ICLR",
       "featured": true
     }
   ],

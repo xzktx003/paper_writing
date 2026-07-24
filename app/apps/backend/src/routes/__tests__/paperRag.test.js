@@ -7,6 +7,114 @@ import os from 'os';
 
 import { registerPaperRagRoutes } from '../paperRag.js';
 
+test('POST /api/projects/:id/rag/index rebuilds the corpus and reports its summary', async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'paper-rag-route-index-'));
+  await mkdir(path.join(projectRoot, 'research_corpus'), { recursive: true });
+  await writeFile(
+    path.join(projectRoot, 'research_corpus', 'index-route.md'),
+    'Route-level indexing keeps retrieval contracts executable.',
+  );
+  const app = Fastify({ logger: false });
+  registerPaperRagRoutes(app, {
+    resolveProjectRoot: async () => projectRoot,
+  });
+
+  try {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/projects/demo/rag/index',
+      payload: {},
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.payload);
+    assert.equal(body.ok, true);
+    assert.equal(body.documents, 1);
+    assert.ok(body.chunks > 0);
+    assert.match(body.indexedAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.match(body.generation, /^[0-9a-f-]{36}$/i);
+    assert.match(body.fingerprint, /^[0-9a-f]{64}$/);
+    assert.deepEqual(body.retrieval, {
+      kind: 'local-keyword-overlap',
+      label: 'Local keyword evidence retrieval',
+      semantic: false,
+    });
+  } finally {
+    await app.close();
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('GET /api/projects/:id/rag/health exposes read-only index diagnostics', async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'paper-rag-route-health-'));
+  await mkdir(path.join(projectRoot, 'research_corpus'), { recursive: true });
+  await writeFile(
+    path.join(projectRoot, 'research_corpus', 'health-route.md'),
+    'Health diagnostics expose the exact local retrieval generation and indexed chunks.',
+  );
+  const app = Fastify({ logger: false });
+  registerPaperRagRoutes(app, {
+    resolveProjectRoot: async () => projectRoot,
+  });
+
+  try {
+    await app.inject({ method: 'POST', url: '/api/projects/demo/rag/index', payload: {} });
+    const response = await app.inject({ method: 'GET', url: '/api/projects/demo/rag/health' });
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.payload);
+    assert.equal(body.status, 'healthy');
+    assert.equal(body.retrieval.kind, 'local-keyword-overlap');
+    assert.equal(body.retrieval.semantic, false);
+    assert.equal(body.counts.files, 1);
+    assert.ok(body.counts.chunks > 0);
+    assert.equal(body.documents[0].path, 'research_corpus/health-route.md');
+    assert.equal(body.documents[0].parseStatus, 'indexed');
+    assert.ok(body.documents[0].chunks > 0);
+  } finally {
+    await app.close();
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('GET /api/projects/:id/rag/search returns matching evidence and validates the query', async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'paper-rag-route-search-'));
+  await mkdir(path.join(projectRoot, 'research_corpus'), { recursive: true });
+  await writeFile(
+    path.join(projectRoot, 'research_corpus', 'search-route.md'),
+    'The unique heliotropic retrieval token proves the HTTP search route works.',
+  );
+  const app = Fastify({ logger: false });
+  registerPaperRagRoutes(app, {
+    resolveProjectRoot: async () => projectRoot,
+  });
+
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/projects/demo/rag/search?q=heliotropic&limit=3',
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = JSON.parse(response.payload);
+    assert.equal(body.results.length, 1);
+    assert.equal(body.results[0].source.path, 'research_corpus/search-route.md');
+    assert.match(body.results[0].text, /heliotropic/);
+
+    const missingQuery = await app.inject({
+      method: 'GET',
+      url: '/api/projects/demo/rag/search',
+    });
+    assert.equal(missingQuery.statusCode, 400);
+    assert.deepEqual(JSON.parse(missingQuery.payload), {
+      error: 'Query parameter "q" is required',
+    });
+  } finally {
+    await app.close();
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 function makeSimplePdfWithLiteralText(text) {
   return Buffer.from(`%PDF-1.4
 1 0 obj

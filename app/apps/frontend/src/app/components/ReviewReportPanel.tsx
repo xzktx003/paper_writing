@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTranslation } from 'react-i18next';
 
 interface ReviewIssue {
   severity: 'critical' | 'major' | 'minor';
@@ -31,11 +32,11 @@ interface Props {
   onRunReview?: () => void;
 }
 
-const DECISION_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  accept: { bg: '#22c55e20', text: '#22c55e', label: '✅ Accept' },
-  minor_revision: { bg: '#eab30820', text: '#eab308', label: '📝 Minor Revision' },
-  major_revision: { bg: '#f9731620', text: '#f97316', label: '⚠️ Major Revision' },
-  reject: { bg: '#ef444420', text: '#ef4444', label: '❌ Reject' },
+const DECISION_COLORS: Record<string, { bg: string; text: string; labelKey: string }> = {
+  accept: { bg: '#22c55e20', text: '#22c55e', labelKey: 'Accept' },
+  minor_revision: { bg: '#eab30820', text: '#eab308', labelKey: 'Minor Revision' },
+  major_revision: { bg: '#f9731620', text: '#f97316', labelKey: 'Major Revision' },
+  reject: { bg: '#ef444420', text: '#ef4444', labelKey: 'Reject' },
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -59,13 +60,14 @@ function ScoreRing({ score, size = 60 }: { score: number; size?: number }) {
 }
 
 export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
+  const { t } = useTranslation();
   const [checklist, setChecklist] = useState<Record<number, boolean>>({});
 
   if (loading) {
     return (
       <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>
         <div className="typing-indicator"><span></span><span></span><span></span></div>
-        <p style={{ fontSize: 13, marginTop: 8 }}>Running peer review...</p>
+        <p style={{ fontSize: 13, marginTop: 8 }}>{t('Running peer review...')}</p>
       </div>
     );
   }
@@ -73,10 +75,10 @@ export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
   if (!report) {
     return (
       <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>
-        <p style={{ fontSize: 13 }}>No review report yet</p>
+        <p style={{ fontSize: 13 }}>{t('No review report yet')}</p>
         {onRunReview && (
           <button onClick={onRunReview} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            📋 Run Structured Review
+            📋 {t('Run Structured Review')}
           </button>
         )}
       </div>
@@ -84,7 +86,7 @@ export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
   }
 
   if (report.error) {
-    return <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>Error: {report.error}</div>;
+    return <div style={{ padding: 16, color: '#ef4444', fontSize: 13 }}>{t('Error: {{error}}', { error: report.error })}</div>;
   }
 
   const decision = DECISION_COLORS[report.decision] || DECISION_COLORS.major_revision;
@@ -95,8 +97,8 @@ export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 8 }}>
         <ScoreRing score={report.overallScore} />
         <div>
-          <div style={{ padding: '3px 10px', borderRadius: 6, background: decision.bg, color: decision.text, fontWeight: 700, fontSize: 12 }}>{decision.label}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 4 }}>Overall Score: {report.overallScore}/100</div>
+          <div style={{ padding: '3px 10px', borderRadius: 6, background: decision.bg, color: decision.text, fontWeight: 700, fontSize: 12 }}>{t(decision.labelKey)}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 4 }}>{t('Overall Score')}: {report.overallScore}/100</div>
         </div>
       </div>
 
@@ -114,7 +116,7 @@ export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
           {dim.issues?.map((issue, j) => (
             <div key={j} style={{ padding: '4px 0', borderTop: '1px solid var(--border)', fontSize: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ padding: '1px 6px', borderRadius: 3, background: `${SEVERITY_COLORS[issue.severity]}20`, color: SEVERITY_COLORS[issue.severity], fontSize: 10, fontWeight: 600 }}>{issue.severity}</span>
+                <span style={{ padding: '1px 6px', borderRadius: 3, background: `${SEVERITY_COLORS[issue.severity]}20`, color: SEVERITY_COLORS[issue.severity], fontSize: 10, fontWeight: 600 }}>{t(issue.severity)}</span>
                 <span style={{ color: 'var(--muted)', fontSize: 11 }}>{issue.location}</span>
               </div>
               <div style={{ marginTop: 2 }}>{issue.description}</div>
@@ -127,7 +129,7 @@ export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
       {/* Summary */}
       {report.summary && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Summary</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('Summary')}</div>
           <div className="markdown-body" style={{ fontSize: 12, lineHeight: 1.5 }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{report.summary}</ReactMarkdown>
           </div>
@@ -137,7 +139,7 @@ export function ReviewReportPanel({ report, loading, onRunReview }: Props) {
       {/* Revision Checklist */}
       {report.revisionChecklist?.length > 0 && (
         <div style={{ padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Revision Checklist</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('Revision Checklist')}</div>
           {report.revisionChecklist.map((item, i) => (
             <label key={i} style={{ display: 'flex', gap: 8, padding: '3px 0', fontSize: 12, cursor: 'pointer', opacity: checklist[i] ? 0.5 : 1 }}>
               <input type="checkbox" checked={checklist[i] || false} onChange={() => setChecklist(prev => ({ ...prev, [i]: !prev[i] }))} />

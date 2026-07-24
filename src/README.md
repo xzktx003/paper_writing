@@ -1,19 +1,9 @@
-# Source Layout
+# Paper Writer 源码入口
 
-Coding Kanban is organized as a TypeScript monorepo rather than a single
-language package with all source files directly under `src/`.
+本目录不再承载独立产品。Paper Writer 的正式源码、测试和构建入口位于：
 
-The publication-relevant source directories are:
+- `app/apps/frontend/` — React/Vite 前端
+- `app/apps/backend/` — Fastify 后端
+- `app/tests/` — Vitest 与 Playwright 测试
 
-- `apps/web/src/` — React/Vite browser workbench, terminal UI, drawers,
-  dialogs, and frontend utilities.
-- `apps/server/src/` — Fastify backend, WebSocket routes, PTY/SSH/tmux runtime
-  managers, filesystem services, SFTP, and VS Code Web proxy management.
-- `packages/shared/src/` — transport-neutral DTOs, session records, SSH/file
-  payloads, and shared type contracts.
-- `tests/e2e/` — Playwright end-to-end scenarios for browser workflows.
-- `scripts/` — development and test helper scripts.
-
-This `src/` directory is an index for SoftwareX-style repository inspection.
-It does not replace the monorepo package layout used by `pnpm check` and
-`pnpm test`.
+请从仓库根目录使用 `npm run ...`，或进入 `app/` 使用对应的 npm workspace 命令。历史旧工具链文件不属于当前 Paper Writer 产品，不应作为架构或测试事实源。

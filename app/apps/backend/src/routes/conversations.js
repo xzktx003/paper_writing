@@ -3,6 +3,8 @@ import {
   listConversations, deleteConversation, addConversationAttachment,
   removeConversationAttachment
 } from '../services/conversationStore.js';
+import { DATA_DIR } from '../config/constants.js';
+import { getProjectRoot } from '../services/projectLocator.js';
 import { extractPdfText } from '../services/pdfService.js';
 
 function publicConversation(conv) {
@@ -16,25 +18,29 @@ function publicConversation(conv) {
   };
 }
  
-export function registerConversationRoutes(fastify) {
+export function registerConversationRoutes(fastify, {
+  dataDir = DATA_DIR,
+  resolveProjectRoot = getProjectRoot,
+} = {}) {
+  const storeOptions = { dataDir, resolveProjectRoot };
   fastify.get('/api/conversations/:projectId', async (request) => {
-    return listConversations(request.params.projectId);
+    return listConversations(request.params.projectId, storeOptions);
   });
  
   fastify.get('/api/conversations/:projectId/:convId', async (request) => {
-    return publicConversation(await getConversation(request.params.projectId, request.params.convId));
+    return publicConversation(await getConversation(request.params.projectId, request.params.convId, storeOptions));
   });
  
   fastify.post('/api/conversations/:projectId', async (request) => {
-    return publicConversation(await createConversation(request.params.projectId, request.body));
+    return publicConversation(await createConversation(request.params.projectId, request.body, storeOptions));
   });
  
   fastify.put('/api/conversations/:projectId/:convId', async (request) => {
-    return publicConversation(await updateConversation(request.params.projectId, request.params.convId, request.body));
+    return publicConversation(await updateConversation(request.params.projectId, request.params.convId, request.body, storeOptions));
   });
  
   fastify.delete('/api/conversations/:projectId/:convId', async (request) => {
-    await deleteConversation(request.params.projectId, request.params.convId);
+    await deleteConversation(request.params.projectId, request.params.convId, storeOptions);
     return { ok: true };
   });
 
@@ -56,7 +62,8 @@ export function registerConversationRoutes(fastify) {
     const attachment = await addConversationAttachment(
       request.params.projectId,
       request.params.convId,
-      { name, type: type || 'application/pdf', size, text }
+      { name, type: type || 'application/pdf', size, text },
+      storeOptions,
     );
     const { text: _, ...metadata } = attachment;
     return { ok: true, attachment: metadata };
@@ -66,7 +73,8 @@ export function registerConversationRoutes(fastify) {
     const removed = await removeConversationAttachment(
       request.params.projectId,
       request.params.convId,
-      request.params.attachmentId
+      request.params.attachmentId,
+      storeOptions
     );
     if (!removed) return reply.code(404).send({ error: 'Attachment not found.' });
     return { ok: true };

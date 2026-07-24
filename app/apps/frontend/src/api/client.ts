@@ -2,12 +2,23 @@ export interface ProjectMeta {
   id: string;
   name: string;
   dirName?: string;
+  directoryName?: string;
   createdAt: string;
   updatedAt: string;
   tags: string[];
   archived: boolean;
   trashed: boolean;
   trashedAt: string | null;
+  template?: string | null;
+  mainFile?: string | null;
+}
+
+export interface ProjectCandidate {
+  directoryName: string;
+  name: string;
+  fileCount: number;
+  suggestedMainFile: string | null;
+  sampleFiles: string[];
 }
 
 export interface FileItem {
@@ -51,6 +62,15 @@ export interface ArxivPaper {
   arxivId: string;
 }
 
+export interface CompileDiagnostic {
+  code: string;
+  message: string;
+  line?: string;
+}
+
+export { setServerAccessToken, clearServerAccessToken, getServerAccessToken } from './serverAccess';
+import { getServerAccessToken } from './serverAccess';
+
 const API_BASE = '';
 const LANG_KEY = 'paper-agent-lang';
 const COLLAB_TOKEN_KEY = 'paper-agent-collab-token';
@@ -90,7 +110,7 @@ export function getCollabServer() {
 }
 
 function getAuthHeader(): Record<string, string> {
-  const token = getCollabToken();
+  const token = getServerAccessToken() || getCollabToken();
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
@@ -110,13 +130,30 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     headers: mergedHeaders
   });
   if (!res.ok) {
-    throw new Error(await res.text());
+    const raw = await res.text();
+    let message = raw || `HTTP ${res.status}`;
+    let code = '';
+    try {
+      const body = JSON.parse(raw);
+      message = body.error || message;
+      code = body.code || '';
+    } catch {
+      // Preserve non-JSON server messages without hiding the HTTP status.
+    }
+    throw Object.assign(new Error(message), { status: res.status, code });
   }
   return res.json() as Promise<T>;
 }
 
 export function listProjects() {
-  return request<{ projects: ProjectMeta[] }>('/api/projects');
+  return request<{ projects: ProjectMeta[]; candidates: ProjectCandidate[] }>('/api/projects');
+}
+
+export function registerExistingProject(payload: { directoryName: string; name?: string }) {
+  return request<{ ok: boolean; project: ProjectMeta }>('/api/projects/register-existing', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function createProject(payload: { name: string; template?: string }) {
@@ -312,8 +349,9 @@ export function compileProject(payload: {
   projectId: string;
   mainFile: string;
   engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latexmk' | 'tectonic' | 'auto';
+  allowPackageInstall?: boolean;
 }) {
-  return request<{ ok: boolean; pdf?: string; log?: string; status?: number; engine?: string; error?: string; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
+  return request<{ ok: boolean; pdf?: string; log?: string; status?: 'success' | 'warning' | 'failed'; exitCode?: number; warnings?: CompileDiagnostic[]; errors?: CompileDiagnostic[]; engine?: string; error?: string; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
     `/api/compile`,
     {
       method: 'POST',
@@ -327,8 +365,9 @@ export function compileFullPaper(payload: {
   mainFile?: string;
   engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latexmk' | 'tectonic' | 'auto';
   editorMode?: 'markdown' | 'latex';
+  allowPackageInstall?: boolean;
 }) {
-  return request<{ ok: boolean; pdf?: string; log?: string; status?: number; engine?: string; error?: string; mode?: string; mainFile?: string; generatedMain?: boolean; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
+  return request<{ ok: boolean; pdf?: string; log?: string; status?: 'success' | 'warning' | 'failed'; exitCode?: number; warnings?: CompileDiagnostic[]; errors?: CompileDiagnostic[]; engine?: string; error?: string; mode?: string; mainFile?: string; generatedMain?: boolean; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
     `/api/compile/full-paper`,
     {
       method: 'POST',
@@ -453,8 +492,8 @@ export function importArxivSSE(
   return new Promise((resolve, reject) => {
     const params = new URLSearchParams({ arxivIdOrUrl: payload.arxivIdOrUrl });
     if (payload.projectName) params.set('projectName', payload.projectName);
-    const token = getCollabToken();
-    if (token) params.set('token', token);
+    const token = getServerAccessToken() || getCollabToken();
+    if (token) params.set('access_token', token);
     const es = new EventSource(`/api/projects/import-arxiv-sse?${params.toString()}`);
 
     es.addEventListener('progress', (e) => {

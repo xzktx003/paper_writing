@@ -6,10 +6,10 @@ description_zh: |
   提供创新性评估、风险分析和stage-aware发展潜力判断。
 type: research
 categories:
-  - paper-review
-category_zh: 论文评审
-subcategory: paper-reading
-subcategory_zh: 论文阅读
+  - peer-review
+category_zh: 同行评审
+subcategory: paper-review
+subcategory_zh: 论文评审
 trigger: manual
 auto_recommend: true
 description: |

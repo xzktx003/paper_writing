@@ -2,6 +2,41 @@
 
 本文档按当前仓库实现整理功能范围，作为后续新增功能时必须同步维护的清单。历史计划文档仅作背景，本清单以当前代码、现有接口和已经落地的交互为准。
 
+## Paper Agent 安全边界（2026-07-22）
+
+- Paper Agent 后端未配置 `OPENPRISM_API_TOKEN` 时，只保留存活/就绪检查和 Provider 元数据；`/api/config`、项目读写、模型调用、配置修改、代码执行与终端全部返回 503。配置 Token 后，除公开端点外统一校验精确的 Bearer Token。
+- Draw 图片 API 的 Key、Base URL 和模型由后端 `.env` / appConfig 托管；认证后的配置响应仅返回掩码与 `draw_image_api_key_set` 状态，浏览器不持久化或回传图片 API Key。
+- Draw 的生成、编辑、图片读取、下载、列表和上传接口只接受 managed `projectId`。后端通过 `getProjectRoot` 与 `project.json.id` 双重确认项目身份，并通过 `safeJoin` 把所有文件访问限制在项目根目录内。
+
+## Paper Agent 审计整改能力（2026-07-22）
+
+- 仓库提供根级 `npm run typecheck`，执行前端真实 `tsc --noEmit`；`npm run check` 固定按“类型检查 → 生产构建 → 单元测试”运行，任一阶段失败都会保留非零退出码。
+- 生产构建生成前后端共享 build ID；前端在渲染工作区前校验 `/api/health` 中的 build ID 和 API schema，不一致时阻断操作。`/api/ready` 独立验证项目数据根和模板 manifest。
+- 设置页提供“系统能力”只读诊断 Tab；受保护的 `/api/capabilities` 统一汇总鉴权模式、Project Locator 数据根、5 个 Provider、TeX/Pandoc、PDF/OCR、Skills、tmux 和外部检索配置。结果使用稳定四态 schema、逐项原因和检测时间，默认缓存且刷新也不会安装依赖、登录 CLI、联网或调用模型。
+- LLM 执行层提供统一 AgentProvider registry，正式支持 OpenAI-compatible API、Anthropic API、Codex CLI、Claude Code CLI 和 GitHub Copilot CLI；每个 Provider 暴露 metadata/capabilities、probe、模型列表能力声明、invoke/stream、cancel 和 provenance。设置页支持 Provider 选择、CLI 安装/认证状态测试、模型加载或手填，以及保存/测试的 loading、success、error 状态。
+- CLI Provider 的 executable 与参数数组完全由后端固定，工作目录只能由 managed `projectId` 经 Project Locator 解析；子进程使用最小环境白名单、超时/Abort、进程树终止和 stdout/stderr/exit status 记录。未配置 `OPENPRISM_API_TOKEN` 时 CLI probe/invoke/cancel fail-closed，前端显示不可用。
+- 论文工作区新增独立“任务”Tab，为 Codex CLI、Claude Code CLI 和 GitHub Copilot CLI 提供可审查的文件修改任务；普通 Chat 继续使用只读参数，不会因 Task Agent 上线而获得写权限。
+- CLI Task Agent 使用 managed `projectId` 在 `<OPENPRISM_DATA_DIR>/.openprism-cli-tasks` 创建项目外 `base/work` 快照，拒绝 symlink 和 `project.json` 修改；CLI 结束后展示 added/modified/deleted 文件、文本 unified diff、Provider/模型/版本/参数摘要/exit code。用户必须勾选已审查全部文件才能 Accept，也可 Reject 或取消运行中的进程树。
+- CLI Task Accept 会校验完整 source fingerprint；原项目在任务期间发生任何漂移均返回 409。应用过程持久化 rollback journal，中途失败恢复已经移动或安装的文件；Reject 只记录决策，原项目字节不变。任务历史可跨页面刷新和后端重启恢复。
+- 前端服务访问令牌只保存在 `sessionStorage`，同源 `/api/` fetch 会统一附加 Bearer；Terminal、文件 watcher 和 EventSource 等浏览器不能自定义握手头的通道使用受限 query-token 兼容。保存 Provider 配置必须等待后端成功，失败时设置弹窗保持打开。
+- 设置页成功应用服务器访问令牌后，会立即重新加载父页面的项目列表、候选目录和模板，不要求用户刷新页面；清除令牌时同步清空浏览器内已加载的受保护项目元数据。设置弹窗受当前视口高度约束，标题、关闭按钮和操作区保持可达，长内容在弹窗正文内部滚动。
+- 项目图片、PDF 和文件下载统一使用认证 fetch 获取 Blob，再通过短生命周期 object URL 预览或下载；Bearer Token 不写入资源 URL，资源切换和组件卸载时回收 object URL。
+- 正式 React 论文工作区的章节、AI、Review、Anti-AI、Citation、Pipeline、文件 watcher 和 Terminal 主路径统一发送 managed `projectId`，文件操作使用项目内 `relativePath`。旧 `__paper_agent__:<id>` marker 仅作为带弃用响应头和日志的兼容输入；外部 Code/MCP 绝对路径能力保持独立受控，不与 managed 项目 API 混用。
+- RAG 面板采用“导入即自动重建索引”的单一语义；后端同时提供受测的 `/rag/index` 与 `/rag/search` 契约，搜索结果保留来源路径与证据片段。项目普通文件树默认隐藏 `.openprism`、`.compile` 和 `research_corpus`，证据资料统一从 RAG 面板管理。
+- 编辑器会按项目恢复最后活动会话；保存的会话失效时回退到最近更新的有效会话，并隔离并发项目切换产生的迟到请求。
+- Skills 数量和分类以运行时目录及生成 manifest 为准，不再用固定上限断言；分类不合法会在测试中失败，前端不会展示数量为零的空分类。
+- 390×844 等窄屏下，项目列表改为可操作的响应式布局；论文工作区提供 Files / Editor / Assistant 三个互斥移动视图。文档语言随 i18n 切换，字体栈包含本地 CJK 回退；Center、Chat、Draw、Review、Citation、Anti-AI 和 Pipeline 主面板的核心按钮、空状态、错误及运行时状态均通过中英文 locale 管理，并由静态契约与隔离 Playwright 逐面板验收。
+- 新建项目默认明确选择“空白项目”，不会再静默套用 manifest 第一项模板。模板 manifest 的 `mainFile` 必须真实存在，上传模板会从含 `\\documentclass` 的 TeX 文件中检测入口，并拒绝未知或不安全模板 ID。
+- 编译返回结构化 `success` / `warning` / `failed` 诊断；产生 PDF 但达到 Tectonic 六轮上限时显示“成功但有警告”，不再伪装成无条件成功。
+- LaTeX 缺包自动安装默认关闭：普通单文件/全文编译不会执行 `tlmgr search` 或 `tlmgr install`。只有调用方在本次编译请求中显式发送布尔值 `allowPackageInstall: true` 才允许最多受限次数的缺包查找、安装和重试；字符串 `"true"`、数字或缺省值均不授权。当前 UI 默认调用不发送该字段，因此保持 fail-closed。
+- Tectonic 在同一项目内持久复用 `.compile/tectonic-cache` 依赖缓存；每次运行仍使用隔离输出目录，只有本次真实生成 PDF 才更新稳定预览，避免旧产物掩盖失败。
+- 编译工具链默认原样继承服务进程的 `PATH` / `LD_LIBRARY_PATH`，不再猜测用户 HOME、Conda 或其他主机目录；非标准 TeX/Pandoc 路径、动态库路径和 Tectonic executable 分别通过 `OPENPRISM_COMPILE_PATH`、`OPENPRISM_COMPILE_LD_LIBRARY_PATH`、`OPENPRISM_TECTONIC_BINARY` 显式配置，并同时作用于直接 LaTeX 与 Markdown/Pandoc 编译。
+- LaTeX HTML 区明确标为 Quick approximate preview，无法解析的引用、命令和图片使用结构化降级占位；Final PDF 只代表真实 LaTeX 编译结果。
+- LaTeX 快速预览不再运行时请求 Google Fonts、jsDelivr 或其他远程字体样式表，使用随构建发布的 KaTeX 资源和系统字体回退；静态契约与打开真实 `.tex` 文件的隔离 Playwright 同时禁止远程字体/CDN 请求。
+- Draw.io 嵌入地址由服务器 `OPENPRISM_DRAWIO_EMBED_URL` 配置，浏览器只接受当前 iframe 的精确 origin，并以同一精确 origin 发送消息。外部编辑器在 6 秒内未就绪或加载失败时，工作区显示错误、重试、自托管提示、离线 XML 编辑和 XML 下载，不再永久停留在 Loading。
+- 编辑器路由按需加载 Draw、RAG、Review、Citations、Pipeline、Anti-AI、Terminal、编辑器与预览引擎；Vite 对 EditorPage 初始 chunk 设置 500 KiB 硬预算。
+- 项目 E2E 通过独立临时 `OPENPRISM_DATA_DIR`、随机端口和测试自建项目运行，结束后统一清理。`test:unit`、`test:integration`、`test:e2e`、`check`、`check:full` 构成仓库发布验证入口。
+
 ## 1. 会话看板与聚焦工作流
 
 - 宫格展示未隐藏的会话卡片，显示名称、状态、Agent 类型、主机、工作目录和轻量终端文本预览。
@@ -104,9 +139,9 @@
 
 ## 12. Paper Writer 项目工作区
 
-- Paper Writer 项目侧栏展示 `我的项目`、`已归档`、`回收站` 三类项目入口，不再展示冗余的 `所有项目` 分类。
-- `我的项目` 只包含未归档且未放入回收站的项目；`已归档` 只包含已归档且未放入回收站的项目；`回收站` 只包含已删除待恢复或永久删除的项目。
-- 删除、归档、取消归档、恢复、永久删除等项目操作保留在项目行内或回收站视图内。
+- Paper Writer 项目侧栏明确展示 `全部项目`、`未归档`、`已归档`、`已删除` 四类入口，并在每个入口显示独立数量。
+- `全部项目` 包含所有未删除项目；`未归档` 只包含正常使用且未归档项目；`已归档` 只包含归档但未删除项目；`已删除` 只包含待恢复或永久删除项目。四种状态过滤互相独立，不再复用含义模糊的 `mine` 状态。
+- 删除、归档、取消归档、恢复、永久删除等项目操作保留在项目行内或已删除视图内。
 - 文章编辑页的预览窗口在 `pdf`、`diff` 同级提供 `翻译` 按钮，可直接调用现有大模型接口翻译当前渲染预览对应的稿件内容，并在预览区域显示译文、加载态和错误信息。
 - 文章编辑页右侧 AI 区域中，`Skill` 不再作为与 `Chat` 并列的顶层 tab 展示；它绑定在 chat 窗口内，点击 chat 头部的 `Skill` 按钮会展开 skill 选项，选择后直接创建并进入带该 skill 的 chat 会话。
 - Chat 输入区支持两种大模型接入模式：默认 `Built-in LLM` 继续走现有 `/api/ai/send`、`/api/ai/stream` 后端；`Bash Agent` 模式允许配置 `copilot`、`codex`、`claude` 等 bash 命令，并随 chat 请求把 `mode` 和 `bashCommand` 发送给后端执行层。
@@ -199,7 +234,7 @@
 - Paper Writer 工作台聚合接口新增 `rag.queryRewriteGuide` RAG 检索改写指南，会把当前任务和命中状态改写成“主题范围 / 方法对比 / 局限与 Gap / 实验与结果 / 引用线索”等分组查询；工作台原型会在 RAG 检索助手中展示这些分组，每个 query 可一键填入检索框，并支持复制完整改写方案。
 - Paper Writer 工作台聚合接口额外返回 `workflowHints`，把空证据库、PDF 解析失败、仅 metadata 文档、证据检索无命中、缺目标章节、推荐 Skill 和可复制证据等状态转成中文“下一步动作”，方便前端直接渲染救场提示。
 - Paper Writer 前端实现契约记录在 `docs/paper_writer_ux_contract.md`，覆盖任务工作台、Skill Picker、Evidence Library、Chat 证据抽屉和 Chat / Agent / Tools 模式边界。
-- Paper Writer 提供无构建依赖的工作台静态原型 `app/apps/frontend/public/paper-writer-workbench.html`，后端通过 `/writing-workbench` 和 `/paper-writer-workbench.html` 暴露访问，可直接展示任务路由、下一步动作、Skill 推荐、RAG 健康摘要、证据命中和最近文档，作为正式前端源码恢复前的可运行 UX 参考实现。
+- Paper Writer 保留无构建依赖的 Legacy 工作台静态原型 `app/apps/frontend/public/paper-writer-workbench.html`，但默认不公开；仅当 `OPENPRISM_ENABLE_LEGACY_WORKBENCH=true` 时，后端才通过 `/writing-workbench` 和 `/paper-writer-workbench.html` 提供迁移期兼容访问。页面显示 Legacy / Prototype banner 和正式 `/projects` 入口，正式 React UI 不链接原型；独有功能迁移与弃用条件见 `docs/legacy_workbench_lifecycle.md`。
 - Paper Writer 工作台原型的 RAG 检索现在会在命中结果展示后自动重新加载工作台上下文，让正式 `evidencePack`、证据包指纹、写作提示词和生产可用性门禁同步使用当前检索词；用户不再需要额外点击“重新评估生产可用性”才能让后续生成、审查和安全采纳使用刚检索到的证据。
 - Paper Writer Skill 推荐卡和 Skill 导航卡新增原生悬停摘要，`title` 中按“中文标题 / 英文副标题 / 中文分类 / 基本功能”组织信息；页面内仍保留 hover/focus 展开的详细输入、产出、适合和不适合说明，帮助用户不用记英文 Skill 名就能判断该选哪个。
 - 仓库上传准备新增本地生成物忽略规则：`app/.codegraph/`、`app/.tmp-test-home/` 和 `app/.tmp-v8-coverage/` 不再出现在待上传文件中，避免把测试 home、npm 缓存、覆盖率 JSON 或本地代码图数据库误提交到 GitHub。
@@ -226,6 +261,13 @@
 - Paper Writer 投稿和收尾场景路由继续细化：`limitations / limitation section` 进入 Discussion 写作，`highlights` 进入摘要压缩，`graphical abstract` 进入图表规划，`acknowledgements / author contributions / supplementary material / supporting information` 进入投稿材料检查；投稿材料入口文案同步覆盖致谢、作者贡献、补充材料、伦理、数据/代码可用性和利益冲突声明。
 - Paper Writer 审稿回复入口从“写 rebuttal”扩展为返修工作流入口：`reviewer comments / revision plan / revision checklist / revision summary / major concerns / minor concerns / action items / rebuttal cover letter` 都会进入“审稿回复 / Rebuttal”，输出逐条意见拆解、revision plan / 正文修改矩阵、rebuttal 草稿和补实验 action list，避免返修任务被摘要、引言、投稿 checklist 或普通 cover letter 抢走。
 - Paper Writer 新增“论文规划 / Outline”内置 Skill 和任务入口：用户输入“制定论文写作计划”“生成论文 outline”“把 idea 变成 paper structure”“检查论文故事线”“列出审稿人可能会问的问题”时会推荐 `paper-planning`，输出 paper outline、故事线、贡献图谱、证据/实验依赖、写作 roadmap 和 reviewer 风险清单；前端任务入口、Skill 导航标签、上下文筛选和悬停说明同步中文优先展示。
+- Paper Writer Skill API 和管理 UI 新增执行就绪度契约：返回 commands、credentials、network、files、Provider capabilities、side effects、cost class、`ready/degraded/unavailable`、静态 `dryRun` 与 `lastRun`。未显式声明执行元数据的旧 YAML Skill 保守显示为 `degraded`，缺必需依赖时显示 `unavailable` 并禁止直接激活；“就绪检查”只做只读静态检查，不运行脚本、不联网、不调用模型。详细边界见 `docs/skill_execution_readiness.md`。
+- Provider 设置列表现在使用只读安装/认证探针生成 CLI readiness，不再仅凭服务器 Token 把 Codex、Claude 或 Copilot 标记为可用；未安装、未认证或认证未知的 CLI 会显示原因并在下拉框中禁用，HTTP Provider 仍必须通过显式连接测试后才能保存。
+- 项目首页在浏览器标签页没有服务器访问令牌、或令牌无效时，不再把项目/模板 401 显示成空项目和原始 `Authentication required` 错误；页面显示明确的“需要服务器访问令牌”解锁卡，区分缺失与无效令牌，并可直接打开设置输入令牌。应用正确令牌后项目、候选目录和模板无需刷新即可重新加载。
+- 项目首页默认“全部项目”会显示 `papers/` 下所有未进入回收站的受管工程，包括已归档工程；归档工程仍保留状态标识和独立筛选。服务器令牌可直接在锁定卡片中输入，不再要求先进入模型设置。模型配置完全可选；没有可用模型时仍可打开文件、手动编辑，并通过保存按钮或 Ctrl/Cmd+S 写回项目。
+- 项目列表将真实“工程文件夹”作为显式身份展示，并支持按显示名称、稳定项目 ID、真实目录名搜索；搜索会归一化大小写、连字符、下划线和空格，因此 `MoE-Prune` 可定位实际目录 `moe_prune`，即使其项目显示名称是论文标题。
+- Paper Writer Skill `lastRun` 账本持久化到数据根的权限受限 JSON，并接入真实 AI 请求：项目、章节和会话实际应用的 Skill 在模型请求成功或失败后记录 `model-guided-execution`、模式、耗时、Provider/model/version provenance、可审查的项目相对产物、成本（如 Provider 提供）和副作用；账本不保存用户 Prompt、模型正文、绝对路径或凭据，且运行成功不会自动把元数据不足的 Skill 从 degraded 提升为 ready。
+- 没有活动对话时，AI 助手空状态也提供“管理 Skills”入口，用户无需先创建无意义会话即可检查安装条件；Skill 搜索后的“全部展开/折叠”按当前可见分类的真实 membership 判断，不再因隐藏分类数量相同而误判为已展开。
 - Paper Writer 目标 venue 风格改写继续归入“论文润色 / 语言编辑”：`帮我把论文改成 ACL 风格`、`NeurIPS 风格` 等请求会推荐 `writing-polish`，要求确认目标段落/章节并保留事实、引用、数字、LaTeX 命令和技术术语；不会因为句子里有“论文”而误进入 `paper-planning`。
 - Paper Writer RAG 文档可用性卡的主修复动作支持直接打开页面内 OCR/人工摘录导入面板：当文档是 metadata-only、扫描 PDF 或需要补充人工摘录且后端已生成 Markdown 文献笔记模板时，用户可从文档卡点击“粘贴 OCR/摘录导入”进入质量预检和后端 dry-run，不必先去文件选择器里手动找入口。
 - Paper Writer Chat / Agent / Tools 模式路由继续细化：贡献强度检查、baseline 差异比较、实验是否支撑 claim、reviewer 视角挑刺、abstract 是否缺贡献、段落能否放进正文等会进入可确认的 Agent 审查流程；纯解释任务如“解释这篇论文的方法”“这句话是什么意思”仍保留 Chat。`paragraph` 不再因包含字符串 `rag` 被误判为 RAG 诊断。
@@ -242,3 +284,26 @@
 - Paper Writer 论文生命周期后段任务路由继续打磨：slides/PPT/Beamer、poster、proposal/grant、camera-ready checklist、data/code/ethics availability statement 都进入 Agent 工作流但不再要求目标章节；Zotero/BibTeX 清理和未定义引用检查进入 `reference-management`；arXiv anonymous 版本转换进入投稿检查；benchmark paper 加入证据库进入学术检索。
 - Paper Writer RAG 与投稿 metadata 语义进一步区分：`PDF 只有 metadata / metadata-only` 会进入 RAG 证据库修复入口，而 `PDF metadata 是否匿名` 进入投稿检查并要求 compiled PDF；supplementary/appendix 是否泄露作者信息仍要求目标材料，避免在没有材料的情况下给出虚假安全结论。
 - Paper Writer 安全采纳包会从完整 Workbench context 读取已确认目标章节：当用户已通过结构化上下文选择 `target_section_or_file` 后，review-answer、adoption-package 和 API 返回上下文会保持同一个目标章节；采纳包仍只生成可人工应用的预览和 diff 计划，不会自动写入论文文件。
+- Paper Writer RAG 新增只读 `/api/projects/:id/rag/health` 与“RAG 索引健康状态”卡：明确声明当前是 `local-keyword-overlap` 本地关键词证据检索而非语义向量检索，显示 healthy/degraded/corrupt/rebuilding、最近索引时间、generation、SHA-256 corpus fingerprint、文件/分块统计和逐文件 parser/chars/chunks/warnings/error；“修复 / 重建索引”作为显式恢复动作，每次生成新 generation，语料不变时 fingerprint 保持稳定。health GET 对缺失或损坏索引严格只读，不创建、隔离或重建文件。
+- Paper Writer 核心前端移除 Google Fonts 远程 `@import`，使用系统本地的无衬线、CJK、衬线和等宽字体回退；项目页和编辑器在离线、内网或受限网络中不再发送 `fonts.googleapis.com` / `fonts.gstatic.com` 请求。静态契约和隔离 Playwright 同时锁定无远程字体请求及 CJK 字体栈。
+- Paper Writer Provider 设置页新增四步首次配置向导：分别展示服务器访问令牌、Provider 类型、模型/CLI 凭据和连接验证状态；明确服务器 Token 不是模型 API Key，HTTP Provider 需要 endpoint 与凭据，CLI Provider 依赖服务器已安装且已登录的 executable，并提示当前 CLI 仅用于只读 Chat，修改文件必须进入独立可审查 Task Agent。隔离 Playwright 实际切换 Codex CLI 验证中文说明和权限边界。
+- Paper Writer 源码 artifact 策略禁止在前端源码树保留编辑器备份文件；删除无人引用且明显落后于当前组件的 `SkillsSelector.tsx.bak`，并在 `.gitignore` 与测试中锁定 `*.bak`、`*.orig`、`*~`，避免备份副本继续污染搜索、审查和打包归因。
+- Paper Writer Playwright 运行状态不再提交到仓库：删除根目录和 `app/` 下互相矛盾的 `.last-run.json`，统一忽略 `test-results/` 与 `playwright-report/`；隔离 E2E runner 继续把每次结果放到独立 `/tmp` 目录并在结束后清理，正式验收证据应由 CI artifact 或明确文档保存，而不是提交易过期的本机状态。
+- Paper Writer 依赖安全基线新增 lockfile 回归：按生产/开发路径定向升级 tar、React Router、fast-uri、brace-expansion、shell-quote 和 Vite，`npm audit` 从 7 项（2 moderate、3 high、2 critical）降为 0；`dependencySecurityContract.test.mjs` 检查所有已安装副本不低于修复版本，`docs/dependency_security.md` 记录可达性、版本和最终发布复查要求。
+- Paper Writer 运行地址默认值改为部署可移植配置：后端仍绑定 `0.0.0.0` 保证 LAN 可见，Vite 开发代理默认连接 loopback 后端，启动提示和 MCP 发现地址通过 `OPENPRISM_PUBLIC_HOST` 配置；源码与脚本不再固化当前工作站 IP。生产日志同时执行内容最小化，不输出论文 Prompt、消息、工具结果或项目路径，仅保留非敏感计数型诊断。
+- Paper Writer 模板 catalog 以 committed manifest 为用户事实：ACL、CVPR、NeurIPS、ICML、arXiv 和 ICLR 2026 均声明真实入口文件、名称和说明；测试会扫描 bundled LaTeX 目录并拒绝未登记模板。模板 API 只返回当前有模板的业务分类，“全部”筛选由前端唯一生成，避免空分类和重复分类按钮。
+- Paper Writer RAG 外部多源检索返回逐来源透明状态：Semantic Scholar、arXiv、Crossref、OpenAlex 分别显示可用/无匹配/失败、耗时、结果数和脱敏错误码，单源失败不会被伪装成空结果。结果保留来源原始分数及其口径，跨来源排序只使用来源内归一化排名，避免把引用数和不同数据库 relevance score 当作同一尺度；真实 Chromium 已验证成功与失败来源可同时呈现。
+- 2026-07-22：受管项目新增统一 Project Locator。新建、ZIP 导入、arXiv 导入和项目复制都会保留完整 UUID 作为稳定 `id`，同时用“安全可读名称 + 8 位 UUID”生成 `directoryName`；支持中文、空格、纯符号回退、超长名称截断和同名项目隔离，`project.json` 统一记录 `id/name/directoryName/createdAt/updatedAt`。
+- 2026-07-22：项目重命名会同步迁移磁盘目录并刷新 `updatedAt`，稳定 ID 不变；目标目录已存在时返回 409 且保留原项目，元数据写入失败时尽可能把目录回滚到原位置。项目列表同时返回 `directoryName` 和兼容字段 `dirName`，两者均以实际目录为准。
+- 2026-07-22：项目页会把数据根中含论文文件但缺少 `project.json` 的普通目录显示为“发现的论文目录”，只读预览文件数、建议主文件和样例路径；用户明确确认后才生成稳定 UUID 与原子 metadata，注册过程不会移动原目录或论文文件。项目列表同时展示项目显示名、稳定项目 ID 和实际存储目录，并支持复制 ID/目录。
+- 2026-07-22：`OPENPRISM_DATA_DIR` 成为项目存储唯一权威根目录；旧 `OPENPRISM_PROJECTS_DIR` 仅在主变量缺失时作为启动兼容别名，两者冲突时主变量优先并输出明确警告。项目、Draw 和 RAG 通过同一 Project Locator 解析 managed `projectId`，`/api/config.projects_dir` 只读反映当前实际根目录。
+- 2026-07-22：前端生产构建增加全 JS chunk 500 KiB 硬预算，并采用运行时安全的稳定依赖分组：Markdown 与 LaTeX quick preview 独立懒加载，Markdown renderer 保持单组，CodeMirror 按 view/state、language/parser、commands/search/autocomplete 三个边界拆分。生产浏览器回归会真实打开项目、编辑器和两类预览，防止“构建成功但页面空白”的分包回归。
+- 2026-07-22：HTTP Provider endpoint 安全策略增加 DNS-to-socket pinning。临时连接测试会拒绝私网/本机/metadata/reserved 解析结果，并把已校验 IP 集合直接用于实际 TCP/TLS 连接；不会在校验后重新解析，也不会被 Node 环境代理重新解析。每个重定向目标独立校验、固定和限跳，HTTPS 保持原 hostname 的 SNI 与证书校验。
+- 2026-07-22：Paper Workbench 的运行环境能力形成独立后端子域，集中生成 OCR 自动恢复、PDF 文本抽取、真实浏览器 E2E 三项 production gate、Playwright 状态读取、依赖修复复验计划和复制文本；主工作台服务只消费稳定 guide，API 字段和用户行为保持不变。
+- 2026-07-22（当前复核）：隔离 Playwright 使用单一临时后端和数据根时，默认 E2E 配置固定 `fullyParallel: false`、`workers: 1`，避免项目注册、RAG 重建、会话恢复和 Draw.io 网络模拟在共享状态上互相竞争；`e2eIsolationContract.test.mjs` 锁定该门禁。后续若要恢复并行，必须先实现每 worker 独立后端、端口、数据根和 Token。
+- 2026-07-22（当前复核）：Project Locator 新增经过 metadata 身份校验的 `projectId -> projectRoot` 缓存；路径不存在、身份不匹配或被手工移动时自动失效并回退扫描，重命名与已有目录注册会更新缓存。`projectLocator.test.mjs` 覆盖重复查找不重复扫描和手工移动恢复。
+- 2026-07-22（当前复核）：Skills 运行账本区分 Provider 请求结果与目标验证结果：`outcome` 使用 `provider_completed/provider_failed/provider_skipped`，另有 `verificationStatus` 和 `objectiveStatus`；成功返回模型不再被 UI 描述成论文目标已通过。
+- 2026-07-22（当前复核）：Skill 管理将用户创建的 YAML Skill 写入数据根下的 `.skills/`，与内置 Skill 目录隔离；创建会持久化 categories、中文名称/描述、中文分类和子分类，要求合法 slug 并拒绝重复名称。内置 Skill 在 API 和 UI 两层均受保护，删除自定义 Skill 前需确认并显示成功/失败反馈；Provider 设置保存前必须完成当前配置的连接验证。
+- 2026-07-22（当前复核）：CLI Task Agent 的 Provider 列表现在区分 `installed`、`authenticated`、`authStatus` 和真正的 `available`；列表使用受控只读探针，不因服务 Token 未配置而隐瞒安装状态。前端默认优先选择已验证可用的 Provider，不可用项显示原因并禁止创建任务。
+- 2026-07-24：HTTP Provider 的“加载模型”支持使用设置表单中尚未保存的 endpoint 与 API Key，通过受保护的 `POST /api/providers/:providerId/models` 获取当前连接的模型列表；如果表单保持已保存地址且 Key 输入框为空，则安全复用服务器已保存凭证。修改 endpoint 后必须重新输入模型 Key。受信任的 LAN 模型地址仍需通过 `OPENPRISM_PROVIDER_ALLOWED_HOSTS` 精确放行。
+- 2026-07-24：Draw 设置页支持前端保存独立的生图 Base URL、API Key 和模型，也可显式复用语言模型的 Base URL/API Key；凭据只进入受认证的后端配置接口，不写入 localStorage。最终生图 Prompt 始终是可编辑文本框，既可接收 AI 草稿也可直接手写，生成请求严格执行最终文本；OpenAI-compatible 图片接口同时支持 URL 与 `b64_json` 响应，结果保存到当前项目 `draw/`。

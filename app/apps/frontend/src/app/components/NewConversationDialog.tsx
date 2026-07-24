@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   chapters: { file: string }[];
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit, onCancel }: Props) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [scopeType, setScopeType] = useState('free');
   const [scopeFile, setScopeFile] = useState('');
@@ -48,32 +50,32 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
       } else if (data.models && data.models.length > 0) {
         setAvailableModels(data.models);
       }
-    }).catch((err) => { setModelsError(`Failed to fetch models: ${err.message}`); });
-  }, []);
+    }).catch((err) => { setModelsError(t('Failed to fetch models: {{error}}', { error: err.message })); });
+  }, [t]);
 
   const handleSubmit = () => {
     let context_scope: any = { type: scopeType };
     if (scopeType === 'chapter') context_scope.file = scopeFile;
-    onSubmit({ name: name || `New ${scopeType}`, context_scope, active_skills: selectedSkills, mode, model: model || undefined });
+    onSubmit({ name: name || t('New {{scope}}', { scope: scopeType }), context_scope, active_skills: selectedSkills, mode, model: model || undefined });
   };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ background: 'var(--paper)', borderRadius: '8px', padding: '24px', width: '400px', color: 'var(--text)' }}>
-        <h3 style={{ margin: '0 0 16px' }}>New Conversation</h3>
+      <div style={{ background: 'var(--paper)', borderRadius: '8px', padding: '24px', width: 'min(400px, calc(100vw - 24px))', maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', color: 'var(--text)' }}>
+        <h3 style={{ margin: '0 0 16px' }}>{t('New Conversation')}</h3>
 
         <label style={{ display: 'block', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 500 }}>Name</span>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Write Introduction"
+          <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('Name')}</span>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={t('e.g. Write Introduction')}
             style={{ display: 'block', width: '100%', marginTop: '4px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', boxSizing: 'border-box', background: 'var(--panel)', color: 'var(--text)' }} />
         </label>
 
         <label style={{ display: 'block', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 500 }}>Model</span>
+          <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('Model')}</span>
           {modelsError && <span style={{ fontSize: '11px', color: 'var(--danger)', marginLeft: '8px' }}>{modelsError}</span>}
           <select value={model} onChange={e => setModel(e.target.value)}
             style={{ display: 'block', width: '100%', marginTop: '4px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)' }}>
-            <option value="">{`Default (${configModel || 'from settings'})`}</option>
+            <option value="">{t('Default ({{model}})', { model: configModel || t('from settings') })}</option>
             {availableModels.map(m => (
               <option key={m} value={m}>{m}</option>
             ))}
@@ -81,29 +83,29 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
         </label>
 
         <label style={{ display: 'block', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 500 }}>Context Scope</span>
+          <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('Context Scope')}</span>
           <select value={scopeType} onChange={e => setScopeType(e.target.value)}
             style={{ display: 'block', width: '100%', marginTop: '4px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)' }}>
-            <option value="free">Free (no file binding)</option>
-            <option value="global">Global (all chapters)</option>
-            <option value="chapter">Chapter (specific)</option>
+            <option value="free">{t('Free (no file binding)')}</option>
+            <option value="global">{t('Global (all chapters)')}</option>
+            <option value="chapter">{t('Chapter (specific)')}</option>
           </select>
         </label>
 
         {scopeType === 'chapter' && (
           <label style={{ display: 'block', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 500 }}>File</span>
+            <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('File')}</span>
             <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center' }}>
               <input
                 value={scopeFile}
                 onChange={e => setScopeFile(e.target.value)}
-                placeholder="sec/intro.tex or any project file path"
+                placeholder={t('sec/intro.tex or any project file path')}
                 style={{ flex: 1, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)', fontSize: '12px' }}
               />
               {selectableFiles.length > 0 && (
                 <button
                   onClick={() => setShowFilePicker(!showFilePicker)}
-                  title="Browse project files"
+                  title={t('Browse project files')}
                   style={{
                     border: '1px solid var(--border)',
                     borderRadius: '4px',
@@ -115,7 +117,7 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  📂 Browse
+                  📂 {t('Browse')}
                 </button>
               )}
             </div>
@@ -133,14 +135,14 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
                 <input
                   value={fileFilter}
                   onChange={e => setFileFilter(e.target.value)}
-                  placeholder="Filter files..."
+                  placeholder={t('Filter files...')}
                   style={{ border: 'none', borderBottom: '1px solid var(--border)', padding: '6px 10px', background: 'var(--panel)', color: 'var(--text)', fontSize: '12px', outline: 'none' }}
                 />
                 <div style={{ overflow: 'auto', flex: 1 }}>
                   {/* Predefined chapters for backward compat */}
                   {fileFilter.trim() === '' && chapters.length > 0 && (
                     <div style={{ padding: '4px 10px', fontSize: '10px', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Chapters
+                      {t('Chapters')}
                     </div>
                   )}
                   {fileFilter.trim() === '' && chapters.map(ch => (
@@ -165,7 +167,7 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
                       textTransform: 'uppercase', letterSpacing: '0.04em',
                       borderTop: chapters.length > 0 && fileFilter.trim() === '' ? '1px solid var(--border)' : 'none',
                     }}>
-                      Project Files
+                      {t('Project Files')}
                     </div>
                   )}
                   {filteredFiles.map(f => (
@@ -185,7 +187,7 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
                     </div>
                   ))}
                   {filteredFiles.length === 0 && chapters.length === 0 && (
-                    <div style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--muted)' }}>No files available</div>
+                    <div style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--muted)' }}>{t('No files available')}</div>
                   )}
                 </div>
               </div>
@@ -194,18 +196,18 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
         )}
 
         <label style={{ display: 'block', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 500 }}>Mode</span>
+          <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('Mode')}</span>
           <select value={mode} onChange={e => setMode(e.target.value)}
             style={{ display: 'block', width: '100%', marginTop: '4px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)' }}>
-            <option value="chat">Chat (read-only discussion)</option>
-            <option value="agent">Agent (propose edits)</option>
-            <option value="tools">Tools (multi-step tasks)</option>
+            <option value="chat">{t('Chat (read-only discussion)')}</option>
+            <option value="agent">{t('Agent (propose edits)')}</option>
+            <option value="tools">{t('Tools (multi-step tasks)')}</option>
           </select>
         </label>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
-          <button onClick={onCancel} style={{ padding: '6px 16px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={handleSubmit} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}>Create</button>
+          <button onClick={onCancel} style={{ padding: '6px 16px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)', cursor: 'pointer' }}>{t('Cancel')}</button>
+          <button onClick={handleSubmit} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}>{t('Create')}</button>
         </div>
       </div>
     </div>

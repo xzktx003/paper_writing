@@ -1,155 +1,175 @@
-import { test, expect, type Page } from '@playwright/test';
+import { type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test as authenticatedBase } from './fixtures';
 
-const FRONTEND_URL = process.env.BASE_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
-const BACKEND_URL = process.env.BACKEND_URL || process.env.OPENPRISM_PUBLIC_URL || 'http://10.30.0.22:8787';
+type Project = { id: string; name: string };
+type ProjectFixtures = { testProject: Project };
 
-/* ── helpers ─────────────────────────────────────────────── */
-
-/** 导航到项目列表页 */
 async function goToProjects(page: Page) {
-  await page.goto(`${FRONTEND_URL}/projects`, { waitUntil: 'networkidle' });
+  await page.goto('/projects', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: '全部项目' })).toBeVisible();
 }
 
-/** 通过后端 API 创建一个临时项目，返回 { id, name } */
-async function createProjectViaApi(name: string) {
-  const res = await fetch(`${BACKEND_URL}/api/projects`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  });
-  expect(res.ok).toBeTruthy();
-  return res.json() as Promise<{ id: string; name: string }>;
+async function createProjectViaApi(request: APIRequestContext, name: string): Promise<Project> {
+  const response = await request.post('/api/projects', { data: { name } });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return response.json() as Promise<Project>;
 }
 
-/** 通过后端 API 删除项目（移到回收站） */
-async function deleteProjectViaApi(id: string) {
-  await fetch(`${BACKEND_URL}/api/projects/${id}`, { method: 'DELETE' });
+async function deleteProjectViaApi(request: APIRequestContext, id: string) {
+  const response = await request.delete(`/api/projects/${id}/permanent`);
+  expect([200, 404]).toContain(response.status());
 }
 
-/** 通过后端 API 彻底清除项目目录 */
-async function purgeProjectViaApi(id: string) {
-  // 先尝试后端 purge；如果没有该接口，直接删目录
-  try {
-    await fetch(`${BACKEND_URL}/api/projects/${id}/purge`, { method: 'DELETE' });
-  } catch {
-    // ignore —— cleanup best-effort
-  }
-}
-
-/* ── 测试套件 ────────────────────────────────────────────── */
+const test = authenticatedBase.extend<ProjectFixtures>({
+  testProject: async ({ request }, use, testInfo) => {
+    const safeTitle = testInfo.title.replace(/[^\p{L}\p{N}]+/gu, '-').slice(0, 36);
+    const project = await createProjectViaApi(request, `E2E-${testInfo.workerIndex}-${safeTitle}-${Date.now()}`);
+    try {
+      await use(project);
+    } finally {
+      await deleteProjectViaApi(request, project.id);
+    }
+  },
+});
 
 test.describe('项目列表页', () => {
   test('页面能正常加载', async ({ page }) => {
     await goToProjects(page);
-    await expect(page.locator('h1')).toHaveText('所有项目');
+    await expect(page.locator('table')).toBeVisible();
   });
 
-  test('侧边栏导航包含所有分类', async ({ page }) => {
+  test('侧边栏导航包含当前分类', async ({ page }) => {
     await goToProjects(page);
-    const sidebar = page.locator('aside, [role="complementary"]').first();
-    await expect(sidebar).toContainText('所有项目');
-    await expect(sidebar).toContainText('我的项目');
+    const sidebar = page.locator('aside').first();
+    await expect(sidebar).toContainText('全部项目');
+    await expect(sidebar).toContainText('未归档');
     await expect(sidebar).toContainText('已归档');
-    await expect(sidebar).toContainText('回收站');
+    await expect(sidebar).toContainText('已删除');
   });
 
-  test('能看到已有的项目', async ({ page }) => {
+  test('显示测试自己创建的项目', async ({ page, testProject }) => {
     await goToProjects(page);
-    // 至少应该显示 torq 项目
-    const table = page.locator('table');
-    await expect(table).toBeVisible();
-    await expect(table).toContainText('torq');
+    await expect(page.locator('table')).toContainText(testProject.name);
   });
 
-  test('搜索框能过滤项目', async ({ page }) => {
+  test('默认列表也显示 papers 下已归档的工程', async ({ page, request, testProject }) => {
+    const archiveResponse = await request.patch(`/api/projects/${testProject.id}/archive`, { data: { archived: true } });
+    expect(archiveResponse.ok(), await archiveResponse.text()).toBeTruthy();
+    await goToProjects(page);
+    await expect(page.locator('tr', { hasText: testProject.name })).toBeVisible();
+  });
+
+  test('全部、未归档、已归档和已删除四个视图互相区分', async ({ page, request, testProject }) => {
+    const projectRow = () => page.locator('tr', { hasText: testProject.name });
+    const openView = async (name: string) => {
+      await page.locator('.sidebar-nav-item', { hasText: name }).click();
+      await expect(page.getByRole('heading', { name })).toBeVisible();
+    };
+
+    await goToProjects(page);
+    await expect(projectRow()).toBeVisible();
+    await openView('未归档');
+    await expect(projectRow()).toBeVisible();
+
+    const archiveResponse = await request.patch(`/api/projects/${testProject.id}/archive`, { data: { archived: true } });
+    expect(archiveResponse.ok(), await archiveResponse.text()).toBeTruthy();
+    await page.reload();
+    await openView('未归档');
+    await expect(projectRow()).toHaveCount(0);
+    await openView('已归档');
+    await expect(projectRow()).toBeVisible();
+    await openView('全部项目');
+    await expect(projectRow()).toBeVisible();
+
+    const trashResponse = await request.patch(`/api/projects/${testProject.id}/trash`, { data: { trashed: true } });
+    expect(trashResponse.ok(), await trashResponse.text()).toBeTruthy();
+    await page.reload();
+    await openView('全部项目');
+    await expect(projectRow()).toHaveCount(0);
+    await openView('已删除');
+    await expect(projectRow()).toBeVisible();
+  });
+
+  test('搜索框能过滤测试自己创建的项目', async ({ page, testProject }) => {
     await goToProjects(page);
     const search = page.getByPlaceholder('搜索项目...');
-    await search.fill('torq');
-    await expect(page.locator('table')).toContainText('torq');
-    await search.fill('nonexistent_xyz_12345');
-    // 搜索无结果时应显示空或提示
-    const rows = page.locator('table tbody tr');
-    await expect(rows).toHaveCount(0);
+    await search.fill(testProject.name);
+    await expect(page.locator('table')).toContainText(testProject.name);
+
+    await search.fill(`missing-${testProject.id}`);
+    await expect(page.locator('table tbody tr')).toHaveCount(0);
+    await expect(page.getByText('暂无项目。')).toBeVisible();
   });
 });
 
 test.describe('项目 CRUD 操作', () => {
-  const projectName = `Playwright E2E Test ${Date.now()}`;
-  let projectId: string;
-
-  test('通过 API 创建项目后能在列表中看到', async ({ page }) => {
-    const project = await createProjectViaApi(projectName);
-    projectId = project.id;
-
+  test('通过 API 创建项目后能在列表中看到', async ({ page, testProject }) => {
     await goToProjects(page);
-    const table = page.locator('table');
-    await expect(table).toContainText(projectName);
+    await expect(page.locator('tr', { hasText: testProject.name })).toBeVisible();
   });
 
-  test('点击"打开"能进入项目编辑器', async ({ page }) => {
-    // 确保项目已创建（如果上一个测试跳过了）
-    if (!projectId) {
-      const project = await createProjectViaApi(projectName);
-      projectId = project.id;
-    }
-
+  test('点击“打开”能进入项目编辑器', async ({ page, testProject }) => {
     await goToProjects(page);
-    const row = page.locator('tr', { hasText: projectName });
-    await row.waitFor({ timeout: 15_000 });
-    await row.getByRole('button', { name: '打开' }).click();
+    const row = page.locator('tr', { hasText: testProject.name });
+    await row.getByRole('button', { name: '打开', exact: true }).click();
 
-    // 应跳转到编辑器页面
-    await page.waitForURL(/\/editor\//, { timeout: 15_000 });
-    await expect(page.url()).toContain('/editor/');
+    await page.waitForURL(new RegExp(`/editor/${testProject.id}$`));
   });
 
-  test('删除项目后项目消失', async ({ page }) => {
-    // 确保项目存在
-    if (!projectId) {
-      const project = await createProjectViaApi(projectName);
-      projectId = project.id;
-    }
+  test('不配置模型也能手动编辑并保存项目文件', async ({ page, request, testProject }) => {
+    const initialContent = '# Manual editing\nBefore save.\n';
+    const savedContent = '# Manual editing\nSaved without a model.\n';
+    const createFileResponse = await request.put(`/api/projects/${testProject.id}/file`, {
+      data: { path: 'manual.md', content: initialContent },
+    });
+    expect(createFileResponse.ok(), await createFileResponse.text()).toBeTruthy();
 
     await goToProjects(page);
-    const row = page.locator('tr', { hasText: projectName });
-    await row.waitFor({ timeout: 15_000 });
+    await page.locator('tr', { hasText: testProject.name }).getByRole('button', { name: '打开', exact: true }).click();
+    await page.waitForURL(new RegExp(`/editor/${testProject.id}$`));
+    await page.getByText('manual.md', { exact: true }).click();
+    const editor = page.locator('.cm-content');
+    await expect(editor).toBeVisible();
+    await editor.fill(savedContent);
 
-    // 点击删除按钮
-    page.on('dialog', (dialog) => dialog.accept());
-    await row.getByRole('button', { name: '删除' }).click();
+    const saveButton = page.getByTestId('manual-save-button');
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await expect(saveButton).toBeDisabled();
 
-    // 等待项目从列表消失
-    await expect(row).toHaveCount(0, { timeout: 15_000 });
+    await expect.poll(async () => {
+      const response = await request.get(`/api/projects/${testProject.id}/file`, { params: { path: 'manual.md' } });
+      return (await response.json()).content;
+    }).toBe(savedContent);
   });
 
-  test.afterAll(async () => {
-    // 清理：删除测试项目
-    if (projectId) {
-      await purgeProjectViaApi(projectId);
-    }
+  test('删除项目后项目从当前列表消失', async ({ page, testProject }) => {
+    await goToProjects(page);
+    const row = page.locator('tr', { hasText: testProject.name });
+    page.once('dialog', (dialog) => dialog.accept());
+    await row.getByRole('button', { name: '删除', exact: true }).click();
+
+    await expect(row).toHaveCount(0);
   });
 });
 
 test.describe('后端 API 健康检查', () => {
-  test('/api/health 返回 ok', async () => {
-    const res = await fetch(`${BACKEND_URL}/api/health`);
-    expect(res.ok).toBeTruthy();
-    const data = await res.json();
-    expect(data.ok).toBe(true);
+  test('/api/health 返回 ok', async ({ request }) => {
+    const response = await request.get('/api/health');
+    expect(response.ok()).toBeTruthy();
+    await expect(response.json()).resolves.toMatchObject({ ok: true });
   });
 
-  test('/api/config 返回配置', async () => {
-    const res = await fetch(`${BACKEND_URL}/api/config`);
-    expect(res.ok).toBeTruthy();
-    const data = await res.json();
-    expect(data).toHaveProperty('claude_model');
+  test('/api/config 返回公开配置', async ({ request }) => {
+    const response = await request.get('/api/config');
+    expect(response.ok(), await response.text()).toBeTruthy();
+    await expect(response.json()).resolves.toHaveProperty('claude_model');
   });
 
-  test('/api/projects 返回项目列表', async () => {
-    const res = await fetch(`${BACKEND_URL}/api/projects`);
-    expect(res.ok).toBeTruthy();
-    const data = await res.json();
-    expect(data).toHaveProperty('projects');
+  test('/api/projects 返回项目数组', async ({ request }) => {
+    const response = await request.get('/api/projects');
+    expect(response.ok(), await response.text()).toBeTruthy();
+    const data = await response.json();
     expect(Array.isArray(data.projects)).toBeTruthy();
   });
 });

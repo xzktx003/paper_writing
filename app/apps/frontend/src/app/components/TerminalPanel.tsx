@@ -3,6 +3,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import 'xterm/css/xterm.css';
+import { getServerAccessToken } from '../../api/serverAccess';
 
 // 过滤 xterm.js 自动回复的控制序列（焦点报告、OSC 颜色回复等）
 // 这些序列会被 xterm.js 自动发送，但如果发到后端再返回会导致重复显示
@@ -17,10 +18,10 @@ function stripTerminalResponsePayload(payload: string): string {
 }
 
 interface Props {
-  cwd: string;
+  projectId: string;
 }
 
-export function TerminalPanel({ cwd }: Props) {
+export function TerminalPanel({ projectId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -78,7 +79,14 @@ export function TerminalPanel({ cwd }: Props) {
     fitAddonRef.current = fitAddon;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/terminal/ws?cols=${term.cols}&rows=${term.rows}&cwd=${encodeURIComponent(cwd)}`;
+    const terminalParams = new URLSearchParams({
+      cols: String(term.cols),
+      rows: String(term.rows),
+      projectId,
+    });
+    const apiToken = getServerAccessToken();
+    if (apiToken) terminalParams.set('access_token', apiToken);
+    const wsUrl = `${protocol}//${window.location.host}/api/terminal/ws?${terminalParams.toString()}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     let disposed = false;
@@ -154,7 +162,7 @@ export function TerminalPanel({ cwd }: Props) {
       ws.close();
       term.dispose();
     };
-  }, [cwd]);
+  }, [projectId]);
 
   return (
     <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 0, background: '#1e1e1e' }} />

@@ -18,8 +18,9 @@ describe('rendered editor mode', () => {
 
   it('uses MarkdownPreview and LatexPreview as the single rendered preview implementation', async () => {
     const previewPane = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/RenderedPreviewPane.tsx'), 'utf8');
-    expect(previewPane).toContain("import { MarkdownPreview } from './MarkdownPreview'");
-    expect(previewPane).toContain("import { LatexPreview } from './LatexPreview'");
+    expect(previewPane).toContain("import('./MarkdownPreview')");
+    expect(previewPane).toContain("import('./LatexPreview')");
+    expect(previewPane).toContain('<Suspense');
     expect(previewPane).toContain("filename.endsWith('.tex')");
     expect(previewPane).toContain('<LatexPreview');
     expect(previewPane).toContain('<MarkdownPreview');

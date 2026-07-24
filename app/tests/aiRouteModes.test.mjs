@@ -9,6 +9,25 @@ import {
 import { buildOpenAIMessages } from '../apps/backend/src/services/llmService.js';
 
 describe('AI PDF attachments', () => {
+  it('includes text-like attachments instead of sending only their filename', async () => {
+    const payload = Buffer.from('{"metric": 0.91}\n').toString('base64');
+    const content = await buildUserMessageContent('Inspect this result', [{
+      dataUrl: `data:application/json;base64,${payload}`,
+      name: 'results.json',
+      type: 'application/json',
+    }]);
+    expect(content.at(-1).text).toContain('{"metric": 0.91}');
+  });
+
+  it('rejects unsupported document formats instead of silently sending a filename', async () => {
+    const payload = Buffer.from('binary-doc').toString('base64');
+    await expect(buildUserMessageContent('Read this document', [{
+      dataUrl: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${payload}`,
+      name: 'draft.docx',
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    }])).rejects.toMatchObject({ code: 'UNSUPPORTED_ATTACHMENT_TYPE' });
+  });
+
   it('extracts PDF text into the user message sent to the model', async () => {
     const pdf = await readFile(join(process.cwd(), 'templates/arxiv/template.pdf'));
     const content = await buildUserMessageContent('Summarize this PDF', [{

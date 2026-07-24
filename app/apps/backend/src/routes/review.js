@@ -1,7 +1,7 @@
 import { chatCompletion } from '../services/llmService.js';
 import { assemblePrompt } from '../services/skillEngine.js';
 import { readProjectContent } from '../services/contentReader.js';
-import { resolveProjectPath } from './ai.js';
+import { resolveManagedProjectRequest } from '../services/managedProjectContext.js';
  
 const REVIEW_JSON_SCHEMA = `{
   "overallScore": number (0-100),
@@ -33,10 +33,12 @@ const REVIEW_JSON_SCHEMA = `{
  
 export function registerReviewRoutes(fastify) {
   fastify.post('/api/review/structured', async (request, reply) => {
-    const { projectPath, chapterScope } = request.body;
+    const { chapterScope } = request.body;
     let resolvedPath;
     try {
-      resolvedPath = await resolveProjectPath(projectPath);
+      ({ projectRoot: resolvedPath } = await resolveManagedProjectRequest(request, reply, {
+        route: 'review.structured',
+      }));
     } catch (err) {
       reply.code(500);
       return { error: `Failed to resolve project path: ${err.message}` };

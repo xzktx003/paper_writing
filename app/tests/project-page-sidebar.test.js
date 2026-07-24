@@ -11,16 +11,19 @@ async function readProjectPage() {
 }
 
 describe('ProjectPage sidebar navigation', () => {
-  test('does not expose the redundant all-projects menu item', async () => {
+  test('exposes explicit all, active, archived, and deleted project views', async () => {
     const source = await readProjectPage();
     const navItems = source.match(/const navItems:[\s\S]*?\n  \];/)?.[0] || '';
 
-    expect(source).toContain("type ViewFilter = 'mine' | 'archived' | 'trash'");
-    expect(source).toContain("useState<ViewFilter>('mine')");
-    expect(navItems).not.toContain("key: 'all'");
-    expect(navItems).not.toContain("t('所有项目')");
-    expect(navItems).toContain("key: 'mine'");
+    expect(source).toContain("type ViewFilter = 'all' | 'active' | 'archived' | 'trash'");
+    expect(source).toContain("useState<ViewFilter>('all')");
+    expect(navItems).toContain("key: 'all'");
+    expect(navItems).toContain("t('全部项目')");
+    expect(navItems).toContain("key: 'active'");
+    expect(navItems).toContain("t('未归档')");
     expect(navItems).toContain("key: 'archived'");
+    expect(navItems).toContain("t('已归档')");
     expect(navItems).toContain("key: 'trash'");
+    expect(navItems).toContain("t('已删除')");
   });
 });

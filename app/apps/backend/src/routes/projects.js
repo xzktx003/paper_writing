@@ -4,12 +4,23 @@ import { pipeline } from 'stream/promises';
 import * as tar from 'tar';
 import unzipper from 'unzipper';
 import crypto from 'crypto';
-import { DATA_DIR, TEMPLATE_DIR } from '../config/constants.js';
+import os from 'os';
+import { DATA_DIR } from '../config/constants.js';
 import { ensureDir, readJson, writeJson, copyDir, listFilesRecursive } from '../utils/fsUtils.js';
 import { safeJoin, sanitizeUploadPath } from '../utils/pathSecurity.js';
 import { isTextFile } from '../utils/texUtils.js';
-import { getProjectRoot } from '../services/projectService.js';
+import {
+  createProjectLocation,
+  getProjectRoot,
+  normalizeProjectName,
+  registerExistingProjectLocation,
+  renameProjectLocation,
+  validateExistingProjectDirectoryName,
+  withProjectLock,
+} from '../services/projectLocator.js';
 import { downloadArxivSource, extractArxivId } from '../services/arxivService.js';
+import { purgeConversationProject } from '../services/conversationStore.js';
+import { resolveTemplateSelection } from '../services/templateService.js';
 import { getLang, t } from '../i18n/index.js';
  
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.pdf', '.eps'];
@@ -20,38 +31,35 @@ const PROJECT_SCAN_EXCLUDES = new Set([
   'node_modules',
   '.compile',
 ]);
+const PROJECT_TREE_HIDDEN_ROOTS = new Set([
+  '.compile',
+  '.openprism',
+  'research_corpus',
+]);
+
+function isHiddenProjectTreeItem(item) {
+  const root = String(item?.path || '').split(/[\\/]/, 1)[0];
+  return PROJECT_TREE_HIDDEN_ROOTS.has(root);
+}
+
+async function listVisibleProjectItems(projectRoot) {
+  return (await listFilesRecursive(projectRoot)).filter((item) => !isHiddenProjectTreeItem(item));
+}
  
 function downloadFileName(relPath, fallbackName) {
   const base = path.basename(relPath || '') || fallbackName || 'download';
   return base.replace(/[\r\n"]/g, '_');
 }
  
-// Per-project lock to prevent concurrent project.json writes
-const projectLocks = new Map();
- 
-function acquireProjectLock(projectId) {
-  if (!projectLocks.has(projectId)) {
-    projectLocks.set(projectId, Promise.resolve());
-  }
-  let release;
-  const next = new Promise((resolve) => { release = resolve; });
-  const prev = projectLocks.get(projectId);
-  projectLocks.set(projectId, next);
-  return prev.then(() => release);
-}
- 
 async function updateProjectMeta(projectId, updater) {
-  const release = await acquireProjectLock(projectId);
-  try {
+  return withProjectLock(projectId, async () => {
     const projectRoot = await getProjectRoot(projectId);
     const metaPath = path.join(projectRoot, 'project.json');
     const meta = await readJson(metaPath);
     const next = updater(meta);
     await writeJson(metaPath, next);
     return next;
-  } finally {
-    release();
-  }
+  });
 }
  
 async function ensureDocsSupportDir(projectRoot) {
@@ -82,48 +90,45 @@ async function containsPaperProjectFiles(projectRoot, depth = 0) {
  
   return false;
 }
- 
-async function createProjectMetaForUploadedFolder(projectRoot, dirName) {
-  if (!await containsPaperProjectFiles(projectRoot)) return null;
- 
-  const dirStat = await fs.stat(projectRoot);
-  const createdAt = dirStat.birthtime?.toISOString?.() || new Date().toISOString();
-  const updatedAt = dirStat.mtime?.toISOString?.() || createdAt;
-  const meta = {
-    id: crypto.randomUUID(),
-    name: dirName,
-    createdAt,
-    updatedAt,
-    tags: [],
-    archived: false,
-    trashed: false,
-    trashedAt: null
+
+async function summarizeProjectCandidate(projectRoot, directoryName) {
+  const items = await listVisibleProjectItems(projectRoot);
+  const files = items.filter((item) => item.type === 'file').map((item) => item.path.replaceAll('\\', '/'));
+  const texFiles = files.filter((file) => file.toLowerCase().endsWith('.tex'));
+  const suggestedMainFile = texFiles.find((file) => file === 'main.tex')
+    || texFiles.find((file) => file.endsWith('/main.tex'))
+    || texFiles[0]
+    || null;
+  return {
+    directoryName,
+    name: directoryName,
+    fileCount: files.length,
+    suggestedMainFile,
+    sampleFiles: files.slice(0, 6),
   };
-  await writeJson(path.join(projectRoot, 'project.json'), meta);
-  return meta;
 }
  
 export function registerProjectRoutes(fastify) {
   fastify.get('/api/projects', async () => {
-    await ensureDir(DATA_DIR);
-    const entries = await fs.readdir(DATA_DIR, { withFileTypes: true });
+    let entries = [];
+    try {
+      entries = await fs.readdir(DATA_DIR, { withFileTypes: true });
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
     const projects = [];
+    const candidates = [];
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      if (PROJECT_SCAN_EXCLUDES.has(entry.name)) continue;
+      if (entry.name.startsWith('.') || PROJECT_SCAN_EXCLUDES.has(entry.name)) continue;
       const projectRoot = path.join(DATA_DIR, entry.name);
       const metaPath = path.join(projectRoot, 'project.json');
       try {
-        let meta;
-        try {
-          meta = await readJson(metaPath);
-        } catch (err) {
-          if (err.code !== 'ENOENT') throw err;
-          meta = await createProjectMetaForUploadedFolder(projectRoot, entry.name);
-        }
-        if (!meta) continue;
+        const meta = await readJson(metaPath);
+        if (!meta?.id || !meta?.name) continue;
         projects.push({
           ...meta,
+          directoryName: entry.name,
           dirName: entry.name,
           updatedAt: meta.updatedAt || meta.createdAt,
           tags: meta.tags || [],
@@ -131,35 +136,102 @@ export function registerProjectRoutes(fastify) {
           trashed: meta.trashed || false,
           trashedAt: meta.trashedAt || null
         });
-      } catch {
-        // ignore
+      } catch (error) {
+        if (error.code === 'ENOENT' && await containsPaperProjectFiles(projectRoot)) {
+          candidates.push(await summarizeProjectCandidate(projectRoot, entry.name));
+          continue;
+        }
+        fastify.log?.warn?.({ directoryName: entry.name, error: error.message }, 'Skipping invalid project directory.');
       }
     }
-    return { projects };
+    return { projects, candidates };
+  });
+
+  fastify.post('/api/projects/register-existing', async (req, reply) => {
+    const { directoryName, name } = req.body || {};
+    let safeDirectoryName;
+    try {
+      safeDirectoryName = validateExistingProjectDirectoryName(directoryName);
+    } catch (error) {
+      return reply.code(error.statusCode || 400).send({ ok: false, code: error.code, error: error.message });
+    }
+    if (PROJECT_SCAN_EXCLUDES.has(safeDirectoryName)) {
+      return reply.code(400).send({ ok: false, code: 'INVALID_PROJECT_DIRECTORY', error: 'Reserved project directory.' });
+    }
+
+    const projectRoot = path.join(DATA_DIR, safeDirectoryName);
+    try {
+      const rootStat = await fs.lstat(projectRoot);
+      if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+        return reply.code(400).send({ ok: false, code: 'INVALID_PROJECT_DIRECTORY', error: 'Existing project target must be a real directory.' });
+      }
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return reply.code(404).send({ ok: false, code: 'PROJECT_DIRECTORY_NOT_FOUND', error: 'Existing project directory not found.' });
+      }
+      throw error;
+    }
+    if (!await containsPaperProjectFiles(projectRoot)) {
+      return reply.code(400).send({ ok: false, code: 'NO_PAPER_FILES', error: 'No supported paper files found.' });
+    }
+    const candidate = await summarizeProjectCandidate(projectRoot, safeDirectoryName);
+    try {
+      const registered = await registerExistingProjectLocation({
+        directoryName: safeDirectoryName,
+        name,
+        mainFile: candidate.suggestedMainFile,
+      });
+      return reply.send({ ok: true, project: registered.project });
+    } catch (error) {
+      if (error.statusCode) {
+        return reply.code(error.statusCode).send({ ok: false, code: error.code, error: error.message });
+      }
+      throw error;
+    }
   });
  
   fastify.post('/api/projects', async (req, reply) => {
     await ensureDir(DATA_DIR);
     const { name = 'Untitled', template } = req.body || {};
-    const id = crypto.randomUUID();
-    const projectRoot = path.join(DATA_DIR, id);
-    await ensureDir(projectRoot);
-    await ensureDocsSupportDir(projectRoot);
-    const meta = { id, name, createdAt: new Date().toISOString() };
-    await writeJson(path.join(projectRoot, 'project.json'), meta);
-    if (template) {
-      const templateRoot = path.join(TEMPLATE_DIR, template);
-      await copyDir(templateRoot, projectRoot);
+    let resolvedTemplate = null;
+    if (String(template || '').trim()) {
+      try {
+        resolvedTemplate = await resolveTemplateSelection(template);
+      } catch (error) {
+        if (['INVALID_TEMPLATE_ID', 'TEMPLATE_NOT_FOUND', 'TEMPLATE_CONTRACT_INVALID'].includes(error.code)) {
+          return reply.code(400).send({ ok: false, error: error.message, code: error.code });
+        }
+        throw error;
+      }
     }
-    reply.send(meta);
+    const location = await createProjectLocation({ name });
+    const now = new Date().toISOString();
+    const meta = {
+      id: location.id,
+      name: location.name,
+      directoryName: location.directoryName,
+      createdAt: now,
+      updatedAt: now,
+      template: resolvedTemplate?.id || null,
+      mainFile: resolvedTemplate?.mainFile || null,
+    };
+    try {
+      await ensureDocsSupportDir(location.projectRoot);
+      if (resolvedTemplate) {
+        await copyDir(resolvedTemplate.root, location.projectRoot);
+      }
+      await writeJson(path.join(location.projectRoot, 'project.json'), meta);
+      return reply.send(meta);
+    } catch (error) {
+      await fs.rm(location.projectRoot, { recursive: true, force: true });
+      throw error;
+    }
   });
  
   fastify.post('/api/projects/import-zip', async (req) => {
     const lang = getLang(req);
     await ensureDir(DATA_DIR);
-    const id = crypto.randomUUID();
-    const projectRoot = path.join(DATA_DIR, id);
-    await ensureDir(projectRoot);
+    const stagingRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'paper-agent-import-'));
     let projectName = 'Imported Project';
     let hasZip = false;
  
@@ -179,7 +251,7 @@ export function registerProjectRoutes(fastify) {
             entry.autodrain();
             continue;
           }
-          const abs = safeJoin(projectRoot, relPath);
+          const abs = safeJoin(stagingRoot, relPath);
           if (entry.type === 'Directory') {
             await ensureDir(abs);
             entry.autodrain();
@@ -190,17 +262,35 @@ export function registerProjectRoutes(fastify) {
         }
       }
     } catch (err) {
-      await fs.rm(projectRoot, { recursive: true, force: true });
+      await fs.rm(stagingRoot, { recursive: true, force: true });
       return { ok: false, error: t(lang, 'zip_extract_failed', { error: String(err) }) };
     }
  
     if (!hasZip) {
+      await fs.rm(stagingRoot, { recursive: true, force: true });
       return { ok: false, error: 'Missing zip file.' };
     }
- 
-    const meta = { id, name: projectName, createdAt: new Date().toISOString() };
-    await writeJson(path.join(projectRoot, 'project.json'), meta);
-    return { ok: true, project: meta };
+
+    const location = await createProjectLocation({ name: projectName });
+    const now = new Date().toISOString();
+    const meta = {
+      id: location.id,
+      name: location.name,
+      directoryName: location.directoryName,
+      createdAt: now,
+      updatedAt: now,
+    };
+    try {
+      await copyDir(stagingRoot, location.projectRoot);
+      await ensureDocsSupportDir(location.projectRoot);
+      await writeJson(path.join(location.projectRoot, 'project.json'), meta);
+      return { ok: true, project: meta };
+    } catch (error) {
+      await fs.rm(location.projectRoot, { recursive: true, force: true });
+      throw error;
+    } finally {
+      await fs.rm(stagingRoot, { recursive: true, force: true });
+    }
   });
  
   fastify.get('/api/projects/import-arxiv-sse', async (req, reply) => {
@@ -225,13 +315,15 @@ export function registerProjectRoutes(fastify) {
       return reply;
     }
  
-    const id = crypto.randomUUID();
-    const projectRoot = path.join(DATA_DIR, id);
-    await ensureDir(projectRoot);
+    const location = await createProjectLocation({ name: projectName || `arxiv-${arxivId}` });
+    const projectRoot = location.projectRoot;
+    const now = new Date().toISOString();
     const meta = {
-      id,
-      name: projectName || `arxiv-${arxivId}`,
-      createdAt: new Date().toISOString()
+      id: location.id,
+      name: location.name,
+      directoryName: location.directoryName,
+      createdAt: now,
+      updatedAt: now,
     };
  
     const tmpTar = path.join(projectRoot, '__arxiv_source.tar.gz');
@@ -267,12 +359,19 @@ export function registerProjectRoutes(fastify) {
     return reply;
   });
  
-  fastify.post('/api/projects/:id/rename-project', async (req) => {
+  fastify.post('/api/projects/:id/rename-project', async (req, reply) => {
     const { id } = req.params;
     const { name } = req.body || {};
-    if (!name) return { ok: false, error: 'Missing name' };
-    const next = await updateProjectMeta(id, (meta) => ({ ...meta, name }));
-    return { ok: true, project: next };
+    if (!String(name || '').trim()) return reply.code(400).send({ ok: false, error: 'Missing name' });
+    try {
+      const result = await renameProjectLocation(id, name);
+      return { ok: true, project: result.project };
+    } catch (error) {
+      if (error.code === 'PROJECT_DIRECTORY_CONFLICT') {
+        return reply.code(409).send({ ok: false, error: error.message, directoryName: error.directoryName });
+      }
+      throw error;
+    }
   });
  
   fastify.post('/api/projects/:id/copy', async (req) => {
@@ -280,20 +379,28 @@ export function registerProjectRoutes(fastify) {
     const { name } = req.body || {};
     const srcRoot = await getProjectRoot(id);
     const srcMeta = await readJson(path.join(srcRoot, 'project.json'));
-    const newId = crypto.randomUUID();
-    const destRoot = path.join(DATA_DIR, newId);
-    await copyDir(srcRoot, destRoot);
-    const newMeta = {
-      ...srcMeta,
-      id: newId,
-      name: name || `${srcMeta.name} (Copy)`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      trashed: false,
-      trashedAt: null,
-    };
-    await writeJson(path.join(destRoot, 'project.json'), newMeta);
-    return { ok: true, project: newMeta };
+    const copyName = normalizeProjectName(name, `${srcMeta.name} (Copy)`);
+    const location = await createProjectLocation({ name: copyName });
+    const destRoot = location.projectRoot;
+    try {
+      await copyDir(srcRoot, destRoot);
+      const now = new Date().toISOString();
+      const newMeta = {
+        ...srcMeta,
+        id: location.id,
+        name: location.name,
+        directoryName: location.directoryName,
+        createdAt: now,
+        updatedAt: now,
+        trashed: false,
+        trashedAt: null,
+      };
+      await writeJson(path.join(destRoot, 'project.json'), newMeta);
+      return { ok: true, project: newMeta };
+    } catch (error) {
+      await fs.rm(destRoot, { recursive: true, force: true });
+      throw error;
+    }
   });
  
   fastify.delete('/api/projects/:id', async (req) => {
@@ -333,6 +440,10 @@ export function registerProjectRoutes(fastify) {
   fastify.delete('/api/projects/:id/permanent', async (req) => {
     const { id } = req.params;
     const projectRoot = await getProjectRoot(id);
+    // Conversation history used to live under $HOME. Purge that legacy
+    // privacy residue as well as the new project-local store before deleting
+    // the managed project root.
+    await purgeConversationProject(id);
     await fs.rm(projectRoot, { recursive: true, force: true });
     return { ok: true };
   });
@@ -367,8 +478,7 @@ export function registerProjectRoutes(fastify) {
   fastify.get('/api/projects/:id/tree', async (req) => {
     const { id } = req.params;
     const projectRoot = await getProjectRoot(id);
-    await ensureDocsSupportDir(projectRoot);
-    const items = await listFilesRecursive(projectRoot);
+    const items = await listVisibleProjectItems(projectRoot);
     let fileOrder = {};
     try {
       const meta = await readJson(path.join(projectRoot, 'project.json'));
@@ -392,14 +502,21 @@ export function registerProjectRoutes(fastify) {
     return { ok: true };
   });
  
-  fastify.get('/api/projects/:id/file', async (req) => {
+  fastify.get('/api/projects/:id/file', async (req, reply) => {
     const { id } = req.params;
     const { path: filePath } = req.query;
     if (!filePath) return { content: '' };
     const projectRoot = await getProjectRoot(id);
     const abs = safeJoin(projectRoot, filePath);
-    const content = await fs.readFile(abs, 'utf8');
-    return { content };
+    try {
+      const content = await fs.readFile(abs, 'utf8');
+      return { content };
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return reply.code(404).send({ error: 'Project file not found', path: filePath });
+      }
+      throw error;
+    }
   });
  
   fastify.get('/api/projects/:id/blob', async (req, reply) => {
@@ -413,7 +530,10 @@ export function registerProjectRoutes(fastify) {
     try {
       buffer = await fs.readFile(abs);
     } catch (err) {
-      if (err.code !== 'ENOENT' || path.extname(filePath)) throw err;
+      if (err.code !== 'ENOENT') throw err;
+      if (path.extname(filePath)) {
+        return reply.code(404).send({ error: 'Project blob not found', path: filePath });
+      }
       for (const ext of IMAGE_EXTENSIONS) {
         try {
           resolvedPath = `${filePath}${ext}`;
@@ -424,7 +544,9 @@ export function registerProjectRoutes(fastify) {
           if (candidateErr.code !== 'ENOENT') throw candidateErr;
         }
       }
-      if (!buffer) throw err;
+      if (!buffer) {
+        return reply.code(404).send({ error: 'Project blob not found', path: filePath });
+      }
     }
     const ext = path.extname(resolvedPath).toLowerCase();
     const contentTypes = {
@@ -534,10 +656,7 @@ export function registerProjectRoutes(fastify) {
     const { id } = req.params;
     const { pattern = '*' } = req.query;
     const projectRoot = await getProjectRoot(id);
-    const items = await listFilesRecursive(projectRoot);
-    
-    console.log(`[files/list] Project: ${id}, Root: ${projectRoot}`);
-    console.log(`[files/list] Pattern: ${pattern}, Total items: ${items.length}`);
+    const items = await listVisibleProjectItems(projectRoot);
     
     // Convert glob pattern to regex
     const regexPattern = new RegExp(
@@ -547,17 +666,12 @@ export function registerProjectRoutes(fastify) {
         .replace(/\?/g, '.') + '$'
     );
     
-    // Debug: log first few items
-    if (items.length > 0) {
-      console.log(`[files/list] Sample paths:`, items.slice(0, 5).map(i => i.path));
-    }
-    
     const files = items
       .filter(item => item.type === 'file' && regexPattern.test(item.path))
       .map(item => item.path)
       .sort();
     
-    console.log(`[files/list] Matched files: ${files.length}`);
+    fastify.log.debug({ itemCount: items.length, matchedCount: files.length }, 'Listed project files');
     
     return { files };
   });
@@ -565,7 +679,7 @@ export function registerProjectRoutes(fastify) {
   fastify.get('/api/projects/:id/files', async (req) => {
     const { id } = req.params;
     const projectRoot = await getProjectRoot(id);
-    const items = await listFilesRecursive(projectRoot);
+    const items = await listVisibleProjectItems(projectRoot);
     const files = [];
     for (const item of items) {
       if (item.type !== 'file') continue;
@@ -580,14 +694,28 @@ export function registerProjectRoutes(fastify) {
     return { files };
   });
  
-  fastify.post('/api/projects/:id/template', async (req) => {
+  fastify.post('/api/projects/:id/template', async (req, reply) => {
     const { id } = req.params;
     const { template } = req.body || {};
+    if (!String(template || '').trim()) return reply.code(400).send({ ok: false, error: 'Missing template' });
+    let resolvedTemplate;
+    try {
+      resolvedTemplate = await resolveTemplateSelection(template);
+    } catch (error) {
+      if (['INVALID_TEMPLATE_ID', 'TEMPLATE_NOT_FOUND', 'TEMPLATE_CONTRACT_INVALID'].includes(error.code)) {
+        return reply.code(400).send({ ok: false, error: error.message, code: error.code });
+      }
+      throw error;
+    }
     const projectRoot = await getProjectRoot(id);
-    if (!template) return { ok: false };
-    const templateRoot = path.join(TEMPLATE_DIR, template);
-    await copyDir(templateRoot, projectRoot);
-    return { ok: true };
+    await copyDir(resolvedTemplate.root, projectRoot);
+    const project = await updateProjectMeta(id, (meta) => ({
+      ...meta,
+      template: resolvedTemplate.id,
+      mainFile: resolvedTemplate.mainFile,
+      updatedAt: new Date().toISOString(),
+    }));
+    return { ok: true, project };
   });
  
   fastify.post('/api/projects/:id/folder', async (req) => {

@@ -11,6 +11,7 @@ import {
   crossCheckCitations,
 } from '../services/citationVerificationService.js';
 import { getProjectRoot } from '../services/projectService.js';
+import { resolveManagedProjectRequest } from '../services/managedProjectContext.js';
 import { findExistingMainTexFile } from '../services/compileService.js';
 
 const DEFAULT_TEX_FILES = ['main.tex', 'paper.tex', 'manuscript.tex'];
@@ -211,17 +212,19 @@ export async function readProjectTexContent(projectPath, texFile) {
  */
 export function registerCitationVerificationRoutes(fastify, options = {}) {
   const resolveProjectRoot = options.resolveProjectRoot || getProjectRoot;
+  const resolveContext = (request, reply, route) => resolveManagedProjectRequest(request, reply, {
+    route,
+    resolveProjectRoot,
+  });
   /**
    * POST /api/citations/verify
    * 验证 .bib 文件中的所有条目
-   * Body: { projectPath: string, bibFile?: string }
+   * Body: { projectId: string, bibFile?: string }
+   * Formal paper routes use managed projectId; projectPath is deprecated.
    */
   fastify.post('/api/citations/verify', async (request, reply) => {
-    const { projectPath, bibFile } = request.body || {};
-    if (!projectPath) {
-      return reply.code(400).send({ error: 'projectPath is required' });
-    }
-    const resolvedProjectPath = await resolveCitationProjectPath(projectPath, resolveProjectRoot);
+    const { bibFile } = request.body || {};
+    const { projectRoot: resolvedProjectPath } = await resolveContext(request, reply, 'citations.verify');
  
     let bibliography;
     try {
@@ -242,14 +245,12 @@ export function registerCitationVerificationRoutes(fastify, options = {}) {
   /**
    * POST /api/citations/verify-tex
    * 验证 .tex 文档中的引用并交叉检查 .bib
-   * Body: { projectPath: string, texFile?: string, bibFile?: string }
+   * Body: { projectId: string, texFile?: string, bibFile?: string }
+   * External tools may use externalProjectPath; projectPath is deprecated.
    */
   fastify.post('/api/citations/verify-tex', async (request, reply) => {
-    const { projectPath, texFile, bibFile } = request.body || {};
-    if (!projectPath) {
-      return reply.code(400).send({ error: 'projectPath is required' });
-    }
-    const resolvedProjectPath = await resolveCitationProjectPath(projectPath, resolveProjectRoot);
+    const { texFile, bibFile } = request.body || {};
+    const { projectRoot: resolvedProjectPath } = await resolveContext(request, reply, 'citations.verify-tex');
  
     let bibliography;
     try {
@@ -293,14 +294,12 @@ export function registerCitationVerificationRoutes(fastify, options = {}) {
   /**
    * POST /api/citations/cross-check
    * 快速交叉检查（不调用外部 API，仅对比 .tex 和 .bib）
-   * Body: { projectPath: string, texFile?: string, bibFile?: string }
+   * Body: { projectId: string, texFile?: string, bibFile?: string }
+   * External tools may use externalProjectPath; projectPath is deprecated.
    */
   fastify.post('/api/citations/cross-check', async (request, reply) => {
-    const { projectPath, texFile, bibFile } = request.body || {};
-    if (!projectPath) {
-      return reply.code(400).send({ error: 'projectPath is required' });
-    }
-    const resolvedProjectPath = await resolveCitationProjectPath(projectPath, resolveProjectRoot);
+    const { texFile, bibFile } = request.body || {};
+    const { projectRoot: resolvedProjectPath } = await resolveContext(request, reply, 'citations.cross-check');
  
     let bibliography;
     try {

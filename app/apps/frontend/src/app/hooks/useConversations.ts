@@ -7,6 +7,8 @@ import {
 } from '../api/conversationApi';
 import { writeFile as writeProjectFile } from '../../api/client';
 import { writeChapter } from '../api/projectApi';
+import { persistActiveConversation, restoreActiveConversation } from './conversationRestoration';
+import type { ProjectRequestContext } from '../api/projectRequestContext';
 
 export interface PendingEdit {
   id: string;
@@ -35,13 +37,15 @@ export interface AttachedFile {
   size: number;      // 文件大小（字节）
 }
 
-export function useConversations(projectId: string | null) {
+export function useConversations(projectId: string | null, requestContext: ProjectRequestContext | null) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(false);
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ percent: number; stage: string } | null>(null);
-  const restoredConversationRef = useRef<string | null>(null);
+  const currentProjectRef = useRef<string | null>(projectId);
+  const restoringProjectRef = useRef<string | null>(null);
+  currentProjectRef.current = projectId;
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -52,24 +56,45 @@ export function useConversations(projectId: string | null) {
   const select = useCallback(async (convId: string) => {
     if (!projectId) return;
     setLoading(true);
-    const conv = await getConversation(projectId, convId);
-    setActiveConv(conv);
-    setLoading(false);
+    try {
+      const conv = await getConversation(projectId, convId);
+      if (currentProjectRef.current === projectId) setActiveConv(conv);
+    } finally {
+      if (currentProjectRef.current === projectId) setLoading(false);
+    }
   }, [projectId]);
 
   useEffect(() => {
-    if (!projectId || restoredConversationRef.current === projectId) return;
-    restoredConversationRef.current = projectId;
+    restoringProjectRef.current = projectId;
     setActiveConv(null);
-    const convId = localStorage.getItem(`paper-agent-active-conversation:${projectId}`);
-    if (convId) select(convId).catch(() => localStorage.removeItem(`paper-agent-active-conversation:${projectId}`));
-  }, [projectId, select]);
+    if (!projectId) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    restoreActiveConversation({
+      projectId,
+      storage: localStorage,
+      listConversations,
+      getConversation,
+      isCurrent: candidate => !cancelled && currentProjectRef.current === candidate,
+    }).then(conv => {
+      if (!cancelled && currentProjectRef.current === projectId) {
+        restoringProjectRef.current = null;
+        setActiveConv(conv);
+      }
+    }).finally(() => {
+      if (!cancelled && currentProjectRef.current === projectId) setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   useEffect(() => {
-    if (!projectId || restoredConversationRef.current !== projectId) return;
-    const key = `paper-agent-active-conversation:${projectId}`;
-    if (activeConv?.id) localStorage.setItem(key, activeConv.id);
-    else localStorage.removeItem(key);
+    if (!projectId || restoringProjectRef.current === projectId) return;
+    persistActiveConversation(localStorage, projectId, activeConv?.id || null);
   }, [projectId, activeConv?.id]);
 
   const create = useCallback(async (data: { name: string; context_scope: any; active_skills?: string[]; mode?: string; model?: string }) => {
@@ -160,8 +185,8 @@ export function useConversations(projectId: string | null) {
   }, []);
 
   /** Non-streaming send (fallback) */
-  const sendRaw = useCallback(async (message: string, projectPath: string, projectConfig: any, files?: AttachedFileData[], skipUserMessage = false) => {
-    if (!projectId || !activeConv) return;
+  const sendRaw = useCallback(async (message: string, projectConfig: any, files?: AttachedFileData[], skipUserMessage = false) => {
+    if (!projectId || !activeConv || !requestContext) return;
     // Only add user message if not already added (skipUserMessage is false)
     if (!skipUserMessage) {
       setActiveConv(prev => prev ? {
@@ -170,7 +195,7 @@ export function useConversations(projectId: string | null) {
       } : null);
     }
     setLoading(true);
-    const result = await sendMessage(projectId, activeConv.id, projectPath, message, projectConfig, files);
+    const result = await sendMessage(projectId, activeConv.id, requestContext, message, projectConfig, files);
     for (const proposal of result.editProposals || []) {
       enqueueEditProposal(activeConv.id, proposal);
     }
@@ -180,23 +205,18 @@ export function useConversations(projectId: string | null) {
     } : null);
     setLoading(false);
     return result;
-  }, [projectId, activeConv, enqueueEditProposal]);
+  }, [projectId, activeConv, requestContext, enqueueEditProposal]);
 
   /** Streaming send with token-by-token updates */
-  const send = useCallback(async (message: string, projectPath: string, projectConfig: any, files?: AttachedFileData[]) => {
-    if (!projectId || !activeConv) return;
-
-    console.log('[Chat DEBUG] send() called with message:', message.slice(0, 100));
+  const send = useCallback(async (message: string, projectConfig: any, files?: AttachedFileData[]) => {
+    if (!projectId || !activeConv || !requestContext) return;
 
     // Optimistic: add user message immediately
     const userMsg = { role: 'user' as const, content: message };
-    setActiveConv(prev => {
-      console.log('[Chat DEBUG] setActiveConv (optimistic) - prev history length:', prev?.history.length);
-      return prev ? {
+    setActiveConv(prev => prev ? {
         ...prev,
         history: [...prev.history, userMsg],
-      } : null;
-    });
+      } : null);
 
     setLoading(true);
     setUploadProgress({ percent: 0, stage: 'preparing' });
@@ -204,8 +224,7 @@ export function useConversations(projectId: string | null) {
     let assistantStarted = false;
 
     try {
-      console.log('[Chat DEBUG] Starting sendMessageStream...');
-      await sendMessageStream(projectId, activeConv.id, projectPath, message, projectConfig, files, {
+      await sendMessageStream(projectId, activeConv.id, requestContext, message, projectConfig, files, {
         onProgress: (percent, stage) => {
           setUploadProgress({ percent, stage });
         },
@@ -237,12 +256,6 @@ export function useConversations(projectId: string | null) {
           });
           assistantStarted = true;
         },
-        onToolUse: (name, input) => {
-          console.log('[Chat DEBUG] Tool use:', name);
-        },
-        onToolResult: (name, result) => {
-          console.log('[Chat DEBUG] Tool result:', name, result?.slice(0, 100));
-        },
         onEditProposal: (proposal) => {
           enqueueEditProposal(activeConv.id, proposal);
         },
@@ -261,7 +274,6 @@ export function useConversations(projectId: string | null) {
           setUploadProgress(null);
         },
         onError: (msg) => {
-          console.error('[Chat DEBUG] onError:', msg);
           assistantContent += `\n\n⚠️ Error: ${msg}`;
           setActiveConv(prev => {
             if (!prev) return null;
@@ -275,20 +287,17 @@ export function useConversations(projectId: string | null) {
         },
       });
     } catch (err) {
-      console.error('[Chat DEBUG] sendMessageStream failed:', err);
-      console.error('[Chat DEBUG] Falling back to sendRaw...');
       // Fallback to non-streaming - skip user message since it was already added optimistically
       try {
-        await sendRaw(message, projectPath, projectConfig, files, true);
-      } catch (fallbackErr) {
-        console.error('[Chat DEBUG] Fallback also failed:', fallbackErr);
+        await sendRaw(message, projectConfig, files, true);
+      } catch {
         setLoading(false);
         setUploadProgress(null);
       }
     }
-  }, [projectId, activeConv, sendRaw, enqueueEditProposal]);
+  }, [projectId, activeConv, requestContext, sendRaw, enqueueEditProposal]);
 
-  const acceptEdit = useCallback(async (editId: string, projectPath: string) => {
+  const acceptEdit = useCallback(async (editId: string) => {
     const edit = pendingEdits.find(e => e.id === editId);
     if (!edit) return false;
     if (edit.original.length >= 500 && edit.new_content.length < edit.original.length * 0.7) {
@@ -299,12 +308,12 @@ export function useConversations(projectId: string | null) {
       return false;
     }
     try {
-      if (projectPath.startsWith('__paper_agent__:')) {
-        const paperAgentId = projectPath.replace('__paper_agent__:', '');
-        await writeProjectFile(paperAgentId, edit.filename, edit.new_content);
+      if (!requestContext) throw new Error('Project request context is unavailable.');
+      if (requestContext.kind === 'managed') {
+        await writeProjectFile(requestContext.projectId, edit.filename, edit.new_content);
       } else {
         const chapterFilename = edit.filename.replace(/^chapters\//, '');
-        await writeChapter(projectPath, chapterFilename, edit.new_content);
+        await writeChapter(requestContext, chapterFilename, edit.new_content);
       }
       setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'accepted' as const, error: undefined } : e));
       return true;
@@ -315,7 +324,7 @@ export function useConversations(projectId: string | null) {
       } : item));
       return false;
     }
-  }, [pendingEdits]);
+  }, [pendingEdits, requestContext]);
 
   const rejectEdit = useCallback((editId: string) => {
     setPendingEdits(prev => prev.map(e => e.id === editId ? { ...e, status: 'rejected' as const } : e));

@@ -6,6 +6,11 @@ import enUS from './locales/en-US.json';
 const STORAGE_KEY = 'paper-agent-lang';
 const defaultLang = 'zh-CN';
 
+function syncDocumentLanguage(lng: string) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = lng.startsWith('zh') ? 'zh-CN' : 'en-US';
+}
+
 function getInitialLang() {
   if (typeof window === 'undefined') return defaultLang;
   const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -24,9 +29,11 @@ void i18n
     fallbackLng: defaultLang,
     interpolation: { escapeValue: false },
     keySeparator: false
-  });
+  })
+  .then(() => syncDocumentLanguage(i18n.language));
 
 i18n.on('languageChanged', (lng) => {
+  syncDocumentLanguage(lng);
   if (typeof window === 'undefined') return;
   if (lng === 'zh-CN' || lng === 'en-US') {
     window.localStorage.setItem(STORAGE_KEY, lng);

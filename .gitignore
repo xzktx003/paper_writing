@@ -7,7 +7,12 @@ dist
 !.env.example
 .worktrees/
 coverage
+test-results/
+playwright-report/
 *.log
+*.bak
+*.orig
+*~
 papers/
 app/.codegraph/
 app/.tmp-test-home/
@@ -15,6 +20,7 @@ app/.tmp-v8-coverage/
 .dev-runtime
 .paper-agent-runtime/
 .openprism/
+app/apps/backend/.openprism-build.json
 apps/server/.turbo
 apps/web/.turbo
 vibe-kanban

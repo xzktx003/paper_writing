@@ -20,11 +20,26 @@ describe('LLM settings privacy', () => {
     expect(source).not.toContain('apiKey: llmApiKey');
   });
 
-  it('masks config secrets in the public config endpoint', async () => {
+  it('keeps config behind authentication and masks secrets for authenticated responses', async () => {
     const source = await readFile(join(process.cwd(), 'apps/backend/src/index.js'), 'utf8');
+    const authSource = await readFile(join(process.cwd(), 'apps/backend/src/middleware/auth.js'), 'utf8');
     const configSource = await readFile(join(process.cwd(), 'apps/backend/src/config/appConfig.js'), 'utf8');
     expect(source).toContain("fastify.get('/api/config', async () => publicAppConfig(appConfig))");
+    expect(authSource).not.toContain("'GET /api/config'");
     expect(configSource).toContain("llm_api_key: hasLlmApiKey ? MASKED_SECRET : ''");
     expect(configSource).toContain("claude_api_key: hasClaudeApiKey ? MASKED_SECRET : ''");
+    expect(configSource).toContain("draw_image_api_key: hasDrawImageApiKey ? MASKED_SECRET : ''");
+    expect(configSource).toContain('draw_image_api_key_set: hasDrawImageApiKey');
+  });
+
+  it('keeps the Draw image key out of browser storage while allowing an authenticated config save', async () => {
+    const source = await readFile(join(process.cwd(), 'apps/frontend/src/app/components/DrawPanel.tsx'), 'utf8');
+    expect(source).not.toContain("localStorage.getItem('draw_api_settings')");
+    expect(source).not.toContain("localStorage.setItem('draw_api_settings'");
+    expect(source).not.toContain('apiSettings:');
+    expect(source).not.toContain('projectName:');
+    expect(source).not.toContain('?projectName=');
+    expect(source).toContain("authenticatedFetch('/api/config', {");
+    expect(source).toContain('draw_image_api_key: imageSettings.apiKey');
   });
 });

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtemp, rm, readFile, writeFile, mkdir } from 'fs/promises';
+import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import crypto from 'node:crypto';
 import { loadProject, saveProject, createProject, addChapter, reorderChapters, getProjectRoot } from '../apps/backend/src/services/projectService.js';
+import { DATA_DIR } from '../apps/backend/src/config/constants.js';
 
 describe('Project Service', () => {
   let testDir;
@@ -61,7 +63,15 @@ describe('Project Service', () => {
   });
 
   it('getProjectRoot resolves Paper Agent metadata id when directory name differs', async () => {
-    const root = await getProjectRoot('c2b87dfc-af29-42ef-b088-0f28aa9d65c3');
-    expect(root.endsWith('/papers/torq')).toBe(true);
+    const id = crypto.randomUUID();
+    const directoryName = `legacy-readable-${Date.now()}`;
+    const legacyRoot = join(DATA_DIR, directoryName);
+    await mkdir(legacyRoot, { recursive: true });
+    await writeFile(join(legacyRoot, 'project.json'), JSON.stringify({ id, name: 'Legacy readable folder' }));
+    try {
+      expect(await getProjectRoot(id)).toBe(legacyRoot);
+    } finally {
+      await rm(legacyRoot, { recursive: true, force: true });
+    }
   });
 });

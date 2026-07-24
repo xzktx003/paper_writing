@@ -55,7 +55,7 @@
 
 4. 提交前必须完成最小验证
 - 至少运行与改动直接相关的检查；涉及跨端或共享类型时，必须同时验证前后端类型检查。
-- 常用命令包括：`pnpm check`、`pnpm test`、`pnpm lint`、`pnpm format`。
+- 常用命令包括：`npm run check`、`npm run test`、`npm run typecheck`；当前仓库没有独立 lint/format 门禁脚本。
 
 5. 不得破坏现有工作区状态
 - 不得回滚或覆盖与当前任务无关的改动。

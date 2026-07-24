@@ -7,17 +7,8 @@ export class ApiError extends Error {
   }
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('api_token');
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
-}
-
 export async function apiFetch<T = any>(url: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
-    ...getAuthHeaders(),
     ...(options.headers as Record<string, string> || {}),
   };
 

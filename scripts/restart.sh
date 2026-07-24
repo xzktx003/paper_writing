@@ -1,7 +1,7 @@
 #!/bin/sh
 # Restart Paper Writer (backend serves frontend static files)
 # Usage: sh scripts/restart.sh [--no-build|--check-paths]
-# By default, frontend is always rebuilt to ensure latest code is served.
+# By default, the frontend is built before the running release is stopped.
 
 set -e
 
@@ -10,9 +10,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_DIR="$REPO_ROOT/app"
 BACKEND_DIR="$APP_DIR/apps/backend"
 FRONTEND_DIR="$APP_DIR/apps/frontend"
-LOG_FILE="/tmp/paper-writer.log"
-PID_FILE="/tmp/paper-writer.pid"
-PORT=8787
+# shellcheck disable=SC1091
+. "$REPO_ROOT/scripts/load-openprism-env.sh"
+load_openprism_env "$REPO_ROOT"
+
+LOG_FILE="${LOG_FILE:-/tmp/paper-writer.log}"
+PID_FILE="${PID_FILE:-/tmp/paper-writer.pid}"
+PORT="${OPENPRISM_PORT:-${PORT:-8787}}"
+PUBLIC_HOST="${OPENPRISM_PUBLIC_HOST:-127.0.0.1}"
 
 check_dir() {
   if [ ! -d "$1" ]; then
@@ -27,7 +32,43 @@ check_paths() {
   check_dir "$FRONTEND_DIR"
 }
 
+is_paper_writer_supervisor() {
+  pid="$1"
+  cmdline="$(tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+  cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+  case "$cmdline" in
+    *run-server.sh*) [ "$cwd" = "$REPO_ROOT" ] || [ "$cwd" = "$BACKEND_DIR" ] ;;
+    *) return 1 ;;
+  esac
+}
+
 stop_existing_server() {
+  # Stop the lifecycle owner first so it cannot respawn the backend while this
+  # script starts the replacement release.
+  supervisor_pids=""
+  if [ -f "$PID_FILE" ]; then
+    pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [ -n "$pid" ] && is_paper_writer_supervisor "$pid"; then
+      supervisor_pids="$pid"
+    fi
+  fi
+  for pid in $(pgrep -f "run-server\.sh" 2>/dev/null || true); do
+    if is_paper_writer_supervisor "$pid"; then
+      case " $supervisor_pids " in *" $pid "*) ;; *) supervisor_pids="$supervisor_pids $pid" ;; esac
+    fi
+  done
+  for pid in $supervisor_pids; do
+    kill "$pid" 2>/dev/null || true
+  done
+  for pid in $supervisor_pids; do
+    i=0
+    while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 50 ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+  done
+
+  # Clean up a backend left by an interrupted or legacy launcher.
   for pid in $(pgrep -f "node.*src/index.js" 2>/dev/null || true); do
     cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
     if [ "$cwd" = "$BACKEND_DIR" ]; then
@@ -37,18 +78,13 @@ stop_existing_server() {
 }
 
 start_backend() {
-  cd "$BACKEND_DIR"
-  # Trust the Caddy local CA cert (used by the LLM gateway) for native fetch
-  if [ -r "$HOME/.claude-code/caddy-root.crt" ]; then
-    export NODE_EXTRA_CA_CERTS="$HOME/.claude-code/caddy-root.crt"
-  fi
+  cd "$REPO_ROOT"
   if command -v setsid >/dev/null 2>&1; then
-    PORT=$PORT nohup setsid node src/index.js > "$LOG_FILE" 2>&1 &
+    nohup setsid bash "$REPO_ROOT/scripts/run-server.sh" >> "$LOG_FILE" 2>&1 &
   else
-    PORT=$PORT nohup node src/index.js > "$LOG_FILE" 2>&1 &
+    nohup bash "$REPO_ROOT/scripts/run-server.sh" >> "$LOG_FILE" 2>&1 &
   fi
   SERVER_PID=$!
-  printf '%s\n' "$SERVER_PID" > "$PID_FILE"
   cd "$REPO_ROOT"
 }
 
@@ -63,18 +99,18 @@ fi
 echo "=== Paper Writer Restart ==="
 check_paths
 
-# Kill existing process
-echo "[1/4] Stopping existing server..."
-stop_existing_server
-sleep 1
-
-# Build frontend (always by default, skip with --no-build)
+# Build before stopping the current release so a failed build cannot cause
+# avoidable downtime.
 if [ "${1:-}" = "--no-build" ]; then
-  echo "[2/4] Frontend build skipped (--no-build)"
+  echo "[1/4] Frontend build skipped (--no-build)"
 else
-  echo "[2/4] Building frontend..."
+  echo "[1/4] Building frontend..."
   (cd "$FRONTEND_DIR" && npm run build)
 fi
+
+echo "[2/4] Stopping existing supervisor and backend..."
+stop_existing_server
+sleep 1
 
 # Start backend
 echo "[3/4] Starting backend on port $PORT..."
@@ -84,9 +120,17 @@ sleep 4
 # Verify — retry up to 10 times (max ~10s)
 echo "[4/4] Verifying..."
 VERIFY_OK=0
+EXPECTED_BUILD_ID="$(node -e "const fs=require('fs');const p=process.argv[1];process.stdout.write(JSON.parse(fs.readFileSync(p,'utf8')).buildId||'')" "$BACKEND_DIR/.openprism-build.json")"
 for i in $(seq 1 10); do
-  if curl -s -o /dev/null -w '' "http://localhost:$PORT/api/health" 2>/dev/null; then
-    if curl -s "http://localhost:$PORT/api/health" | grep -q '"ok":true'; then
+  HEALTH_JSON="$(curl -fsS "http://127.0.0.1:$PORT/api/health" 2>/dev/null || true)"
+  READY_JSON="$(curl -fsS "http://127.0.0.1:$PORT/api/ready" 2>/dev/null || true)"
+  if [ -n "$HEALTH_JSON" ] && [ -n "$READY_JSON" ]; then
+    if node -e '
+      const health = JSON.parse(process.argv[1]);
+      const ready = JSON.parse(process.argv[2]);
+      const expected = process.argv[3];
+      if (!health.ok || health.build?.id !== expected || health.build?.apiSchemaVersion !== 2 || !ready.ready) process.exit(1);
+    ' "$HEALTH_JSON" "$READY_JSON" "$EXPECTED_BUILD_ID" 2>/dev/null; then
       VERIFY_OK=1
       break
     fi
@@ -98,8 +142,9 @@ echo >&2
 
 if [ "$VERIFY_OK" -eq 1 ]; then
   echo ""
-  echo "  Paper Writer running at http://10.30.0.22:$PORT"
-  echo "  PID: $(cat "$PID_FILE" 2>/dev/null || echo 'unknown')"
+  echo "  Paper Writer running at http://$PUBLIC_HOST:$PORT"
+  echo "  Supervisor PID: $(cat "$PID_FILE" 2>/dev/null || echo "$SERVER_PID")"
+  echo "  Build: $EXPECTED_BUILD_ID"
   echo "  Log: $LOG_FILE"
   echo ""
 else

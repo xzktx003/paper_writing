@@ -2,6 +2,45 @@ import { apiFetch, apiPost, apiDelete } from './fetchClient';
 
 const BASE = '/api';
 
+export type SkillReadiness = 'ready' | 'degraded' | 'unavailable';
+
+export interface SkillRequirement {
+  name?: string;
+  target?: string;
+  path?: string;
+  capability?: string;
+  scope?: 'skill' | 'project';
+  required: boolean;
+  source?: string;
+}
+
+export interface SkillExecutionInfo {
+  requirements: {
+    commands: SkillRequirement[];
+    credentials: SkillRequirement[];
+    network: SkillRequirement[];
+    files: SkillRequirement[];
+    providerCapabilities: SkillRequirement[];
+  };
+  sideEffects: string[];
+  costClass: 'free' | 'low' | 'medium' | 'high';
+  metadataSource: 'manifest' | 'inferred';
+  readiness: SkillReadiness;
+  checks: { kind: string; name: string; required: boolean; status: string; provider?: string; scope?: string }[];
+  dryRun: { status: string; checkedAt: string; checks?: SkillExecutionInfo['checks'] };
+  lastRun: {
+    status: string;
+    outcome: 'provider_completed' | 'provider_failed' | 'provider_skipped' | 'tests_passed' | 'tests_failed' | 'tests_skipped' | 'execution_completed' | 'execution_failed' | 'unknown';
+    verificationStatus: string;
+    objectiveStatus: string;
+    kind: string;
+    checkedAt: string;
+    durationMs?: number;
+    summary?: string;
+    scope?: { projectId?: string; conversationId?: string };
+  };
+}
+
 export interface SkillInfo {
   name: string;
   display_name: string;
@@ -38,6 +77,7 @@ export interface SkillInfo {
     importedAt: string;
     updatedAt: string;
   };
+  execution?: SkillExecutionInfo;
 }
 
 export interface ImportSkillResult {
@@ -77,7 +117,22 @@ export async function getSkill(name: string): Promise<SkillInfo> {
   return apiFetch(`${BASE}/skills/${name}`);
 }
 
-export async function createSkill(data: { name: string; display_name: string; description: string; type: string; trigger: string; prompt: string }): Promise<{ ok: boolean; skill?: SkillInfo; error?: string }> {
+export async function createSkill(data: {
+  name: string;
+  display_name: string;
+  display_name_zh?: string;
+  description: string;
+  description_zh?: string;
+  type: string;
+  categories?: string[];
+  category_zh?: string;
+  subcategory?: string;
+  subcategory_zh?: string;
+  tags?: string[];
+  trigger: string;
+  prompt: string;
+  url?: string;
+}): Promise<{ ok: boolean; skill?: SkillInfo; error?: string }> {
   return apiPost(`${BASE}/skills`, data);
 }
 
@@ -116,4 +171,8 @@ export async function getSkillPackageTree(name: string, subdir?: string): Promis
 
 export async function runSkillTests(name: string, timeout?: number): Promise<SkillTestResult> {
   return apiPost(`${BASE}/skills/${name}/run-tests`, { timeout });
+}
+
+export async function dryRunSkill(name: string): Promise<{ ok: boolean; skill: SkillInfo }> {
+  return apiPost(`${BASE}/skills/${name}/dry-run`, {});
 }

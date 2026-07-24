@@ -342,7 +342,9 @@ test('buildPaperWorkbenchContext returns skill recommendations and RAG health', 
     assert.equal(context.uiModel.evidenceDrawer.status, 'healthy');
     assert.ok(context.uiModel.panels.some(panel => panel.id === 'evidence-pack' && panel.statusLabel_zh === '证据包可用'));
     assert.equal(context.uiModel.evidenceDrawer.count, context.rag.evidence.results.length);
-    assert.ok(context.uiModel.panels.some(panel => panel.id === 'skill-picker' && panel.statusLabel_zh === '文献综述'));
+    assert.ok(context.uiModel.panels.some(panel => (
+      panel.id === 'skill-picker' && panel.statusLabel_zh === context.skills.recommendations[0].skill.display_name_zh
+    )));
     assert.ok(context.uiModel.panels.some(panel => panel.id === 'acceptance-checklist' && panel.tone === 'danger'));
     assert.ok(context.uiModel.panels.some(panel => panel.id === 'context-brief' && panel.statusLabel_zh === '需要确认上下文'));
     assert.ok(context.uiModel.panels.some(panel => panel.id === 'draft-plan' && panel.statusLabel_zh === '计划需先确认'));

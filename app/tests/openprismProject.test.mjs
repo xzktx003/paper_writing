@@ -1,80 +1,90 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import Fastify from 'fastify';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
-const BASE = 'http://localhost:8787';
-const PROJECT_ID = 'c2b87dfc-af29-42ef-b088-0f28aa9d65c3';
+import { DATA_DIR } from '../apps/backend/src/config/constants.js';
+import { registerProjectRoutes } from '../apps/backend/src/routes/projects.js';
 
-describe('Paper Agent Project Loading (Editor Page Flow)', () => {
-  it('GET /api/projects/:id/tree returns file tree', async () => {
-    const res = await fetch(`${BASE}/api/projects/${PROJECT_ID}/tree`);
-    const data = await res.json();
-    expect(res.status).toBe(200);
-    expect(data.items).toBeDefined();
-    expect(Array.isArray(data.items)).toBe(true);
-    expect(data.items.length).toBeGreaterThan(0);
+describe('Paper Agent project loading editor flow', () => {
+  let app;
+  let project;
+  let projectRoot;
+
+  beforeAll(async () => {
+    app = Fastify({ logger: false });
+    registerProjectRoutes(app);
+    await app.ready();
+
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: `Editor Flow ${Date.now()}` },
+    });
+    expect(create.statusCode).toBe(200);
+    project = create.json();
+    projectRoot = join(DATA_DIR, project.directoryName);
+    await mkdir(join(projectRoot, 'sec'), { recursive: true });
+    for (const [name, content] of [
+      ['1.abstract.tex', '\\begin{abstract}Test abstract\\end{abstract}'],
+      ['2.introduction.tex', '\\section{Introduction}'],
+      ['3.method.tex', '\\section{Method}'],
+      ['4.results.tex', '\\section{Results}'],
+      ['5.conclusion.tex', '\\section{Conclusion}'],
+    ]) await writeFile(join(projectRoot, 'sec', name), content);
   });
 
-  it('tree contains sec/*.tex chapter files', async () => {
-    const res = await fetch(`${BASE}/api/projects/${PROJECT_ID}/tree`);
-    const data = await res.json();
-    const secFiles = data.items.filter(
-      f => f.type === 'file' && /^sec\/[^/]+\.tex$/.test(f.path)
+  afterAll(async () => {
+    await app.close();
+    if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it('returns a project-relative file tree containing chapter files', async () => {
+    const response = await app.inject({ method: 'GET', url: `/api/projects/${project.id}/tree` });
+    expect(response.statusCode).toBe(200);
+    const secFiles = response.json().items.filter(
+      item => item.type === 'file' && /^sec\/[^/]+\.tex$/.test(item.path),
     );
-    expect(secFiles.length).toBeGreaterThanOrEqual(5);
-    expect(secFiles.some(f => f.path === 'sec/1.abstract.tex')).toBe(true);
-    expect(secFiles.some(f => f.path === 'sec/2.introduction.tex')).toBe(true);
+    expect(secFiles).toHaveLength(5);
+    expect(secFiles.map(item => item.path)).toContain('sec/1.abstract.tex');
+    expect(secFiles.map(item => item.path)).toContain('sec/2.introduction.tex');
   });
 
-  it('tree does not include nested sec/ from subdirectories', async () => {
-    const res = await fetch(`${BASE}/api/projects/${PROJECT_ID}/tree`);
-    const data = await res.json();
-    const secFiles = data.items.filter(
-      f => f.type === 'file' && /^sec\/[^/]+\.tex$/.test(f.path)
-    );
-    for (const f of secFiles) {
-      expect(f.path).not.toContain('MSAVQ');
-    }
+  it('reads project metadata and chapter content through managed projectId routes', async () => {
+    const metaResponse = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${project.id}/file?path=project.json`,
+    });
+    expect(metaResponse.statusCode).toBe(200);
+    expect(JSON.parse(metaResponse.json().content)).toMatchObject({ id: project.id, name: project.name });
+
+    const chapterResponse = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${project.id}/file?path=${encodeURIComponent('sec/1.abstract.tex')}`,
+    });
+    expect(chapterResponse.statusCode).toBe(200);
+    expect(chapterResponse.json().content).toContain('abstract');
   });
 
-  it('GET /api/projects/:id/file reads project.json', async () => {
-    const res = await fetch(`${BASE}/api/projects/${PROJECT_ID}/file?path=project.json`);
-    const data = await res.json();
-    expect(res.status).toBe(200);
-    const meta = JSON.parse(data.content);
-    expect(meta.id).toBe(PROJECT_ID);
-    expect(meta.name).toBeTruthy();
-  });
-
-  it('GET /api/projects/:id/file reads a tex chapter', async () => {
-    const res = await fetch(`${BASE}/api/projects/${PROJECT_ID}/file?path=${encodeURIComponent('sec/1.abstract.tex')}`);
-    const data = await res.json();
-    expect(res.status).toBe(200);
-    expect(data.content).toContain('abstract');
-  });
-
-  it('PUT /api/projects/:id/file writes and reads back', async () => {
-    const testContent = '% test write ' + Date.now();
-    const writeRes = await fetch(`${BASE}/api/projects/${PROJECT_ID}/file`, {
+  it('writes and deletes a temporary chapter through the managed file API', async () => {
+    const testContent = `% test write ${Date.now()}`;
+    const writeResponse = await app.inject({
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: 'sec/__test_tmp.tex', content: testContent }),
+      url: `/api/projects/${project.id}/file`,
+      payload: { path: 'sec/__test_tmp.tex', content: testContent },
     });
-    expect(writeRes.status).toBe(200);
+    expect(writeResponse.statusCode).toBe(200);
 
-    const readRes = await fetch(`${BASE}/api/projects/${PROJECT_ID}/file?path=${encodeURIComponent('sec/__test_tmp.tex')}`);
-    const readData = await readRes.json();
-    expect(readData.content).toBe(testContent);
+    const readResponse = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${project.id}/file?path=${encodeURIComponent('sec/__test_tmp.tex')}`,
+    });
+    expect(readResponse.json().content).toBe(testContent);
 
-    // Cleanup
-    await fetch(`${BASE}/api/projects/${PROJECT_ID}/file?path=${encodeURIComponent('sec/__test_tmp.tex')}`, {
+    const deleteResponse = await app.inject({
       method: 'DELETE',
+      url: `/api/projects/${project.id}/file?path=${encodeURIComponent('sec/__test_tmp.tex')}`,
     });
-  });
-
-  it('SPA fallback serves index.html for /editor/:id', async () => {
-    const res = await fetch(`${BASE}/editor/${PROJECT_ID}`);
-    const html = await res.text();
-    expect(res.status).toBe(200);
-    expect(html).toContain('<div id="root">');
-    expect(html).toContain('script');
+    expect(deleteResponse.statusCode).toBe(200);
   });
 });
