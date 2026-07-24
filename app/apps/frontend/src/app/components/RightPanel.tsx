@@ -7,6 +7,7 @@ import { SkillPanel } from './SkillPanel';
 import { InlineSkillsSelector } from './SkillsSelector';
 import { ConversationSummary, Conversation, structuredReview, detectAntiAi, detectAntiAiDeep, detectAntiAiGPTZero, verifyCitations, crossCheckCitations } from '../api/conversationApi';
 import { PendingEdit } from '../hooks/useConversations';
+import type { ConversationActivity } from '../utils/conversationActivity';
 import { RagDocumentSelector } from './RagDocumentSelector';
 import type { SkillInfo } from '../api/skillApi';
 import { getPaperAgentProjectId } from '../utils/previewAssets';
@@ -46,6 +47,7 @@ interface Props {
   activeConv: Conversation | null;
   loading: boolean;
   uploadProgress?: { percent: number; stage: string } | null;
+  activities?: ConversationActivity[];
   chapters: { file: string }[];
   skills: SkillInfo[];
   projectFiles?: { path: string; type: 'file' | 'dir' }[];
@@ -71,7 +73,7 @@ interface Props {
   onRejectEdit?: (editId: string) => void;
 }
 
-export function RightPanel({ conversations, activeConv, loading, uploadProgress, chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onUploadAttachment, onRemoveAttachment, onSetRagDocuments, onSetActiveSkills, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function RightPanel({ conversations, activeConv, loading, uploadProgress, activities = [], chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onUploadAttachment, onRemoveAttachment, onSetRagDocuments, onSetActiveSkills, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const { t } = useTranslation();
   const managedProjectId = getPaperAgentProjectId(projectPath);
   const requestContext = useMemo(() => managedProjectId
@@ -447,7 +449,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
 
           {activeConv ? (
             <>
-              <ChatView messages={activeConv.history} loading={loading} pendingEdits={pendingEdits} onAcceptEdit={onAcceptEdit} onRejectEdit={onRejectEdit} />
+              <ChatView messages={activeConv.history} loading={loading} activities={activities} pendingEdits={pendingEdits} onAcceptEdit={onAcceptEdit} onRejectEdit={onRejectEdit} />
               <div 
                 style={{ 
                   borderTop: '1px solid var(--border)', 

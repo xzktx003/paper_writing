@@ -63,4 +63,22 @@ describe('GET /api/compile/latest', () => {
     expect(missing.statusCode).toBe(200);
     expect(missing.json()).toEqual({ ok: true, found: false });
   });
+
+  it('prefers the synchronized root PDF when both root and internal copies exist', async () => {
+    await mkdir(path.join(projectRoot, '.compile', 'output'), { recursive: true });
+    await writeFile(path.join(projectRoot, '.compile', 'output', 'main.pdf'), Buffer.from('%PDF-internal'));
+    await writeFile(path.join(projectRoot, 'main.pdf'), Buffer.from('%PDF-root'));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/compile/latest?projectId=managed-id&mainFile=main.tex',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(expect.objectContaining({
+      found: true,
+      path: 'main.pdf',
+      pdfUrl: '/api/projects/managed-id/blob?path=main.pdf',
+    }));
+  });
 });

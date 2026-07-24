@@ -133,9 +133,11 @@ PORT=8787
 
 你也可以将 `OPENPRISM_LLM_BASE_URL` 指向本地或内网中的 OpenAI 兼容服务。设置页还可选择 `anthropic`、`codex-cli`、`claude-cli` 或 `copilot-cli`。CLI Provider 只使用服务器已安装且已登录的固定命令，前端不能指定 executable 或参数模板；启用前必须配置 `OPENPRISM_API_TOKEN`，并在设置页输入同一个服务访问令牌。令牌只保存在当前浏览器会话的 `sessionStorage`，不会写入 `localStorage`。旁边的“系统能力”Tab 会以只读、缓存方式诊断 Provider、项目数据根、TeX/Pandoc、PDF/OCR、Skills、tmux 和外部检索，不会自动登录或调用模型。详细边界见 [Agent Provider 架构](docs/agent_provider_architecture.md)和[系统能力诊断架构](docs/system_capabilities_architecture.md)。请不要提交 `.env`，该文件已被 `.gitignore` 忽略。
 
-Provider 设置页顶部提供四步快速向导，明确区分 Paper Writer 的“服务器访问令牌”和模型提供方的“API Key”：HTTP 提供方需要 endpoint 与凭据，CLI 提供方依赖服务器已安装且已登录的命令；保存前由用户显式运行连接测试。这里的 CLI 仍是只读 Chat Provider，需要修改文件的 CLI 任务必须进入独立的快照、Diff、Accept/Reject Task Agent 工作流。
+Provider 设置页顶部提供四步快速向导，明确区分 Paper Writer 的“服务器访问令牌”和模型提供方的“API Key”：两者必须独立配置，修改服务器令牌不会改写模型 Key。HTTP 提供方需要 endpoint 与凭据；Codex CLI 除了使用自身登录，也可安全复用已经验证通过的 OpenAI-compatible Base URL/API Key，由后端以任务专用环境变量提供凭据。保存前由用户显式运行连接测试。这里的 CLI 仍是只读 Chat Provider，需要修改文件的 CLI 任务必须进入独立的快照、Diff、Accept/Reject Task Agent 工作流。
 
-在受管理项目中打开“AI 助手 → 任务”，即可使用可审查的 CLI Task Agent。后端会在项目外创建隔离快照，以固定文件权限运行选定 CLI，并返回新增、修改、删除文件、unified diff 和执行来源信息。Reject 永远不会修改原项目；Accept 在用户确认已审查全部文件后才可用，并会先检查原项目是否发生漂移，再通过持久化回滚日志应用变更。任务历史可跨页面刷新和后端重启恢复。详细说明见 [CLI Task Agent](docs/cli_task_agent.md)。
+在受管理项目中打开“AI 助手 → 任务”，即可使用可审查的 CLI Task Agent。后端会在项目外创建隔离快照，以固定文件权限运行选定 CLI，并返回新增、修改、删除文件、unified diff 和执行来源信息。`.venv`、`venv`、`node_modules`、版本控制目录、本地缓存、编译产物和 Paper Writer 运行状态不会复制进任务快照；被纳入快照的其他路径仍严格拒绝符号链接。Reject 永远不会修改原项目；Accept 在用户确认已审查全部文件后才可用，并会先检查原项目是否发生漂移，再通过持久化回滚日志应用变更。任务历史可跨页面刷新和后端重启恢复。详细说明见 [CLI Task Agent](docs/cli_task_agent.md)。
+
+LaTeX 或 Markdown/Pandoc 编译成功后，最终 PDF 会同时保存到隐藏的 `.compile/output/` 稳定缓存和论文工程根目录，例如 `main.tex` 对应 `main.pdf`。根目录副本会显示在项目文件中，并作为“最终 PDF”的优先预览来源；失败编译不会覆盖上一次成功产物。
 
 ### 4. 启动开发环境
 
@@ -242,6 +244,10 @@ npm start
 - **Chat**：讨论论文、解释文本、分析错误，不默认修改文件；可通过只读工具查看受管项目内任意安全文件。
 - **Agent**：允许模型读取整个项目的安全文件并提出跨文件修改；修改会先显示差异，等待你接受或拒绝。
 - **Tools**：用于更明确的工具调用，例如检索、文件读取、编译、引文核验和审稿。
+
+三种模式的对话消息均按安全的 GitHub Flavored Markdown 显示，并通过 KaTeX 排版公式。行内公式使用 `$...$`，独立公式将 `$$` 分隔符分别放在公式前后的独立行；代码块中的公式源码保持原样，不会执行模型返回的原始 HTML。
+
+发送消息后，Chat 会显示默认折叠的“工作过程”。折叠状态下可以看到当前阶段和步骤数；手动展开后可查看请求准备、上下文/RAG、工具调用与结果摘要、回答生成、完成或失败等真实执行活动。这里不是模型私有思维链：工具参数与结果会在服务器端先脱敏和截断，文件正文、修改全文、API Key、Token 和完整命令输出不会展示。
 
 建议流程：
 

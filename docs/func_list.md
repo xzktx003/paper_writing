@@ -16,7 +16,7 @@
 - LLM 执行层提供统一 AgentProvider registry，正式支持 OpenAI-compatible API、Anthropic API、Codex CLI、Claude Code CLI 和 GitHub Copilot CLI；每个 Provider 暴露 metadata/capabilities、probe、模型列表能力声明、invoke/stream、cancel 和 provenance。设置页支持 Provider 选择、CLI 安装/认证状态测试、模型加载或手填，以及保存/测试的 loading、success、error 状态。
 - CLI Provider 的 executable 与参数数组完全由后端固定，工作目录只能由 managed `projectId` 经 Project Locator 解析；子进程使用最小环境白名单、超时/Abort、进程树终止和 stdout/stderr/exit status 记录。未配置 `OPENPRISM_API_TOKEN` 时 CLI probe/invoke/cancel fail-closed，前端显示不可用。
 - 论文工作区新增独立“任务”Tab，为 Codex CLI、Claude Code CLI 和 GitHub Copilot CLI 提供可审查的文件修改任务；普通 Chat 继续使用只读参数，不会因 Task Agent 上线而获得写权限。
-- CLI Task Agent 使用 managed `projectId` 在 `<OPENPRISM_DATA_DIR>/.openprism-cli-tasks` 创建项目外 `base/work` 快照，拒绝 symlink 和 `project.json` 修改；CLI 结束后展示 added/modified/deleted 文件、文本 unified diff、Provider/模型/版本/参数摘要/exit code。用户必须勾选已审查全部文件才能 Accept，也可 Reject 或取消运行中的进程树。
+- CLI Task Agent 使用 managed `projectId` 在 `<OPENPRISM_DATA_DIR>/.openprism-cli-tasks` 创建项目外 `base/work` 快照；`.venv`、`venv`、`node_modules`、VCS 目录、缓存、`.compile` 与 Paper Writer 运行状态目录不会进入快照和 source fingerprint，被纳入快照的其他路径仍拒绝 symlink，`project.json` 仍禁止修改。CLI 结束后展示 added/modified/deleted 文件、文本 unified diff、Provider/模型/版本/参数摘要/exit code。用户必须勾选已审查全部文件才能 Accept，也可 Reject 或取消运行中的进程树。
 - CLI Task Accept 会校验完整 source fingerprint；原项目在任务期间发生任何漂移均返回 409。应用过程持久化 rollback journal，中途失败恢复已经移动或安装的文件；Reject 只记录决策，原项目字节不变。任务历史可跨页面刷新和后端重启恢复。
 - 前端服务访问令牌只保存在 `sessionStorage`，同源 `/api/` fetch 会统一附加 Bearer；Terminal、文件 watcher 和 EventSource 等浏览器不能自定义握手头的通道使用受限 query-token 兼容。保存 Provider 配置必须等待后端成功，失败时设置弹窗保持打开。
 - 设置页成功应用服务器访问令牌后，会立即重新加载父页面的项目列表、候选目录和模板，不要求用户刷新页面；清除令牌时同步清空浏览器内已加载的受保护项目元数据。设置弹窗受当前视口高度约束，标题、关闭按钮和操作区保持可达，长内容在弹窗正文内部滚动。
@@ -30,8 +30,10 @@
 - 编译返回结构化 `success` / `warning` / `failed` 诊断；产生 PDF 但达到 Tectonic 六轮上限时显示“成功但有警告”，不再伪装成无条件成功。
 - LaTeX 缺包自动安装默认关闭：普通单文件/全文编译不会执行 `tlmgr search` 或 `tlmgr install`。只有调用方在本次编译请求中显式发送布尔值 `allowPackageInstall: true` 才允许最多受限次数的缺包查找、安装和重试；字符串 `"true"`、数字或缺省值均不授权。当前 UI 默认调用不发送该字段，因此保持 fail-closed。
 - Tectonic 在同一项目内持久复用 `.compile/tectonic-cache` 依赖缓存；每次运行仍使用隔离输出目录，只有本次真实生成 PDF 才更新稳定预览，避免旧产物掩盖失败。
+- 成功的 LaTeX 与 Markdown/Pandoc 编译会把完全相同的 PDF 同步保存到项目根目录 `<主文件名>.pdf` 和隐藏的 `.compile/output/` 稳定缓存；两处都使用临时文件后原子替换，避免半写文件或跟随同名 symlink。最终 PDF 查询优先展示根目录副本，失败编译不会覆盖已有成功产物。
 - 编译工具链默认原样继承服务进程的 `PATH` / `LD_LIBRARY_PATH`，不再猜测用户 HOME、Conda 或其他主机目录；非标准 TeX/Pandoc 路径、动态库路径和 Tectonic executable 分别通过 `OPENPRISM_COMPILE_PATH`、`OPENPRISM_COMPILE_LD_LIBRARY_PATH`、`OPENPRISM_TECTONIC_BINARY` 显式配置，并同时作用于直接 LaTeX 与 Markdown/Pandoc 编译。
 - LaTeX HTML 区明确标为 Quick approximate preview，无法解析的引用、命令和图片使用结构化降级占位；Final PDF 只代表真实 LaTeX 编译结果。
+- Quick Preview 与 Final PDF 保持严格隔离：Quick Preview 永远根据编辑器当前 LaTeX 源码在浏览器中即时生成近似 HTML，即使已有编译 PDF 也不会被替换；Final PDF 才读取上一次显式编译的认证 PDF。打开或切回 Quick Preview 不发起 PDF 请求，也不触发编译。
 - LaTeX 快速预览不再运行时请求 Google Fonts、jsDelivr 或其他远程字体样式表，使用随构建发布的 KaTeX 资源和系统字体回退；静态契约与打开真实 `.tex` 文件的隔离 Playwright 同时禁止远程字体/CDN 请求。
 - Draw.io 嵌入地址由服务器 `OPENPRISM_DRAWIO_EMBED_URL` 配置，浏览器只接受当前 iframe 的精确 origin，并以同一精确 origin 发送消息。外部编辑器在 6 秒内未就绪或加载失败时，工作区显示错误、重试、自托管提示、离线 XML 编辑和 XML 下载，不再永久停留在 Loading。
 - 编辑器路由按需加载 Draw、RAG、Review、Citations、Pipeline、Anti-AI、Terminal、编辑器与预览引擎；Vite 对 EditorPage 初始 chunk 设置 500 KiB 硬预算。
@@ -152,6 +154,7 @@
 - Paper Writer RAG 索引器会识别未填写或证据字段不完整的 Markdown 人工摘录模板，给文档打上 `contentQuality.status = "template-empty"` 或 `"manual-note-incomplete"`，不为其生成 RAG chunks，也不会把模板字段名、缺页码事实或缺原文摘录的弱笔记当成可引用证据；工作台文档可用性和修复向导会把这类文档标为引用写作阻塞项，提示用户补全可核对的 `Fact`、`Evidence text` 和 `Page/section` 后重新上传或重建索引。
 - Paper Writer RAG 上下文接口返回兼容旧字段的 `context`，同时返回结构化 `evidence`，包含查询、上下文文本、命中片段、来源路径、行号和评分，供前端证据抽屉展示引用来源。
 - Paper Writer AI 接口支持显式或自动 RAG 证据注入：请求携带 `rag.enabled` 或用户问题明显涉及文献、证据、PDF、引用时，后端会检索项目证据库，将命中片段注入模型上下文，并在普通响应、SSE `rag_context` 事件和 `done` 事件中返回 `ragEvidence`；旧的 `ragContext` 字符串仍保留兼容。
+- Paper Writer Chat 在模型运行期间提供默认折叠的“工作过程”面板：折叠标题持续显示步骤数和当前阶段，展开后按顺序展示请求准备、附件/上下文处理、RAG、工具调用、工具完成、回答生成、完成或失败状态。该面板是可验证执行活动，不展示模型私有思维链；工具参数和结果在后端先脱敏、截断和内容抑制，文件正文、修改全文、Token/API Key 与完整命令输出不会进入浏览器活动事件。
 - Paper Writer AI RAG 注入新增通用 `ragUsageGuidance`，普通 `/api/ai/send` 和 `/api/ai/stream` 在启用 RAG 时会把“只使用命中片段、事实陈述带来源编号、不得推断作者/年份/venue/DOI、区分证据和推测”等规则注入模型消息，并在响应字段返回该指导文本，避免绕过工作台时丢失引用边界。
 - Paper Writer Skill 列表和详情接口都返回中文主标题、英文副标题、中文分类、标签、任务意图、输入、输出、适用/不适用场景、风险等级和上下文需求等 UI 元数据；新增 `/api/skills/recommend`，可根据用户自然语言任务返回推荐 skill、推荐理由和缺失上下文提示。后端同时提供 Skill 分类分组数据，便于前端渲染“写作 / 文献 / 引用 / 实验 / 图表 / 投稿”等筛选 chips。
 - Paper Writer 工作台聚合接口新增 `skills.navigator` Skill 导航模型，会把全部 Skill 整理成中文分类、标签 chips、风险筛选、上下文需求筛选和中文优先 Skill 卡片；卡片包含输入、输出、适用/不适用场景、任务模板和推荐高亮，帮助用户按论文任务理解 Skill，而不是记英文 Skill id。
@@ -305,9 +308,11 @@
 - 2026-07-22（当前复核）：Skills 运行账本区分 Provider 请求结果与目标验证结果：`outcome` 使用 `provider_completed/provider_failed/provider_skipped`，另有 `verificationStatus` 和 `objectiveStatus`；成功返回模型不再被 UI 描述成论文目标已通过。
 - 2026-07-22（当前复核）：Skill 管理将用户创建的 YAML Skill 写入数据根下的 `.skills/`，与内置 Skill 目录隔离；创建会持久化 categories、中文名称/描述、中文分类和子分类，要求合法 slug 并拒绝重复名称。内置 Skill 在 API 和 UI 两层均受保护，删除自定义 Skill 前需确认并显示成功/失败反馈；Provider 设置保存前必须完成当前配置的连接验证。
 - 2026-07-22（当前复核）：CLI Task Agent 的 Provider 列表现在区分 `installed`、`authenticated`、`authStatus` 和真正的 `available`；列表使用受控只读探针，不因服务 Token 未配置而隐瞒安装状态。前端默认优先选择已验证可用的 Provider，不可用项显示原因并禁止创建任务。
+- 2026-07-24：Codex CLI Task 可直接复用 Paper Writer 已配置的 OpenAI-compatible Base URL、API Key 和模型。后端以 `/models` 验证远端凭据，并为 Codex 子进程注入固定 Responses Provider；Key 只映射到专用环境变量，不进入 argv、任务记录或输出，兼容网关强制使用 HTTP Responses 而不是 OpenAI WebSocket。未配置应用级 endpoint/Key 时才检查 Codex 自身登录；`login status` 仅表示本地存在 API Key 时仍保持 `unknown`，不制造认证假阳性。
 - 2026-07-24：HTTP Provider 的“加载模型”支持使用设置表单中尚未保存的 endpoint 与 API Key，通过受保护的 `POST /api/providers/:providerId/models` 获取当前连接的模型列表；如果表单保持已保存地址且 Key 输入框为空，则安全复用服务器已保存凭证。修改 endpoint 后必须重新输入模型 Key。受信任的 LAN 模型地址仍需通过 `OPENPRISM_PROVIDER_ALLOWED_HOSTS` 精确放行。
 - 2026-07-24：Draw 设置页支持前端保存独立的生图 Base URL、API Key 和模型，也可显式复用语言模型的 Base URL/API Key；凭据只进入受认证的后端配置接口，不写入 localStorage。最终生图 Prompt 始终是可编辑文本框，既可接收 AI 草稿也可直接手写，生成请求严格执行最终文本；OpenAI-compatible 图片接口同时支持 URL 与 `b64_json` 响应，结果保存到当前项目 `draw/`。
 - 2026-07-24：编辑器“最终 PDF”标签改为只读加载最近一次持久化编译产物，点击标签或切换预览不再触发 LaTeX 编译；重新编译只能由“编译/重新编译最终 PDF”按钮显式触发。Skill 选择器支持在同一弹层中复选多个可用 Skill，并通过“添加已选”一次性加入当前会话或 Draw 工作流。
 - 2026-07-24：AI Chat/Agent/Tools/翻译流式响应使用分阶段 Provider 超时：响应头默认等待 60 秒，为推理模型和长章节的首 token 延迟留出空间；建立响应后只在连续 120 秒没有新数据时中断，持续生成的长回答不设总时长上限。OpenAI-compatible SDK 自动重试显式限制为 1 次，避免短超时被隐式放大为三次失败；两项超时可由 `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` 和 `OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS` 配置。流式错误会明确失败并保留已生成的中断回答，不会静默当成成功或自动重复提交用户消息。
 - 2026-07-24：AI 会话支持项目级只读文件上下文。Chat、Agent、Tools 均可通过 `list_project_files` 和 `read_project_file` 浏览、读取受管项目中任意安全文本/PDF文件，不再局限于 `sec/chapters`；新建对话默认将编辑器当前选中文件设为“首要参考文件”并优先注入，但模型仍可读取其他相关项目文件。项目范围模式可不指定首要文件，自由模式仍保留；敏感、隐藏、越界、符号链接和不适合作为模型文本的文件不会暴露。
 - 2026-07-24：中央预览翻译输出可渲染的中文 Markdown：章节结构转换为 Markdown 标题，行内/独立公式分别使用 `$...$` / `$$...$$` 并通过 KaTeX 展示。译文按项目文件路径保存在当前工作区会话中，切换文件后返回仍显示原译文；“翻译”标签优先读取缓存，只有显式点击“重新翻译”才清空并替换当前文件结果。
+- 2026-07-24：AI Chat/Agent/Tools 的已完成消息和流式消息支持安全 GFM + KaTeX 渲染；行内 `$...$` 与独立 `$$` 公式均可直接显示，原始 HTML 不执行，代码块保持源码。对话系统提示统一要求模型使用可渲染的 Markdown 数学分隔符；暗色主题下公式跟随聊天正文颜色，超宽块公式可横向滚动。

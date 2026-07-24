@@ -206,6 +206,7 @@ export function Layout() {
                 activeConv={app.activeConv}
                 loading={app.convLoading}
                 uploadProgress={app.uploadProgress}
+                activities={app.conversationActivities}
                 chapters={app.project.config?.chapters || []}
                 skills={app.skills}
                 onSelect={app.selectConversation}

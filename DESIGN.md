@@ -1,8 +1,8 @@
 # Design
 
 ## Source of truth
-- Status: Draft
-- Last refreshed: 2026-06-13
+- Status: Active
+- Last refreshed: 2026-07-25
 - Primary product surfaces:
   - Coding Kanban: multi-agent terminal/workspace console under `apps/`.
   - Paper Writer: paper authoring backend and shipped frontend bundle under `app/`.
@@ -16,6 +16,13 @@
   - `app/apps/backend/src/services/skillEngine.js`
   - `app/apps/backend/src/routes/ai.js`
   - `app/apps/backend/skills/*.yaml`
+  - `app/apps/frontend/src/app/components/CenterPanel.tsx`
+  - `app/apps/frontend/src/app/components/RenderedPreviewPane.tsx`
+  - `app/apps/frontend/src/app/components/LatexPreview.tsx`
+  - `app/apps/frontend/src/app/components/ChatView.tsx`
+  - `app/apps/frontend/src/app/hooks/useConversations.ts`
+  - `app/apps/frontend/src/app/utils/conversationActivity.ts`
+  - `docs/template_compile_preview_contract.md`
 
 ## Brand
 - Personality:
@@ -91,6 +98,10 @@
   - Chat explains, Agent inspects and proposes edits, Tools can execute controlled file/code actions.
 - Principle 4: Private by default.
   - Local private folders like `papers/` must never be uploaded or indexed without explicit project-level action.
+- Principle 5: Preview modes must preserve their semantic boundary.
+  - Quick Preview is a source-driven browser rendering that updates with the current LaTeX text and may approximate unsupported commands, references, packages, fonts, layout, and figures.
+  - Final PDF is the last explicitly compiled LaTeX artifact. Opening it reads the existing PDF and must not trigger compilation.
+  - The presence of a compiled PDF must never replace or mask Quick Preview.
 - Tradeoffs:
   - PDF parsing should be slower but truthful rather than fast and metadata-only.
   - Skill UI should initially use curated metadata over fully automatic taxonomy if metadata quality is uneven.
@@ -124,6 +135,10 @@
   - Chat/Agent/Tools mode guidance in `ai.js`.
   - Existing skill YAML files as source data.
 - New/changed components:
+  - Editor preview tabs:
+    - `Quick Preview` always renders current source through `RenderedPreviewPane` / `LatexPreview`.
+    - `Final PDF` alone may render `AuthenticatedPdf` and expose explicit compile/recompile actions.
+    - Switching to `Final PDF` may load the previous artifact but never compiles implicitly.
   - Skill metadata schema:
     - `display_name_zh`
     - `subtitle_en`
@@ -152,10 +167,16 @@
     - Shows injected file context.
     - Shows RAG snippets used in the answer.
     - Shows omitted/failed documents.
+  - Chat work-process disclosure:
+    - Represents verifiable request phases, RAG preparation, tool calls, bounded tool-result summaries, answer generation, completion, and failure; it is not a private chain-of-thought viewer.
+    - Remains collapsed by default for each request. Its summary shows the step count and current activity; the user explicitly expands the ordered timeline.
+    - Tool inputs and results are summarized and redacted on the server before SSE delivery. File contents, edit bodies, credentials, tokens, and unrestricted command output must not appear in the disclosure.
+    - Failed and interrupted activities remain visible so users can identify where execution stopped.
 - Variants and states:
   - Skill card states: recommended, selected, disabled, missing required context, advanced, imported.
   - RAG document states: uploaded, parsing, parsed, indexed, failed, stale, too large, metadata-only.
   - Chat response states: no evidence, evidence-backed, proposed edit, tool result, needs user approval.
+  - Chat work-process states: preparing, running, tool active, completed, failed; completed steps retain duration when available.
 - Token/component ownership:
   - Product labels and skill taxonomy should live in backend metadata and be returned by `/api/skills`.
   - Frontend should not hard-code skill definitions beyond rendering categories and states.
@@ -191,6 +212,7 @@
   - `POST /api/ai/send` and `POST /api/ai/stream` accept optional `rag`.
   - When RAG is used, responses retain old `ragContext` string and add `ragEvidence` with the structured evidence object.
   - Streaming emits `rag_context` with `{ evidence }`, then includes `ragEvidence` again in `done`.
+  - Streaming `tool_use` and `tool_result` events expose only `{ name, activity }`, where `activity` is a bounded, server-redacted summary. Raw tool input and raw tool output are not a frontend contract.
 - RAG document state:
   - Document rows should render `parseStatus`, `parser`, `extractedTextChars`, `chunks`, `extractionError`, and `warnings`.
   - `parsed` means extracted text was indexed; `metadata-only` means the file is saved but not searchable as full text; `failed` means parsing failed and the error should be shown.
@@ -208,6 +230,7 @@
 - Screen-reader semantics:
   - Skill recommendation reasons should be readable as text, not only color.
   - Parser status should announce progress and errors.
+  - The work-process summary is a real button with `aria-expanded` and `aria-controls`; it must be keyboard operable and must not auto-expand while the model is running.
 - Reduced motion and sensory considerations:
   - Avoid continuous loading animations in editor and evidence panels.
 
@@ -226,6 +249,7 @@
 - Loading:
   - RAG parsing should show current phase: upload, text extraction, chunking, indexing.
   - Chat should show whether it is waiting on model, RAG search, or tool call.
+  - Chat work stays compact: the collapsed header shows the current activity, and the complete ordered trace appears only after explicit expansion.
 - Empty:
   - Empty RAG library should offer "上传 PDF/文献" and "从 arXiv/CrossRef 搜索".
   - Empty skill search should show task examples.
@@ -235,6 +259,7 @@
 - Success:
   - After PDF indexing, show extracted character count, chunk count, page range coverage, and example snippets.
   - After selecting a skill, show the active skill chip in the chat header.
+  - Quick Preview shows source-derived HTML even when a compiled PDF exists; Final PDF shows the authenticated compiled artifact and its cached/fresh status.
 - Disabled:
   - Disable RAG-backed answer toggle when no indexed chunks exist.
   - Disable edit-producing agent actions until a project/file context is selected.
@@ -256,6 +281,7 @@
   - Do not say "PDF 已索引" unless extracted text was actually indexed.
   - Use "仅保存文件信息，未抽取正文" for metadata-only uploads.
   - Skill descriptions should answer "适合什么时候用" before internal mechanics.
+  - Use “工作过程” for execution activity. Do not label activity logs as “思维链” or imply access to hidden model reasoning; model-authored `<think>` content, when present, is labeled only as a model-provided reasoning summary.
 
 ## Implementation constraints
 - Framework/styling system:

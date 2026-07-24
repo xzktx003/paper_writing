@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  access,
   mkdtemp,
   mkdir,
   readFile,
@@ -202,6 +203,29 @@ describe('CLI Task Agent isolation and review lifecycle', () => {
     });
   });
 
+  it('excludes local virtual environments and dependency caches without weakening symlink rejection', async () => {
+    const { projectRoot, taskRoot, service } = await fixture();
+    await mkdir(path.join(projectRoot, '.venv', 'bin'), { recursive: true });
+    await writeFile(path.join(projectRoot, '.venv', 'pyvenv.cfg'), 'home = /usr/bin\n');
+    await symlink('/usr/bin/python3', path.join(projectRoot, '.venv', 'bin', 'python'));
+    await mkdir(path.join(projectRoot, 'node_modules', 'example'), { recursive: true });
+    await symlink('/tmp', path.join(projectRoot, 'node_modules', 'example', 'cache-link'));
+
+    const created = await service.createTask({
+      projectId: 'demo',
+      providerId: 'mock-cli',
+      prompt: 'Revise the paper without copying local environments',
+    });
+    const reviewed = await service.waitForTask(created.id, { statuses: ['waiting-review'] });
+
+    expect(reviewed.status).toBe('waiting-review');
+    await expect(access(path.join(taskRoot, created.id, 'base', '.venv'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(access(path.join(taskRoot, created.id, 'work', 'node_modules'))).rejects.toMatchObject({ code: 'ENOENT' });
+
+    await writeFile(path.join(projectRoot, '.venv', 'local-change.txt'), 'ignored drift\n');
+    await expect(service.acceptTask('demo', created.id)).resolves.toMatchObject({ status: 'accepted' });
+  });
+
   it('cancels the full CLI process and persists a cancelled terminal state', async () => {
     const { service } = await fixture();
     const created = await service.createTask({
@@ -235,12 +259,27 @@ describe('CLI Task Agent isolation and review lifecycle', () => {
   it('uses provider-specific fixed write permissions without enabling arbitrary shell access', () => {
     const prompt = 'fixed prompt';
     const snapshotRoot = '/isolated/snapshot';
-    const codex = CLI_TASK_PROVIDER_SPECS['codex-cli'].buildArgs({ prompt, model: '', snapshotRoot });
+    const codex = CLI_TASK_PROVIDER_SPECS['codex-cli'].buildArgs({
+      prompt,
+      model: '',
+      snapshotRoot,
+      env: {
+        OPENPRISM_LLM_BASE_URL: 'https://llm.example.test/v1',
+        OPENPRISM_LLM_API_KEY: 'configured-endpoint-key',
+      },
+    });
     expect(codex).toEqual(expect.arrayContaining(['--sandbox', 'workspace-write', '--ignore-user-config', '--ignore-rules', '-C', snapshotRoot]));
+    expect(codex).toEqual(expect.arrayContaining([
+      '-c', 'model_provider="openprism_task"',
+      '-c', 'model_providers.openprism_task.base_url="https://llm.example.test/v1"',
+      '-c', 'model_providers.openprism_task.env_key="OPENPRISM_CODEX_API_KEY"',
+    ]));
+    expect(codex.join(' ')).not.toContain('configured-endpoint-key');
     expect(codex).not.toContain('danger-full-access');
 
     const claude = CLI_TASK_PROVIDER_SPECS['claude-cli'].buildArgs({ prompt, model: '', snapshotRoot });
-    expect(claude).toEqual(expect.arrayContaining(['--permission-mode', 'dontAsk', '--tools', 'Read,Edit,Write', '--allowedTools', 'Read,Edit,Write']));
+    expect(claude).toEqual(expect.arrayContaining(['--print', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'dontAsk', '--tools', 'Read,Edit,Write', '--allowedTools', 'Read,Edit,Write']));
+    expect(JSON.parse(claude[claude.indexOf('--mcp-config') + 1])).toEqual({ mcpServers: {} });
     expect(claude.join(' ')).not.toMatch(/Bash|bypassPermissions|dangerously/);
 
     const copilot = CLI_TASK_PROVIDER_SPECS['copilot-cli'].buildArgs({ prompt, model: '', snapshotRoot });

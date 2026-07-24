@@ -1,6 +1,6 @@
 # CLI Task Agent 架构与安全契约
 
-更新日期：2026-07-22
+更新日期：2026-07-24
 
 ## 目标
 
@@ -52,13 +52,16 @@ managed projectId
 - `base/` 记录任务创建时的原始文件和 SHA-256 tree fingerprint。
 - `work/` 是 CLI 唯一工作目录，也是生成最终 Diff 和 Accept 数据的来源。
 - Task storage 的真实路径必须位于 managed project 真实路径之外。
-- Task storage 和项目树中的 symlink 均被拒绝；socket、device 等非普通文件也被拒绝。
+- `.git` / `.hg` / `.svn`、`.venv` / `venv`、`node_modules`、Python/测试缓存、`.compile`、`.openprism` 和 `.paper-writer` 目录不会进入 `base/`、`work/`、Diff 或 source fingerprint；这些机器相关内容的变化不会阻塞 Accept。
+- 上述排除项必须是真实目录；如果排除名称本身是 symlink，仍会被拒绝。被纳入快照的其他路径中的 symlink 也全部拒绝，socket、device 等非普通文件同样拒绝。
 - `project.json` 是项目身份文件，Task Agent 不允许修改。
 - API 响应不返回 task root、base root、snapshot root 或原项目绝对路径。
 
 ## Provider 固定权限
 
 ### Codex CLI
+
+当 Paper Writer 已配置 `OPENPRISM_LLM_BASE_URL` 与 `OPENPRISM_LLM_API_KEY` 时，Codex Task 会为该次子进程注入固定的自定义 Responses Provider：Base URL 通过无 shell 的参数数组传入，API Key 只映射为任务专用环境变量 `OPENPRISM_CODEX_API_KEY`，不会进入 argv、任务 provenance、stdout 或持久化任务 JSON。Provider 强制 `wire_api="responses"` 并关闭 WebSocket，避免兼容网关被 Codex 默认的 OpenAI WebSocket 路径绕过。未配置这组应用凭据时，才回退到 Codex 自身的登录状态。
 
 ```text
 codex exec --json --ephemeral --sandbox workspace-write
@@ -72,10 +75,11 @@ codex exec --json --ephemeral --sandbox workspace-write
 
 ```text
 --permission-mode dontAsk
+--verbose
 --tools Read,Edit,Write
 --allowedTools Read,Edit,Write
 --disable-slash-commands
---strict-mcp-config --mcp-config '{}'
+--strict-mcp-config --mcp-config '{"mcpServers":{}}'
 ```
 
 不开放 Bash、MCP、浏览器或网络工具。
@@ -94,6 +98,8 @@ codex exec --json --ephemeral --sandbox workspace-write
 不会使用 `--allow-all`、`--allow-all-paths`、`--allow-all-tools` 或 `--yolo`。
 
 三种 Provider 都使用参数数组、`shell: false`、最小环境白名单和独立进程组。客户端任务文本只作为一个参数传入，不会拼接为 shell 命令。
+
+Provider 可用性采用保守判定。使用 Paper Writer 的 OpenAI-compatible 配置时，后端会以受控的 `/models` 请求验证 endpoint 与 Key，只有远端接受凭据才把 Codex 标记为可用；不会使用或记录响应正文。没有应用级 endpoint/Key 时，Codex 的 `login status` 如果只报告“本地配置了 API Key”，仍不能证明该 Key 被远端 API 接受，因此状态保持未知并提示重新认证。服务器访问令牌 `OPENPRISM_API_TOKEN` 与模型 API Key 是两个独立凭据，禁止互相覆盖。
 
 ## Diff 与审查
 
@@ -132,7 +138,7 @@ Accept 前，后端重新扫描原项目，并与任务创建时的完整 baseli
 
 ## 测试
 
-自动化不调用真实付费 CLI。固定 mock CLI 覆盖：项目外快照、symlink 拒绝、三类 Diff、Reject 哈希不变、Accept、source drift、应用中途失败回滚、进程树取消、历史恢复、managed projectId、Chat 只读参数，以及 Playwright 的“创建 → Diff → Reject → 再创建 → Accept → 刷新历史”。
+自动化不调用真实付费 CLI。固定 mock CLI 覆盖：项目外快照、`.venv` / `node_modules` 排除、排除目录内 symlink 不阻塞任务、快照范围内 symlink 拒绝、三类 Diff、Reject 哈希不变、Accept、source drift、应用中途失败回滚、进程树取消、历史恢复、managed projectId、Chat 只读参数，以及 Playwright 的“创建 → Diff → Reject → 再创建 → Accept → 刷新历史”。
 
 主要回归：
 

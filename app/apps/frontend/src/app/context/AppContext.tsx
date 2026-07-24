@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useProject, ProjectConfig } from '../hooks/useProject';
 import { useConversations } from '../hooks/useConversations';
+import type { ConversationActivity } from '../utils/conversationActivity';
 import { readChapter, writeChapter, readCodeFile } from '../api/projectApi';
 import { listSkills, reloadSkills, SkillInfo } from '../api/skillApi';
 import { isImagePath, isPdfPath, isPreviewableTextPath } from '../utils/previewAssets';
@@ -24,6 +25,7 @@ interface AppState {
   activeConv: any;
   convLoading: boolean;
   uploadProgress: { percent: number; stage: string } | null;
+  conversationActivities: ConversationActivity[];
   refreshConversations: () => Promise<void>;
   selectConversation: (id: string) => Promise<void>;
   createConversation: (data: any) => Promise<unknown>;
@@ -320,6 +322,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     activeConv: convHook.activeConv,
     convLoading: convHook.loading,
     uploadProgress: convHook.uploadProgress,
+    conversationActivities: convHook.activities,
     refreshConversations: convHook.refresh,
     selectConversation: convHook.select,
     createConversation: convHook.create,
@@ -340,7 +343,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
   }), [
     project, open, create, openFiles, activeFileIndex, openFile,
     updateFileContent, saveFile, closeFile,
-    convHook.conversations, convHook.activeConv, convHook.loading, convHook.uploadProgress,
+    convHook.conversations, convHook.activeConv, convHook.loading, convHook.uploadProgress, convHook.activities,
     convHook.refresh, convHook.select, convHook.create, convHook.remove,
     convHook.rename, convHook.uploadAttachment, convHook.removeAttachment, convHook.setRagDocuments, convHook.setActiveSkills,
     convHook.pendingEdits, convHook.rejectEdit,

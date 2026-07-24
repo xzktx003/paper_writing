@@ -263,6 +263,7 @@ export async function deleteFile(id: string, filePath: string) {
 export interface CompileResult {
   ok: boolean;
   pdfUrl?: string;
+  rootPdfPath?: string;
   log?: string;
   errors?: string[];
   warnings?: string[];
@@ -351,7 +352,7 @@ export function compileProject(payload: {
   engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latexmk' | 'tectonic' | 'auto';
   allowPackageInstall?: boolean;
 }) {
-  return request<{ ok: boolean; pdf?: string; log?: string; status?: 'success' | 'warning' | 'failed'; exitCode?: number; warnings?: CompileDiagnostic[]; errors?: CompileDiagnostic[]; engine?: string; error?: string; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
+  return request<{ ok: boolean; pdf?: string; log?: string; status?: 'success' | 'warning' | 'failed'; exitCode?: number; warnings?: CompileDiagnostic[]; errors?: CompileDiagnostic[]; engine?: string; error?: string; pdfUrl?: string; rootPdfPath?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
     `/api/compile`,
     {
       method: 'POST',
@@ -381,7 +382,7 @@ export function compileFullPaper(payload: {
   editorMode?: 'markdown' | 'latex';
   allowPackageInstall?: boolean;
 }) {
-  return request<{ ok: boolean; pdf?: string; log?: string; status?: 'success' | 'warning' | 'failed'; exitCode?: number; warnings?: CompileDiagnostic[]; errors?: CompileDiagnostic[]; engine?: string; error?: string; mode?: string; mainFile?: string; generatedMain?: boolean; pdfUrl?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
+  return request<{ ok: boolean; pdf?: string; log?: string; status?: 'success' | 'warning' | 'failed'; exitCode?: number; warnings?: CompileDiagnostic[]; errors?: CompileDiagnostic[]; engine?: string; error?: string; mode?: string; mainFile?: string; generatedMain?: boolean; pdfUrl?: string; rootPdfPath?: string; availableEngines?: string[]; autoInstalledPackages?: string[] }>(
     `/api/compile/full-paper`,
     {
       method: 'POST',

@@ -27,6 +27,7 @@
 
 - Tectonic 的 `XDG_CACHE_HOME` 固定到受管项目的 `.compile/tectonic-cache`，同一项目的多次编译复用同一个格式文件、bundle index 和宏包缓存。
 - 每次编译仍创建独立的 `.compile/<run-id>` 输出目录；只有本次运行真实生成 PDF 才会更新 `.compile/output`。缓存依赖不等于缓存成功结果，旧 PDF 不得让失败编译返回成功。
+- 每次成功编译会将同一 PDF 原子同步到项目根目录 `<main-basename>.pdf` 和内部稳定目录 `.compile/output/<main-basename>.pdf`；根目录副本是用户可见的最终产物，最新 PDF 查询优先返回它。失败编译不得覆盖任一现有成功副本。
 - 不在应用外部增加 LaTeX/BibTeX 重跑循环，也不对完整项目目录做高风险结果短路。Tectonic 自身认为需要六轮时允许它完成内部流程，并将六轮上限作为结构化 warning 返回。
 - 缓存目录只保存 Tectonic 依赖数据，不作为论文源文件、编译状态或最终 PDF 的权威来源。
 

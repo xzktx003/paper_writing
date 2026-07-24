@@ -21,4 +21,13 @@ describe('Final PDF cached-preview contract', () => {
     expect(source).toContain("compileAllResult?.ok ? t('Recompile') : t('Compile')");
     expect(source).toContain("t('Recompile final PDF')");
   });
+
+  it('never replaces the LaTeX quick preview with a previously compiled PDF', async () => {
+    const source = await readFile(new URL('../apps/frontend/src/app/components/CenterPanel.tsx', import.meta.url), 'utf8');
+
+    expect(source).toContain("previewTab === 'pdf' && compiledPdfUrl");
+    expect(source).not.toContain("(previewTab === 'pdf' || previewTab === 'preview') && compiledPdfUrl");
+    expect(source).toContain("previewTab === 'preview'");
+    expect(source).toContain('<RenderedPreviewPane');
+  });
 });

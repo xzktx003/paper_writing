@@ -86,7 +86,10 @@ describe('AI conversation modes', () => {
   });
 
   it('adds explicit mode guidance to the system prompt', () => {
-    expect(appendModeGuidance('base prompt', 'chat')).toContain('Mode: Chat');
+    const chatGuidance = appendModeGuidance('base prompt', 'chat');
+    expect(chatGuidance).toContain('Mode: Chat');
+    expect(chatGuidance).toContain('inline math as `$...$`');
+    expect(chatGuidance).toContain('display math with `$$` delimiters on separate lines');
     expect(appendModeGuidance('base prompt', 'agent')).toContain('Use propose_edit');
     expect(appendModeGuidance('base prompt', 'agent')).toContain('do not directly write files');
     expect(appendModeGuidance('base prompt', 'agent')).toContain('COMPLETE updated file content');

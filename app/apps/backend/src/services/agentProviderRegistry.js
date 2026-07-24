@@ -17,6 +17,43 @@ const PROVIDER_ENV_KEYS = {
   'copilot-cli': new Set(['COPILOT_GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN', 'COPILOT_HOME']),
 };
 
+const CODEX_CONFIGURED_PROVIDER_ID = 'openprism_task';
+const CODEX_CONFIGURED_API_KEY_ENV = 'OPENPRISM_CODEX_API_KEY';
+
+function configuredCodexEndpoint(sourceEnv = process.env) {
+  const apiKey = String(sourceEnv.OPENPRISM_LLM_API_KEY || '').trim();
+  const rawBaseUrl = String(sourceEnv.OPENPRISM_LLM_BASE_URL || '').trim();
+  if (!apiKey || !rawBaseUrl) return null;
+  try {
+    const url = new URL(rawBaseUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    url.pathname = url.pathname.replace(/\/+$/, '');
+    url.search = '';
+    url.hash = '';
+    return { apiKey, baseUrl: url.toString().replace(/\/$/, '') };
+  } catch {
+    return null;
+  }
+}
+
+function tomlString(value) {
+  return JSON.stringify(String(value));
+}
+
+export function buildCodexProviderConfigArgs(sourceEnv = process.env) {
+  const configured = configuredCodexEndpoint(sourceEnv);
+  if (!configured) return [];
+  const prefix = `model_providers.${CODEX_CONFIGURED_PROVIDER_ID}`;
+  return [
+    '-c', `model_provider=${tomlString(CODEX_CONFIGURED_PROVIDER_ID)}`,
+    '-c', `${prefix}.name=${tomlString('Paper Writer configured endpoint')}`,
+    '-c', `${prefix}.base_url=${tomlString(configured.baseUrl)}`,
+    '-c', `${prefix}.env_key=${tomlString(CODEX_CONFIGURED_API_KEY_ENV)}`,
+    '-c', `${prefix}.wire_api=${tomlString('responses')}`,
+    '-c', `${prefix}.supports_websockets=false`,
+  ];
+}
+
 export const CLI_PROVIDER_SPECS = Object.freeze({
   'codex-cli': Object.freeze({
     id: 'codex-cli',
@@ -24,8 +61,9 @@ export const CLI_PROVIDER_SPECS = Object.freeze({
     executable: 'codex',
     versionArgs: ['--version'],
     authArgs: ['login', 'status'],
-    buildArgs: ({ prompt, model }) => [
+    buildArgs: ({ prompt, model, env }) => [
       'exec', '--json', '--ephemeral', '--sandbox', 'read-only',
+      ...buildCodexProviderConfigArgs(env),
       ...(model ? ['-m', model] : []),
       prompt,
     ],
@@ -140,6 +178,8 @@ export function filterProviderEnv(sourceEnv = process.env, providerId) {
   for (const key of allowed) {
     if (typeof sourceEnv[key] === 'string') result[key] = sourceEnv[key];
   }
+  const configured = providerId === 'codex-cli' ? configuredCodexEndpoint(sourceEnv) : null;
+  if (configured) result[CODEX_CONFIGURED_API_KEY_ENV] = configured.apiKey;
   return result;
 }
 
@@ -177,6 +217,19 @@ function unsupported(message) {
   return Object.assign(new Error(message), { statusCode: 400, code: 'PROVIDER_CAPABILITY_UNSUPPORTED' });
 }
 
+function interpretAuthProbe(spec, authResult) {
+  const detail = (authResult.stdout || authResult.stderr).trim().slice(0, 500);
+  if (authResult.code !== 0) return { supported: true, available: false, detail };
+  if (spec.id === 'codex-cli' && /logged in using an api key/i.test(detail)) {
+    return {
+      supported: true,
+      available: null,
+      detail: 'Codex has an API key configured, but `codex login status` does not validate that the key is accepted by the API. Re-authenticate Codex before selecting it for tasks.',
+    };
+  }
+  return { supported: true, available: true, detail };
+}
+
 function promptFromRequest(input = {}) {
   if (input.prompt) return String(input.prompt);
   const parts = [];
@@ -200,7 +253,7 @@ function createProcessRunner({ spawnImpl, killTree, sourceEnv, active }) {
     const requestId = String(input.requestId || crypto.randomUUID());
     const timeoutMs = Math.max(250, Math.min(Number(input.timeoutMs) || (probe ? PROBE_TIMEOUT_MS : DEFAULT_TIMEOUT_MS), 10 * 60_000));
     const cwd = probe ? process.cwd() : await input.projectRootResolver(String(input.projectId || ''), { allowMissing: false });
-    const args = probe ? input.args : spec.buildArgs({ prompt: promptFromRequest(input), model: input.model || '' });
+    const args = probe ? input.args : spec.buildArgs({ prompt: promptFromRequest(input), model: input.model || '', env: sourceEnv });
 
     return new Promise((resolve, reject) => {
       let stdout = '';
@@ -280,6 +333,7 @@ export function createAgentProviderRegistry(options = {}) {
   const spawnImpl = options.spawnImpl || spawn;
   const killTree = options.killTree || terminateProcessTree;
   const sourceEnv = options.env || process.env;
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
   const projectRootResolver = options.projectRootResolver || getProjectRoot;
   const apiTokenConfigured = options.apiTokenConfigured ?? Boolean(process.env.OPENPRISM_API_TOKEN);
   const active = new Map();
@@ -307,13 +361,32 @@ export function createAgentProviderRegistry(options = {}) {
       throw error;
     }
     let auth = { supported: Boolean(spec.authArgs), available: null, detail: spec.authArgs ? 'Status check did not complete.' : 'CLI does not expose a non-interactive auth status command.' };
-    if (spec.authArgs) {
+    const configuredEndpoint = providerId === 'codex-cli' ? configuredCodexEndpoint(sourceEnv) : null;
+    if (configuredEndpoint) {
+      try {
+        const response = await fetchImpl(`${configuredEndpoint.baseUrl}/models`, {
+          method: 'GET',
+          headers: { authorization: `Bearer ${configuredEndpoint.apiKey}` },
+          signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        });
+        response.body?.cancel?.().catch?.(() => {});
+        auth = {
+          supported: true,
+          available: response.ok,
+          detail: response.ok
+            ? 'Credentials for the configured OpenAI-compatible endpoint were accepted.'
+            : `The configured OpenAI-compatible endpoint rejected its credentials (HTTP ${response.status}).`,
+        };
+      } catch (error) {
+        auth = {
+          supported: true,
+          available: false,
+          detail: `The configured OpenAI-compatible endpoint could not be reached: ${String(error?.message || error).slice(0, 200)}`,
+        };
+      }
+    } else if (spec.authArgs) {
       const authResult = await run(spec, { args: spec.authArgs, timeoutMs: PROBE_TIMEOUT_MS, projectRootResolver }, { probe: true });
-      auth = {
-        supported: true,
-        available: authResult.code === 0,
-        detail: (authResult.stdout || authResult.stderr).trim().slice(0, 500),
-      };
+      auth = interpretAuthProbe(spec, authResult);
     }
     if (!spec.authArgs) {
       const providerEnv = filterProviderEnv(sourceEnv, providerId);

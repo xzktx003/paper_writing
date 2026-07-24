@@ -1,6 +1,7 @@
 import { apiFetch, apiPost, apiPut, apiDelete } from './fetchClient';
 import { getServerAccessToken } from '../../api/serverAccess';
 import { managedProjectRequest, projectRequestBody, type ProjectRequestContext } from './projectRequestContext';
+import type { StreamActivitySummary } from '../utils/conversationActivity';
 
 const BASE = '/api';
 
@@ -129,8 +130,9 @@ export async function sendMessageStream(
   files: AttachedFileData[] | undefined,
   callbacks: {
     onToken: (text: string) => void;
-    onToolUse?: (name: string, input: any) => void;
-    onToolResult?: (name: string, result: string) => void;
+    onToolUse?: (name: string, activity?: StreamActivitySummary) => void;
+    onToolResult?: (name: string, activity?: StreamActivitySummary) => void;
+    onRagContext?: (sourceCount: number) => void;
     onEditProposal?: (proposal: EditProposalData) => void;
     onDone: (fullText: string) => void;
     onError: (message: string) => void;
@@ -166,8 +168,9 @@ export async function sendMessageStream(
         const data = JSON.parse(dataStr);
         switch (eventType) {
           case 'token': callbacks.onToken(data.text || ''); break;
-          case 'tool_use': callbacks.onToolUse?.(data.name, data.input); break;
-          case 'tool_result': callbacks.onToolResult?.(data.name, data.result || ''); break;
+          case 'tool_use': callbacks.onToolUse?.(data.name, data.activity); break;
+          case 'tool_result': callbacks.onToolResult?.(data.name, data.activity); break;
+          case 'rag_context': callbacks.onRagContext?.(data.evidence?.sources?.length || 0); break;
           case 'edit_proposal': callbacks.onEditProposal?.(data); break;
           case 'done':
             finished = true;

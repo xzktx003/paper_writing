@@ -142,7 +142,9 @@ The Projects sidebar separates **All Projects**, **Active**, **Archived**, and *
 
 The Provider tab explicitly states that model setup is optional and separate from ordinary project/file editing. It separates the Paper Writer **server access token** from a model provider **API key**, explains that HTTP providers need an endpoint and credential while CLI providers depend on a server-installed and already signed-in executable, and asks users to run the opt-in connection test before saving Provider settings. CLI providers on this screen remain read-only Chat providers; a file-changing CLI task must use the separate snapshot/Diff/Accept/Reject Task Agent workflow.
 
-Inside a managed project, open **AI Assistant → Tasks** to use the reviewable CLI Task Agent. The backend creates an isolated snapshot outside the project, runs the selected CLI with fixed file permissions, and returns additions, modifications, deletions, unified diffs, and execution provenance. Reject never changes the project. Accept is disabled until every changed file has been reviewed; it then checks that the original project has not drifted and applies changes with a persisted rollback journal. Task history survives refreshes and backend restarts. See [CLI Task Agent](docs/cli_task_agent.md).
+Inside a managed project, open **AI Assistant → Tasks** to use the reviewable CLI Task Agent. The backend creates an isolated snapshot outside the project, runs the selected CLI with fixed file permissions, and returns additions, modifications, deletions, unified diffs, and execution provenance. Codex can use its own login or reuse the application's verified OpenAI-compatible endpoint through a fixed Responses provider; the API key is passed only in a task-specific child-process environment variable and never appears in argv or task metadata. Local environments and generated state—including `.venv`, `venv`, `node_modules`, version-control directories, caches, compile output, and Paper Writer runtime state—are excluded from snapshots; symbolic links remain forbidden everywhere else in the included tree. Reject never changes the project. Accept is disabled until every changed file has been reviewed; it then checks that the original project has not drifted and applies changes with a persisted rollback journal. Task history survives refreshes and backend restarts. See [CLI Task Agent](docs/cli_task_agent.md).
+
+After a successful LaTeX or Markdown/Pandoc compilation, Paper Writer stores identical PDF copies in the internal `.compile/output/` cache and at the project root—for example, `main.tex` produces `main.pdf`. The root copy is visible in the project files and is preferred by the Final PDF lookup. Failed compilations do not replace the last successful artifacts.
 
 ### 4. Start development mode
 
@@ -259,6 +261,10 @@ The full-paper compiler detects a main source, chooses a compatible engine, runs
 - **Chat**: explanation and discussion without proposing file changes; it can inspect safe files anywhere in the managed project through read-only tools.
 - **Agent**: drafting, rewriting, review, and proposed edits. It can inspect safe files across the project, while changes appear as diffs for acceptance or rejection.
 - **Tools**: tasks that need controlled command execution or project tools.
+
+Messages in all three modes render as safe GitHub Flavored Markdown with KaTeX math. Use `$...$` for inline formulas and put the opening and closing `$$` delimiters on separate lines for display formulas. Math source inside code fences stays literal, and model-provided raw HTML is not executed.
+
+After a message is sent, Chat shows a collapsed **Work process** disclosure. Its summary reports the current phase and step count; expanding it reveals verifiable request preparation, context/RAG work, tool calls and bounded result summaries, answer generation, completion, or failure. This is not private model chain-of-thought. Tool activity is redacted and truncated on the server, and file bodies, full edits, API keys, tokens, and unrestricted command output are not exposed.
 
 Recommended flow:
 

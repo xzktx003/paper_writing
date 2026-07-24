@@ -65,6 +65,26 @@ export { SUPPORTED_ENGINES };
  
 // Engines that need multiple passes + bibtex for citations
 const MULTI_PASS_ENGINES = ['pdflatex', 'xelatex', 'lualatex'];
+
+async function writePdfAtomically(targetPath, buffer) {
+  const temporaryPath = `${targetPath}.${crypto.randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(temporaryPath, buffer);
+    await fs.rename(temporaryPath, targetPath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function persistCompiledPdfCopies({ projectRoot, outputDir, base, buffer }) {
+  const fileName = `${path.basename(base)}.pdf`;
+  const persistentPdf = path.join(outputDir, fileName);
+  const rootPdf = safeJoin(projectRoot, fileName);
+  await writePdfAtomically(persistentPdf, buffer);
+  await writePdfAtomically(rootPdf, buffer);
+  return { persistentPdf, rootPdf, rootPdfPath: fileName };
+}
  
 const COMPILE_TIMEOUT_MS = 240_000; // 4 minutes per pass
 const MAX_AUTO_INSTALL_ATTEMPTS = 5;
@@ -460,9 +480,9 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
     const buffer = await fs.readFile(pdfPath);
     pdfBase64 = buffer.toString('base64');
  
-    // Persist PDF to stable output path (survives cleanup)
-    const persistentPdf = path.join(outputDir, `${base}.pdf`);
-    await fs.writeFile(persistentPdf, buffer);
+    // Keep an internal stable copy for build infrastructure and a synchronized
+    // project-root copy that is visible to users and external tooling.
+    await persistCompiledPdfCopies({ projectRoot, outputDir, base, buffer });
   } catch {
     pdfBase64 = '';
   }
@@ -537,7 +557,8 @@ Note: ${mainFile} not found. Searching for a main file with \documentclass...
     exitCode: code ?? 0,
     synctex,
     phases,
-    pdfUrl: `/api/projects/${projectId}/blob?path=.compile/output/${base}.pdf`,
+    pdfUrl: `/api/projects/${projectId}/blob?path=${encodeURIComponent(`${base}.pdf`)}`,
+    rootPdfPath: `${base}.pdf`,
     engine,
     autoInstalledPackages: _autoInstalledPackages,
   };

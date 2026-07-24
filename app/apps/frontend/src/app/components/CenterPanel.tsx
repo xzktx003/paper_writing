@@ -648,8 +648,8 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                     </div>
                     {/* Preview content */}
                     <div style={{ flex: 1, overflow: 'auto' }}>
-                      {(previewTab === 'pdf' || previewTab === 'preview') && compiledPdfUrl ? (
-                        // Show compiled PDF when available (Overleaf-style)
+                      {previewTab === 'pdf' && compiledPdfUrl ? (
+                        // Final PDF is isolated from the source-driven quick preview.
                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                           <div style={{ padding: '6px 12px', background: 'var(--panel-muted)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>

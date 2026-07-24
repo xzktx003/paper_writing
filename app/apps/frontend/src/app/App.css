@@ -4071,6 +4071,21 @@ textarea.input {
   color: #1a1a1a !important;
 }
 
+.chat-markdown-body .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+[data-theme="cyber-tech"] .chat-markdown-body .katex,
+[data-theme="primer-dark"] .chat-markdown-body .katex,
+[data-theme="dracula"] .chat-markdown-body .katex,
+[data-theme="cyber-tech"] .chat-markdown-body .katex *,
+[data-theme="primer-dark"] .chat-markdown-body .katex *,
+[data-theme="dracula"] .chat-markdown-body .katex * {
+  color: var(--text) !important;
+}
+
 .markdown-body a:hover {
   text-decoration: underline;
 }

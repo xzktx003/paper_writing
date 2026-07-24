@@ -49,6 +49,7 @@ vi.mock('fs', async (importOriginal) => {
         return '';
       }),
       writeFile: vi.fn(async () => {}),
+      rename: vi.fn(async () => {}),
       copyFile: vi.fn(async () => {}),
       rm: vi.fn(async () => {}),
     },
@@ -208,9 +209,18 @@ describe('compileService', () => {
       expect(result.warnings).toEqual([]);
       expect(result.pdf).toBeTruthy();
       expect(typeof result.pdf).toBe('string');
+      expect(result.rootPdfPath).toBe('main.pdf');
       // Verify it's valid base64
       expect(() => Buffer.from(result.pdf, 'base64')).not.toThrow();
       expect(result.log).toContain('compile output');
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.stringMatching(/\/\.compile\/output\/main\.pdf\.[^.]+\.tmp$/),
+        '/tmp/test-project/.compile/output/main.pdf',
+      );
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.stringMatching(/\/main\.pdf\.[^.]+\.tmp$/),
+        '/tmp/test-project/main.pdf',
+      );
     });
 
     it('calls spawn with correct arguments for pdflatex', async () => {

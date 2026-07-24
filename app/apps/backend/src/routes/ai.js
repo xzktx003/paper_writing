@@ -13,6 +13,7 @@ import { resolveManagedProjectRequest } from '../services/managedProjectContext.
 import { diffLines } from 'diff';
 import { buildRagEvidence, buildRagUsageGuidance } from '../services/paperRagService.js';
 import { extractPdfText } from '../services/pdfService.js';
+import { summarizeToolResult, summarizeToolUse } from '../services/aiActivityTrace.js';
 
 export function normalizeAppliedSkillNames(groups = []) {
   const names = [];
@@ -197,7 +198,8 @@ export function appendModeGuidance(systemPrompt, mode) {
     ].join(' '),
     tools: 'Mode: Tools. Use available tools for multi-step tasks, including controlled code/ file work when the user asks for it. Report tool actions and results clearly.',
   }[mode] || 'Mode: Unknown. Ask the user to choose Chat, Agent, or Tools.';
-  return [systemPrompt, guidance].filter(Boolean).join('\n\n');
+  const responseFormatGuidance = 'Format explanatory responses as GitHub Flavored Markdown. Write inline math as `$...$` and display math with `$$` delimiters on separate lines so the chat UI can render formulas. Do not wrap formulas in code fences unless you are discussing their literal source.';
+  return [systemPrompt, guidance, responseFormatGuidance].filter(Boolean).join('\n\n');
 }
 
 export function buildConversationHistory(conv, maxMessages = 30, maxChars = 60000) {
@@ -588,11 +590,11 @@ export function registerAIRoutes(fastify) {
           signal: abortController.signal,
           onToken: forwardToken,
           onToolUse: async (name, input) => {
-            sendEvent('tool_use', { name, input });
+            sendEvent('tool_use', { name, activity: summarizeToolUse(name, input) });
             return await executeTool(name, input, resolvedPath);
           },
           onToolResult: (name, result) => {
-            sendEvent('tool_result', { name, result: typeof result === 'string' ? result.slice(0, 2000) : String(result).slice(0, 2000) });
+            sendEvent('tool_result', { name, activity: summarizeToolResult(name, result) });
           },
         });
         await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: result.fullText });
@@ -612,17 +614,17 @@ export function registerAIRoutes(fastify) {
           signal: abortController.signal,
           onToken: forwardToken,
           onToolUse: async (name, input) => {
-            sendEvent('tool_use', { name, input });
+            sendEvent('tool_use', { name, activity: summarizeToolUse(name, input) });
             return await executeTool(name, input, resolvedPath);
           },
           onToolResult: (name, result) => {
             const editProposal = parseEditProposal(name, result);
             if (editProposal) {
               sendEvent('edit_proposal', editProposal);
-              sendEvent('tool_result', { name, result: `Edit proposal ready for ${editProposal.filename}` });
+              sendEvent('tool_result', { name, activity: summarizeToolResult(name, result) });
               return;
             }
-            sendEvent('tool_result', { name, result: typeof result === 'string' ? result.slice(0, 2000) : String(result).slice(0, 2000) });
+            sendEvent('tool_result', { name, activity: summarizeToolResult(name, result) });
           },
         });
         await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: result.fullText });

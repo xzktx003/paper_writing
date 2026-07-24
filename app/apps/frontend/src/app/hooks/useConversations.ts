@@ -9,6 +9,15 @@ import { writeFile as writeProjectFile } from '../../api/client';
 import { writeChapter } from '../api/projectApi';
 import { persistActiveConversation, restoreActiveConversation } from './conversationRestoration';
 import type { ProjectRequestContext } from '../api/projectRequestContext';
+import {
+  beginConversationTrace,
+  failConversationTrace,
+  finishConversationTrace,
+  finishToolActivity,
+  startToolActivity,
+  updateConversationPhase,
+  type ConversationActivity,
+} from '../utils/conversationActivity';
 
 export interface PendingEdit {
   id: string;
@@ -43,6 +52,8 @@ export function useConversations(projectId: string | null, requestContext: Proje
   const [loading, setLoading] = useState(false);
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ percent: number; stage: string } | null>(null);
+  const [activities, setActivities] = useState<ConversationActivity[]>([]);
+  const activitySequenceRef = useRef(0);
   const currentProjectRef = useRef<string | null>(projectId);
   const restoringProjectRef = useRef<string | null>(null);
   currentProjectRef.current = projectId;
@@ -55,6 +66,7 @@ export function useConversations(projectId: string | null, requestContext: Proje
 
   const select = useCallback(async (convId: string) => {
     if (!projectId) return;
+    setActivities([]);
     setLoading(true);
     try {
       const conv = await getConversation(projectId, convId);
@@ -67,6 +79,7 @@ export function useConversations(projectId: string | null, requestContext: Proje
   useEffect(() => {
     restoringProjectRef.current = projectId;
     setActiveConv(null);
+    setActivities([]);
     if (!projectId) {
       setLoading(false);
       return;
@@ -220,6 +233,8 @@ export function useConversations(projectId: string | null, requestContext: Proje
 
     setLoading(true);
     setUploadProgress({ percent: 0, stage: 'preparing' });
+    setActivities(beginConversationTrace());
+    activitySequenceRef.current = 0;
     let assistantContent = '';
     let assistantStarted = false;
 
@@ -227,8 +242,24 @@ export function useConversations(projectId: string | null, requestContext: Proje
       await sendMessageStream(projectId, activeConv.id, requestContext, message, projectConfig, files, {
         onProgress: (percent, stage) => {
           setUploadProgress({ percent, stage });
+          setActivities(prev => updateConversationPhase(prev, stage));
+        },
+        onRagContext: (sourceCount) => {
+          setActivities(prev => updateConversationPhase(prev, 'rag').map((activity, index, all) => (
+            index === all.length - 1
+              ? { ...activity, detail: `${sourceCount} source${sourceCount === 1 ? '' : 's'}` }
+              : activity
+          )));
+        },
+        onToolUse: (name, activity) => {
+          const id = `tool-${++activitySequenceRef.current}-${Date.now()}`;
+          setActivities(prev => startToolActivity(prev, id, name, activity));
+        },
+        onToolResult: (name, activity) => {
+          setActivities(prev => finishToolActivity(prev, name, activity));
         },
         onToken: (text) => {
+          if (!assistantStarted) setActivities(prev => updateConversationPhase(prev, 'streaming'));
           assistantContent += text;
           setActiveConv(prev => {
             if (!prev) return null;
@@ -272,6 +303,7 @@ export function useConversations(projectId: string | null, requestContext: Proje
           });
           setLoading(false);
           setUploadProgress(null);
+          setActivities(prev => finishConversationTrace(prev));
         },
         onError: (msg) => {
           assistantContent += `\n\n⚠️ Error: ${msg}`;
@@ -284,6 +316,7 @@ export function useConversations(projectId: string | null, requestContext: Proje
           });
           setLoading(false);
           setUploadProgress(null);
+          setActivities(prev => failConversationTrace(prev, msg));
         },
       });
     } catch (err) {
@@ -297,9 +330,11 @@ export function useConversations(projectId: string | null, requestContext: Proje
       // Fallback to non-streaming - skip user message since it was already added optimistically
       try {
         await sendRaw(message, projectConfig, files, true);
+        setActivities(prev => finishConversationTrace(prev));
       } catch {
         setLoading(false);
         setUploadProgress(null);
+        setActivities(prev => failConversationTrace(prev, err instanceof Error ? err.message : 'Request failed'));
       }
     }
   }, [projectId, activeConv, requestContext, sendRaw, enqueueEditProposal]);
@@ -342,7 +377,7 @@ export function useConversations(projectId: string | null, requestContext: Proje
     : [];
 
   return {
-    conversations, activeConv, loading, uploadProgress, pendingEdits: activePendingEdits,
+    conversations, activeConv, loading, uploadProgress, activities, pendingEdits: activePendingEdits,
     refresh, select, create, remove, rename, send,
     uploadAttachment, removeAttachment, setRagDocuments, setActiveSkills, acceptEdit, rejectEdit,
   };

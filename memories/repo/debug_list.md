@@ -383,3 +383,12 @@
 - 2026-07-24：中央预览翻译必须复用正式 Chat 的 SSE 流式 Provider 路径，不能走会把模型错误包装成 HTTP 200 `reply` 的旧 `/api/ai/send`。翻译 token 应实时更新结果，SSE error 应进入错误态；专用会话应标记 `ephemeralConversation`，由后端流生命周期 `finally` 覆盖正常、失败和客户端中断清理，前端删除只作为兜底，不能因为刷新页面持续产生 `Preview Translate` 会话。
 - 2026-07-24：中央预览译文应是可渲染 Markdown，而不是纯文本或原始 LaTeX；提示词必须要求标题转 Markdown、行内公式 `$...$`、独立公式 `$$...$$`，显示层复用 remark-math + KaTeX。翻译缓存以项目相对文件路径为键，切换文件不得清空；重新生成只能由显式“重新翻译”触发。
 - 2026-07-24：长章节/推理模型的 Provider 首 token 可能超过 15 秒；OpenAI SDK 默认三次尝试会把该阈值表现为约 46 秒后统一 `Connection error`。默认响应头等待现为 60 秒，正文仍使用 120 秒连续无数据空闲上限，SDK `maxRetries` 固定为 1。不要重新用单个总超时覆盖健康流，也不要恢复隐式默认重试。
+- 2026-07-24：ChatView 的 ReactMarkdown 必须同时保留 `remarkGfm`、`remarkMath` 与 `rehypeKatex`，并覆盖已完成和流式文本；禁止为公式开启 `rehypeRaw`。聊天公式使用 `chat-markdown-body` 覆盖白底预览的暗色主题强制深色规则，否则 KaTeX 在深色气泡内不可读；块公式保持横向滚动。
+- 2026-07-24：CLI Task 快照不得复制 `.venv`、`venv`、`node_modules`、VCS、缓存、`.compile`、`.openprism` 或 `.paper-writer`；`copyTree` 与 `scanTree` 必须共用同一目录名排除集合，确保 base/work、Diff 和 source drift 边界一致。只跳过真实目录，排除名称本身是 symlink 时仍拒绝，快照范围内其他 symlink 继续返回 `CLI_TASK_SYMLINK_NOT_ALLOWED`。
+- 2026-07-24：`codex login status` 对“本地存在 API Key”返回 0 不等于远端认证有效；其输出还可能含 Key 的掩码片段。`interpretAuthProbe` 必须将该状态设为 `available: null` 并返回固定脱敏提示，不能让 CLI Task Provider 列表把它显示为 authenticated。ChatGPT 登录或其他能被稳定检查的认证方式仍按真实 probe 结果处理。
+- 2026-07-24：服务器访问令牌与模型 API Key 必须独立保存，修改 `OPENPRISM_API_TOKEN` 绝不能同步覆盖 `OPENPRISM_LLM_API_KEY`。Codex CLI Task 在应用配置了 OpenAI-compatible endpoint/Key 时应使用固定自定义 Responses Provider，关闭 WebSocket，并把 Key 只映射为 `OPENPRISM_CODEX_API_KEY` 子进程环境变量；argv、provenance 和任务 JSON 不得含 Key。readiness 通过受控 `/models` 请求验证这组凭据；无应用级凭据时才回退 Codex 本地登录状态。
+- 2026-07-25：成功编译的 PDF 必须同时原子持久化到 `.compile/output/<base>.pdf` 与项目根目录 `<base>.pdf`，LaTeX 和 Markdown/Pandoc 路径必须复用同一 helper；最新 PDF 查询优先根目录副本。不要用直接 `writeFile` 覆盖用户可见 PDF，应用同目录临时文件 + rename，避免半写和 symlink 跟随。
+- 2026-07-25：`Quick Preview` 与 `Final PDF` 是互斥的语义边界：前者始终用 `RenderedPreviewPane` / `LatexPreview` 渲染当前源码，后者才可使用 `AuthenticatedPdf`。不得因为 `compiledPdfUrl` 已存在，就让 Quick Preview 分支显示 PDF；打开 Quick Preview 不读取 PDF、不触发编译。
+- 2026-07-25：Chat 的“工作过程”只能展示可验证执行活动，不得暴露模型私有思维链。SSE 工具事件只传后端生成的 `{ name, activity }` 安全摘要，禁止恢复 raw input/raw result；前端默认折叠并展示当前阶段、步骤数、工具状态和失败位置，切换会话或开始新请求时重置。
+- 2026-07-24：Claude CLI 的严格 MCP 空配置必须是 `{"mcpServers":{}}`，不能传 `{}`；后者在新版 CLI schema 校验阶段直接失败。保持 `--strict-mcp-config` 和空 server map，以证明任务没有启用 MCP，而不是删除严格模式绕过错误。
+- 2026-07-24：Claude CLI 的 `--print --output-format stream-json` 参数组合必须带 `--verbose`；该标志是新版输出协议要求，不扩大工具权限。固定参数测试应同时锁定 stream-json、verbose、Read/Edit/Write、严格空 MCP 和无 Bash。

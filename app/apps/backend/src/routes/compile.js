@@ -4,6 +4,7 @@ import {
   SUPPORTED_ENGINES,
   getEngineEnv,
   getPandocPdfEngines,
+  persistCompiledPdfCopies,
 } from '../services/compileService.js';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -22,6 +23,7 @@ export async function findLatestCompiledPdf({ projectRoot, projectId, mainFile =
   const base = path.posix.basename(normalizedMainFile, extension);
   const sourceDirectory = path.posix.dirname(normalizedMainFile);
   const candidates = [
+    `${base}.pdf`,
     `.compile/output/${base}.pdf`,
     sourceDirectory === '.' ? `${base}.pdf` : `${sourceDirectory}/${base}.pdf`,
   ];
@@ -120,14 +122,14 @@ async function compileMarkdown({ projectId, mainFile = 'main.md' }) {
 
   const buffer = await fs.readFile(pdfPath);
   const pdfBase64 = buffer.toString('base64');
-  const persistentPdf = path.join(outputDir, `${base}.pdf`);
-  await fs.writeFile(persistentPdf, buffer);
+  const { rootPdfPath } = await persistCompiledPdfCopies({ projectRoot, outputDir, base, buffer });
   await fs.rm(outDir, { recursive: true, force: true });
 
   return {
     ok: true,
     pdf: pdfBase64,
-    pdfUrl: `/api/projects/${projectId}/blob?path=.compile/output/${base}.pdf`,
+    pdfUrl: `/api/projects/${projectId}/blob?path=${encodeURIComponent(rootPdfPath)}`,
+    rootPdfPath,
     log: logChunks.join(''),
     engine: 'pandoc',
   };

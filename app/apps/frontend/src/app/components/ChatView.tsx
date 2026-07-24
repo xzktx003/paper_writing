@@ -1,8 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { InlineDiffViewer } from './InlineDiffViewer';
 import { PendingEdit } from '../hooks/useConversations';
+import { useTranslation } from 'react-i18next';
+import type { ConversationActivity } from '../utils/conversationActivity';
 
 interface Message {
   role: string;
@@ -13,6 +18,7 @@ interface Props {
   messages: Message[];
   loading: boolean;
   streamingText?: string;
+  activities?: ConversationActivity[];
   pendingEdits?: PendingEdit[];
   onAcceptEdit?: (editId: string) => void;
   onRejectEdit?: (editId: string) => void;
@@ -59,10 +65,32 @@ function splitThinking(content: string): Array<{ type: 'text' | 'thinking'; text
   return parts;
 }
 
-export function ChatView({ messages, loading, streamingText, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+const TOOL_LABELS: Record<string, string> = {
+  list_project_files: 'List project files',
+  read_project_file: 'Read project file',
+  read_chapter: 'Read chapter',
+  list_chapters: 'List chapters',
+  read_references: 'Read references',
+  propose_edit: 'Prepare edit proposal',
+  list_code: 'List code files',
+  read_code: 'Read code file',
+  write_code: 'Write code file',
+  run_code: 'Run code',
+};
+
+function formatDuration(activity: ConversationActivity) {
+  if (!activity.finishedAt) return '';
+  const duration = Math.max(0, activity.finishedAt - activity.startedAt);
+  return duration < 1000 ? `${duration} ms` : `${(duration / 1000).toFixed(1)} s`;
+}
+
+export function ChatView({ messages, loading, streamingText, activities = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+  const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(0);
   const [expandedThinking, setExpandedThinking] = useState<Set<number>>(new Set());
+  const [workTraceExpanded, setWorkTraceExpanded] = useState(false);
+  const firstActivityId = activities[0]?.id;
 
   // Staggered message reveal animation
   useEffect(() => {
@@ -76,7 +104,11 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, visibleCount, streamingText]);
+  }, [messages, visibleCount, streamingText, activities]);
+
+  useEffect(() => {
+    setWorkTraceExpanded(false);
+  }, [firstActivityId]);
 
   const toggleThinking = (idx: number) => {
     setExpandedThinking(prev => {
@@ -92,8 +124,8 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
     if (parts.every(p => p.type === 'text')) {
       // No thinking content, render normally
       return (
-        <div className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        <div className="markdown-body chat-markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{content}</ReactMarkdown>
         </div>
       );
     }
@@ -102,8 +134,8 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
         {parts.map((part, pIdx) => {
           if (part.type === 'text') {
             return (
-              <div key={pIdx} className="markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+              <div key={pIdx} className="markdown-body chat-markdown-body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{part.text}</ReactMarkdown>
               </div>
             );
           }
@@ -130,7 +162,7 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.color = 'var(--muted)'; }}
               >
                 <span style={{ fontSize: '10px', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
-                <span>💭 Thinking{isExpanded ? '' : ` (${part.text.length} chars)`}</span>
+                <span>💭 {t('Model-provided reasoning summary')}{isExpanded ? '' : ` (${part.text.length} ${t('characters')})`}</span>
               </button>
               {isExpanded && (
                 <div style={{
@@ -185,27 +217,58 @@ export function ChatView({ messages, loading, streamingText, pendingEdits = [], 
         );
       })}
 
-      {/* Streaming text indicator - shows live text as it arrives */}
-      {loading && !streamingText && (
-        <div 
-          className="animate-fade-in"
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            color: 'var(--muted)', 
-            fontSize: '13px', 
-            padding: '8px 12px' 
-          }}
-        >
-          <div className="typing-indicator">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <span>Thinking...</span>
-        </div>
-      )}
+      {activities.length > 0 && (() => {
+        const current = [...activities].reverse().find(activity => activity.status === 'running') || activities[activities.length - 1];
+        const traceId = 'chat-work-trace';
+        return (
+          <section className="animate-fade-in" style={{ maxWidth: '92%' }} aria-label={t('Work process')}>
+            <button
+              type="button"
+              aria-expanded={workTraceExpanded}
+              aria-controls={traceId}
+              onClick={() => setWorkTraceExpanded(value => !value)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8,
+                background: 'var(--bg-secondary)', color: 'var(--text-secondary)', cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <span aria-hidden="true" style={{ transform: workTraceExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▶</span>
+              {loading && <span className="typing-indicator" aria-hidden="true"><span></span><span></span><span></span></span>}
+              <span style={{ fontSize: 12, fontWeight: 650 }}>{t('Work process')}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>· {t('{{count}} steps', { count: activities.length })}</span>
+              {current && (
+                <span style={{ marginLeft: 'auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: current.status === 'failed' ? '#ef4444' : 'var(--muted)' }}>
+                  {current.kind === 'tool' ? t(TOOL_LABELS[current.toolName || ''] || current.toolName || current.title) : t(current.title)}
+                </span>
+              )}
+            </button>
+            {workTraceExpanded && (
+              <ol id={traceId} style={{ listStyle: 'none', margin: '6px 0 0', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel-muted)' }}>
+                {activities.map(activity => {
+                  const label = activity.kind === 'tool'
+                    ? t(TOOL_LABELS[activity.toolName || ''] || activity.toolName || activity.title)
+                    : t(activity.title);
+                  return (
+                    <li key={activity.id} style={{ display: 'grid', gridTemplateColumns: '18px minmax(0, 1fr) auto', gap: 7, padding: '6px 0', borderBottom: '1px solid color-mix(in srgb, var(--border) 55%, transparent)' }}>
+                      <span aria-hidden="true" style={{ color: activity.status === 'success' ? '#22c55e' : activity.status === 'failed' ? '#ef4444' : 'var(--accent)' }}>
+                        {activity.status === 'success' ? '✓' : activity.status === 'failed' ? '!' : '●'}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 550 }}>{label}</div>
+                        {activity.detail && <div style={{ marginTop: 2, fontSize: 11, color: 'var(--muted)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{activity.detail}</div>}
+                        {activity.resultDetail && <div style={{ marginTop: 2, fontSize: 11, color: 'var(--muted)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{activity.resultDetail}</div>}
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{formatDuration(activity)}</span>
+                    </li>
+                  );
+                })}
+                <li style={{ paddingTop: 7, fontSize: 10, color: 'var(--muted)' }}>{t('This shows verifiable execution activity, not private model reasoning.')}</li>
+              </ol>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Streaming cursor */}
       {loading && streamingText && (

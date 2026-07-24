@@ -41,5 +41,7 @@ describe('LaTeX quick preview degradation contract', () => {
     expect(source).toContain('not the final typeset result');
     expect(source).toContain('Compile final PDF');
     expect(source).toContain("previewTab === 'pdf'");
+    expect(source).toContain("previewTab === 'pdf' && compiledPdfUrl");
+    expect(source).not.toContain("(previewTab === 'pdf' || previewTab === 'preview') && compiledPdfUrl");
   });
 });

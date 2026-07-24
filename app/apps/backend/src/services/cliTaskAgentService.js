@@ -20,7 +20,12 @@ import { createTwoFilesPatch } from 'diff';
 
 import { DATA_DIR } from '../config/constants.js';
 import { getProjectRoot } from './projectLocator.js';
-import { agentProviderRegistry, filterProviderEnv, terminateProcessTree } from './agentProviderRegistry.js';
+import {
+  agentProviderRegistry,
+  buildCodexProviderConfigArgs,
+  filterProviderEnv,
+  terminateProcessTree,
+} from './agentProviderRegistry.js';
 
 const TERMINAL_STATES = new Set(['accepted', 'rejected', 'failed', 'cancelled']);
 const REVIEWABLE_STATE = 'waiting-review';
@@ -31,6 +36,13 @@ const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 10 * 60_000;
 const MAX_TIMEOUT_MS = 30 * 60_000;
 const PROTECTED_PROJECT_PATHS = new Set(['project.json']);
+const CLI_TASK_IGNORED_DIRECTORY_NAMES = new Set([
+  '.git', '.hg', '.svn',
+  '.venv', 'venv',
+  'node_modules',
+  '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', '.tox', '.nox',
+  '.compile', '.openprism', '.paper-writer',
+]);
 
 function taskPrompt(userPrompt) {
   return [
@@ -51,10 +63,11 @@ export const CLI_TASK_PROVIDER_SPECS = Object.freeze({
     label: 'Codex CLI',
     executable: 'codex',
     versionArgs: ['--version'],
-    buildArgs: ({ prompt, model, snapshotRoot }) => [
+    buildArgs: ({ prompt, model, snapshotRoot, env }) => [
       'exec', '--json', '--ephemeral', '--sandbox', 'workspace-write',
       '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check',
       '-C', snapshotRoot,
+      ...buildCodexProviderConfigArgs(env),
       ...(model ? ['-m', model] : []),
       prompt,
     ],
@@ -66,10 +79,10 @@ export const CLI_TASK_PROVIDER_SPECS = Object.freeze({
     executable: 'claude',
     versionArgs: ['--version'],
     buildArgs: ({ prompt, model }) => [
-      '--print', '--output-format', 'stream-json', '--include-partial-messages',
+      '--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
       '--no-session-persistence', '--permission-mode', 'dontAsk',
       '--tools', 'Read,Edit,Write', '--allowedTools', 'Read,Edit,Write',
-      '--disable-slash-commands', '--strict-mcp-config', '--mcp-config', '{}',
+      '--disable-slash-commands', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
       '--system-prompt', 'Operate only on files under the current working directory. Never use absolute or parent paths. Do not use network or shell tools.',
       ...(model ? ['--model', model] : []),
       prompt,
@@ -212,6 +225,7 @@ async function scanTree(root, relative = '', result = new Map()) {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((a, b) => a.name.localeCompare(b.name));
   for (const entry of entries) {
+    if (entry.isDirectory() && CLI_TASK_IGNORED_DIRECTORY_NAMES.has(entry.name)) continue;
     const rel = relative ? path.join(relative, entry.name) : entry.name;
     const fullPath = path.join(root, rel);
     const info = await lstat(fullPath);
@@ -241,6 +255,7 @@ async function copyTree(sourceRoot, targetRoot, relative = '') {
   const entries = await readdir(sourceDir, { withFileTypes: true });
   entries.sort((a, b) => a.name.localeCompare(b.name));
   for (const entry of entries) {
+    if (entry.isDirectory() && CLI_TASK_IGNORED_DIRECTORY_NAMES.has(entry.name)) continue;
     const rel = relative ? path.join(relative, entry.name) : entry.name;
     const source = path.join(sourceRoot, rel);
     const target = path.join(targetRoot, rel);
@@ -523,6 +538,7 @@ export function createCliTaskAgentService(options = {}) {
         prompt,
         model: task.model,
         snapshotRoot: task.internal.snapshotRoot,
+        env,
       });
       task.provenance = {
         provider: task.providerId,

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 
 import {
+  buildCodexProviderConfigArgs,
   CLI_PROVIDER_SPECS,
   createAgentProviderRegistry,
   filterProviderEnv,
@@ -108,6 +109,60 @@ describe('AgentProvider registry', () => {
     });
   });
 
+  it('does not present an unvalidated Codex API key as authenticated', async () => {
+    const spawnImpl = vi.fn((executable, args) => {
+      if (executable === 'codex' && args.join(' ') === '--version') {
+        return fakeChild({ stdout: 'codex-cli 1.0.0\n' });
+      }
+      if (executable === 'codex' && args.join(' ') === 'login status') {
+        return fakeChild({ stdout: 'Logged in using an API key - sk-example***value\n' });
+      }
+      throw new Error(`Unexpected probe: ${executable} ${args.join(' ')}`);
+    });
+    const registry = createAgentProviderRegistry({
+      spawnImpl,
+      env: { PATH: '/bin' },
+      apiTokenConfigured: true,
+      projectRootResolver: async () => '/managed/project',
+    });
+
+    const result = await registry.probe('codex-cli', { allowDisabled: true });
+    expect(result.auth.available).toBeNull();
+    expect(result.auth.detail).toContain('does not validate');
+    expect(result.auth.detail).not.toContain('sk-example');
+  });
+
+  it('validates configured OpenAI-compatible credentials instead of relying on Codex local login state', async () => {
+    const spawnImpl = vi.fn((executable, args) => {
+      if (executable === 'codex' && args.join(' ') === '--version') {
+        return fakeChild({ stdout: 'codex-cli 1.0.0\n' });
+      }
+      throw new Error(`Unexpected probe: ${executable} ${args.join(' ')}`);
+    });
+    const fetchImpl = vi.fn(async (url, options) => {
+      expect(url).toBe('https://llm.example.test/v1/models');
+      expect(options.headers.authorization).toBe('Bearer configured-secret');
+      return { ok: true, status: 200 };
+    });
+    const registry = createAgentProviderRegistry({
+      spawnImpl,
+      fetchImpl,
+      env: {
+        PATH: '/bin',
+        OPENPRISM_LLM_BASE_URL: 'https://llm.example.test/v1',
+        OPENPRISM_LLM_API_KEY: 'configured-secret',
+      },
+      apiTokenConfigured: true,
+      projectRootResolver: async () => '/managed/project',
+    });
+
+    const result = await registry.probe('codex-cli', { allowDisabled: true });
+    expect(result.auth).toMatchObject({ supported: true, available: true });
+    expect(result.auth.detail).toContain('configured OpenAI-compatible endpoint');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(spawnImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('resolves cwd only from projectId and uses a fixed executable plus argument array', async () => {
     const spawnImpl = vi.fn(() => fakeChild({ stdout: '{"type":"item.completed","item":{"type":"agent_message","text":"done"}}\n' }));
     const projectRootResolver = vi.fn(async (projectId, options) => {
@@ -202,16 +257,39 @@ describe('AgentProvider registry', () => {
     const filtered = filterProviderEnv({
       PATH: '/bin', HOME: '/home/test', LANG: 'C.UTF-8',
       OPENAI_API_KEY: 'allowed-for-codex',
+      OPENPRISM_LLM_API_KEY: 'configured-endpoint-key',
+      OPENPRISM_LLM_BASE_URL: 'https://llm.example.test/v1',
       AWS_SECRET_ACCESS_KEY: 'must-not-leak',
       DATABASE_PASSWORD: 'must-not-leak',
       OPENPRISM_API_TOKEN: 'must-not-leak',
       RANDOM_VALUE: 'must-not-leak',
     }, 'codex-cli');
-    expect(filtered).toMatchObject({ PATH: '/bin', HOME: '/home/test', LANG: 'C.UTF-8', OPENAI_API_KEY: 'allowed-for-codex' });
+    expect(filtered).toMatchObject({
+      PATH: '/bin', HOME: '/home/test', LANG: 'C.UTF-8',
+      OPENAI_API_KEY: 'allowed-for-codex',
+      OPENPRISM_CODEX_API_KEY: 'configured-endpoint-key',
+    });
+    expect(filtered).not.toHaveProperty('OPENPRISM_LLM_API_KEY');
+    expect(filtered).not.toHaveProperty('OPENPRISM_LLM_BASE_URL');
     expect(filtered).not.toHaveProperty('AWS_SECRET_ACCESS_KEY');
     expect(filtered).not.toHaveProperty('DATABASE_PASSWORD');
     expect(filtered).not.toHaveProperty('OPENPRISM_API_TOKEN');
     expect(filtered).not.toHaveProperty('RANDOM_VALUE');
+  });
+
+  it('builds Codex custom-provider arguments without placing credentials in argv', () => {
+    const args = buildCodexProviderConfigArgs({
+      OPENPRISM_LLM_BASE_URL: 'https://llm.example.test/v1/',
+      OPENPRISM_LLM_API_KEY: 'configured-endpoint-key',
+    });
+    expect(args).toEqual(expect.arrayContaining([
+      '-c', 'model_provider="openprism_task"',
+      '-c', 'model_providers.openprism_task.base_url="https://llm.example.test/v1"',
+      '-c', 'model_providers.openprism_task.env_key="OPENPRISM_CODEX_API_KEY"',
+      '-c', 'model_providers.openprism_task.wire_api="responses"',
+      '-c', 'model_providers.openprism_task.supports_websockets=false',
+    ]));
+    expect(args.join(' ')).not.toContain('configured-endpoint-key');
   });
 
   it('redacts credential-shaped output before it reaches responses or provenance consumers', async () => {
