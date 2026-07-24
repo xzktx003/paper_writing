@@ -9,6 +9,7 @@ describe('New conversation dialog scopes', () => {
     expect(source).not.toContain("scopeType === 'code'");
     expect(source).toContain('value="free"');
     expect(source).toContain('value="global"');
-    expect(source).toContain('value="chapter"');
+    expect(source).toContain('value="file"');
+    expect(source).not.toContain('value="chapter"');
   });
 });

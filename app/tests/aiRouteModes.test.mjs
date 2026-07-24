@@ -6,6 +6,7 @@ import {
   getToolsForMode, appendModeGuidance, executeTool, buildUserMessageContent,
   buildConversationHistory, buildConversationAttachmentMessages, normalizeProposedFileContent,
   classifyAIError, buildInterruptedAssistantMessage,
+  buildContextMessages,
 } from '../apps/backend/src/routes/ai.js';
 import { buildOpenAIMessages } from '../apps/backend/src/services/llmService.js';
 
@@ -66,11 +67,15 @@ describe('AI PDF attachments', () => {
 });
 
 describe('AI conversation modes', () => {
-  it('keeps Chat read-only, Agent proposal-only, and Tools fully tooled', () => {
-    expect(getToolsForMode('chat')).toEqual([]);
+  it('lets every conversation mode inspect project files while preserving write boundaries', () => {
+    const chatTools = getToolsForMode('chat').map(tool => tool.name).sort();
+    expect(chatTools).toEqual(['list_project_files', 'read_project_file']);
 
     const agentTools = getToolsForMode('agent').map(tool => tool.name).sort();
-    expect(agentTools).toEqual(['list_chapters', 'propose_edit', 'read_chapter', 'read_references'].sort());
+    expect(agentTools).toEqual([
+      'list_chapters', 'list_project_files', 'propose_edit',
+      'read_chapter', 'read_project_file', 'read_references',
+    ].sort());
     expect(agentTools).not.toContain('write_code');
     expect(agentTools).not.toContain('run_code');
 
@@ -104,6 +109,59 @@ describe('AI conversation modes', () => {
       error_code: 'PROVIDER_STREAM_IDLE_TIMEOUT',
     });
     expect(buildInterruptedAssistantMessage('', new Error('aborted'))).toBeNull();
+  });
+});
+
+describe('AI project-wide read tools', () => {
+  let projectRoot;
+
+  beforeEach(async () => {
+    projectRoot = await mkdtemp(join(tmpdir(), 'ai-project-files-'));
+    await mkdir(join(projectRoot, 'Section'), { recursive: true });
+    await mkdir(join(projectRoot, 'code'), { recursive: true });
+    await mkdir(join(projectRoot, '.git'), { recursive: true });
+    await writeFile(join(projectRoot, 'Section', 'experiment.tex'), 'primary experiment content\n', 'utf8');
+    await writeFile(join(projectRoot, 'code', 'evaluate.py'), 'print("metric")\n', 'utf8');
+    await writeFile(join(projectRoot, 'README.md'), '# Project overview\n', 'utf8');
+    await writeFile(join(projectRoot, '.env'), 'SECRET=must-not-leak\n', 'utf8');
+    await writeFile(join(projectRoot, '.git', 'config'), 'private git metadata\n', 'utf8');
+  });
+
+  afterEach(async () => {
+    await rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it('lists readable files across the project instead of only chapters', async () => {
+    const files = JSON.parse(await executeTool('list_project_files', {}, projectRoot));
+    expect(files.map(file => file.path)).toEqual(expect.arrayContaining([
+      'README.md', 'Section/experiment.tex', 'code/evaluate.py',
+    ]));
+    expect(files.map(file => file.path)).not.toContain('.env');
+    expect(files.some(file => file.path.startsWith('.git/'))).toBe(false);
+  });
+
+  it('reads any safe project text file and blocks secrets or traversal', async () => {
+    await expect(executeTool('read_project_file', { path: 'code/evaluate.py' }, projectRoot))
+      .resolves.toContain('metric');
+    await expect(executeTool('read_project_file', { path: '.env' }, projectRoot))
+      .rejects.toMatchObject({ code: 'PROJECT_FILE_NOT_READABLE' });
+    await expect(executeTool('read_project_file', { path: '../outside.txt' }, projectRoot))
+      .rejects.toThrow(/traversal|outside/i);
+  });
+
+  it('injects the selected file first as primary context and then exposes a safe project inventory', async () => {
+    const context = await buildContextMessages({
+      context_scope: { type: 'file', file: 'code/evaluate.py' },
+    }, projectRoot, {});
+
+    expect(context[0].content).toContain('User-selected primary reference file — code/evaluate.py');
+    expect(context[0].content).toContain('first and highest-priority reference');
+    expect(context[0].content).toContain('print("metric")');
+    const inventory = context.find(message => message.content.includes('Project file inventory'))?.content || '';
+    expect(inventory).toContain('Section/experiment.tex');
+    expect(inventory).toContain('README.md');
+    expect(inventory).not.toContain('.env');
+    expect(inventory).not.toContain('.git/config');
   });
 });
 

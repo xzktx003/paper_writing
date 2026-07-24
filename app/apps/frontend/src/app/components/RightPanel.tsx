@@ -462,8 +462,8 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
               >
                 <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ padding: '2px 8px', borderRadius: '999px', background: 'var(--accent-soft)', color: 'var(--accent-strong)', fontSize: '10px', fontWeight: 600 }}>
-                    {activeConv.context_scope.type === 'chapter' ? `${t('Chapter')}: ${activeConv.context_scope.file}` :
-                     activeConv.context_scope.type === 'global' ? t('Global') : t('Free')}
+                    {['file', 'chapter'].includes(activeConv.context_scope.type) ? `${t('Primary file')}: ${activeConv.context_scope.file}` :
+                     activeConv.context_scope.type === 'global' ? t('Project files') : t('Free')}
                   </span>
                   <span style={{ padding: '2px 8px', borderRadius: '999px', background: 'var(--bg-secondary)', fontSize: '10px', fontWeight: 500 }}>
                     {activeConv.mode}
@@ -828,6 +828,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
           chapters={chapters}
           skills={skills}
           projectFiles={projectFiles}
+          primaryFile={activeFile}
           onSubmit={(data) => { onCreate(data); setShowNewDialog(false); }}
           onCancel={() => setShowNewDialog(false)}
         />

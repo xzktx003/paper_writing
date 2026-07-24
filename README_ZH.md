@@ -188,7 +188,7 @@ npm start
 | `OPENPRISM_LLM_MODEL` | 默认模型名称 | 由你的服务商决定 |
 | `OPENPRISM_API_TOKEN` | 后端 API 访问令牌 | 正常使用必须配置；缺失时除存活/就绪检查和 Provider 元数据外，全部 API fail-closed，`/api/config` 也要求认证 |
 | `OPENPRISM_PROVIDER_ALLOWED_HOSTS` | 临时 Provider 内网 host allowlist | 可选；逗号分隔，只由管理员放行确需测试的内网网关，临时 endpoint 默认拒绝私网和本机地址 |
-| `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` | Provider 响应头等待上限 | 可选，默认 `15000`；只限制建立请求并等到响应头，不限制持续正常输出的回答总时长 |
+| `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` | Provider 响应头等待上限 | 可选，默认 `60000`；为推理模型和长输入预留首 token 等待时间，只限制建立请求并等到响应头，不限制持续正常输出的回答总时长 |
 | `OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS` | Provider 流空闲上限 | 可选，默认 `120000`；只有连续无新数据达到该时长才中断，持续 token 会重置空闲窗口 |
 | `OPENPRISM_COLLAB_TOKEN_SECRET` / `OPENPRISM_COLLAB_REQUIRE_TOKEN` / `OPENPRISM_COLLAB_TOKEN_TTL` | 协作签名、校验开关和有效期 | 仅启用协作时需要 |
 | `OPENPRISM_MINERU_API_BASE` / `OPENPRISM_MINERU_TOKEN` | MinerU/OCR 服务地址与凭据 | 仅高级 PDF 解析需要 |
@@ -239,13 +239,13 @@ npm start
 
 右侧 AI 面板提供三种工作方式：
 
-- **Chat**：讨论论文、解释文本、分析错误，不默认修改文件。
-- **Agent**：允许模型读取项目上下文并提出跨文件修改；修改会先显示差异，等待你接受或拒绝。
+- **Chat**：讨论论文、解释文本、分析错误，不默认修改文件；可通过只读工具查看受管项目内任意安全文件。
+- **Agent**：允许模型读取整个项目的安全文件并提出跨文件修改；修改会先显示差异，等待你接受或拒绝。
 - **Tools**：用于更明确的工具调用，例如检索、文件读取、编译、引文核验和审稿。
 
 建议流程：
 
-1. 先选择相关文件或在问题中写明章节与目标。
+1. 新建对话时，当前编辑器选中的文件默认作为“首要参考文件”优先注入；也可以改选其他项目文件、选择不指定首要文件的项目范围或自由上下文。首要文件只是优先参考，不会限制 AI 查看其他安全项目文件。
 2. 通过回形针添加图片、PDF 或其他上下文文件。
 3. 给出约束，例如目标会议、字数、不能改变的结论和引用格式。
 4. 检查 AI 返回的依据与差异，不要直接接受未经核对的事实和引用。

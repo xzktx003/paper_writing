@@ -68,6 +68,32 @@ import {
 } from '../apps/backend/src/config/appConfig.js';
 
 describe('env-backed LLM runtime config', () => {
+  it('allows slow reasoning providers 60 seconds to return headers while retaining the 120 second stream-idle limit', async () => {
+    let observedConnection;
+    const response = await fetchWithProviderEndpointPolicy('https://api.example.test/v1/models', {}, {
+      source: 'request',
+      lookup: async () => [{ address: '93.184.216.34', family: 4 }],
+      fetchImpl: async (_url, _init, connection) => {
+        observedConnection = connection;
+        return new Response('{"data":[]}', {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(observedConnection).toMatchObject({
+      timeoutMs: 60_000,
+      streamIdleTimeoutMs: 120_000,
+    });
+  });
+
+  it('limits OpenAI-compatible automatic retries explicitly', async () => {
+    const source = await readFile(new URL('../apps/backend/src/services/llmService.js', import.meta.url), 'utf8');
+    expect(source).toMatch(/new OpenAI\(\{[\s\S]*?maxRetries:\s*1[,\n]/);
+  });
+
   it('never combines a request-supplied endpoint with a server-side API key', () => {
     expect(() => resolveHttpProviderConnectionInput({
       input: { endpoint: 'https://attacker.example/v1' },

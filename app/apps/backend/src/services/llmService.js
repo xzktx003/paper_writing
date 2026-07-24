@@ -20,7 +20,7 @@ let currentProvider = null;
 let currentLLMConfig = { endpoint: '', apiKey: '', model: '' };
  
 const MAX_FULLTEXT_CHARS = 1_000_000; // 1000K character safety limit
-const PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS = 15_000;
+const PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS = 60_000;
 const PROVIDER_STREAM_IDLE_TIMEOUT_MS = 120_000;
 const PROVIDER_MAX_REDIRECTS = 3;
 // A dedicated Agent bypasses NODE_USE_ENV_PROXY/globalAgent DNS resolution so
@@ -112,6 +112,7 @@ async function initOpenAICompat(cfg) {
     apiKey: effectiveKey,
     baseURL,
     fetch: createProviderPolicyFetch('server'),
+    maxRetries: 1,
   });
   openaiClient._defaultModel = cfg.model || 'gpt-4o';
 }

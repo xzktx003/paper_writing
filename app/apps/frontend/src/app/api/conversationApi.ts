@@ -135,12 +135,14 @@ export async function sendMessageStream(
     onDone: (fullText: string) => void;
     onError: (message: string) => void;
     onProgress?: (percent: number, stage: string) => void;
-  }
+  },
+  options: { ephemeralConversation?: boolean } = {},
 ) {
   const token = getServerAccessToken();
   const hasTransientFiles = Boolean(files?.length);
   const body = JSON.stringify({
     conversationProjectId, convId, ...projectRequestBody(context), userMessage, projectConfig,
+    ephemeralConversation: options.ephemeralConversation === true,
     files: files?.map(f => ({ dataUrl: f.dataUrl, name: f.name, type: f.type, isImage: f.isImage, size: f.size })),
   });
 

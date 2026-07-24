@@ -379,3 +379,7 @@
 - 2026-07-24：Draw 配置必须由受认证前端表单写入后端并按请求动态解析，不能在路由注册时缓存 endpoint/key/model。共享 LLM 凭据时只复用 Base URL/API Key，图片模型保持独立；OpenAI-compatible 图片响应必须兼容 `url` 和 `b64_json`。最终生图 Prompt 以可编辑文本框为唯一事实来源，不自动追加 paperContent，生图 Key 不进入 localStorage 或普通生图请求体。
 - 2026-07-24：Final PDF 标签是读取入口，不是编译命令。它必须通过只读 latest-PDF 查询加载已持久化产物，不能调用 `/api/compile` 或 `/api/compile/full-paper`；源文件编辑也不得隐式触发完整编译。Skill picker 应在弹层内维护 pending Set，用户确认后一次更新父级 selectedSkills，避免每选一项就关闭弹层。
 - 2026-07-24：Provider 网络超时不能用单个 `AbortSignal.timeout` 覆盖整个 SSE/流式正文，否则持续输出的长回答也会在固定窗口被截断为 `aborted`。响应头等待和正文空闲必须分阶段计时，客户端断开只监听 request `aborted`/未完成 response `close`；SSE `event:error` 必须 reject，但不得自动重复发送已经由后端记录的用户消息。中断时应持久化已生成的部分 assistant 内容和错误码，避免刷新后只剩用户问题。
+- 2026-07-24：会话的 primary file 是优先级，不是文件访问边界。所有对话模式应通过统一的项目级只读工具枚举和读取受管项目安全文件；首要文件先注入，其他文件按问题需要读取。文件工具必须返回项目相对路径并排除隐藏/敏感目录、凭据文件、符号链接、越界路径、超大文件和不可读二进制，不能复用只覆盖 `sec/chapters` 的章节工具作为全项目能力。
+- 2026-07-24：中央预览翻译必须复用正式 Chat 的 SSE 流式 Provider 路径，不能走会把模型错误包装成 HTTP 200 `reply` 的旧 `/api/ai/send`。翻译 token 应实时更新结果，SSE error 应进入错误态；专用会话应标记 `ephemeralConversation`，由后端流生命周期 `finally` 覆盖正常、失败和客户端中断清理，前端删除只作为兜底，不能因为刷新页面持续产生 `Preview Translate` 会话。
+- 2026-07-24：中央预览译文应是可渲染 Markdown，而不是纯文本或原始 LaTeX；提示词必须要求标题转 Markdown、行内公式 `$...$`、独立公式 `$$...$$`，显示层复用 remark-math + KaTeX。翻译缓存以项目相对文件路径为键，切换文件不得清空；重新生成只能由显式“重新翻译”触发。
+- 2026-07-24：长章节/推理模型的 Provider 首 token 可能超过 15 秒；OpenAI SDK 默认三次尝试会把该阈值表现为约 46 秒后统一 `Connection error`。默认响应头等待现为 60 秒，正文仍使用 120 秒连续无数据空闲上限，SDK `maxRetries` 固定为 1。不要重新用单个总超时覆盖健康流，也不要恢复隐式默认重试。

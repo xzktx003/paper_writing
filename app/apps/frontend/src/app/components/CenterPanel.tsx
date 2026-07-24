@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { InlineDiffViewer } from './InlineDiffViewer';
 import { getPaperAgentProjectId, isImagePath, isPdfPath, isPreviewableTextPath, isDrawioPath } from '../utils/previewAssets';
 import { compileProject, compileFullPaper, getLatestCompiledPdf, syncTexSourceToPdf } from '../../api/client';
-import { createConversation, sendMessage } from '../api/conversationApi';
+import { createConversation, deleteConversation, sendMessageStream } from '../api/conversationApi';
 import { managedProjectRequest } from '../api/projectRequestContext';
 import { AuthenticatedImage, AuthenticatedPdf, openAuthenticatedFile } from './AuthenticatedAsset';
 
@@ -79,6 +79,7 @@ interface Props {
 }
 
 type PreviewTab = 'preview' | 'translate' | 'diff' | 'pdf';
+type TranslationState = { result: string; error: string };
 
 export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSave, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, projectFiles = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const { t } = useTranslation();
@@ -99,13 +100,15 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
   const [latestPdfChecked, setLatestPdfChecked] = useState(false);
   const [previewTab, setPreviewTab] = useState<PreviewTab>('preview');
   const previousPendingEditCountRef = useRef(0);
-  const [translating, setTranslating] = useState(false);
-  const [translationResult, setTranslationResult] = useState<string>('');
-  const [translationError, setTranslationError] = useState<string>('');
-  const translateConvIdRef = useRef<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, TranslationState>>({});
+  const [translatingFiles, setTranslatingFiles] = useState<Record<string, boolean>>({});
   const editorAreaRef = useRef<HTMLDivElement>(null);
   const scrollSourceRef = useRef<'editor' | 'preview' | null>(null);
   const activeFile = openFiles?.[activeFileIndex];
+  const translationState = activeFile ? translations[activeFile.filename] : undefined;
+  const translationResult = translationState?.result || '';
+  const translationError = translationState?.error || '';
+  const translating = activeFile ? Boolean(translatingFiles[activeFile.filename]) : false;
   const projectId = getPaperAgentProjectId(projectPath);
   const texFiles = projectFiles
     .filter(file => file.type === 'file' && file.path.toLowerCase().endsWith('.tex'))
@@ -212,41 +215,93 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
     }
   }, [projectId, activeFile]);
 
-  // Translation function - reuses conversation to avoid creating new chat per send
-  const handleTranslate = useCallback(async () => {
+  // Translation uses the same streaming provider path as chat, then removes its temporary conversation.
+  const handleTranslate = useCallback(async (force = false) => {
     if (!projectId || !activeFile?.content?.trim()) return;
+    const filename = activeFile.filename;
     setPreviewTab('translate');
-    setTranslating(true);
-    setTranslationError('');
+    if (!force && translations[filename]?.result) return;
+    if (translatingFiles[filename]) return;
+    setTranslatingFiles((current) => ({ ...current, [filename]: true }));
+    setTranslations((current) => ({ ...current, [filename]: { result: '', error: '' } }));
+    let convId: string | null = null;
     try {
       const content = activeFile.content.slice(0, 30000);
       const prompt = [
-        '请将下面这份论文预览内容翻译成中文。要求：',
-        '1. 只输出译文，不要解释。',
-        '2. 保留章节标题、编号、公式占位、引用标记和列表结构。',
-        '3. 对 LaTeX/Markdown 命令按渲染含义翻译，无法渲染的命令可保留原样。',
+        '请将下面这份论文内容翻译成中文 Markdown。要求：',
+        '1. 只输出有效的 GitHub Flavored Markdown，不要解释，也不要使用包裹全文的代码块。',
+        '2. 将 LaTeX 的 section/subsection/paragraph 等结构转换为对应层级的 Markdown 标题。',
+        '3. 保留章节编号、引用标记、交叉引用、列表、表格、代码和图片语义。',
         '4. 学术术语保持准确，英文专有名词可在中文后保留括号英文。',
+        '5. 将行内公式转换为 `$...$`，保持公式内部 LaTeX 不变。',
+        '6. 将独立公式转换为 `$$...$$`，包括 `\\[...\\]` 和 equation/align 环境；不要把公式放进代码块。',
+        '7. 若公式使用项目自定义宏（例如 `\\vx`、`\\mG`、`\\mE`），请在不改变数学含义的前提下展开为 KaTeX 支持的标准 LaTeX 命令。',
+        '8. 移除公式内部的 `\\label{...}` 等仅供 LaTeX 编译使用且 KaTeX 不支持的命令；在公式外保留必要的编号或引用说明。',
+        '9. 不要翻译公式变量、引用键、文件路径和代码标识符。',
         '',
         content,
       ].join('\n');
-      let convId = translateConvIdRef.current;
-      if (!convId) {
-        const conv = await createConversation(projectId, {
-          name: 'Preview Translate',
-          context_scope: { type: 'free' },
-          mode: 'chat',
-        });
-        convId = conv.id;
-        translateConvIdRef.current = conv.id;
-      }
-      const result = await sendMessage(projectId, convId, managedProjectRequest(projectId), prompt, {});
-      setTranslationResult(result.reply || result.message || result.text || '');
+      const conv = await createConversation(projectId, {
+        name: 'Preview Translate',
+        context_scope: { type: 'free' },
+        mode: 'chat',
+      });
+      convId = conv.id;
+
+      let streamedText = '';
+      let completedText = '';
+      let streamError = '';
+      await sendMessageStream(
+        projectId,
+        convId,
+        managedProjectRequest(projectId),
+        prompt,
+        {},
+        undefined,
+        {
+          onToken: (text) => {
+            streamedText += text;
+            setTranslations((current) => ({
+              ...current,
+              [filename]: { result: streamedText, error: '' },
+            }));
+          },
+          onDone: (fullText) => {
+            completedText = fullText || streamedText;
+            setTranslations((current) => ({
+              ...current,
+              [filename]: { result: completedText, error: '' },
+            }));
+          },
+          onError: (message) => {
+            streamError = message;
+            setTranslations((current) => ({
+              ...current,
+              [filename]: { result: '', error: message },
+            }));
+          },
+        },
+        { ephemeralConversation: true },
+      );
+      if (streamError) throw new Error(streamError);
+      if (!(completedText || streamedText).trim()) throw new Error(t('Translation returned no content.'));
     } catch (err: any) {
-      setTranslationError(err?.message || String(err));
+      setTranslations((current) => ({
+        ...current,
+        [filename]: { result: '', error: err?.message || String(err) },
+      }));
     } finally {
-      setTranslating(false);
+      if (convId) {
+        // The backend owns lifecycle cleanup; this only covers failures before the stream reaches it.
+        await deleteConversation(projectId, convId).catch(() => {});
+      }
+      setTranslatingFiles((current) => {
+        const next = { ...current };
+        delete next[filename];
+        return next;
+      });
     }
-  }, [projectId, activeFile?.content]);
+  }, [projectId, activeFile, translatingFiles, translations, t]);
 
   // Editing only changes the source. Full compilation is always user-triggered.
   const handleContentChange = useCallback((index: number, content: string) => {
@@ -564,7 +619,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                         <button
                           key={tab}
                           onClick={() => {
-                            if (tab === 'translate') handleTranslate();
+                            if (tab === 'translate') void handleTranslate(false);
                             else {
                               setPreviewTab(tab);
                               if (tab === 'pdf') void loadLatestCompiledPdf();
@@ -684,10 +739,40 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
                       ) : null}
                       
                       {previewTab === 'translate' && (
-                        <div style={{ minHeight: '100%', padding: '14px', background: 'var(--paper)', color: 'var(--text)', fontSize: '13px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                          {translating ? t('Translating...') : translationError ? (
-                            <div style={{ color: 'var(--danger)' }}>{translationError}</div>
-                          ) : translationResult || t('Click Translate to translate the current document.')}
+                        <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--paper)', color: 'var(--text)' }}>
+                          <div style={{ minHeight: 36, padding: '6px 10px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
+                            <span style={{ color: 'var(--muted)', fontSize: 11 }}>
+                              {translating ? t('Translating...') : translationResult ? t('Markdown translation') : t('Click Translate to translate the current document.')}
+                            </span>
+                            {(translationResult || translationError) && (
+                              <button
+                                type="button"
+                                onClick={() => void handleTranslate(true)}
+                                disabled={translating}
+                                style={{ padding: '4px 9px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--paper)', color: 'var(--accent-strong)', cursor: translating ? 'wait' : 'pointer', fontSize: 11 }}
+                              >
+                                {t('Retranslate')}
+                              </button>
+                            )}
+                          </div>
+                          {translationError ? (
+                            <div style={{ padding: 14, color: 'var(--danger)', fontSize: 13 }}>{translationError}</div>
+                          ) : translationResult ? (
+                            <div style={{ flex: 1, minHeight: 0 }}>
+                              <Suspense fallback={<EditorSurfaceLoader />}>
+                                <RenderedPreviewPane
+                                  content={translationResult}
+                                  filename="translation.md"
+                                  projectId={projectId}
+                                  currentFile={activeFile.filename}
+                                />
+                              </Suspense>
+                            </div>
+                          ) : translating ? (
+                            <div role="status" style={{ padding: 14, color: 'var(--muted)', fontSize: 12 }}>{t('Translating...')}</div>
+                          ) : (
+                            <div style={{ padding: 14, color: 'var(--muted)', fontSize: 12 }}>{t('Click Translate to translate the current document.')}</div>
+                          )}
                         </div>
                       )}
 {previewTab === 'diff' && (

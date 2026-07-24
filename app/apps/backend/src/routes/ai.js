@@ -1,10 +1,10 @@
 import { chatCompletion, chatWithTools, chatCompletionStream } from '../services/llmService.js';
 import { assemblePrompt, getSkill } from '../services/skillEngine.js';
 import { recordSkillRun, recordSkillRunsBatch } from '../services/skillReadinessService.js';
-import { appendMessage, getConversation } from '../services/conversationStore.js';
+import { appendMessage, deleteConversation, getConversation } from '../services/conversationStore.js';
 import { readTextFile, writeTextFile, listDir } from '../services/fileManager.js';
 import { executeScript } from '../services/codeExecutor.js';
-import { join, resolve } from 'path';
+import { extname, join, resolve, relative, sep } from 'path';
 import { safeJoin } from '../utils/pathSecurity.js';
 import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
@@ -156,6 +156,8 @@ export async function buildUserMessageContent(userMessage, files) {
 }
  
 const TOOL_DEFINITIONS = [
+  { name: 'list_project_files', description: 'List files available in the current paper project. Returns project-relative paths, sizes, and whether each file can be read as AI context. Use this before claiming a project file is unavailable.', input_schema: { type: 'object', properties: {} } },
+  { name: 'read_project_file', description: 'Read a safe project-relative text or PDF file from anywhere in the current paper project. The user-selected primary file should be consulted first, but other relevant files may also be read.', input_schema: { type: 'object', properties: { path: { type: 'string', description: 'Project-relative file path returned by list_project_files.' } }, required: ['path'] } },
   { name: 'read_chapter', description: 'Read a chapter file', input_schema: { type: 'object', properties: { filename: { type: 'string' } }, required: ['filename'] } },
   { name: 'list_chapters', description: 'List all chapter files', input_schema: { type: 'object', properties: {} } },
   { name: 'propose_edit', description: 'Create a reviewable diff for an existing paper file. This does NOT write the file. new_content must contain the COMPLETE updated file, preserving all unchanged content. The user applies it only by clicking Accept in the Diff UI.', input_schema: { type: 'object', properties: { filename: { type: 'string', description: 'Existing project-relative paper file path.' }, new_content: { type: 'string', description: 'Complete contents of the file after the proposed edit, not only the changed paragraph.' } }, required: ['filename', 'new_content'] } },
@@ -166,11 +168,15 @@ const TOOL_DEFINITIONS = [
   { name: 'read_references', description: 'Read references.bib', input_schema: { type: 'object', properties: {} } },
 ];
  
-const AGENT_TOOL_NAMES = new Set(['read_chapter', 'list_chapters', 'propose_edit', 'read_references']);
+const CHAT_TOOL_NAMES = new Set(['list_project_files', 'read_project_file']);
+const AGENT_TOOL_NAMES = new Set(['list_project_files', 'read_project_file', 'read_chapter', 'list_chapters', 'propose_edit', 'read_references']);
  
 export function getToolsForMode(mode) {
   if (mode === 'agent') {
     return TOOL_DEFINITIONS.filter(tool => AGENT_TOOL_NAMES.has(tool.name));
+  }
+  if (mode === 'chat') {
+    return TOOL_DEFINITIONS.filter(tool => CHAT_TOOL_NAMES.has(tool.name));
   }
   if (mode === 'tools') {
     return TOOL_DEFINITIONS;
@@ -180,9 +186,10 @@ export function getToolsForMode(mode) {
  
 export function appendModeGuidance(systemPrompt, mode) {
   const guidance = {
-    chat: 'Mode: Chat. Discuss, explain, and reason only. Do not modify files or claim that files were changed.',
+    chat: 'Mode: Chat. Discuss, explain, and reason only. You may inspect any safe project file with list_project_files and read_project_file. Treat the user-selected primary file as the first reference, but inspect other relevant project files when needed. Do not modify files or claim that files were changed.',
     agent: [
       'Mode: Agent. Inspect context and propose paper edits for user confirmation.',
+      'The selected primary file is the first reference, not the only accessible file. Use list_project_files and read_project_file to inspect other relevant project files before drawing conclusions.',
       'Use propose_edit for every requested file change, with the existing project-relative filename and the COMPLETE updated file content, preserving every unchanged section.',
       'propose_edit never writes a file. After calling it, tell the user to review the Diff tab and click Accept or Reject.',
       'Never claim that a file was changed, saved, submitted, or applied merely because propose_edit ran or because the user typed confirm/apply/accept in chat.',
@@ -243,51 +250,145 @@ function resolveCodePath(projectPath, inputPath = '') {
   const codeRoot = resolve(projectPath, 'code');
   return safeJoin(codeRoot, normalizeCodePath(inputPath));
 }
+
+const AI_PROJECT_IGNORED_DIRECTORIES = new Set([
+  '.git', '.openprism', '.omx', '.venv', '.pytest_cache', '.compile',
+  'node_modules', '__pycache__', 'dist', 'build', 'coverage', '.next',
+]);
+const AI_PROJECT_TEXT_EXTENSIONS = new Set([
+  '.tex', '.md', '.txt', '.bib', '.sty', '.cls', '.bst', '.json', '.jsonl',
+  '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.csv', '.tsv',
+  '.py', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.sh', '.bash',
+  '.zsh', '.fish', '.html', '.css', '.scss', '.less', '.xml', '.svg',
+  '.mmd', '.mermaid', '.r', '.jl', '.c', '.h', '.cpp', '.hpp', '.java',
+  '.go', '.rs', '.sql', '.ipynb', '.aux', '.bbl', '.blg', '.log',
+]);
+const AI_PROJECT_MAX_FILE_BYTES = 2 * 1024 * 1024;
+
+function projectFilePolicyError(message, code = 'PROJECT_FILE_NOT_READABLE') {
+  return Object.assign(new Error(message), { code, statusCode: 400 });
+}
+
+function normalizeProjectRelativeFilePath(inputPath) {
+  const normalized = String(inputPath || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/^\.\//, '');
+  if (!normalized || normalized.includes('\0') || normalized.split('/').some(part => part === '..')) {
+    throw projectFilePolicyError('Project file path is empty or attempts path traversal.', 'PROJECT_FILE_PATH_INVALID');
+  }
+  return normalized;
+}
+
+function isSensitiveProjectPath(relativePath) {
+  const normalized = String(relativePath || '').replace(/\\/g, '/');
+  const parts = normalized.split('/');
+  if (parts.some(part => part.startsWith('.'))) return true;
+  const basename = parts.at(-1)?.toLowerCase() || '';
+  return basename === 'credentials'
+    || basename === 'credentials.json'
+    || /^secrets?(\.|$)/.test(basename)
+    || /^id_(rsa|ed25519|ecdsa)/.test(basename)
+    || /\.(pem|key|p12|pfx)$/i.test(basename);
+}
+
+function isAIReadableProjectFile(relativePath, size) {
+  if (Number(size) > AI_PROJECT_MAX_FILE_BYTES) return false;
+  const extension = extname(relativePath).toLowerCase();
+  return extension === '.pdf' || AI_PROJECT_TEXT_EXTENSIONS.has(extension);
+}
+
+function toProjectRelativePath(projectRoot, absolutePath) {
+  return relative(projectRoot, absolutePath).split(sep).join('/');
+}
+
+async function resolveReadableProjectFile(projectPath, inputPath) {
+  const relativePath = normalizeProjectRelativeFilePath(inputPath);
+  if (isSensitiveProjectPath(relativePath)) {
+    throw projectFilePolicyError(`Project file is hidden or sensitive and cannot be sent to AI (${relativePath}).`);
+  }
+  const projectRoot = await fs.realpath(projectPath);
+  const candidate = safeJoin(projectRoot, relativePath);
+  let realFile;
+  try {
+    realFile = await fs.realpath(candidate);
+  } catch {
+    throw projectFilePolicyError(`Project file not found (${relativePath}).`, 'PROJECT_FILE_NOT_FOUND');
+  }
+  if (realFile !== projectRoot && !realFile.startsWith(`${projectRoot}${sep}`)) {
+    throw projectFilePolicyError('Project file resolves outside the managed project.', 'PROJECT_FILE_PATH_INVALID');
+  }
+  const stat = await fs.stat(realFile);
+  if (!stat.isFile() || !isAIReadableProjectFile(relativePath, stat.size)) {
+    throw projectFilePolicyError(`Project file type or size is not readable as AI context (${relativePath}).`);
+  }
+  return { relativePath, realFile, size: stat.size };
+}
+
+export async function listProjectFilesForAI(projectPath, { limit = 500, maxDepth = 10 } = {}) {
+  const projectRoot = await fs.realpath(projectPath);
+  const files = [];
+  async function visit(directory, depth) {
+    if (depth > maxDepth || files.length >= limit) return;
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      if (files.length >= limit) break;
+      if (entry.isSymbolicLink()) continue;
+      const absolutePath = join(directory, entry.name);
+      const relativePath = toProjectRelativePath(projectRoot, absolutePath);
+      if (entry.isDirectory()) {
+        if (AI_PROJECT_IGNORED_DIRECTORIES.has(entry.name) || entry.name.startsWith('.')) continue;
+        await visit(absolutePath, depth + 1);
+        continue;
+      }
+      if (!entry.isFile() || isSensitiveProjectPath(relativePath)) continue;
+      const stat = await fs.stat(absolutePath);
+      files.push({
+        path: relativePath,
+        size: stat.size,
+        readable: isAIReadableProjectFile(relativePath, stat.size),
+      });
+    }
+  }
+  await visit(projectRoot, 0);
+  return files;
+}
+
+export async function readProjectFileForAI(projectPath, inputPath, maxChars = 60_000) {
+  const { relativePath, realFile } = await resolveReadableProjectFile(projectPath, inputPath);
+  if (extname(relativePath).toLowerCase() === '.pdf') {
+    const pdf = await fs.readFile(realFile);
+    const text = await extractPdfText(`data:application/pdf;base64,${pdf.toString('base64')}`, maxChars);
+    if (!text?.trim()) throw projectFilePolicyError(`No readable text could be extracted from PDF (${relativePath}).`);
+    return text.slice(0, maxChars);
+  }
+  const buffer = await fs.readFile(realFile);
+  if (buffer.subarray(0, 8192).includes(0)) {
+    throw projectFilePolicyError(`Binary project file cannot be sent as text (${relativePath}).`);
+  }
+  const content = buffer.toString('utf8');
+  return content.length > maxChars ? `${content.slice(0, maxChars)}\n...(truncated)` : content;
+}
  
 /** Build auto-injected context messages based on conversation scope */
-async function buildContextMessages(conv, resolvedPath, projectConfig) {
+export async function buildContextMessages(conv, resolvedPath, projectConfig) {
   const ctx = [];
   try {
-    if (conv.context_scope.type === 'chapter' && conv.context_scope.file) {
-      // Accept any project-relative file path: try direct path first, then sec/, then chapters/
-      const fileName = String(conv.context_scope.file || '').replace(/^\/+/, '');
-      let chapterContent = '';
-      // If path already contains a directory prefix (sec/ or chapters/), use as-is
-      if (fileName.startsWith('sec/') || fileName.startsWith('chapters/')) {
-        chapterContent = await readTextFile(safeJoin(resolvedPath, fileName)).catch(() => '');
-      } else {
-        // Bare filename: try sec/ then chapters/ for backward compat
-        chapterContent = await readTextFile(join(resolvedPath, 'sec', fileName)).catch(() => '');
-        if (!chapterContent) {
-          chapterContent = await readTextFile(join(resolvedPath, 'chapters', fileName)).catch(() => '');
-        }
-        if (!chapterContent) {
-          chapterContent = await readTextFile(safeJoin(resolvedPath, fileName)).catch(() => '');
-        }
+    const hasPrimaryFile = ['file', 'chapter'].includes(conv.context_scope.type) && conv.context_scope.file;
+    if (hasPrimaryFile) {
+      const primaryContent = await readProjectFileForAI(resolvedPath, conv.context_scope.file, 12_000).catch(() => '');
+      if (primaryContent) {
+        ctx.push({ role: 'user', content: `[System: User-selected primary reference file — ${conv.context_scope.file}]\nTreat this file as the first and highest-priority reference for the current conversation. It is not the only accessible file: use list_project_files and read_project_file when other project files are relevant.\n\n\`\`\`\n${primaryContent}\n\`\`\`` });
+        ctx.push({ role: 'assistant', content: `I have read the primary reference file ${conv.context_scope.file} and will consult other project files when needed.` });
       }
-      if (chapterContent) {
-        ctx.push({ role: 'user', content: `[System: Current file content — ${conv.context_scope.file}]\n\`\`\`\n${chapterContent.slice(0, 8000)}\n\`\`\`` });
-        ctx.push({ role: 'assistant', content: 'I have read the current file content. Ready to help.' });
-      }
-    } else if (conv.context_scope.type === 'global') {
-      const secDir = join(resolvedPath, 'sec');
-      const chapDir = join(resolvedPath, 'chapters');
-      const dir = existsSync(secDir) ? secDir : (existsSync(chapDir) ? chapDir : null);
-      if (dir) {
-        const entries = await listDir(dir);
-        const texFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.tex')).slice(0, 10);
-        const summaries = [];
-        for (const f of texFiles) {
-          try {
-            const content = await readTextFile(join(dir, f.name));
-            summaries.push(`## ${f.name}\n${content.slice(0, 400)}...`);
-          } catch {}
-        }
-        if (summaries.length > 0) {
-          ctx.push({ role: 'user', content: `[System: Paper structure overview]\n${summaries.join('\n\n')}` });
-          ctx.push({ role: 'assistant', content: 'I have reviewed the paper structure. Ready to help.' });
-        }
-      }
+    }
+
+    const projectFiles = await listProjectFilesForAI(resolvedPath, { limit: 250 });
+    if (projectFiles.length > 0) {
+      const inventory = projectFiles.map(file => `${file.readable ? '[readable]' : '[metadata only]'} ${file.path} (${file.size} bytes)`);
+      ctx.push({ role: 'user', content: `[System: Project file inventory]\nThe conversation may inspect safe files across the entire managed project. Hidden, sensitive, generated-cache, and unsafe files are excluded. Use the read-only project tools for full contents.\n${inventory.join('\n')}` });
+      ctx.push({ role: 'assistant', content: 'I can inspect the listed project files and will prioritize the user-selected primary file when one is set.' });
     }
     // Inject references if not free scope
     if (conv.context_scope.type !== 'free') {
@@ -404,7 +505,7 @@ export function buildInterruptedAssistantMessage(partialText, error) {
 export function registerAIRoutes(fastify) {
   // ── SSE Streaming endpoint ──────────────────────────────
   fastify.post('/api/ai/stream', async (request, reply) => {
-    const { projectId, conversationProjectId, convId, userMessage, projectConfig, files, rag, model } = request.body;
+    const { projectId, conversationProjectId, convId, userMessage, projectConfig, files, rag, model, ephemeralConversation = false } = request.body;
     const conversationStoreProjectId = conversationProjectId || projectId;
     const modelOverride = model || undefined;
 
@@ -416,7 +517,7 @@ export function registerAIRoutes(fastify) {
  
     const globalSkills = projectConfig?.global_skills || [];
     let chapterSkills = [];
-    if (conv.context_scope.type === 'chapter') {
+    if (['file', 'chapter'].includes(conv.context_scope.type)) {
       const chapterConfig = (projectConfig?.chapters || []).find(c => c.file === conv.context_scope.file);
       chapterSkills = chapterConfig?.skills || [];
     }
@@ -483,9 +584,16 @@ export function registerAIRoutes(fastify) {
       
       if (conv.mode === 'chat') {
         const result = await chatCompletionStream({
-          systemPrompt, messages, model: modelOverride, projectId: conversationStoreProjectId,
+          systemPrompt, messages, tools: getToolsForMode(conv.mode), model: modelOverride, projectId: conversationStoreProjectId,
           signal: abortController.signal,
           onToken: forwardToken,
+          onToolUse: async (name, input) => {
+            sendEvent('tool_use', { name, input });
+            return await executeTool(name, input, resolvedPath);
+          },
+          onToolResult: (name, result) => {
+            sendEvent('tool_result', { name, result: typeof result === 'string' ? result.slice(0, 2000) : String(result).slice(0, 2000) });
+          },
         });
         await appendMessage(conversationStoreProjectId, convId, { role: 'assistant', content: result.fullText });
         safelyRecordAppliedSkillRuns(fastify, appliedSkillNames, {
@@ -546,6 +654,12 @@ export function registerAIRoutes(fastify) {
         model: modelOverride,
       });
       sendEvent('error', { message: classifyAIError(err), code: err.status || 500 });
+    } finally {
+      if (ephemeralConversation) {
+        await deleteConversation(conversationStoreProjectId, convId).catch((cleanupError) => {
+          fastify.log.warn({ error: cleanupError.message, convId }, 'Unable to clean up ephemeral AI conversation');
+        });
+      }
     }
  
     reply.raw.end();
@@ -565,7 +679,7 @@ export function registerAIRoutes(fastify) {
 
     const globalSkills = projectConfig?.global_skills || [];
     let chapterSkills = [];
-    if (conv.context_scope.type === 'chapter') {
+    if (['file', 'chapter'].includes(conv.context_scope.type)) {
       const chapterConfig = (projectConfig?.chapters || []).find(c => c.file === conv.context_scope.file);
       chapterSkills = chapterConfig?.skills || [];
     }
@@ -672,18 +786,19 @@ export function registerAIRoutes(fastify) {
  
 export async function executeTool(name, input, projectPath) {
   switch (name) {
+    case 'list_project_files':
+      return JSON.stringify(await listProjectFilesForAI(projectPath));
+    case 'read_project_file':
+      return await readProjectFileForAI(projectPath, input.path || input.filename);
     case 'read_chapter': {
-      // Accept any project-relative path: if already has sec/ or chapters/ prefix, use as-is;
-      // otherwise try sec/ then chapters/ for backward compat
       const filename = String(input.filename || '').replace(/^\/+/, '');
-      if (filename.startsWith('sec/') || filename.startsWith('chapters/')) {
-        return await readTextFile(safeJoin(projectPath, filename)).catch(() => '');
+      const candidates = filename.startsWith('sec/') || filename.startsWith('chapters/')
+        ? [filename]
+        : [`sec/${filename}`, `chapters/${filename}`, filename];
+      for (const candidate of [...new Set(candidates)]) {
+        try { return await readProjectFileForAI(projectPath, candidate); } catch {}
       }
-      // Bare filename: try sec/ then chapters/
-      const secPath = join(projectPath, 'sec', filename);
-      const chapPath = join(projectPath, 'chapters', filename);
-      try { return await readTextFile(secPath); } catch { /* fall through */ }
-      return await readTextFile(chapPath);
+      throw projectFilePolicyError(`Chapter or project file not found (${filename}).`, 'PROJECT_FILE_NOT_FOUND');
     }
     case 'list_chapters': {
       const secDir = join(projectPath, 'sec');

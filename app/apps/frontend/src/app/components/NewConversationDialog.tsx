@@ -5,15 +5,16 @@ interface Props {
   chapters: { file: string }[];
   skills: { name: string; display_name: string }[];
   projectFiles?: { path: string; type: 'file' | 'dir' }[];
+  primaryFile?: string;
   onSubmit: (data: { name: string; context_scope: any; active_skills: string[]; mode: string; model?: string }) => void;
   onCancel: () => void;
 }
 
-export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit, onCancel }: Props) {
+export function NewConversationDialog({ chapters, skills, projectFiles, primaryFile, onSubmit, onCancel }: Props) {
   const { t } = useTranslation();
   const [name, setName] = useState('');
-  const [scopeType, setScopeType] = useState('free');
-  const [scopeFile, setScopeFile] = useState('');
+  const [scopeType, setScopeType] = useState(primaryFile ? 'file' : 'free');
+  const [scopeFile, setScopeFile] = useState(primaryFile || '');
   const [mode, setMode] = useState('chat');
   const [model, setModel] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -55,7 +56,7 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
 
   const handleSubmit = () => {
     let context_scope: any = { type: scopeType };
-    if (scopeType === 'chapter') context_scope.file = scopeFile;
+    if (scopeType === 'file') context_scope.file = scopeFile;
     onSubmit({ name: name || t('New {{scope}}', { scope: scopeType }), context_scope, active_skills: selectedSkills, mode, model: model || undefined });
   };
 
@@ -87,14 +88,17 @@ export function NewConversationDialog({ chapters, skills, projectFiles, onSubmit
           <select value={scopeType} onChange={e => setScopeType(e.target.value)}
             style={{ display: 'block', width: '100%', marginTop: '4px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--panel)', color: 'var(--text)' }}>
             <option value="free">{t('Free (no file binding)')}</option>
-            <option value="global">{t('Global (all chapters)')}</option>
-            <option value="chapter">{t('Chapter (specific)')}</option>
+            <option value="global">{t('Project files (no primary file)')}</option>
+            <option value="file">{t('Primary file (recommended)')}</option>
           </select>
         </label>
 
-        {scopeType === 'chapter' && (
+        {scopeType === 'file' && (
           <label style={{ display: 'block', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('File')}</span>
+            <span style={{ fontSize: '13px', fontWeight: 500 }}>{t('Primary file')}</span>
+            <div style={{ marginTop: '3px', fontSize: '11px', color: 'var(--muted)', lineHeight: 1.35 }}>
+              {t('This file is injected first, while AI can still inspect other safe project files.')}
+            </div>
             <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center' }}>
               <input
                 value={scopeFile}

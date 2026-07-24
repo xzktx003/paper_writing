@@ -199,7 +199,7 @@ The committed template is [`app/.env.example`](app/.env.example). Keep real secr
 | `OPENPRISM_ENABLE_LEGACY_WORKBENCH` | No | Enables the migration-only static workbench only when set to `true`; disabled by default, and the supported UI remains `/projects` |
 | `OPENPRISM_API_TOKEN` | Required for normal use | Protects every non-public API with a Bearer token; without it, project access, writes, model calls, execution, and terminal routes are disabled |
 | `OPENPRISM_PROVIDER_ALLOWED_HOSTS` | No | Comma-separated administrator allowlist for authenticated temporary HTTP Provider endpoints that must reach an internal host; private targets are otherwise rejected |
-| `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` | No | Maximum wait for Provider response headers; default `15000`. It does not cap the total duration of a healthy streaming answer |
+| `OPENPRISM_PROVIDER_RESPONSE_HEADERS_TIMEOUT_MS` | No | Maximum wait for Provider response headers; default `60000` to accommodate slow first-token latency from reasoning models and long inputs. It does not cap the total duration of a healthy streaming answer |
 | `OPENPRISM_PROVIDER_STREAM_IDLE_TIMEOUT_MS` | No | Maximum period with no new Provider response data; default `120000`. Continuous token output resets the idle window |
 | `SEMANTIC_SCHOLAR_API_KEY` | No | Improves Semantic Scholar quota for citation verification |
 | `OPENPRISM_MINERU_API_BASE` | No | MinerU endpoint for PDF conversion |
@@ -256,14 +256,14 @@ The full-paper compiler detects a main source, chooses a compatible engine, runs
 
 ### Use Chat, Agent, and Tools modes
 
-- **Chat**: explanation and discussion without proposing file changes.
-- **Agent**: drafting, rewriting, review, and proposed edits. Changes appear as diffs for acceptance or rejection.
+- **Chat**: explanation and discussion without proposing file changes; it can inspect safe files anywhere in the managed project through read-only tools.
+- **Agent**: drafting, rewriting, review, and proposed edits. It can inspect safe files across the project, while changes appear as diffs for acceptance or rejection.
 - **Tools**: tasks that need controlled command execution or project tools.
 
 Recommended flow:
 
 1. Create or select a conversation.
-2. Set its scope to a chapter, global paper context, or free context.
+2. Keep the currently selected editor file as the recommended primary reference, choose another project file, use project-wide context without a primary file, or use free context. The primary file is injected first but never limits access to other safe project files.
 3. Open **Select Skill** and choose the relevant Skill.
 4. Optionally attach PDFs/images or select RAG documents.
 5. Describe the target file, intended change, constraints, and expected output.
