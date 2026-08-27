@@ -1,0 +1,7 @@
+metric,baseline,current,unit,method,evidence,status
+draft_completion_time,,,,manual timing before/after workflow,,pending
+manual_review_rounds,,,,review log count,,pending
+unsupported_claim_count,,,,audit issue count,,pending
+source_traceability_rate,,,,claims linked to evidence divided by total claims,,pending
+setup_time,,,,first-use setup timing,,pending
+maintenance_update_time,,,,time to update one reused material package,,pending

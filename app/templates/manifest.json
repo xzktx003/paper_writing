@@ -71,11 +71,27 @@
       ],
       "author": "ICLR",
       "featured": true
+    },
+    {
+      "id": "office-track-writing",
+      "label": "OpenPrism Office 写作交付包",
+      "mainFile": "main.md",
+      "category": "office",
+      "description": "面向办公赛道的长文案写作模板，内置 Brief、来源登记、证据索引、效果指标、复用 SOP 与提交材料清单",
+      "descriptionEn": "Office-track long-form writing package with brief, source register, evidence index, effect metrics, reuse SOP, and submission checklist",
+      "tags": [
+        "Office",
+        "Evidence",
+        "Submission"
+      ],
+      "author": "OpenPrism Office",
+      "featured": true
     }
   ],
   "categories": [
     { "id": "all", "label": "所有", "labelEn": "All" },
     { "id": "academic", "label": "学术论文", "labelEn": "Academic" },
+    { "id": "office", "label": "办公写作", "labelEn": "Office Writing" },
     { "id": "thesis", "label": "学位论文", "labelEn": "Thesis" },
     { "id": "resume", "label": "简历", "labelEn": "Resume" },
     { "id": "presentation", "label": "演示文稿", "labelEn": "Presentation" },

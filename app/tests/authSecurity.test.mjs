@@ -9,6 +9,8 @@ async function buildApp(apiToken) {
   app.get('/api/projects', async () => ({ projects: [] }));
   app.post('/api/projects', async () => ({ created: true }));
   app.delete('/api/projects/paper-1/permanent', async () => ({ deleted: true }));
+  app.get('/api/projects/paper-1/office-track', async () => ({ state: {} }));
+  app.post('/api/projects/paper-1/office-track/export', async () => ({ exported: true }));
   app.get('/api/config', async () => ({ llm_api_key: '********' }));
   app.put('/api/config', async () => ({ saved: true }));
   app.post('/api/ai/stream', async () => ({ streamed: true }));
@@ -35,6 +37,8 @@ describe('dangerous API authentication defaults', () => {
     expect((await app.inject({ method: 'GET', url: '/api/projects' })).statusCode).toBe(503);
     expect((await app.inject({ method: 'POST', url: '/api/projects' })).statusCode).toBe(503);
     expect((await app.inject({ method: 'DELETE', url: '/api/projects/paper-1/permanent' })).statusCode).toBe(503);
+    expect((await app.inject({ method: 'GET', url: '/api/projects/paper-1/office-track' })).statusCode).toBe(503);
+    expect((await app.inject({ method: 'POST', url: '/api/projects/paper-1/office-track/export' })).statusCode).toBe(503);
     expect((await app.inject({ method: 'PUT', url: '/api/config' })).statusCode).toBe(503);
     expect((await app.inject({ method: 'POST', url: '/api/ai/stream' })).statusCode).toBe(503);
     expect((await app.inject({ method: 'POST', url: '/api/ai/send' })).statusCode).toBe(503);
@@ -58,6 +62,9 @@ describe('dangerous API authentication defaults', () => {
     expect((await app.inject({ method: 'GET', url: '/api/projects', headers: { authorization: 'Basic expected-token' } })).statusCode).toBe(401);
     expect((await app.inject({ method: 'GET', url: '/api/projects', headers: { authorization: 'Bearer wrong-token' } })).statusCode).toBe(403);
     expect((await app.inject({ method: 'GET', url: '/api/projects', headers: { authorization: 'Bearer expected-token' } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/projects/paper-1/office-track' })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/projects/paper-1/office-track/export', headers: { authorization: 'Bearer wrong-token' } })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'POST', url: '/api/projects/paper-1/office-track/export', headers: { authorization: 'Bearer expected-token' } })).statusCode).toBe(200);
     expect((await app.inject({ method: 'GET', url: '/api/terminal/ws?access_token=expected-token' })).statusCode).toBe(200);
     expect((await app.inject({ method: 'GET', url: '/api/ws/watch?access_token=expected-token' })).statusCode).toBe(200);
     expect((await app.inject({ method: 'POST', url: '/api/providers/codex-cli/probe', headers: { authorization: 'Bearer expected-token' } })).statusCode).toBe(200);

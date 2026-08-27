@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="app/apps/frontend/public/favicon.svg" alt="Paper Agent logo" width="72" />
+<img src="app/apps/frontend/public/favicon.svg" alt="OpenPrism Office logo" width="72" />
 
-# Paper Agent
+# OpenPrism Office
 
-**A local-first, AI-assisted workspace for writing, reviewing, and compiling research papers.**
+**An auditable AI workspace for evidence-backed office materials, human-approved changes, and reusable delivery.**
 
 [English](README.md) | [简体中文](README_ZH.md)
 
@@ -15,9 +15,12 @@
 
 </div>
 
-Paper Agent brings the files involved in a real paper—LaTeX or Markdown sources, bibliography databases, figures, PDFs, compiler logs, and evidence documents—into one project workspace. It combines a CodeMirror editor, PDF/asset preview, controlled AI assistance, reusable Skills, RAG, citation verification, workflow pipelines, and a project-bound terminal.
+OpenPrism Office brings the brief, sources, drafts, claims, measurements, revisions, approvals, and deliverables behind proposals, technical plans, research summaries, and review materials into one local project workspace. It combines CodeMirror, PDF/asset preview, controlled AI assistance, reusable Skills, transparent local keyword evidence retrieval, citation verification, workflow pipelines, and a project-bound terminal. Existing paper and LaTeX workflows remain available as a specialized evidence-heavy writing scenario.
 
-The project is designed around human review: AI-proposed edits are shown as diffs and remain pending until the user accepts them. Research projects and secrets stay local unless you explicitly configure an external model, scholarly API, image service, OCR service, or collaboration tunnel.
+The project is designed around evidence and human review: AI-proposed edits are shown as diffs and remain pending until the user accepts them. The Delivery panel records source locations, E0–E3 evidence levels, full workflow effort, reusable assets, readiness gaps, and human approval before exporting a `submission/` package with SHA-256 hashes. Projects and secrets stay local unless you explicitly configure an external model, scholarly API, image service, OCR service, or collaboration tunnel.
+
+> [!NOTE]
+> Readiness scores are preparation guidance, not official judging or an award prediction. Without a real baseline, sample, period, and review record, the product keeps the evidence as missing instead of fabricating an efficiency claim.
 
 > [!IMPORTANT]
 > The active application lives in [`app/`](app/). Run installation, development, build, and test commands from that directory.
@@ -38,19 +41,31 @@ The project is designed around human review: AI-proposed edits are shown as diff
 
 | Area | What is available |
 | --- | --- |
+| Office delivery | Formal Delivery panel for task briefs, M01–M06 materials, source locations, effect measurement, reusable assets, four-module readiness guidance, finals preparation, and hashed package export |
 | Project workspace | Multi-project dashboard, file tree, upload/download, text and binary previews, and project-local runtime data |
 | Editing | CodeMirror editing for LaTeX, Markdown, BibTeX, code, configuration files, search, tabs, and dirty-state tracking |
 | AI assistant | Chat, Agent, and Tools modes; streaming responses; image/file attachments; persistent conversations; reviewable diffs |
-| Skills | A searchable bilingual Skill catalog for writing, research, review, LaTeX debugging, citations, statistics, figures, submission, and more |
+| Skills | A searchable bilingual Skill catalog for office writing, research, review, LaTeX debugging, citations, statistics, figures, submission, and more |
 | Compilation | `pdflatex`, `xelatex`, `lualatex`, `latexmk`, and `tectonic`; automatic main-file/engine detection; BibTeX passes; SyncTeX; PDF output |
 | Evidence and RAG | PDF/text upload, extraction and indexing, retrieval, per-conversation document selection, and evidence-oriented writing support |
 | Citation verification | Automatic main `.tex` and bibliography discovery; recursive `\input`/`\include`; CrossRef, Semantic Scholar, OpenAlex, and arXiv checks |
 | Review tools | Structured paper review, rule/LLM Anti-AI analysis, optional GPTZero integration, and evidence/claim review workflows |
 | Pipelines | Typed AI, Human, Compile, Citation, and Compute stages with retry, pause, resume, skip, and approval checkpoints |
 | Figures | Prompt generation, reference-figure context, image generation, editing, and project-local figure storage |
-| Templates | ACL plus CVPR, NeurIPS, and ICML skeletons; ZIP template upload; experimental template transfer workflow |
+| Templates | Evidence-backed office-writing template plus ACL, CVPR, NeurIPS, and ICML skeletons; ZIP upload and experimental template transfer |
 | Terminal and automation | Project-bound tmux terminal, controlled command execution, and MCP tools over HTTP/SSE |
 | Collaboration | Token-based collaboration routes and real-time document infrastructure when collaboration is configured |
+
+## Office-material workflow
+
+1. Create a project with the **OpenPrism Office Writing Delivery Package** template.
+2. Draft the deliverable while maintaining its brief, source register, evidence index, and measurement record.
+3. Use Chat/Agent/Tools and Skills as needed; adopt file changes only through the visible Diff gate.
+4. Open **Delivery** to register materials, evidence locations, real effect data, and reusable assets.
+5. Run the evidence audit and resolve missing materials, weak evidence, irreproducible calculations, risk reminders, and score caps.
+6. Confirm human responsibility and export `submission/`; use the [rule matrix](docs/office_track_rule_matrix.md) and [competition preparation guide](docs/competition/README.md) for the real recording and evidence package.
+
+See the [office-track product specification](docs/office_track_product_spec.md) and [delivery architecture](docs/office_track_architecture.md) for data and security boundaries.
 
 ## Architecture
 
@@ -64,6 +79,7 @@ Fastify backend
   ├─ LaTeX compilation and SyncTeX
   ├─ RAG/PDF extraction and retrieval
   ├─ citation and bibliography verification
+  ├─ office briefs, evidence/effect audits, and delivery packages
   ├─ figure generation and template transfer
   ├─ terminal/tmux and collaboration
   └─ MCP JSON-RPC and SSE transports
@@ -143,6 +159,8 @@ The Projects sidebar separates **All Projects**, **Active**, **Archived**, and *
 The Provider tab explicitly states that model setup is optional and separate from ordinary project/file editing. It separates the Paper Writer **server access token** from a model provider **API key**, explains that HTTP providers need an endpoint and credential while CLI providers depend on a server-installed and already signed-in executable, and asks users to run the opt-in connection test before saving Provider settings. CLI providers on this screen remain read-only Chat providers; a file-changing CLI task must use the separate snapshot/Diff/Accept/Reject Task Agent workflow.
 
 Inside a managed project, open **AI Assistant → Tasks** to use the reviewable CLI Task Agent. The backend creates an isolated snapshot outside the project, runs the selected CLI with fixed file permissions, and returns additions, modifications, deletions, unified diffs, and execution provenance. Codex can use its own login or reuse the application's verified OpenAI-compatible endpoint through a fixed Responses provider; the API key is passed only in a task-specific child-process environment variable and never appears in argv or task metadata. Local environments and generated state—including `.venv`, `venv`, `node_modules`, version-control directories, caches, compile output, and Paper Writer runtime state—are excluded from snapshots; symbolic links remain forbidden everywhere else in the included tree. Reject never changes the project. Accept is disabled until every changed file has been reviewed; it then checks that the original project has not drifted and applies changes with a persisted rollback journal. Task history survives refreshes and backend restarts. See [CLI Task Agent](docs/cli_task_agent.md).
+
+For office-track copywriting, create a project from the **OpenPrism Office Writing Delivery Package** template and open **AI Assistant → Delivery**. The panel saves a project-local `.openprism/office-track.json`, audits required materials, evidence levels, effect measurement, reusable assets, special score caps, and finals readiness, then exports `submission/M01-*.md` through `submission/M06-*.md`, reviewer guidance, initial-round score sheets, finals preparation, and `submission/submission-manifest.json`. The audit is a preparation guide only; it never claims an official competition score.
 
 After a successful LaTeX or Markdown/Pandoc compilation, Paper Writer stores identical PDF copies in the internal `.compile/output/` cache and at the project root—for example, `main.tex` produces `main.pdf`. The root copy is visible in the project files and is preferred by the Final PDF lookup. Failed compilations do not replace the last successful artifacts.
 

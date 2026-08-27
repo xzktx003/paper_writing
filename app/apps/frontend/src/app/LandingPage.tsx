@@ -256,7 +256,7 @@ export default function LandingPage() {
               <polyline points="10 9 9 9 8 9" />
             </svg>
           </div>
-          <span className="landing-brand-text">Paper Agent</span>
+          <span className="landing-brand-text">OpenPrism Office</span>
         </div>
 
         <div className="landing-top-right">
@@ -386,7 +386,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="landing-footer" ref={footerRef}>
-        <span>Paper Agent &mdash; {t('landing.footerTagline')}</span>
+        <span>OpenPrism Office &mdash; {t('landing.footerTagline')}</span>
         <span className="landing-footer-meta">
           <a href="https://github.com/OpenDCAI/OpenPrism" target="_blank" rel="noopener noreferrer">GitHub</a>
           &middot; MIT License

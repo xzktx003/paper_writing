@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="app/apps/frontend/public/favicon.svg" alt="Paper Agent 标志" width="72" />
+<img src="app/apps/frontend/public/favicon.svg" alt="OpenPrism Office 标志" width="72" />
 
-# Paper Agent
+# OpenPrism Office
 
-**一个本地优先、由 AI 辅助的科研论文写作、审阅与编译工作台。**
+**可核验的 AI 办公材料工作台：让重要文案有据可查、有人确认、可复用交付。**
 
 [English](README.md) | [简体中文](README_ZH.md)
 
@@ -15,9 +15,12 @@
 
 </div>
 
-Paper Agent 将真实论文项目涉及的 LaTeX/Markdown 源文件、参考文献库、图片、PDF、编译日志和证据文档统一放进一个项目工作区。它集成了 CodeMirror 编辑器、PDF 与资源预览、可控 AI 辅助、可复用 Skills、RAG、引文核验、工作流 Pipeline，以及与项目目录绑定的终端。
+OpenPrism Office 把项目申报书、技术方案、研究总结、评审材料等长文案涉及的任务 Brief、来源、草稿、主张、数字、修订、审批和交付件统一放进一个本地项目工作区。它集成 CodeMirror 编辑器、PDF 与资源预览、可控 AI 辅助、可复用 Skills、透明的本地关键词证据检索、引文核验、工作流 Pipeline，以及与项目目录绑定的终端。既有论文与 LaTeX 工作流继续保留，作为高证据办公写作的一类专业场景。
 
-项目强调“由人确认”：AI 提议的文件修改会先以差异形式展示，只有用户接受后才会写入。论文项目与密钥默认保留在本机；只有在你主动配置外部模型、学术数据库、图片生成、OCR 或协作隧道时，相关数据才可能发送至对应服务。
+项目强调“证据优先、由人确认”：AI 提议的文件修改会先以差异形式展示，只有用户接受后才会写入。交付面板会记录材料位置、E0—E3 证据等级、完整工作耗时、复用资产、规则缺口和人工确认，再导出带 SHA-256 清单的 `submission/` 交付包。项目与密钥默认保留在本机；只有在你主动配置外部模型、学术数据库、图片生成、OCR 或协作隧道时，相关数据才可能发送至对应服务。
+
+> [!NOTE]
+> 交付面板给出的分数是参赛准备建议，不是组委会或人工评委的正式评分。没有真实基线、样本、周期和复核记录时，系统保留“待补充”，不会生成虚构提效数据。
 
 > [!IMPORTANT]
 > 当前应用位于 [`app/`](app/) 目录。安装、开发、构建和测试命令都应在该目录中执行。
@@ -38,19 +41,31 @@ Paper Agent 将真实论文项目涉及的 LaTeX/Markdown 源文件、参考文�
 
 | 模块 | 当前能力 |
 | --- | --- |
+| 办公材料交付 | 正式工作台“交付”面板：任务 Brief、M01—M06 材料登记、证据定位、效果测量、复用资产、初赛四模块准备审核、决赛准备和带哈希清单的交付包导出 |
 | 项目工作区 | 多项目面板、文件树、上传/下载、文本与二进制文件预览、项目级运行数据 |
 | 编辑器 | 使用 CodeMirror 编辑 LaTeX、Markdown、BibTeX、代码及配置文件，支持搜索、标签页和未保存状态提示 |
 | AI 助手 | Chat、Agent、Tools 三种模式，流式响应，图片/文件附件，会话持久化，以及修改差异确认 |
-| Skills | 可搜索的中英双语 Skill 库，覆盖论文写作、调研、审稿、LaTeX 排错、引文、统计、绘图与投稿等场景 |
+| Skills | 可搜索的中英双语 Skill 库，覆盖办公长文案、论文写作、调研、审稿、LaTeX 排错、引文、统计、绘图与投稿等场景 |
 | 论文编译 | 支持 `pdflatex`、`xelatex`、`lualatex`、`latexmk`、`tectonic`，自动发现主文件和引擎，执行 BibTeX 编译并生成 SyncTeX/PDF |
 | 证据库与 RAG | 上传 PDF/文本、提取与索引、检索、按会话选择文档，为有依据的写作提供上下文 |
 | 引文核验 | 自动识别主 `.tex` 与其引用的 `.bib`，递归处理 `\input`/`\include`，并查询 CrossRef、Semantic Scholar、OpenAlex 和 arXiv |
 | 论文检查 | 结构化审稿、规则/LLM Anti-AI 分析、可选 GPTZero，以及论点和证据检查工作流 |
 | Pipeline | AI、Human、Compile、Citation、Compute 等阶段，支持重试、暂停、继续、跳过与人工审批节点 |
 | 科研绘图 | 提示词生成、参考图上下文、图片生成与编辑，并将结果保存到当前项目 |
-| 模板 | 内置 ACL，并提供 CVPR、NeurIPS、ICML 骨架；支持上传 ZIP 模板和实验性的模板迁移 |
+| 模板 | 内置办公赛道证据写作模板、ACL，并提供 CVPR、NeurIPS、ICML 骨架；支持上传 ZIP 模板和实验性的模板迁移 |
 | 终端与自动化 | 项目目录绑定的 tmux 终端、受控命令执行，以及基于 HTTP/SSE 的 MCP 工具 |
 | 协作基础设施 | 配置完成后可使用基于令牌的协作路由和实时文档能力 |
+
+## 办公材料工作流
+
+1. 新建“OpenPrism Office 写作交付包”模板项目；
+2. 在主文档中写作，在 `brief.md`、`sources/`、`evidence/` 和 `metrics/` 中维护任务边界与证据；
+3. 在 AI 助手中按需使用 Chat/Agent/Tools 和 Skills，所有文件修改通过 Diff 人工采纳；
+4. 打开右侧“交付”，登记材料、证据位置、真实效果数据和复用资产；
+5. 运行证据审核，逐项处理缺材料、低证据、不可复算数据、敏感信息提醒和规则上限；
+6. 人工确认后导出 `submission/`，对照 [办公赛道规则矩阵](docs/office_track_rule_matrix.md) 和 [参赛准备手册](docs/competition/README.md) 完成录屏及真实证明材料。
+
+数据契约与安全边界见 [办公赛道产品规格](docs/office_track_product_spec.md) 和 [交付架构](docs/office_track_architecture.md)。
 
 ## 系统架构
 
@@ -64,12 +79,13 @@ Fastify 后端
   ├─ LaTeX 编译与 SyncTeX
   ├─ RAG、PDF 提取与检索
   ├─ 引文和参考文献核验
+  ├─ 办公 Brief、证据、效果审核与交付包
   ├─ 图片生成与模板迁移
   ├─ 终端、tmux 与协作
   └─ MCP JSON-RPC 与 SSE 传输
         │
         ▼
-本地论文目录（默认：./papers，已被 Git 忽略）
+本地项目目录（默认：./papers，已被 Git 忽略）
 ```
 
 主要技术栈：
@@ -136,6 +152,8 @@ PORT=8787
 Provider 设置页顶部提供四步快速向导，明确区分 Paper Writer 的“服务器访问令牌”和模型提供方的“API Key”：两者必须独立配置，修改服务器令牌不会改写模型 Key。HTTP 提供方需要 endpoint 与凭据；Codex CLI 除了使用自身登录，也可安全复用已经验证通过的 OpenAI-compatible Base URL/API Key，由后端以任务专用环境变量提供凭据。保存前由用户显式运行连接测试。这里的 CLI 仍是只读 Chat Provider，需要修改文件的 CLI 任务必须进入独立的快照、Diff、Accept/Reject Task Agent 工作流。
 
 在受管理项目中打开“AI 助手 → 任务”，即可使用可审查的 CLI Task Agent。后端会在项目外创建隔离快照，以固定文件权限运行选定 CLI，并返回新增、修改、删除文件、unified diff 和执行来源信息。`.venv`、`venv`、`node_modules`、版本控制目录、本地缓存、编译产物和 Paper Writer 运行状态不会复制进任务快照；被纳入快照的其他路径仍严格拒绝符号链接。Reject 永远不会修改原项目；Accept 在用户确认已审查全部文件后才可用，并会先检查原项目是否发生漂移，再通过持久化回滚日志应用变更。任务历史可跨页面刷新和后端重启恢复。详细说明见 [CLI Task Agent](docs/cli_task_agent.md)。
+
+办公赛道文案写作可从 **OpenPrism Office 写作交付包** 模板新建项目，再打开“AI 助手 → Delivery / 交付”。该面板会把 Brief、材料、证据、成效、复用资产和决赛准备保存到项目内 `.openprism/office-track.json`，审计必交材料、证据等级、成本口径、特殊上限和敏感信息提醒，并导出 `submission/M01-*.md` 到 `submission/M06-*.md`、评委说明、初赛评分表、决赛准备文件和 `submission/submission-manifest.json`。审计结果只是参赛准备建议，不代表官方评分。
 
 LaTeX 或 Markdown/Pandoc 编译成功后，最终 PDF 会同时保存到隐藏的 `.compile/output/` 稳定缓存和论文工程根目录，例如 `main.tex` 对应 `main.pdf`。根目录副本会显示在项目文件中，并作为“最终 PDF”的优先预览来源；失败编译不会覆盖上一次成功产物。
 

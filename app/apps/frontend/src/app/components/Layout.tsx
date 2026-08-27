@@ -22,6 +22,7 @@ type FloatingPosition = { x: number; y: number };
 
 const TERMINAL_TOGGLE_SIZE = 36;
 const TERMINAL_TOGGLE_MARGIN = 8;
+const TERMINAL_TOGGLE_DEFAULT_BOTTOM = 82;
 const STATUS_BAR_HEIGHT = 24;
 
 function clampPanelWidth(width: number, minWidth: number, maxWidth: number) {
@@ -331,7 +332,7 @@ export function Layout() {
             position: 'fixed',
             ...(terminalTogglePosition
               ? { left: terminalTogglePosition.x, top: terminalTogglePosition.y }
-              : { bottom: 36, right: 16 }),
+              : { bottom: TERMINAL_TOGGLE_DEFAULT_BOTTOM, right: 16 }),
             width: 36,
             height: 36,
             borderRadius: '50%',

@@ -526,8 +526,8 @@ export default function ProjectPage() {
       {/* ── Sidebar ── */}
       <aside className="project-sidebar">
         <div className="sidebar-brand">
-          <div className="brand-title">Paper Agent</div>
-          <div className="brand-sub">{t('Projects Workspace')}</div>
+          <div className="brand-title">OpenPrism Office</div>
+          <div className="brand-sub">{t('可核验的 AI 办公材料工作台')}</div>
         </div>
 
         <button className="sidebar-create-btn" onClick={() => setCreateOpen(true)}>

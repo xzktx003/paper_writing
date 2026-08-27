@@ -20,13 +20,14 @@ const CitationVerificationPanel = lazy(() => import('./CitationVerificationPanel
 const PaperRagPanel = lazy(() => import('./PaperRagPanel').then(module => ({ default: module.PaperRagPanel })));
 const CliTaskPanel = lazy(() => import('./CliTaskPanel').then(module => ({ default: module.CliTaskPanel })));
 const DrawPanel = lazy(() => import('./DrawPanel'));
+const OfficeDeliveryPanel = lazy(() => import('./OfficeDeliveryPanel').then(module => ({ default: module.OfficeDeliveryPanel })));
 
 function PanelLoader() {
   const { t } = useTranslation();
   return <div role="status" style={{ padding: 16, color: 'var(--muted)', fontSize: 12 }}>{t('Loading panel…')}</div>;
 }
 
-type TabType = 'chat' | 'tasks' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations';
+type TabType = 'chat' | 'tasks' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations' | 'delivery';
 
 interface AttachedFile {
   id: string;
@@ -419,9 +420,11 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
           { key: 'citations', label: `📚 ${t('Citations')}` },
           { key: 'anti-ai', label: `🔍 ${t('Anti-AI')}` },
           { key: 'pipeline', label: `⚡ ${t('Pipeline')}` },
+          { key: 'delivery', label: t('Delivery') },
         ] as const).map(tab => (
           <button
             key={tab.key}
+            data-testid={tab.key === 'delivery' ? 'right-panel-delivery-tab' : undefined}
             onClick={() => setActiveTab(tab.key)}
             style={{
               flex: 1, padding: '8px 2px', minWidth: 0,
@@ -798,6 +801,10 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
           {activeTab === 'tasks' ? (
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <CliTaskPanel projectId={managedProjectId} />
+            </div>
+          ) : activeTab === 'delivery' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <OfficeDeliveryPanel projectId={managedProjectId} />
             </div>
           ) : activeTab === 'rag' ? (
             <div style={{ flex: 1, overflow: 'auto' }}>

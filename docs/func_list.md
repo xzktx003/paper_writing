@@ -2,6 +2,21 @@
 
 本文档按当前仓库实现整理功能范围，作为后续新增功能时必须同步维护的清单。历史计划文档仅作背景，本清单以当前代码、现有接口和已经落地的交互为准。
 
+## OpenPrism Office 办公材料交付（2026-08-27）
+
+- 产品首页与项目页采用 `OpenPrism Office / 可核验的 AI 办公材料工作台` 定位，同时保留既有科研论文能力。
+- 新建项目模板新增“OpenPrism Office 写作交付包”，包含任务 Brief、来源登记、证据索引、效果测量 CSV、主文档、SOP、Skill、README 和交付说明；示例不预填虚构提效比例。
+- 正式 React 工作台右侧新增“交付”面板，四阶段覆盖任务 Brief、材料与证据、效果与复用、审核与导出。
+- 办公交付状态通过受保护的 `GET/PUT /api/projects/:id/office-track`、`POST /api/projects/:id/office-track/audit` 和 `POST /api/projects/:id/office-track/export` 存入 `.openprism/office-track.json`；未配置模型时也能完整手工填写、保存、审核和导出。
+- 材料登记覆盖作品方案、三分钟演示、复用说明、作品意义、效果证明、评委说明与决赛准备；所有位置使用项目相对路径。
+- 证据索引记录 claim、来源路径、精确位置、E0—E3 等级和人工核验状态；无证据主张不会自动升级。
+- 效果测量同时记录原流程、AI 操作、人工复核、重试、配置、维护、样本量、质量说明和测量状态。
+- 复用资产登记覆盖模板、SOP、Prompt、Workflow、Checklist、Dataset 等类型，并区分计划、就绪和已核验。
+- 规则审核输出 30/30/20/20 四模块准备建议、逐项检查、置信度、上限、缺口与人工风险提醒；明确不代表官方评分。
+- 导出在人工确认后生成 M01—M06、九节评委说明、初赛建议分与空白评分表、决赛准备包与附加分说明和 SHA-256 manifest；导出使用临时文件原子替换。
+- 来源登记与生成物严格分离：固定 `submission/*` 产物不能反向登记为来源，防止导出覆盖原材料或形成自证循环；状态和来源不变时重复导出保持内容哈希稳定。
+- 产品规格、规则矩阵、交付架构和参赛准备手册位于 `docs/office_track_*.md` 与 `docs/competition/`。
+
 ## Paper Agent 安全边界（2026-07-22）
 
 - Paper Agent 后端未配置 `OPENPRISM_API_TOKEN` 时，只保留存活/就绪检查和 Provider 元数据；`/api/config`、项目读写、模型调用、配置修改、代码执行与终端全部返回 503。配置 Token 后，除公开端点外统一校验精确的 Bearer Token。

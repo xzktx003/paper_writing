@@ -39,6 +39,7 @@ import { registerCitationVerificationRoutes } from './routes/citationVerificatio
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerPaperRagRoutes } from './routes/paperRag.js';
 import { registerPaperWorkbenchRoutes } from './routes/paperWorkbench.js';
+import { registerOfficeTrackRoutes } from './routes/officeTrack.js';
 import { registerWorkbenchPrototypeRoutes } from './routes/workbenchPrototype.js';
 import { registerDrawRoutes } from './routes/draw.js';
 import { registerAgentProviderRoutes } from './routes/agentProviders.js';
@@ -106,6 +107,7 @@ registerCitationVerificationRoutes(fastify);
 registerMcpRoutes(fastify);
 registerPaperRagRoutes(fastify, { getAppConfig: () => appConfig });
 registerPaperWorkbenchRoutes(fastify);
+registerOfficeTrackRoutes(fastify);
 registerWorkbenchPrototypeRoutes(fastify);
 registerDrawRoutes(fastify, { appConfig });
 registerAgentProviderRoutes(fastify);

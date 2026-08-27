@@ -48,6 +48,48 @@ describe('template contract', () => {
     for (const category of categories) expect(populated.has(category.id), category.id).toBe(true);
   });
 
+  it('bundles an office-track writing template with auditable submission assets', async () => {
+    const templateRoot = new URL('../templates/', import.meta.url).pathname;
+    const { templates, categories } = await readTemplateManifest();
+    const template = templates.find(entry => entry.id === 'office-track-writing');
+
+    expect(template).toMatchObject({
+      label: 'OpenPrism Office 写作交付包',
+      category: 'office',
+      mainFile: 'main.md',
+    });
+    expect(categories.some(category => category.id === 'office')).toBe(true);
+    expect(template.tags).toEqual(expect.arrayContaining(['Office', 'Evidence', 'Submission']));
+
+    const requiredFiles = [
+      'main.md',
+      'brief.md',
+      'sources/register.md',
+      'evidence/index.md',
+      'metrics/effect.csv',
+      'reuse/SOP.md',
+      'reuse/Skill.md',
+      'reuse/README.md',
+      'submission/README.md',
+    ];
+    for (const file of requiredFiles) {
+      await expect(access(join(templateRoot, template.id, file)), file).resolves.toBeUndefined();
+    }
+
+    const main = await readFile(join(templateRoot, template.id, 'main.md'), 'utf8');
+    expect(main).toContain('## 可核验主张');
+    expect(main).toContain('## 人工确认记录');
+
+    const metrics = await readFile(join(templateRoot, template.id, 'metrics/effect.csv'), 'utf8');
+    expect(metrics).toContain('metric,baseline,current,unit,method,evidence,status');
+    expect(metrics).toContain('manual_review_rounds,,,,');
+    expect(metrics).not.toMatch(/,[0-9]+(\.[0-9]+)?%/);
+
+    const submission = await readFile(join(templateRoot, template.id, 'submission/README.md'), 'utf8');
+    expect(submission).toContain('3 分钟演示视频');
+    expect(submission).toContain('不可填写未经证据支持的效率提升百分比');
+  });
+
   it('fails readiness validation for malformed JSON or missing declared entry files', async () => {
     const root = await mkdtemp(join(tmpdir(), 'paper-template-readiness-'));
     const manifestPath = join(root, 'manifest.json');
