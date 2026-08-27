@@ -94,4 +94,4 @@ npm run competition:pdf
 npm run competition:manifest
 ```
 
-演示脚本会启动隔离服务，创建 `office-track-writing` 项目，复制仓库内 DOCX 示例，录制浏览器操作，并在 `docs/competition/submission_90plus/evidence/demo/` 输出原始 WebM、H.264 MP4、截图、时间戳和脱敏状态样例；视频封装脚本再生成带片头、六阶段烧录字幕、受控数据标识和片尾声明的三分钟内 H.264 提交成片，同时保留可编辑 ASS、解说词稿和 JPG 封面；PDF 脚本会把 M01-M06、评委说明和初决赛准备材料合成为 A4 合订本；manifest 脚本为完整静态提交包生成 SHA-256 清单并核对必需文件。录屏使用受控演示数据，只证明产品链路跑通，不作为真实业务提效证明。
+演示脚本会启动隔离服务，创建 `office-track-writing` 项目，复制仓库内 DOCX 示例，录制浏览器操作，并在 `docs/competition/submission_90plus/evidence/demo/` 输出原始 WebM、H.264 MP4、截图、时间戳和脱敏状态样例；视频封装脚本再生成 8 张宏观/总结 PPT、6 段真实实操、中文神经语音、50 条逐句烧录字幕和 AAC 音轨的 150 秒 1080p H.264 提交成片，同时保留可编辑 SRT、完整逐字稿、讲解页清单和 JPG 封面；PDF 脚本会把 M01-M06、评委说明和初决赛准备材料合成为 A4 合订本；manifest 脚本为完整静态提交包生成 SHA-256 清单并核对必需文件。录屏使用受控演示数据，只证明产品链路跑通，不作为真实业务提效证明。

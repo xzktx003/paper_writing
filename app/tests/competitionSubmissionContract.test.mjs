@@ -21,8 +21,17 @@ const requiredFiles = [
   'finals-score-guide.md',
   'OpenPrism-Office-competition-submission.pdf',
   'evidence/demo/office-demo-submission.mp4',
-  'evidence/demo/office-demo-submission.ass',
+  'evidence/demo/office-demo-submission.srt',
   'evidence/demo/office-demo-submission-transcript.md',
+  'evidence/demo/presentation-slides.json',
+  'evidence/demo/slides/01-title.png',
+  'evidence/demo/slides/02-problem.png',
+  'evidence/demo/slides/03-audience.png',
+  'evidence/demo/slides/04-workflow.png',
+  'evidence/demo/slides/05-results.png',
+  'evidence/demo/slides/06-value.png',
+  'evidence/demo/slides/07-promotion.png',
+  'evidence/demo/slides/08-end.png',
   'evidence/demo/office-demo-poster.jpg',
   'evidence/demo/office-demo.mp4',
   'evidence/demo/office-demo.webm',
@@ -68,11 +77,14 @@ describe('office competition submission package', () => {
     const submissionVideo = await readFile(submissionVideoPath);
     expect(submissionVideo.length).toBeGreaterThan(1_000_000);
     expect(submissionVideo.subarray(4, 8).toString()).toBe('ftyp');
-    const submissionCaptions = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission.ass'), 'utf8');
-    expect(submissionCaptions).toContain('受控演示');
-    expect(submissionCaptions).toContain('Dialogue:');
+    const submissionCaptions = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission.srt'), 'utf8');
+    expect(submissionCaptions).toContain('第一步是收件');
+    expect(submissionCaptions).toContain('推广');
     const transcript = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission-transcript.md'), 'utf8');
-    expect(transcript).toContain('不作为真实业务提效证明');
+    expect(transcript).toContain('逐句字幕');
+    expect(transcript).toContain('证据边界');
+    const presentation = JSON.parse(await readFile(join(packageRoot, 'evidence/demo/presentation-slides.json'), 'utf8'));
+    expect(presentation.slides).toHaveLength(8);
     expect((await stat(join(packageRoot, 'evidence/demo/office-demo-poster.jpg'))).size).toBeGreaterThan(50_000);
     const timestamps = await readFile(join(packageRoot, 'evidence/demo/timestamps.md'), 'utf8');
     expect(timestamps).toContain('19-deliver-export.png');

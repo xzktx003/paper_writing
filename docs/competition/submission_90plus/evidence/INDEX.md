@@ -4,7 +4,7 @@
 
 | 编号 | 结论 | 等级 | 状态 | 位置 | 边界 |
 | --- | --- | --- | --- | --- | --- |
-| E3-01 | 六阶段办公流程可在真实浏览器中连续操作 | E3 | 已核验：85.76 秒提交成片、73.76 秒原始连续操作、19 张分步截图 | `demo/office-demo-submission.mp4`、`demo/office-demo.mp4`、`demo/office-demo.webm`、`demo/coverage.json`、`demo/timestamps.md` | 成片仅增加片头、字幕和片尾；受控演示不代表生产落地 |
+| E3-01 | 六阶段办公流程可在真实浏览器中连续操作 | E3 | 已核验：150.424 秒 PPT+配音讲解成片、73.76 秒原始连续操作、19 张分步截图 | `demo/office-demo-submission.mp4`、`demo/office-demo-submission.srt`、`demo/presentation-slides.json`、`demo/slides/`、`demo/office-demo.mp4`、`demo/office-demo.webm`、`demo/coverage.json`、`demo/timestamps.md` | 成片增加宏观/总结 PPT、中文讲解、逐句字幕和实操解释栏；受控演示不代表生产落地 |
 | E3-05 | 本次受控演示的主要功能均返回成功结果 | E3 | 已核验：六阶段 success；OfficeCLI `ok / validate` | `demo/coverage.json`、`logs/officecli-verification.txt`、`logs/competition-demo-contract.txt` | 证明本机受控演示，不证明生产部署或业务成效 |
 | E2-06 | 分步截图可读且覆盖输入、执行、结果与风险边界 | E2 | 视觉验收 94/100，通过 90 阈值 | `logs/visual-verdict.json`、`demo/01-inbox-input.png` 至 `demo/19-deliver-export.png` | 视觉验收不是官方比赛评分 |
 | E3-02 | 浏览器用例覆盖收件、处理、审阅、审批、度量、交付和诚实缺口状态 | E3 | 已核验 | `app/tests/e2e/office-delivery.spec.ts` | 可运行代码与测试 |

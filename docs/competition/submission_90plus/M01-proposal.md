@@ -5,7 +5,7 @@
 参赛团队及负责人：提交前按报名平台信息填写（不得用“受控演示团队”代替真实报名信息）  
 材料版本：2026-08-28 replacement-v2
 作品定位：可核验的 AI 办公材料工作台  
-当前材料状态：方案、85.76 秒字幕成片、73.76 秒原始连续录屏、19 张分步截图、技术评估和复用资产已完成；真实业务效果样本和落地记录仍需在实际试点后补充。
+当前材料状态：方案、150.424 秒 PPT+配音+逐句字幕讲解成片、73.76 秒原始连续录屏、19 张分步截图、技术评估和复用资产已完成；真实业务效果样本和落地记录仍需在实际试点后补充。
 
 ## 1. 要解决的问题
 
@@ -53,7 +53,8 @@ OpenPrism Office 在项目工作台中提供六阶段账本：
 
 证据位：
 
-- `evidence/demo/office-demo-submission.mp4`：85.76 秒 H.264 提交成片，内含片头、六阶段字幕、受控数据标识和真实性声明。
+- `evidence/demo/office-demo-submission.mp4`：150.424 秒 1080p H.264/AAC 提交成片，内含 8 张 PPT 讲解页、6 段真实操作、中文配音、50 条逐句字幕和真实性边界。
+- `evidence/demo/office-demo-submission.srt`、`office-demo-submission-transcript.md`、`presentation-slides.json` 与 `slides/`：可编辑字幕、逐字稿、讲解页元数据和 8 张独立讲解页。
 - `evidence/demo/office-demo.mp4` 和 `office-demo.webm`：73.76 秒未经跳剪的连续浏览器录屏，使用受控 DOCX 样例。
 - `evidence/demo/coverage.json` 与 19 张分步截图：每一阶段至少覆盖输入、执行、结果或风险中的两个状态，并记录逐帧证明文本。
 - `evidence/logs/officecli-verification.txt`：本次演示使用的 OfficeCLI 1.0.145 版本、SHA-256 与 `ok / validate` 结果。

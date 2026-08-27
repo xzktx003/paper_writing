@@ -1,13 +1,13 @@
 {
   "schema": "openprism-office-competition-submission-v2",
-  "generatedAt": "2026-08-27T16:47:53.203Z",
+  "generatedAt": "2026-08-27T17:44:05.579Z",
   "ruleVersion": "AI材料审核与评分规则@2026-08-27",
   "officialJudgement": false,
   "packageScope": "办公赛道材料、受控演示、测试/实验、复用资产和准备度说明",
   "readiness": "technical-package-complete",
   "missingRequiredFiles": [],
   "evidenceBoundary": {
-    "demonstrated": "代码、测试、19 张分步截图、连续浏览器录屏和受控实验支持产品可运行、OfficeCLI 成功与流程变化。",
+    "demonstrated": "代码、测试、8 张讲解页、中文配音/逐句字幕、19 张分步截图、连续浏览器录屏和受控实验支持产品可运行、OfficeCLI 成功与流程变化。",
     "notDemonstrated": "尚无企业多用户/多周期试点，不能据此声称稳定生产率、真实落地或官方 90 分。"
   },
   "unresolvedGaps": [
@@ -15,7 +15,7 @@
     "非作者普通办公用户独立复现记录",
     "现场答辩录屏/纪要与评委评分"
   ],
-  "fileCount": 75,
+  "fileCount": 84,
   "files": [
     {
       "path": "blank-initial-score-sheet.md",
@@ -129,23 +129,23 @@
     },
     {
       "path": "evidence/demo/office-demo-poster.jpg",
-      "bytes": 111879,
-      "sha256": "7c1d1a8e7c4919141263d65c6b55c58fd55a694b10debbca909fb837d5c38a80"
+      "bytes": 133065,
+      "sha256": "190018abaf11a0b0b0b2da37dab3cdcb489ead6ed948f0935d2ce41b5cbdf78b"
     },
     {
       "path": "evidence/demo/office-demo-submission-transcript.md",
-      "bytes": 2122,
-      "sha256": "5c01eb25d7adeb1fdcf069bf8eea185dd2d0251ce793d4ce8d1af18e0f73cb62"
-    },
-    {
-      "path": "evidence/demo/office-demo-submission.ass",
-      "bytes": 2906,
-      "sha256": "3a3c1c71acfc50279fa9a40cb836c3adf8283593adaeb94702fba3b2492f7b40"
+      "bytes": 3647,
+      "sha256": "49660b7a4cff908f12bc71e2d5e02b2d7bf5458d3a32a13d9445628aa1f90eaa"
     },
     {
       "path": "evidence/demo/office-demo-submission.mp4",
-      "bytes": 2650098,
-      "sha256": "5ce5ec12531274ca570e948318f15219718ad57d55c959a8e76ad6435f44e711"
+      "bytes": 6635894,
+      "sha256": "a502cc296fb0e18fbcb4714cdd8d7b9401af07416140095fd5be2c269ec7d0d6"
+    },
+    {
+      "path": "evidence/demo/office-demo-submission.srt",
+      "bytes": 3723,
+      "sha256": "b88680905a375f849b10f31c828338e48201aefb456ae35bc980f87053df895a"
     },
     {
       "path": "evidence/demo/office-demo.mp4",
@@ -156,6 +156,51 @@
       "path": "evidence/demo/office-demo.webm",
       "bytes": 4538522,
       "sha256": "a5bd6a168545914a667b0ee41f1e6d8957ffc6ee9f61cc763b7d2ce478228afd"
+    },
+    {
+      "path": "evidence/demo/presentation-slides.json",
+      "bytes": 4588,
+      "sha256": "4a1481c78dd2711c70077c30b7dfb87fc824da7cf0cd2d6671c6d07cb10f28c2"
+    },
+    {
+      "path": "evidence/demo/slides/01-title.png",
+      "bytes": 121069,
+      "sha256": "7fd6d066508fd40ac031739c7339507da43523fd87260107d6b0c2a774bba512"
+    },
+    {
+      "path": "evidence/demo/slides/02-problem.png",
+      "bytes": 129378,
+      "sha256": "bf7920763ca3255d3231b3c947af6ad7029dca6e999493605994dd46799d008a"
+    },
+    {
+      "path": "evidence/demo/slides/03-audience.png",
+      "bytes": 125299,
+      "sha256": "3ccb2596d7763ab6d41e43de146224392e2f885271e4a1b352d3260d0e8fccf0"
+    },
+    {
+      "path": "evidence/demo/slides/04-workflow.png",
+      "bytes": 117319,
+      "sha256": "ac1ed0117a189a79df8e0991619dada05d76dee247e490ac1287de16e48930da"
+    },
+    {
+      "path": "evidence/demo/slides/05-results.png",
+      "bytes": 131889,
+      "sha256": "32b6fa28da229354b33ba12c86bc8fcc11c8296969f06a3675e05dce39bbe2c0"
+    },
+    {
+      "path": "evidence/demo/slides/06-value.png",
+      "bytes": 140111,
+      "sha256": "0defac2c78bd1c6ff9888f9fc4feaf3fa1d575cfae86073de6b70bdb357567da"
+    },
+    {
+      "path": "evidence/demo/slides/07-promotion.png",
+      "bytes": 142766,
+      "sha256": "c70f0efc31d9c2585be4a79fb846a36eff339e0b8b1a7cc4c07d8a86207fc06d"
+    },
+    {
+      "path": "evidence/demo/slides/08-end.png",
+      "bytes": 133362,
+      "sha256": "cdbfb732931e0f48f2738f5b20b64afee26ce5a099ba8966d45fba4c0205e5ca"
     },
     {
       "path": "evidence/demo/timestamps.md",
@@ -229,8 +274,8 @@
     },
     {
       "path": "evidence/INDEX.md",
-      "bytes": 3572,
-      "sha256": "7cd4e8e59af305e2e1cc9057fbc0fce34ba9837699cbaf8f0ab0d502d442fec8"
+      "bytes": 3710,
+      "sha256": "0e43a261acb50a92be3be2e3e794aec34f45a9228d04b71e5292975b6e092f01"
     },
     {
       "path": "evidence/logs/competition-demo-contract.txt",
@@ -239,8 +284,8 @@
     },
     {
       "path": "evidence/logs/media-probe.json",
-      "bytes": 549,
-      "sha256": "631c642ddfa17bab062e76ab37d39305ed71cd6683034b736b21a34c48bdfa44"
+      "bytes": 764,
+      "sha256": "5280a6103c3a9f1b442ca9d63d9147ed451beb04f0e543d7fe3e782b1d06efff"
     },
     {
       "path": "evidence/logs/officecli-verification.txt",
@@ -249,8 +294,8 @@
     },
     {
       "path": "evidence/logs/visual-verdict.json",
-      "bytes": 781,
-      "sha256": "b0edcbd683a156fc01ff19abfd6dc099127354ddcf3dab61bac7fdeff8624311"
+      "bytes": 1137,
+      "sha256": "6ad0cea8b9bb6fb09e9a0a23dd1fc4708000b22101a798423169ff93fe050e7b"
     },
     {
       "path": "evidence/pilot/pilot-measurement-register.csv",
@@ -269,8 +314,8 @@
     },
     {
       "path": "evidence/test-evidence.md",
-      "bytes": 3112,
-      "sha256": "910ece7b28fe4202b15c108e486a769d6e8937ff86ad2d4cc11bb7df0cac7bd8"
+      "bytes": 3128,
+      "sha256": "f8dd8feabda1ce3712ac04f283467606b5588f684bd816d624f3aaed7b1578b1"
     },
     {
       "path": "evidence/workflow-state-samples/office-track.json",
@@ -294,8 +339,8 @@
     },
     {
       "path": "finals-pack.md",
-      "bytes": 7213,
-      "sha256": "b90781231c976da3812e9c4b0bf2e293dd3ceb63d90e817fe2f9168ed5542c52"
+      "bytes": 7239,
+      "sha256": "4f93b95dafb2035706eb4860c5462b7a2c44ce2f6d0c4974ce5988bc05111d88"
     },
     {
       "path": "finals-score-guide.md",
@@ -304,18 +349,18 @@
     },
     {
       "path": "initial-score-guide.md",
-      "bytes": 7035,
-      "sha256": "6b33b189268f955e74f5e365a70ff0d7507233c4bc2529433a414d652551b1df"
+      "bytes": 7208,
+      "sha256": "b30a8b0e3ed32962404147fcc72c4cdce0cfa58de91d90a09b235f52c276fb49"
     },
     {
       "path": "M01-proposal.md",
-      "bytes": 10561,
-      "sha256": "368e397005180f6537efc7afbd13c8ecc818526eaa0fa1945da2c353fef062fc"
+      "bytes": 10837,
+      "sha256": "5ff419c89122f63f3d2441002efe94ce7c1ad5c0284716d7eb3299e7d0b87ebf"
     },
     {
       "path": "M02-demo-script.md",
-      "bytes": 3037,
-      "sha256": "d6e60de24c5795ce1b667d1a62c5ff42cca73ba26760d4af7b61c6e4480b4aca"
+      "bytes": 3170,
+      "sha256": "42058c3597bc2dd4cedaca6a391a4abdfaedc9cda4e9a0adf675a708981f9828"
     },
     {
       "path": "M03-reuse-statement.md",
@@ -349,8 +394,8 @@
     },
     {
       "path": "OpenPrism-Office-competition-submission.pdf",
-      "bytes": 270381,
-      "sha256": "5e395b776917740bd449e0c241f68d0c032c34c8624358bc88085d08fa5f2c4b"
+      "bytes": 277183,
+      "sha256": "551c46e469e5857827c21357a485a309d83123c71ea5cd5ddf4ac0c4798a090f"
     },
     {
       "path": "pilot-measurement-register.csv",
@@ -359,8 +404,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 3931,
-      "sha256": "ddc11532520e2714365efd2904fa203a2cb054568a7c17a8b6776813963e0723"
+      "bytes": 4062,
+      "sha256": "4225c72ee6021a521be454fa2ee99f0733689be90e16ecee1f74c6dab6283ceb"
     },
     {
       "path": "reuse/operator-checklist.md",
@@ -379,8 +424,8 @@
     },
     {
       "path": "reviewer-guide.md",
-      "bytes": 8044,
-      "sha256": "a33229ce597e715b35ce66934c1cef23e59854e0791e84523332a591aafbad4a"
+      "bytes": 8131,
+      "sha256": "4f3d46ff29cc5cb30481c8ed6798e67ca8df376a6be8d91b687ca0752449de78"
     },
     {
       "path": "score-evidence-matrix.md",
@@ -389,8 +434,8 @@
     },
     {
       "path": "submission-checklist.md",
-      "bytes": 2900,
-      "sha256": "f38d961a5c24e7b795de4ad905baf0d3652bcba5626a7b7652fc18f1fc48cfee"
+      "bytes": 2966,
+      "sha256": "8c4ceaf82c7bf56c63a7577a1b34b73e25c50bab8dda08bee25138bdb3d7cc1e"
     }
   ]
 }

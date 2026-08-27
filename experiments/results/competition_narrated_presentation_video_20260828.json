@@ -1,0 +1,62 @@
+{
+  "experiment": "competition-narrated-presentation-video",
+  "date": "2026-08-28",
+  "objective": "Generate a sub-three-minute PPT-led Chinese narrated competition video interleaved with six verified product operations and sentence-level subtitles.",
+  "inputs": {
+    "rawVideo": "docs/competition/submission_90plus/evidence/demo/office-demo.mp4",
+    "rawDurationSeconds": 73.76,
+    "operationChapters": 6,
+    "presentationSlides": 8,
+    "narrationVoice": "zh-CN-XiaoxiaoNeural",
+    "narrationRate": "+18%"
+  },
+  "output": {
+    "path": "docs/competition/submission_90plus/evidence/demo/office-demo-submission.mp4",
+    "durationSeconds": 150.424,
+    "bytes": 6635894,
+    "videoCodec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "pixelFormat": "yuv420p",
+    "audioCodec": "aac",
+    "audioSampleRate": 48000,
+    "audioChannels": 2,
+    "meanVolumeDb": -19.5,
+    "maxVolumeDb": -1.5,
+    "subtitleFormat": "srt",
+    "subtitleCues": 50,
+    "maximumSubtitleCharacters": 23
+  },
+  "iterations": [
+    {
+      "status": "failed",
+      "finding": "Natural-length narration would exceed the 180-second competition limit.",
+      "resolution": "Removed repeated wording while preserving meaning, audience, step purpose, result and evidence boundary."
+    },
+    {
+      "status": "failed",
+      "visualScore": 66,
+      "finding": "Chinese subtitles rendered as missing-glyph boxes because the libass family name did not match the font internal name.",
+      "resolution": "Used the converted font's internal family name Noto Sans SC Thin."
+    },
+    {
+      "status": "failed",
+      "visualScore": 68,
+      "finding": "SRT subtitles were scaled larger than expected and covered the operation recording.",
+      "resolution": "Calibrated the measured libass scale to FontSize 14, Outline 1.3 and MarginV 10."
+    },
+    {
+      "status": "passed",
+      "visualScore": 94,
+      "finding": "Chinese subtitles stay within the dedicated 120-pixel zone; restrained emphasis blocks, PPT, operation recording and explanation rail remain legible."
+    }
+  ],
+  "automatedChecks": {
+    "narratedVideoContract": "2/2 passed",
+    "durationWithin120To180Seconds": true,
+    "hasStereoAacNarration": true,
+    "hasEditableSrt": true,
+    "allSlidesOver40000Bytes": true
+  },
+  "evidenceBoundary": "This proves a reproducible technical demonstration and presentation artifact, not official competition scoring or long-term business productivity."
+}
