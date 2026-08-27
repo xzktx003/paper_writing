@@ -1,0 +1,32 @@
+{
+  "experiment": "competition-video-subtitle-render",
+  "date": "2026-08-28",
+  "source": {
+    "file": "docs/competition/submission_90plus/evidence/demo/office-demo.mp4",
+    "durationSeconds": 148.84,
+    "continuousBrowserOperation": true
+  },
+  "failedAttempt": {
+    "fontInput": "bundled WOFF2 passed directly to libass",
+    "result": "Chinese glyphs rendered as boxes"
+  },
+  "finalMethod": {
+    "fontInput": "bundled Noto Sans SC converted temporarily from WOFF2 to TTF",
+    "subtitleFormat": "ASS burned into video",
+    "introSeconds": 5,
+    "outroSeconds": 7,
+    "audio": false
+  },
+  "output": {
+    "file": "docs/competition/submission_90plus/evidence/demo/office-demo-submission.mp4",
+    "durationSeconds": 160.84,
+    "codec": "h264",
+    "width": 1440,
+    "height": 960,
+    "pixelFormat": "yuv420p",
+    "underThreeMinutes": true
+  },
+  "visualChecksSeconds": [2.5, 18, 65, 125, 145, 157],
+  "result": "pass",
+  "boundary": "Controlled demonstration data; not evidence of real business productivity improvement."
+}

@@ -10,7 +10,7 @@
 | 否定提效主张识别 | 首轮 1 项失败，修复后通过 | `E04-red-green-tests.md`、`officeIntelligenceService.test.js` | 证明回归已修复，不代表覆盖所有中文表达 |
 | 缺证据主张 | 显示 missing，不生成虚构来源 | 连续录屏审阅阶段、证据图测试 | 受控样例和当前规则实现 |
 | 人工审批门禁 | 非法状态跳转被拒绝 | `officeWorkflowService.test.js`、`E09-approval-log.md` | 本地工作流状态，不代表外部平台送达 |
-| 参赛材料完整性 | 53 文件清单目标、必需项契约校验 | `submission-manifest.json`、`competitionSubmissionContract.test.mjs` | 最终数字以最新 manifest 为准 |
+| 参赛材料完整性 | 57 文件清单目标、必需项契约校验 | `submission-manifest.json`、`competitionSubmissionContract.test.mjs` | 最终数字以最新 manifest 为准 |
 
 ## 真实试点必须补充的质量字段
 

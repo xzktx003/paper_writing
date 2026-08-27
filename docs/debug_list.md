@@ -469,3 +469,4 @@
 - 2026-08-27：OfficeCLI 初版继承完整 `process.env`，失败输出还可能把项目绝对路径嵌入 stderr 返回；退出码 0/JSON 可解析也未核验预期文件。现改为 PATH/locale/HOME/XDG/temp 等最小环境白名单、项目路径递归脱敏与 8,000 字符上限，并对 inspect/create/edit/merge/render 的非空输出文件做 `stat` 门禁。无匹配后端的 `addOfficeSuggestion` 前端 API 同步删除。
 - 2026-08-27：证据关系图会把“没有证明稳定提效”误判为支持“已经证明稳定提效”，因为“证明/proof”未进入可否定动作词和冲突短语集合。新增中文受控演练红灯用例，将“没有证明/未证明/不能证明”及英文同类表述绑定到 prove/proof 动作词；修复后回归与 9 项受控评估全部通过。
 - 2026-08-27：办公赛道录屏的阶段字幕在无系统中文字体的 Chromium 环境中显示方框。根因是录制器覆盖层强制使用 `system-ui`，没有复用应用内置中文字体。修复为显式使用 Noto Sans SC 并等待 `document.fonts.ready`，新增材料契约回归后重新录制 MP4/WebM。
+- 2026-08-28：参赛成片用 FFmpeg/libass 直接加载前端随包 WOFF2 时，烧录的中文仍显示方框；系统又没有可依赖的中文字体。成片脚本现用 fontTools 把仓库内 Noto Sans SC 临时转换为 TTF，显式传给 libass，并用深色字幕底板保证白色工作台上的可读性；构建结束清理临时字体，六个时间点抽帧复核通过。

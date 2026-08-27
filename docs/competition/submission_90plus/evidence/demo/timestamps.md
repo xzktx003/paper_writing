@@ -1,6 +1,8 @@
 # 演示时间戳清单
 
-推荐上传：`office-demo.mp4`；原始录屏：`office-demo.webm`
+推荐上传：`office-demo-submission.mp4`；原始连续录屏：`office-demo.mp4`、`office-demo.webm`
+
+下表时间以 148.840 秒原始录屏为准；提交成片前置 5 秒片头，因此对应画面整体顺延 5 秒。成片字幕与可选旁白的精确时间见 `office-demo-submission-transcript.md`。
 
 | 时间 | 画面 | 证据说明 | 截图 |
 | --- | --- | --- | --- |

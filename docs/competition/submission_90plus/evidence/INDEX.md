@@ -4,7 +4,7 @@
 
 | 编号 | 结论 | 等级 | 状态 | 位置 | 边界 |
 | --- | --- | --- | --- | --- | --- |
-| E3-01 | 六阶段办公流程可在真实浏览器中连续操作 | E3 | 已核验：148.840 秒 | `demo/office-demo.mp4`、`demo/office-demo.webm`、`demo/timestamps.md` | 受控演示，不代表生产落地 |
+| E3-01 | 六阶段办公流程可在真实浏览器中连续操作 | E3 | 已核验：160.840 秒提交成片、148.840 秒原始连续操作 | `demo/office-demo-submission.mp4`、`demo/office-demo.mp4`、`demo/office-demo.webm`、`demo/office-demo-submission-transcript.md`、`demo/timestamps.md` | 成片仅增加片头、字幕和片尾；受控演示不代表生产落地 |
 | E3-02 | 浏览器用例覆盖收件、处理、审阅、审批、度量、交付和诚实缺口状态 | E3 | 已核验 | `app/tests/e2e/office-delivery.spec.ts` | 可运行代码与测试 |
 | E3-03 | 审批状态机拒绝非法跳转，必须保留人类批准事件 | E3 | 已核验 | `app/apps/backend/src/services/__tests__/officeWorkflowService.test.js` | 代码行为 |
 | E3-04 | 系统能生成 M01-M06、评委材料和 SHA-256 manifest | E3 | 已核验 | `app/apps/backend/src/services/officeTrackService.js` 及测试 | 代码行为 |

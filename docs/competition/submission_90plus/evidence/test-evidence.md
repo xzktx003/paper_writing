@@ -5,7 +5,7 @@
 ## 当前提交基线
 
 - 分支：`feat/office-track-writing-workbench`
-- 基线提交：`e4c6505 Make office work auditable from intake through delivery`
+- 基线提交：`7f106d0 Make the office entry auditable for competition review`
 - 办公主流程：收件 → 处理 → 审阅 → 审批 → 交付 → 度量
 
 ## 已完成验证
@@ -21,10 +21,11 @@
 | API 集成测试 | 13/13 通过 | 隔离后端与临时数据目录 |
 | Chromium E2E | 38/38 通过 | 单 worker；包含六阶段办公流程及 390×844 窄屏操作 |
 | 生产构建/类型检查 | 通过 | 前端 TypeScript 无错误；Vite 生产构建在全量流程中执行两次 |
-| 演示脚本语法 | 3/3 通过 | 录像、PDF、manifest 三个 Node 脚本通过 `node --check` |
+| 演示脚本语法 | 4/4 通过 | 录像、成片剪辑、PDF、manifest 四个 Node 脚本通过 `node --check` |
 | 中文字幕红绿灯 | 修复前 1 失败，修复后 5/5 通过 | 阶段字幕改用内置 Noto Sans SC，并等待 `document.fonts.ready` |
 | 连续演示媒体 | WebM 5,886,270 bytes；H.264 MP4 2,451,487 bytes；均为 148.840 秒 | ffprobe 核验，1440×960、yuv420p、小于 180 秒 |
-| 完整包清单 | 53 个文件 | 必交项无缺失，逐文件字节数与 SHA-256 由契约测试复算 |
+| 参赛提交成片 | H.264 MP4 3,236,492 bytes；160.840 秒 | 1440×960、yuv420p；内嵌片头、六阶段字幕、受控数据标识和真实性片尾 |
+| 完整包清单 | 57 个文件 | 必交项无缺失，逐文件字节数与 SHA-256 由契约测试复算 |
 
 ## 复现命令
 
@@ -32,9 +33,10 @@
 node --test app/apps/backend/src/services/__tests__/officeIntelligenceService.test.js
 node experiments/office_competition_controlled_evaluation.mjs --output experiments/results/office_competition_controlled_evaluation_20260827.json
 npm run check:full
+npm run competition:video
 npm run competition:pdf
 npm run competition:manifest
 npm --prefix app exec -- vitest run tests/competitionSubmissionContract.test.mjs
 ```
 
-以上结果于 2026-08-27 在候选工作树上执行，基线提交为 `e4c6505`。最终上传前若任何材料字节发生变化，必须重新生成 PDF 和 manifest，并再次运行提交包契约测试。
+以上结果于 2026-08-28 在候选工作树上复核。最终上传前若任何材料字节发生变化，必须重新生成成片/PDF 和 manifest，并再次运行提交包契约测试。

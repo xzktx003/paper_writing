@@ -5,7 +5,7 @@
 参赛团队及负责人：提交前按报名平台信息填写（不得用“受控演示团队”代替真实报名信息）  
 材料版本：2026-08-27 final-candidate  
 作品定位：可核验的 AI 办公材料工作台  
-当前材料状态：方案、2 分 29 秒受控实操录屏、技术评估和复用资产已完成；真实业务效果样本和落地记录仍需在实际试点后补充。
+当前材料状态：方案、2 分 41 秒字幕成片、2 分 29 秒原始连续录屏、技术评估和复用资产已完成；真实业务效果样本和落地记录仍需在实际试点后补充。
 
 ## 1. 要解决的问题
 
@@ -53,7 +53,8 @@ OpenPrism Office 在项目工作台中提供六阶段账本：
 
 证据位：
 
-- `evidence/demo/office-demo.mp4`（H.264 上传兼容版）和 `office-demo.webm`（原始版）：148.840 秒连续浏览器录屏，使用受控 DOCX 样例。
+- `evidence/demo/office-demo-submission.mp4`：160.840 秒 H.264 提交成片，内含片头、六阶段字幕、受控数据标识和真实性声明。
+- `evidence/demo/office-demo.mp4` 和 `office-demo.webm`：148.840 秒未经跳剪的连续浏览器录屏，使用受控 DOCX 样例。
 - `evidence/workflow-state-samples/`：`.openprism/office-track.json`、`.openprism/office-workspace.json`、`.openprism/office-workflow.json` 的脱敏样例。
 - `evidence/submission-manifest.json`：演示项目导出包哈希清单。
 

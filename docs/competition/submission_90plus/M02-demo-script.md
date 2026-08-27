@@ -20,4 +20,6 @@
 - 不展示 Token、账号、客户名、生产地址、个人信息或未授权截图。
 - 保留原始 WebM/MP4、关键截图、时间戳清单和导出 manifest。
 
-实际录屏：优先上传 `evidence/demo/office-demo.mp4`，原始文件为同目录 `office-demo.webm`；两者 ffprobe 核验时长均为 148.840 秒，关键画面和截图见 `evidence/demo/timestamps.md`。
+实际成片：优先上传 `evidence/demo/office-demo-submission.mp4`，ffprobe 核验时长为 160.840 秒，1440×960、H.264、yuv420p。成片由 5 秒片头、148.840 秒未经跳剪的真实浏览器操作和 7 秒片尾组成，已烧录六阶段流程字幕、“受控演示数据”标识和“不作为真实业务提效证明”声明。
+
+原始证据保留为同目录 `office-demo.mp4` 与 `office-demo.webm`，两者均为 148.840 秒；可编辑字幕见 `office-demo-submission.ass`，逐段解说词见 `office-demo-submission-transcript.md`，关键画面和原始时间戳见 `evidence/demo/timestamps.md`。

@@ -20,6 +20,10 @@ const requiredFiles = [
   'finals-pack.md',
   'finals-score-guide.md',
   'OpenPrism-Office-competition-submission.pdf',
+  'evidence/demo/office-demo-submission.mp4',
+  'evidence/demo/office-demo-submission.ass',
+  'evidence/demo/office-demo-submission-transcript.md',
+  'evidence/demo/office-demo-poster.jpg',
   'evidence/demo/office-demo.mp4',
   'evidence/demo/office-demo.webm',
   'evidence/demo/timestamps.md',
@@ -49,6 +53,16 @@ describe('office competition submission package', () => {
     expect(video.size).toBeGreaterThan(1_000_000);
     const compatibleVideo = await stat(join(packageRoot, 'evidence/demo/office-demo.mp4'));
     expect(compatibleVideo.size).toBeGreaterThan(1_000_000);
+    const submissionVideoPath = join(packageRoot, 'evidence/demo/office-demo-submission.mp4');
+    const submissionVideo = await readFile(submissionVideoPath);
+    expect(submissionVideo.length).toBeGreaterThan(1_000_000);
+    expect(submissionVideo.subarray(4, 8).toString()).toBe('ftyp');
+    const submissionCaptions = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission.ass'), 'utf8');
+    expect(submissionCaptions).toContain('受控演示');
+    expect(submissionCaptions).toContain('Dialogue:');
+    const transcript = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission-transcript.md'), 'utf8');
+    expect(transcript).toContain('不作为真实业务提效证明');
+    expect((await stat(join(packageRoot, 'evidence/demo/office-demo-poster.jpg'))).size).toBeGreaterThan(50_000);
     const timestamps = await readFile(join(packageRoot, 'evidence/demo/timestamps.md'), 'utf8');
     expect(timestamps).toMatch(/02:(?:[2-5]\d)/);
     expect(timestamps).toContain('受控演示');

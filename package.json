@@ -19,6 +19,7 @@
     "check": "npm --prefix app run check",
     "check:full": "npm --prefix app run check:full",
     "competition:demo": "npm --prefix app run competition:demo",
+    "competition:video": "npm --prefix app run competition:video",
     "competition:manifest": "npm --prefix app run competition:manifest",
     "competition:pdf": "npm --prefix app run competition:pdf",
     "release:verify": "npm --prefix app run release:verify"

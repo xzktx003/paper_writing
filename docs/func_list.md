@@ -25,7 +25,7 @@
 - 导出在人工确认后生成 M01—M06、九节评委说明、初赛建议分与空白评分表、决赛准备包、附加分说明、90+ 准备总包、评分证据矩阵、演示取证计划、试点测量登记表、评委问答、合规清单和 SHA-256 manifest；导出使用临时文件原子替换。
 - 来源登记与生成物严格分离：固定 `submission/*` 产物不能反向登记为来源，防止导出覆盖原材料或形成自证循环；状态和来源不变时重复导出保持内容哈希稳定。
 - 产品规格、规则矩阵、交付架构和参赛准备手册位于 `docs/office_track_*.md` 与 `docs/competition/`。
-- 参赛材料新增 `docs/competition/submission_90plus/` 高分提交包、隔离录屏脚本、A4 PDF 合订脚本和静态包哈希脚本；`npm run competition:demo` 使用仓库内 DOCX 示例生成原始 WebM、H.264 MP4 上传版、截图、时间戳和脱敏状态样例，`npm run competition:pdf` 合并 M01-M06、评委说明和初决赛准备材料，`npm run competition:manifest` 核对必需文件并生成 SHA-256 清单；受控演示数据不冒充真实业务成效。
+- 参赛材料新增 `docs/competition/submission_90plus/` 高分提交包、隔离录屏脚本、成片剪辑脚本、A4 PDF 合订脚本和静态包哈希脚本；`npm run competition:demo` 使用仓库内 DOCX 示例生成原始 WebM/H.264 MP4、截图、时间戳和脱敏状态样例，`npm run competition:video` 将连续录屏封装为三分钟内 H.264 提交成片，烧录片头、六阶段字幕、受控数据标识和片尾真实性声明，并输出 ASS、解说词稿与封面；`npm run competition:pdf` 合并 M01-M06、评委说明和初决赛准备材料，`npm run competition:manifest` 核对必需文件并生成 SHA-256 清单；受控演示数据不冒充真实业务成效。
 
 ## Paper Agent 安全边界（2026-07-22）
 

@@ -1,6 +1,6 @@
 # OpenPrism Office 办公赛道提交包
 
-版本日期：2026-08-27
+版本日期：2026-08-28
 
 作品名称：OpenPrism Office——可核验的 AI 办公材料工作台
 
@@ -11,7 +11,7 @@
 | 材料 | 文件 | 状态 | 证据边界 |
 | --- | --- | --- | --- |
 | M01 作品方案 | `M01-proposal.md` | 已完成 | 产品、代码和测试支持 |
-| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo.mp4`（上传版）、`office-demo.webm`（原始版） | 已核验：148.840 秒 | 连续真实浏览器操作 |
+| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo-submission.mp4`（提交成片）、`office-demo.mp4`/`office-demo.webm`（原始证据） | 已核验：160.840 秒成片、148.840 秒连续操作 | 真实浏览器操作，成片内嵌字幕与真实性声明 |
 | M03 复用价值 | `M03-reuse-statement.md` | 已完成 | 模板、SOP、Skill 支持 |
 | M04 作品意义 | `M04-significance.md` | 已完成 | 方案与流程支持 |
 | M05 效果证明 | `M05-effect-evidence.md` | 受控证据已完成；业务试点待实际使用 | 不把技术测试写成企业提效 |
@@ -34,12 +34,12 @@
 ## 3. 推荐提交顺序
 
 1. 提交 M01-M06、评委指南、复用资产和哈希清单。
-2. 优先将 H.264 `evidence/demo/office-demo.mp4` 作为三分钟内实操演示附件，WebM 保留为原始录屏。
+2. 优先将 H.264 `evidence/demo/office-demo-submission.mp4` 作为三分钟内实操演示附件；`office-demo.mp4` 和 `office-demo.webm` 保留为未经剪辑的连续录屏证据。
 3. 将关键截图、受控实验摘要和测试证据作为 M05 附件。
 4. 若提交前已有真实业务试点，只向 `pilot-measurement-register.csv` 写入可回查的原始记录，并同步更新 M05；不得用演示 fixture 替代。
 5. 提交前执行 `reuse/operator-checklist.md` 的脱敏、可播放和哈希核对。
 
-合订本可通过 `npm run competition:pdf` 重建；连续演示可通过 `npm run competition:demo` 重录；最后运行 `npm run competition:manifest` 重建完整哈希清单。
+合订本可通过 `npm run competition:pdf` 重建；连续演示可通过 `npm run competition:demo` 重录；`npm run competition:video` 会用原始 MP4 生成带片头、流程字幕、受控数据标识和片尾声明的提交成片及封面；最后运行 `npm run competition:manifest` 重建完整哈希清单。
 
 ## 4. 90+ 冲刺逻辑
 
