@@ -1,0 +1,32 @@
+{
+  "experiment": "officecli-v1.0.145-adapter-smoke",
+  "date": "2026-08-27",
+  "upstream": "iOfficeAI/OfficeCLI",
+  "release": "v1.0.145",
+  "platform": "linux-x64",
+  "sha256": "449f0e6a1298e3c6d7da792d26ab53d04ba77bd990f299b51123c7aef383d2ce",
+  "checksumMatched": true,
+  "reportedVersion": "1.0.145",
+  "environment": {
+    "OFFICECLI_SKIP_UPDATE": "1",
+    "shell": false,
+    "artifacts": "ephemeral-/tmp"
+  },
+  "operations": {
+    "create": "passed",
+    "dump": "passed",
+    "validate": "passed",
+    "viewHtml": "passed",
+    "batchEdit": "passed",
+    "templateMerge": "passed"
+  },
+  "artifactBytes": {
+    "docx": 5183,
+    "dumpJson": 7924,
+    "html": 49376
+  },
+  "regressionFound": "DOCX w:t xml:space=preserve parsed as an object and lost text",
+  "regressionFixed": true,
+  "crossReadText": "可核验办公方案",
+  "boundary": "OfficeCLI has no diff command; OpenPrism uses built-in extracted-text diff."
+}

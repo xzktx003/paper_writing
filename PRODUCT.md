@@ -25,17 +25,20 @@ The product is not a generic chat box or a one-click text generator. Its distinc
 ## Operating Context
 
 - Typical materials: project proposals, technical reports, research summaries, review briefs, implementation plans, technical disclosures, and competition submission packages.
-- Typical source inputs: Markdown, LaTeX, PDF, images, tables exported as text/CSV, notes, citations, and project files.
-- Typical workflow: define brief and boundaries; register sources; build a local evidence corpus; draft with task-specific Skills; review claims, numbers, consistency, and sensitive content; accept changes explicitly; render the final artifact; record before/after metrics; export the delivery and evidence package.
+- Typical source inputs: DOCX, PPTX, XLSX, Markdown, LaTeX, PDF, images, tables exported as text/CSV, notes, meeting transcripts, citations, and project files.
+- Typical workflow: collect project-relative materials in the Inbox; extract locally; retrieve and map claim evidence; draft with task-specific Skills; review paragraph suggestions and provenance; record a human approval; render or export the final artifact; measure the complete before/after effort; export the delivery and evidence package.
 - Deployment is browser-based and must remain usable on a LAN. External models, scholarly databases, OCR, image generation, and tunnels are opt-in integrations whose data boundaries must be visible.
 
 ## Capabilities and Constraints
 
 - Preserve the current React/Fastify application, managed-project filesystem, local-first storage, authenticated APIs, Provider registry, Skills, evidence retrieval, diff approval, review, Pipeline, compile, and export foundations.
-- Add office-oriented project templates, terminology, brief capture, evidence indexing, effect measurement, reusable-asset tracking, submission readiness, and reviewer-facing exports.
+- Provide one six-stage office ledger—Inbox, Produce, Review, Approve, Deliver, Measure—alongside the existing brief, rule audit, reusable-asset, and submission-export records.
 - Keep Chat read-only by default. Any file modification or adoption requires a visible diff or explicit human confirmation.
-- Current built-in RAG is transparent local keyword evidence retrieval, not semantic vector retrieval; product copy must not claim otherwise.
-- Markdown and LaTeX remain first-class sources. PDF is a delivery format when the configured local toolchain supports it. DOCX/PPTX/XLSX support is not confirmed and must not be advertised as implemented.
+- The office Inbox includes built-in local OOXML text/structure extraction for DOCX, PPTX, and XLSX. PDF extraction and scanned-document OCR remain dependent on an explicitly configured adapter; unavailable tools must stay visible as unavailable.
+- Office evidence search combines real BM25, a deterministic hashed token/character-ngram vector cosine score, and an explainable reranker. It is a local semantic-like retrieval signal, not a learned embedding model or a claim of neural understanding.
+- Optional OfficeCLI execution is enabled only through an absolute `OFFICECLI_PATH`; supported upstream operations are dump/inspect, create, batch edit, template merge, render, and validate. The application provides local extracted-text diff because OfficeCLI has no diff command.
+- Workflow recipes preserve review and human-approval gates. Local, webhook, Feishu, and email connectors are declarations with readiness checks; external connectors are not claimed as operational when credentials or execution adapters are absent.
+- Meeting intake accepts supplied transcript text and timestamps, preserves supplied speaker labels, and extracts candidate decisions/actions. It does not perform transcription or speaker diarization.
 - Every quantitative improvement claim must include baseline, after value, unit, sample size, measurement period, calculation, and whether review, retry, configuration, and maintenance time were included.
 - Competition readiness is an auditable product surface, not a promise of qualification or award.
 

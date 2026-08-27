@@ -18,6 +18,11 @@
 | --- | --- |
 | 正式工作台入口 | 项目页右侧“交付”面板 |
 | 状态留痕 | 项目内 `.openprism/office-track.json` |
+| V2 收件/检索/会议留痕 | 项目内 `.openprism/office-workspace.json` |
+| V2 配方/运行/审阅/审批/遥测留痕 | 项目内 `.openprism/office-workflow.json` |
+| Office 材料能力 | 内置 DOCX/PPTX/XLSX OOXML 抽取；可选 OfficeCLI 创建/编辑/合并/渲染/验证 |
+| 证据关系 | BM25 + 哈希向量 + rerank 分数分解，以及 support/conflict/missing 图 |
+| 会议证据 | 用户提供的带时间戳逐字稿、已有 speaker 标签、候选决定和待办 |
 | 参赛导出包 | 项目内 `submission/` |
 | 审核建议 | `/api/projects/:id/office-track/audit` |
 | 导出清单和哈希 | `submission/submission-manifest.json` |
@@ -54,11 +59,12 @@
 ## 建议准备顺序
 
 1. 新建 `office-track-writing` 模板项目。
-2. 在右侧“交付”面板填写 Brief、材料、证据、效果和复用资产。
-3. 先运行“证据审核”，处理待补材料、不可读文件、敏感信息提醒和数据缺口。
-4. 勾选人工确认后导出 `submission/`。
-5. 按本目录文档录制视频、补真实数据、撰写评委说明。
-6. 提交前重新导出，保留最新 `submission-manifest.json`。
+2. 在“收件”导入项目内真实 Office/文本材料；在“处理”运行本地配方或导入会议逐字稿。
+3. 在“审阅”展示一次检索命中分解、证据支持/冲突/缺失和建议采纳过程。
+4. 在“审批”记录人工批准事件；不要把本地 published 状态描述为外部平台已经收到文件。
+5. 在“度量”补真实基线、AI、复核、重试、配置、维护、样本和质量记录。
+6. 在“交付”运行证据审核，处理不可读材料、敏感信息提醒和数据缺口，勾选人工确认后导出 `submission/`。
+7. 按本目录文档录制视频、补真实数据、撰写评委说明；提交前重新导出并保留最新 manifest。
 
 ## 本目录文件
 

@@ -6,8 +6,17 @@
 
 - 产品首页与项目页采用 `OpenPrism Office / 可核验的 AI 办公材料工作台` 定位，同时保留既有科研论文能力。
 - 新建项目模板新增“OpenPrism Office 写作交付包”，包含任务 Brief、来源登记、证据索引、效果测量 CSV、主文档、SOP、Skill、README 和交付说明；示例不预填虚构提效比例。
-- 正式 React 工作台右侧新增“交付”面板，四阶段覆盖任务 Brief、材料与证据、效果与复用、审核与导出。
+- 正式 React 工作台右侧“交付”面板升级为收件、处理、审阅、审批、交付、度量六阶段统一账本；桌面与 390×844 手机端均可完成主流程。
 - 办公交付状态通过受保护的 `GET/PUT /api/projects/:id/office-track`、`POST /api/projects/:id/office-track/audit` 和 `POST /api/projects/:id/office-track/export` 存入 `.openprism/office-track.json`；未配置模型时也能完整手工填写、保存、审核和导出。
+- 新增 `/api/projects/:id/office-track/workspace` 及 inbox、artifacts、connectors、recipes、runs、review、metrics、search、evidence、meetings 子路由；收件/检索/会议历史存入 `.openprism/office-workspace.json`，配方/运行/协同/遥测存入 `.openprism/office-workflow.json`，均为项目内原子持久化。
+- 内置 DOCX、PPTX、XLSX OOXML 文本/结构抽取和两份材料的抽取文本差异；PDF/扫描件缺少解析器时返回明确 blocked/unavailable，不伪造成功。
+- 可选 `OFFICECLI_PATH` 适配器对齐 OfficeCLI v1.0.145 的 dump/create/batch/merge/view/validate 命令，使用固定 argv、`shell: false`、超时和禁用自动更新的最小环境；上游没有 diff，因此 diff 由内置抽取完成。
+- Docling、MarkItDown、PaddleOCR 目前以显式外部能力探测呈现；绝对可执行路径、版本探针和失败原因可见，未配置时不会显示 available。
+- 自动化配方声明 local-folder、webhook、Feishu Drive/IM/Approval、email 连接器及 readiness；recipe 强制保留 review/approve，运行状态拒绝非法跳转，评论/建议决策/审批仅能在 review 写入，approved/published 需要人工批准事件。
+- 审阅支持段落评论、回复、负责人、截止时间、建议接受/拒绝、语义差异以及 AI/人工/数据 provenance。V2 published 只表示本地工作流状态，参赛文件仍由“交付”阶段人工确认后导出。
+- 办公证据检索真实组合 BM25、128 维确定性哈希 token/字符 n-gram 余弦和覆盖/邻近度 reranker，返回逐项分数；证据图生成 support/conflict/missing 与覆盖率，不生成不存在的来源。该向量不是学习型 embedding。
+- 会议材料入口接受用户提供的带时间戳逐字稿，保留输入已有 speaker 标签，提取候选摘要/决定/待办及时间证据；不提供自动转写或说话人分离。
+- 效率遥测记录 baseline、AI、review、retry、setup、maintenance、样本/产量、角色、频率、版本、采纳拒绝和质量；缺少关键实测数据时只返回 insufficient。
 - 材料登记覆盖作品方案、三分钟演示、复用说明、作品意义、效果证明、评委说明与决赛准备；所有位置使用项目相对路径。
 - 证据索引记录 claim、来源路径、精确位置、E0—E3 等级和人工核验状态；无证据主张不会自动升级。
 - 效果测量同时记录原流程、AI 操作、人工复核、重试、配置、维护、样本量、质量说明和测量状态。

@@ -3,6 +3,30 @@
   color: var(--text);
   background: var(--panel);
   font-size: 12px;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+.panel ::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.panel input,
+.panel textarea {
+  caret-color: var(--accent);
+}
+
+.panel ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.panel ::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--border);
+  background-clip: padding-box;
 }
 
 .header {
@@ -27,11 +51,34 @@
 }
 
 .subtitle {
-  max-width: 34ch;
+  max-width: 40ch;
   margin: 0;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.55;
+}
+
+.boundary {
+  max-width: 68ch;
+  margin: 12px 0 0;
+  color: var(--text-secondary, var(--text));
+  line-height: 1.55;
+}
+
+.ledgerSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledgerSummary strong {
+  margin-left: 3px;
+  color: var(--text);
 }
 
 .status {
@@ -46,9 +93,9 @@
 
 .stages {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-  padding: 10px 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  padding: 9px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   position: sticky;
@@ -57,8 +104,11 @@
 }
 
 .stage {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
   min-width: 0;
-  padding: 7px 4px;
+  padding: 6px 2px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -67,6 +117,14 @@
   font-size: 10px;
   line-height: 1.25;
   cursor: pointer;
+}
+
+.stageIndex {
+  display: block;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .stage:hover {
@@ -82,6 +140,11 @@
 
 .content {
   padding: 4px 16px 88px;
+}
+
+.content > .section,
+.content > .details {
+  animation: ledger-settle 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .section {
@@ -134,6 +197,12 @@
 .field textarea {
   min-height: 72px;
   resize: vertical;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 86%, transparent);
+  opacity: 1;
 }
 
 .field input:focus-visible,
@@ -222,6 +291,267 @@
   opacity: 0.5;
 }
 
+.inlineForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.inlineForm .field {
+  margin-bottom: 0;
+}
+
+.ledger,
+.capabilityList,
+.timeline {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.ledgerRow,
+.capabilityRow,
+.searchRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ledgerRow > div,
+.capabilityRow > div,
+.searchRow > div,
+.runLedger > div,
+.approvalHeader > div,
+.commentThread > div,
+.meetingResult,
+.efficiencyResult > div {
+  display: grid;
+  gap: 3px;
+}
+
+.ledgerRow span,
+.capabilityRow span,
+.searchRow span,
+.runLedger span,
+.approvalHeader span,
+.commentThread span,
+.meetingResult span,
+.efficiencyResult span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.ledgerRow p,
+.capabilityRow p,
+.searchRow p {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.stateLabel {
+  align-self: start;
+  justify-self: end;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--panel-muted);
+  color: var(--text-secondary, var(--text));
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.stateReady {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.stateBlocked {
+  background: color-mix(in srgb, var(--danger, #b42318) 10%, var(--paper));
+  color: var(--danger, #b42318);
+}
+
+.details {
+  border-bottom: 1px solid var(--border);
+}
+
+.details summary {
+  padding: 15px 0;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 720;
+  list-style-position: inside;
+}
+
+.details summary::marker {
+  color: var(--accent-strong);
+}
+
+.details summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.detailsBody {
+  padding-bottom: 17px;
+}
+
+.resultCode {
+  max-height: 260px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--panel-muted);
+  color: var(--text-secondary, var(--text));
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.runLedger,
+.approvalHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.runLedger .button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.meetingResult,
+.efficiencyResult,
+.approvalGate,
+.suggestion {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-muted);
+}
+
+.meetingResult p,
+.approvalGate p,
+.suggestion p,
+.efficiencyResult p,
+.approvalEvent p,
+.commentThread p,
+.timelineRow p,
+.graphSummary p,
+.graphEdge p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.graphSummary {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.graphSummary > div:first-child,
+.efficiencyResult > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.graphSummary > div:first-child strong,
+.efficiencyResult > div strong {
+  color: var(--accent-strong);
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+
+.graphSummary > div:first-child span,
+.efficiencyResult > div span {
+  color: var(--muted);
+}
+
+.graphEdge {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 9px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.graphEdge .stateLabel {
+  justify-self: start;
+}
+
+.graphEdge p {
+  grid-column: 2;
+}
+
+.commentThread,
+.approvalEvent {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.commentThread > div:first-child,
+.approvalEvent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.suggestion {
+  display: block !important;
+}
+
+.suggestion .stateLabel {
+  justify-self: start;
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.timelineRow > span {
+  color: var(--accent-strong);
+  font-weight: 720;
+}
+
+.timelineRow time {
+  color: var(--muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.approvalGate .button {
+  margin-top: 8px;
+}
+
+.splitInputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 5px;
+}
+
 .notice,
 .error,
 .success {
@@ -264,7 +594,8 @@
   gap: 10px;
   margin: 12px 0 16px;
   padding: 12px 12px 12px 14px;
-  border-left: 3px solid var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 12px;
   background: var(--panel-muted);
 }
 
@@ -349,11 +680,48 @@
   .grid2 {
     grid-template-columns: 1fr;
   }
+
+  .stages {
+    overflow-x: auto;
+    grid-template-columns: repeat(6, minmax(56px, 1fr));
+  }
+
+  .inlineForm {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineForm .button {
+    justify-self: start;
+  }
+
+  .timelineRow {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .timelineRow time {
+    grid-column: 2;
+  }
+}
+
+@keyframes ledger-settle {
+  from {
+    opacity: 0.76;
+    filter: blur(1.5px);
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .content > .section,
+  .content > .details,
   .stage,
   .button {
+    animation: none;
     transition: none;
   }
 }

@@ -15,7 +15,7 @@
 
 </div>
 
-OpenPrism Office brings the brief, sources, drafts, claims, measurements, revisions, approvals, and deliverables behind proposals, technical plans, research summaries, and review materials into one local project workspace. It combines CodeMirror, PDF/asset preview, controlled AI assistance, reusable Skills, transparent local keyword evidence retrieval, citation verification, workflow pipelines, and a project-bound terminal. Existing paper and LaTeX workflows remain available as a specialized evidence-heavy writing scenario.
+OpenPrism Office brings the brief, sources, drafts, claims, measurements, revisions, approvals, and deliverables behind proposals, technical plans, research summaries, and review materials into one local project workspace. Its six-stage ledger connects Office/text intake, controlled production, explainable hybrid evidence retrieval, paragraph review, human approval, delivery, and full-cost measurement. Existing paper and LaTeX workflows remain available as a specialized evidence-heavy writing scenario.
 
 The project is designed around evidence and human review: AI-proposed edits are shown as diffs and remain pending until the user accepts them. The Delivery panel records source locations, E0–E3 evidence levels, full workflow effort, reusable assets, readiness gaps, and human approval before exporting a `submission/` package with SHA-256 hashes. Projects and secrets stay local unless you explicitly configure an external model, scholarly API, image service, OCR service, or collaboration tunnel.
 
@@ -41,13 +41,16 @@ The project is designed around evidence and human review: AI-proposed edits are 
 
 | Area | What is available |
 | --- | --- |
-| Office delivery | Formal Delivery panel for task briefs, M01–M06 materials, source locations, effect measurement, reusable assets, four-module readiness guidance, finals preparation, and hashed package export |
+| Office delivery | One six-stage ledger for Inbox, Produce, Review, Approve, Deliver, and Measure, plus M01–M06 readiness guidance and hashed package export |
+| Native Office intake | Built-in local DOCX/PPTX/XLSX OOXML extraction and extracted-text diff; optional OfficeCLI for create, batch edit, template merge, render, inspect, and validate |
+| Office workflow | Project-local connector/recipe declarations, guarded run transitions, paragraph comments and suggestions, provenance, human approval events, and audit timeline |
 | Project workspace | Multi-project dashboard, file tree, upload/download, text and binary previews, and project-local runtime data |
 | Editing | CodeMirror editing for LaTeX, Markdown, BibTeX, code, configuration files, search, tabs, and dirty-state tracking |
 | AI assistant | Chat, Agent, and Tools modes; streaming responses; image/file attachments; persistent conversations; reviewable diffs |
 | Skills | A searchable bilingual Skill catalog for office writing, research, review, LaTeX debugging, citations, statistics, figures, submission, and more |
 | Compilation | `pdflatex`, `xelatex`, `lualatex`, `latexmk`, and `tectonic`; automatic main-file/engine detection; BibTeX passes; SyncTeX; PDF output |
-| Evidence and RAG | PDF/text upload, extraction and indexing, retrieval, per-conversation document selection, and evidence-oriented writing support |
+| Evidence and RAG | Office/text intake, BM25 + deterministic hashed-vector retrieval with score breakdown, claim support/conflict/missing graph, and existing paper RAG |
+| Meeting intake | Timestamped transcript import with supplied speaker labels, candidate decisions/actions, and trace-back evidence; no transcription or diarization claim |
 | Citation verification | Automatic main `.tex` and bibliography discovery; recursive `\input`/`\include`; CrossRef, Semantic Scholar, OpenAlex, and arXiv checks |
 | Review tools | Structured paper review, rule/LLM Anti-AI analysis, optional GPTZero integration, and evidence/claim review workflows |
 | Pipelines | Typed AI, Human, Compile, Citation, and Compute stages with retry, pause, resume, skip, and approval checkpoints |
@@ -59,11 +62,11 @@ The project is designed around evidence and human review: AI-proposed edits are 
 ## Office-material workflow
 
 1. Create a project with the **OpenPrism Office Writing Delivery Package** template.
-2. Draft the deliverable while maintaining its brief, source register, evidence index, and measurement record.
-3. Use Chat/Agent/Tools and Skills as needed; adopt file changes only through the visible Diff gate.
-4. Open **Delivery** to register materials, evidence locations, real effect data, and reusable assets.
-5. Run the evidence audit and resolve missing materials, weak evidence, irreproducible calculations, risk reminders, and score caps.
-6. Confirm human responsibility and export `submission/`; use the [rule matrix](docs/office_track_rule_matrix.md) and [competition preparation guide](docs/competition/README.md) for the real recording and evidence package.
+2. In **Inbox**, import project-relative DOCX/PPTX/XLSX/text materials and inspect their real parser and quality state.
+3. In **Produce**, plan an optional OfficeCLI operation, start a guarded recipe, or turn a timestamped meeting transcript into decisions and actions.
+4. In **Review**, search with BM25/vector/rerank score evidence, inspect support/conflict/missing edges, and record paragraph suggestions with provenance.
+5. In **Approve**, record the human approval event before changing the workflow publication state. This state does not claim an external connector copied a file.
+6. In **Deliver** and **Measure**, resolve rule gaps, record complete real costs and samples, confirm human responsibility, and export `submission/` with SHA-256 evidence.
 
 See the [office-track product specification](docs/office_track_product_spec.md) and [delivery architecture](docs/office_track_architecture.md) for data and security boundaries.
 
@@ -77,8 +80,9 @@ Fastify backend
   ├─ projects, files, conversations, auth
   ├─ LLM routing, Skills, review, pipelines
   ├─ LaTeX compilation and SyncTeX
-  ├─ RAG/PDF extraction and retrieval
+  ├─ paper RAG plus office BM25/hashed-vector retrieval and evidence graphs
   ├─ citation and bibliography verification
+  ├─ Office OOXML intake, optional OfficeCLI, recipes, review/approval, meeting intake
   ├─ office briefs, evidence/effect audits, and delivery packages
   ├─ figure generation and template transfer
   ├─ terminal/tmux and collaboration
@@ -92,7 +96,7 @@ Main technologies:
 
 - Frontend: React 18, TypeScript, Vite 8, CodeMirror 6, KaTeX, xterm.js.
 - Backend: Node.js, Fastify 5, WebSocket/SSE, YAML-based Skills.
-- Document toolchain: TeX Live/TinyTeX or Tectonic, BibTeX, SyncTeX, optional Pandoc/Poppler/OCR tools.
+- Document toolchain: built-in OOXML extraction; TeX Live/TinyTeX or Tectonic, BibTeX, SyncTeX; optional OfficeCLI/Pandoc/Poppler/OCR tools.
 - External integrations are optional and configured explicitly.
 
 ## Quick Start
@@ -113,6 +117,7 @@ Required for local PDF compilation—install at least one:
 
 Useful optional tools:
 
+- `OfficeCLI` v1.0.145 or compatible, configured with an absolute `OFFICECLI_PATH`, for Office create/edit/merge/render/validate operations. OpenPrism disables its auto-update per execution and uses a built-in extracted-text diff because upstream has no diff command.
 - `tmux` for the persistent integrated terminal.
 - `pandoc` for Markdown export/conversion.
 - `pdftotext` (Poppler) for reliable PDF extraction.

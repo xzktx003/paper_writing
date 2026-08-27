@@ -15,7 +15,7 @@
 
 </div>
 
-OpenPrism Office 把项目申报书、技术方案、研究总结、评审材料等长文案涉及的任务 Brief、来源、草稿、主张、数字、修订、审批和交付件统一放进一个本地项目工作区。它集成 CodeMirror 编辑器、PDF 与资源预览、可控 AI 辅助、可复用 Skills、透明的本地关键词证据检索、引文核验、工作流 Pipeline，以及与项目目录绑定的终端。既有论文与 LaTeX 工作流继续保留，作为高证据办公写作的一类专业场景。
+OpenPrism Office 把项目申报书、技术方案、研究总结、评审材料等长文案涉及的任务 Brief、来源、草稿、主张、数字、修订、审批和交付件统一放进一个本地项目工作区。六阶段账本把 Office/文本收件、受控处理、可解释混合检索、段落审阅、人工审批、交付和完整成本度量串成一条链。既有论文与 LaTeX 工作流继续保留，作为高证据办公写作的一类专业场景。
 
 项目强调“证据优先、由人确认”：AI 提议的文件修改会先以差异形式展示，只有用户接受后才会写入。交付面板会记录材料位置、E0—E3 证据等级、完整工作耗时、复用资产、规则缺口和人工确认，再导出带 SHA-256 清单的 `submission/` 交付包。项目与密钥默认保留在本机；只有在你主动配置外部模型、学术数据库、图片生成、OCR 或协作隧道时，相关数据才可能发送至对应服务。
 
@@ -41,13 +41,16 @@ OpenPrism Office 把项目申报书、技术方案、研究总结、评审材料
 
 | 模块 | 当前能力 |
 | --- | --- |
-| 办公材料交付 | 正式工作台“交付”面板：任务 Brief、M01—M06 材料登记、证据定位、效果测量、复用资产、初赛四模块准备审核、决赛准备和带哈希清单的交付包导出 |
+| 办公材料交付 | “收件、处理、审阅、审批、交付、度量”六阶段账本，以及 M01—M06 准备审核和带哈希清单的交付包导出 |
+| 原生 Office 收件 | 内置本地 DOCX/PPTX/XLSX OOXML 抽取和抽取文本差异；可选 OfficeCLI 提供创建、批量编辑、模板合并、渲染、检查和验证 |
+| 办公工作流 | 项目级连接器/配方声明、受控状态流转、段落评论与建议、来源追踪、人工审批事件和审计时间线 |
 | 项目工作区 | 多项目面板、文件树、上传/下载、文本与二进制文件预览、项目级运行数据 |
 | 编辑器 | 使用 CodeMirror 编辑 LaTeX、Markdown、BibTeX、代码及配置文件，支持搜索、标签页和未保存状态提示 |
 | AI 助手 | Chat、Agent、Tools 三种模式，流式响应，图片/文件附件，会话持久化，以及修改差异确认 |
 | Skills | 可搜索的中英双语 Skill 库，覆盖办公长文案、论文写作、调研、审稿、LaTeX 排错、引文、统计、绘图与投稿等场景 |
 | 论文编译 | 支持 `pdflatex`、`xelatex`、`lualatex`、`latexmk`、`tectonic`，自动发现主文件和引擎，执行 BibTeX 编译并生成 SyncTeX/PDF |
-| 证据库与 RAG | 上传 PDF/文本、提取与索引、检索、按会话选择文档，为有依据的写作提供上下文 |
+| 证据库与 RAG | Office/文本收件，BM25 + 确定性哈希向量检索与分数分解，主张支持/冲突/缺失图，以及既有论文 RAG |
+| 会议材料接入 | 导入带时间戳逐字稿，保留输入已有说话人标签，提取候选决定/待办并回溯时间证据；不宣称转写或说话人分离 |
 | 引文核验 | 自动识别主 `.tex` 与其引用的 `.bib`，递归处理 `\input`/`\include`，并查询 CrossRef、Semantic Scholar、OpenAlex 和 arXiv |
 | 论文检查 | 结构化审稿、规则/LLM Anti-AI 分析、可选 GPTZero，以及论点和证据检查工作流 |
 | Pipeline | AI、Human、Compile、Citation、Compute 等阶段，支持重试、暂停、继续、跳过与人工审批节点 |
@@ -59,11 +62,11 @@ OpenPrism Office 把项目申报书、技术方案、研究总结、评审材料
 ## 办公材料工作流
 
 1. 新建“OpenPrism Office 写作交付包”模板项目；
-2. 在主文档中写作，在 `brief.md`、`sources/`、`evidence/` 和 `metrics/` 中维护任务边界与证据；
-3. 在 AI 助手中按需使用 Chat/Agent/Tools 和 Skills，所有文件修改通过 Diff 人工采纳；
-4. 打开右侧“交付”，登记材料、证据位置、真实效果数据和复用资产；
-5. 运行证据审核，逐项处理缺材料、低证据、不可复算数据、敏感信息提醒和规则上限；
-6. 人工确认后导出 `submission/`，对照 [办公赛道规则矩阵](docs/office_track_rule_matrix.md) 和 [参赛准备手册](docs/competition/README.md) 完成录屏及真实证明材料。
+2. 在“收件”从项目相对路径导入 DOCX/PPTX/XLSX/文本，并查看真实 parser 与质量状态；
+3. 在“处理”规划可选 OfficeCLI 操作、启动带门禁的配方，或把带时间戳会议文本整理为决定和待办；
+4. 在“审阅”查看 BM25/向量/rerank 命中分解、支持/冲突/缺失边，并记录带来源的段落建议；
+5. 在“审批”记录人工批准事件后再改变工作流发布状态；该状态不代表外部连接器已经复制文件；
+6. 在“交付”和“度量”处理规则缺口，填写完整真实成本和样本，人工确认后导出带 SHA-256 的 `submission/`。
 
 数据契约与安全边界见 [办公赛道产品规格](docs/office_track_product_spec.md) 和 [交付架构](docs/office_track_architecture.md)。
 
@@ -77,8 +80,9 @@ Fastify 后端
   ├─ 项目、文件、会话与鉴权
   ├─ LLM 路由、Skills、审稿与 Pipeline
   ├─ LaTeX 编译与 SyncTeX
-  ├─ RAG、PDF 提取与检索
+  ├─ 论文 RAG，以及办公 BM25/哈希向量检索和证据图
   ├─ 引文和参考文献核验
+  ├─ Office OOXML 收件、可选 OfficeCLI、配方、审阅/审批、会议接入
   ├─ 办公 Brief、证据、效果审核与交付包
   ├─ 图片生成与模板迁移
   ├─ 终端、tmux 与协作
@@ -92,7 +96,7 @@ Fastify 后端
 
 - 前端：React 18、TypeScript、Vite 8、CodeMirror 6、KaTeX、xterm.js。
 - 后端：Node.js、Fastify 5、WebSocket/SSE、YAML Skills。
-- 文档工具链：TeX Live/TinyTeX 或 Tectonic、BibTeX、SyncTeX，以及可选的 Pandoc、Poppler/OCR 工具。
+- 文档工具链：内置 OOXML 抽取、TeX Live/TinyTeX 或 Tectonic、BibTeX、SyncTeX，以及可选的 OfficeCLI、Pandoc、Poppler/OCR 工具。
 - 所有外部集成都需要显式配置。
 
 ## 快速开始
@@ -115,6 +119,7 @@ Fastify 后端
 
 按需安装：
 
+- `OfficeCLI` v1.0.145 或兼容版本：用绝对路径 `OFFICECLI_PATH` 配置 Office 创建/编辑/合并/渲染/验证。OpenPrism 每次执行都禁用其自动更新；由于上游没有 diff 命令，差异使用应用内置抽取文本比较。
 - `pandoc`：文档转换和部分导出流程。
 - `pdftotext` / Poppler：PDF 文本提取。
 - `tmux`：集成终端的会话保持。

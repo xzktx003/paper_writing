@@ -1,0 +1,23 @@
+{
+  "experiment": "chinese-combined-evidence-relation-regression",
+  "date": "2026-08-27",
+  "source": "报销材料自动整理试点已批准，但首次演练未减少材料整理耗时。",
+  "claims": [
+    {
+      "text": "报销材料自动整理试点已批准。",
+      "expected": "support",
+      "actual": "support"
+    },
+    {
+      "text": "材料整理耗时已经减少。",
+      "expected": "conflict",
+      "actual": "conflict"
+    }
+  ],
+  "retrieval": "BM25 + 128-dimensional hashed token/character-ngram cosine + deterministic reranker",
+  "result": "passed",
+  "verification": [
+    "officeIntelligenceService unit test",
+    "office delivery desktop end-to-end flow"
+  ]
+}
