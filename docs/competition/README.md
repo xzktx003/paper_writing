@@ -32,7 +32,7 @@
 
 ## 仍需人工补齐的真实材料
 
-- 真实 3 分钟演示录屏，需展示从资料登记到审核导出的完整链路。
+- 受控 3 分钟内连续实操已经生成 MP4/WebM；参赛负责人仍需在上传后确认平台播放兼容性，并按实际报名身份补充必要旁白或片头信息。
 - 至少一组真实办公任务的基线耗时、AI 使用耗时、复核耗时、返工耗时、样本量和统计周期。
 - 真实输出样例，需先脱敏，且能定位到证据索引。
 - 使用人、使用周期、使用频次或试点记录。没有这些记录时，只能写“Demo 跑通”或“待试点”。
@@ -54,6 +54,12 @@
 | R03 | 空白初赛评分表 | `submission/blank-initial-score-sheet.md` | 供评委填写，不由参赛方预填 |
 | F01 | 决赛材料准备包 | `submission/finals-pack.md` | 系统整理演示、问答、落地和推广待补项；需参赛方补真实记录 |
 | F02 | 决赛附加分准备说明 | `submission/finals-score-guide.md` | 按四项附加分列出当前证据状态；无现场问答时保持待评 |
+| P01 | 90+ 准备总包 | `submission/90plus-readiness-pack.md` | 将四模块高分门槛、材料排序、不得填写内容汇总到一处 |
+| P02 | 评分证据矩阵 | `submission/90plus-score-evidence-matrix.md` | 按 30/30/20/20 映射目标档、证据位置和缺口 |
+| P03 | 演示取证计划 | `submission/demo-evidence-plan.md` | 固定 3 分钟连续录屏分镜、截图和失败态要求 |
+| P04 | 试点测量登记表 | `submission/pilot-measurement-register.csv` | 提供真实样本采集字段；默认 planned，不预填提效数字 |
+| P05 | 评委问答稿 | `submission/reviewer-qna.md` | 准备常见追问和证据定位口径 |
+| P06 | 合规脱敏清单 | `submission/data-compliance-checklist.md` | 提交前人工核查敏感信息、授权和演示数据边界 |
 | R04 | 哈希清单 | `submission/submission-manifest.json` | 系统生成，用于证明导出文件版本 |
 
 ## 建议准备顺序
@@ -74,3 +80,17 @@
 - `reviewer_guide_writing.md`：评委说明写作指南。
 - `finals_defense_roadmap.md`：决赛答辩与落地路线图。
 - `submission_checklist.md`：提交前逐项核对表。
+- `submission_90plus/`：90+ 目标提交包，含 M01—M06、评分证据矩阵、答辩问答、合规清单和真实试点数据表模板。
+
+## 录制演示资产
+
+在 `app/` 目录完成构建后，可以运行：
+
+```bash
+npm run build
+npm run competition:demo
+npm run competition:pdf
+npm run competition:manifest
+```
+
+演示脚本会启动隔离服务，创建 `office-track-writing` 项目，复制仓库内 DOCX 示例，录制浏览器操作，并在 `docs/competition/submission_90plus/evidence/demo/` 输出原始 WebM、H.264 MP4 上传版、截图、时间戳和脱敏状态样例；PDF 脚本会把 M01-M06、评委说明和初决赛准备材料合成为 A4 合订本；manifest 脚本为完整静态提交包生成 SHA-256 清单并核对必需文件。录屏使用受控演示数据，只证明产品链路跑通，不作为真实业务提效证明。

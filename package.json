@@ -17,8 +17,11 @@
     "test:integration": "npm --prefix app run test:integration",
     "test:e2e": "npm --prefix app run test:e2e",
     "check": "npm --prefix app run check",
-    "check:full": "npm --prefix app run check:full"
-    ,"release:verify": "npm --prefix app run release:verify"
+    "check:full": "npm --prefix app run check:full",
+    "competition:demo": "npm --prefix app run competition:demo",
+    "competition:manifest": "npm --prefix app run competition:manifest",
+    "competition:pdf": "npm --prefix app run competition:pdf",
+    "release:verify": "npm --prefix app run release:verify"
   },
   "devDependencies": {}
 }

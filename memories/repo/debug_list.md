@@ -411,3 +411,5 @@
 - 2026-08-27：办公 UI 阶段重构时必须同步更新源码契约，并保留规则审核的 reasons、deductions、evidenceLocations、analysisPath、assumptions 和 possibleBias；不能只保留总分/分档而降低可核验性。
 - 2026-08-27：外部连接器必须区分 `configured` 与 `executionReady`；没有真实执行适配器时，即使凭据齐全也保持 blocked，不能仅凭状态机写入 published 冒充投递。
 - 2026-08-27：外部 Office CLI 必须使用最小环境白名单、对返回文本中的项目根路径脱敏并限长；退出码/JSON 成功不足以证明交付成功，所有声明型输出操作还必须核验预期文件存在、为普通文件且非空。
+- 2026-08-27：证据冲突分类必须识别“没有证明/未证明/不能证明”和 no proof/not proven，且把 prove/proof/证明/证实视为可否定动作；否则“没有证明稳定提效”会被词面重叠误判为 support。回归测试与受控评估锁定该边界。
+- 2026-08-27：竞赛录屏覆盖字幕若使用 `system-ui`，无宿主中文字体的 Chromium 会显示方框；录制器应使用仓库内置 Noto Sans SC，并在绘制字幕前等待 `document.fonts.ready`。

@@ -1,0 +1,290 @@
+{
+  "version": 1,
+  "inbox": [
+    {
+      "id": "inbox-dc80cf97a46ad19c66e3",
+      "sourcePath": "sources/demo-architecture-review.docx",
+      "filename": "demo-architecture-review.docx",
+      "format": "docx",
+      "status": "ready",
+      "parser": {
+        "id": "native-ooxml",
+        "mode": "local"
+      },
+      "quality": {
+        "status": "complete",
+        "score": 1,
+        "textCharacters": 300,
+        "structured": false
+      },
+      "warnings": [],
+      "sections": [
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-1",
+          "heading": "Paragraph 1",
+          "location": "paragraph:1",
+          "text": "批任务调度架构纪要（示例 Word）"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-2",
+          "heading": "Paragraph 2",
+          "location": "paragraph:2",
+          "text": "本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-3",
+          "heading": "Paragraph 3",
+          "location": "paragraph:3",
+          "text": "1. 总体结构"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-4",
+          "heading": "Paragraph 4",
+          "location": "paragraph:4",
+          "text": "调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-5",
+          "heading": "Paragraph 5",
+          "location": "paragraph:5",
+          "text": "下图为模块关系示意（示例配图，非真实架构图）。"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-6",
+          "heading": "Paragraph 6",
+          "location": "paragraph:6",
+          "text": "2. 痛点与目标"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-7",
+          "heading": "Paragraph 7",
+          "location": "paragraph:7",
+          "text": "异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-8",
+          "heading": "Paragraph 8",
+          "location": "paragraph:8",
+          "text": "队列与异构节点示意："
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-9",
+          "heading": "Paragraph 9",
+          "location": "paragraph:9",
+          "text": "3. 模块对照"
+        },
+        {
+          "id": "sources/demo-architecture-review.docx#paragraph-10",
+          "heading": "Paragraph 10",
+          "location": "paragraph:10",
+          "text": "资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。"
+        }
+      ],
+      "chunks": [
+        {
+          "id": "chunk-36e8251e39d8e84a7516",
+          "text": "批任务调度架构纪要（示例 Word）",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:1",
+            "heading": "Paragraph 1"
+          }
+        },
+        {
+          "id": "chunk-872f0e5c3ee6d5fd8e08",
+          "text": "本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:2",
+            "heading": "Paragraph 2"
+          }
+        },
+        {
+          "id": "chunk-d0bd48886e21726e04d6",
+          "text": "1. 总体结构",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:3",
+            "heading": "Paragraph 3"
+          }
+        },
+        {
+          "id": "chunk-0b60394a7d68704dc43d",
+          "text": "调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:4",
+            "heading": "Paragraph 4"
+          }
+        },
+        {
+          "id": "chunk-a7621cbfec2490d2bed6",
+          "text": "下图为模块关系示意（示例配图，非真实架构图）。",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:5",
+            "heading": "Paragraph 5"
+          }
+        },
+        {
+          "id": "chunk-e2f81d60da85b04abdaf",
+          "text": "2. 痛点与目标",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:6",
+            "heading": "Paragraph 6"
+          }
+        },
+        {
+          "id": "chunk-f0277736268a5286e07c",
+          "text": "异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:7",
+            "heading": "Paragraph 7"
+          }
+        },
+        {
+          "id": "chunk-bb884073fc621a8d7ca8",
+          "text": "队列与异构节点示意：",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:8",
+            "heading": "Paragraph 8"
+          }
+        },
+        {
+          "id": "chunk-0bc7308c7deb75a9208d",
+          "text": "3. 模块对照",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:9",
+            "heading": "Paragraph 9"
+          }
+        },
+        {
+          "id": "chunk-f6e60a3b6f3ccfcd0ca9",
+          "text": "资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。",
+          "source": {
+            "path": "sources/demo-architecture-review.docx",
+            "location": "paragraph:10",
+            "heading": "Paragraph 10"
+          }
+        }
+      ],
+      "importedAt": "2026-08-27T13:49:58.195Z"
+    }
+  ],
+  "searches": [
+    {
+      "id": "search-e78c9192822573c384ca",
+      "query": "architecture review scheduler",
+      "results": [
+        {
+          "id": "dc3307b5215fa8b1",
+          "text": "批任务调度架构纪要（示例 Word） 本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。 1. 总体结构 调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。 下图为模块关系示意（示例配图，非真实架构图）。 2. 痛点与目标 异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。 队列与异构节点示意： 3. 模块对照 资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。",
+          "source": {
+            "id": "inbox-dc80cf97a46ad19c66e3",
+            "path": "sources/demo-architecture-review.docx",
+            "title": "demo-architecture-review.docx"
+          },
+          "chunk": {
+            "id": "dc3307b5215fa8b1",
+            "ordinal": 0,
+            "range": {
+              "wordStart": 0,
+              "wordEnd": 27
+            },
+            "editModel": {
+              "id": "dc3307b5215fa8b1",
+              "originalText": "批任务调度架构纪要（示例 Word） 本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。 1. 总体结构 调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。 下图为模块关系示意（示例配图，非真实架构图）。 2. 痛点与目标 异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。 队列与异构节点示意： 3. 模块对照 资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。",
+              "editedText": "批任务调度架构纪要（示例 Word） 本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。 1. 总体结构 调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。 下图为模块关系示意（示例配图，非真实架构图）。 2. 痛点与目标 异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。 队列与异构节点示意： 3. 模块对照 资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。",
+              "status": "indexed",
+              "provenance": {
+                "sourcePath": "sources/demo-architecture-review.docx",
+                "sourceTitle": "demo-architecture-review.docx",
+                "chunkOrdinal": 0
+              }
+            }
+          },
+          "score": 0.429897,
+          "scoreBreakdown": {
+            "bm25": 0.395563,
+            "vector": 0.459803,
+            "rerank": 0.533333,
+            "final": 0.429897
+          },
+          "matchedTerms": [
+            "architecture"
+          ],
+          "rank": 1
+        }
+      ],
+      "retrievalProfile": {
+        "kind": "local-hybrid-bm25-hashed-vector",
+        "label": "Local BM25 plus explainable hashed-vector retrieval",
+        "semantic": true,
+        "vector": {
+          "kind": "hashed-token-and-character-ngram",
+          "dimensions": 128
+        },
+        "reranker": {
+          "kind": "deterministic-term-coverage-proximity"
+        }
+      },
+      "createdAt": "2026-08-27T13:50:46.537Z"
+    }
+  ],
+  "evidenceGraphs": [
+    {
+      "id": "graph-28a50cda7625de8cf65e",
+      "claims": [
+        {
+          "id": "claim-1",
+          "text": "系统包含架构评审材料。"
+        },
+        {
+          "id": "claim-2",
+          "text": "演示数据已经证明长期稳定提效。"
+        }
+      ],
+      "edges": [
+        {
+          "id": "144668379e04d04b",
+          "claimId": "claim-1",
+          "type": "missing",
+          "reason": "No retrieved chunk passed the support or conflict threshold."
+        },
+        {
+          "id": "06ebaae40eac2d19",
+          "claimId": "claim-2",
+          "type": "missing",
+          "reason": "No retrieved chunk passed the support or conflict threshold."
+        }
+      ],
+      "conflicts": [],
+      "gaps": [
+        {
+          "claimId": "claim-1",
+          "claim": "系统包含架构评审材料。",
+          "reason": "missing-source"
+        },
+        {
+          "claimId": "claim-2",
+          "claim": "演示数据已经证明长期稳定提效。",
+          "reason": "missing-source"
+        }
+      ],
+      "coverage": {
+        "totalClaims": 2,
+        "supportedClaims": 0,
+        "conflictedClaims": 0,
+        "missingClaims": 2,
+        "coverageRatio": 0
+      },
+      "createdAt": "2026-08-27T13:50:46.715Z"
+    }
+  ],
+  "meetings": [],
+  "updatedAt": "2026-08-27T13:50:46.716Z"
+}

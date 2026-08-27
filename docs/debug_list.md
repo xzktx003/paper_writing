@@ -467,3 +467,5 @@
 - 2026-08-27：六阶段 UI 替换 V1 四阶段后，源码契约测试仍断言旧文案，且新版交付阶段一度只显示模块分数/分档，遗漏判断依据、扣分、证据位置、前提和偏差。契约现锁定六阶段关键入口，审计明细恢复完整展示；全量 513 单测、13 集成和 38 Chromium E2E 通过。
 - 2026-08-27：安全终审发现外部连接器只要存在凭据就会标 ready 并允许本地状态进入 published，但仓库没有对应投递执行器。现拆分 `configured` 与 `executionReady`：只有 local-folder 可执行，Feishu/email/webhook 即使已配置也保持 blocked 并说明 adapter 未实现，杜绝“有凭据=已投递”的假成功。
 - 2026-08-27：OfficeCLI 初版继承完整 `process.env`，失败输出还可能把项目绝对路径嵌入 stderr 返回；退出码 0/JSON 可解析也未核验预期文件。现改为 PATH/locale/HOME/XDG/temp 等最小环境白名单、项目路径递归脱敏与 8,000 字符上限，并对 inspect/create/edit/merge/render 的非空输出文件做 `stat` 门禁。无匹配后端的 `addOfficeSuggestion` 前端 API 同步删除。
+- 2026-08-27：证据关系图会把“没有证明稳定提效”误判为支持“已经证明稳定提效”，因为“证明/proof”未进入可否定动作词和冲突短语集合。新增中文受控演练红灯用例，将“没有证明/未证明/不能证明”及英文同类表述绑定到 prove/proof 动作词；修复后回归与 9 项受控评估全部通过。
+- 2026-08-27：办公赛道录屏的阶段字幕在无系统中文字体的 Chromium 环境中显示方框。根因是录制器覆盖层强制使用 `system-ui`，没有复用应用内置中文字体。修复为显式使用 Noto Sans SC 并等待 `document.fonts.ready`，新增材料契约回归后重新录制 MP4/WebM。

@@ -362,6 +362,12 @@ test('office track export writes submission materials and sha256 manifest', asyn
     assert.ok(manifest.files.some(file => file.path === 'submission/initial-score-guide.md'));
     assert.ok(result.files.some(file => file.path === 'submission/blank-initial-score-sheet.md'));
     assert.ok(result.files.some(file => file.path === 'submission/finals-score-guide.md'));
+    assert.ok(result.files.some(file => file.path === 'submission/90plus-readiness-pack.md'));
+    assert.ok(result.files.some(file => file.path === 'submission/90plus-score-evidence-matrix.md'));
+    assert.ok(result.files.some(file => file.path === 'submission/demo-evidence-plan.md'));
+    assert.ok(result.files.some(file => file.path === 'submission/pilot-measurement-register.csv'));
+    assert.ok(result.files.some(file => file.path === 'submission/reviewer-qna.md'));
+    assert.ok(result.files.some(file => file.path === 'submission/data-compliance-checklist.md'));
     assert.ok(result.files.some(file => file.path === 'submission/submission-manifest.json'));
     assert.match(manifest.ruleVersion, /AI材料审核与评分规则/);
     assert.ok(Array.isArray(manifest.unresolvedGaps));
@@ -372,6 +378,12 @@ test('office track export writes submission materials and sha256 manifest', asyn
     const finals = await readFile(path.join(projectRoot, 'submission', 'finals-pack.md'), 'utf-8');
     const reviewer = await readFile(path.join(projectRoot, 'submission', 'reviewer-guide.md'), 'utf-8');
     const blankScore = await readFile(path.join(projectRoot, 'submission', 'blank-initial-score-sheet.md'), 'utf-8');
+    const readiness = await readFile(path.join(projectRoot, 'submission', '90plus-readiness-pack.md'), 'utf-8');
+    const scoreMatrix = await readFile(path.join(projectRoot, 'submission', '90plus-score-evidence-matrix.md'), 'utf-8');
+    const demoPlan = await readFile(path.join(projectRoot, 'submission', 'demo-evidence-plan.md'), 'utf-8');
+    const pilotRegister = await readFile(path.join(projectRoot, 'submission', 'pilot-measurement-register.csv'), 'utf-8');
+    const qna = await readFile(path.join(projectRoot, 'submission', 'reviewer-qna.md'), 'utf-8');
+    const compliance = await readFile(path.join(projectRoot, 'submission', 'data-compliance-checklist.md'), 'utf-8');
     assert.match(proposal, /发生频率/);
     assert.match(effect, /覆盖人数/);
     assert.match(reuse, /目标岗位/);
@@ -381,6 +393,12 @@ test('office track export writes submission materials and sha256 manifest', asyn
     assert.match(reviewer, /## 9\. 风险、缺口和建议追问/);
     assert.match(blankScore, /AI 建议分/);
     assert.match(blankScore, /真实落地度/);
+    assert.match(readiness, /不是获奖或官方 90 分承诺/);
+    assert.match(scoreMatrix, /90\+ 评分证据矩阵/);
+    assert.match(demoPlan, /不超过 3 分钟的连续浏览器录屏/);
+    assert.match(pilotRegister, /sample_id,task_date,task_type/);
+    assert.match(qna, /现在能否保证 90 分以上/);
+    assert.match(compliance, /演示数据标识/);
 
     const repeated = await exportOfficeTrackPackage(projectRoot, saved);
     assert.deepEqual(repeated.files, result.files);

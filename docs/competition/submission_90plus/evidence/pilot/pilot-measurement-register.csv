@@ -1,0 +1,4 @@
+sample_id,task_date,task_type,baseline_minutes,ai_minutes,review_minutes,retry_minutes,setup_minutes,maintenance_minutes,output_count,accepted_count,rejected_count,quality_result,evidence_path,reviewer,notes,status
+PILOT-001,,,,,,,,,,,,,,待填,真实业务样本待补,planned
+PILOT-002,,,,,,,,,,,,,,待填,真实业务样本待补,planned
+PILOT-003,,,,,,,,,,,,,,待填,真实业务样本待补,planned

@@ -141,6 +141,13 @@ test('Chinese office evidence and meeting markers remain retrievable and traceab
   assert.ok(combinedGraph.edges.some(edge => edge.claimId === 'combined-approved' && edge.type === 'support'));
   assert.ok(combinedGraph.edges.some(edge => edge.claimId === 'combined-time' && edge.type === 'conflict'));
 
+  const proofGapGraph = buildEvidenceGraph([
+    { id: 'proof-gap', path: 'sources/受控演练.md', text: '首次受控演练没有证明稳定提效，缺少业务样本时不得宣称规模化落地。' },
+  ], [
+    { id: 'proof-claimed', text: '受控演练已经证明稳定提效。' },
+  ]);
+  assert.ok(proofGapGraph.edges.some(edge => edge.claimId === 'proof-claimed' && edge.type === 'conflict'));
+
   const meeting = ingestMeetingTranscript({
     filename: '项目周会.txt',
     content: '[00:01:00] 王敏：讨论办公材料证据缺口。\n[00:02:00] 李强：决定：保留人工审批门禁。\n[00:03:00] 王敏：待办：陈晨负责于2026-08-30前补齐效果表。',

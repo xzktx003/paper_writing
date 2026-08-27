@@ -1,0 +1,93 @@
+import { createHash } from 'node:crypto';
+import { readFile, stat } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const packageRoot = join(repoRoot, 'docs/competition/submission_90plus');
+const requiredFiles = [
+  'M01-proposal.md',
+  'M02-demo-script.md',
+  'M03-reuse-statement.md',
+  'M04-significance.md',
+  'M05-effect-evidence.md',
+  'M06-reuse-assets.md',
+  'reviewer-guide.md',
+  'initial-score-guide.md',
+  'blank-initial-score-sheet.md',
+  'finals-pack.md',
+  'finals-score-guide.md',
+  'OpenPrism-Office-competition-submission.pdf',
+  'evidence/demo/office-demo.mp4',
+  'evidence/demo/office-demo.webm',
+  'evidence/demo/timestamps.md',
+  'evidence/E05-quality-notes.md',
+  'evidence/E06-reuse-assets.md',
+  'evidence/workflow-state-samples/office-track.json',
+  'evidence/workflow-state-samples/office-workspace.json',
+  'evidence/workflow-state-samples/office-workflow.json',
+  'evidence/submission-manifest.json',
+  'submission-manifest.json',
+];
+
+describe('office competition submission package', () => {
+  it('waits for the bundled Chinese font before drawing demo captions', async () => {
+    const recorder = await readFile(join(repoRoot, 'app/scripts/competition-office-demo.mjs'), 'utf8');
+    expect(recorder).toContain('Noto Sans SC');
+    expect(recorder).toMatch(/document\.fonts\.ready/);
+  });
+
+  it('contains readable required materials, a real PDF, and a non-trivial continuous demo', async () => {
+    for (const relativePath of requiredFiles) {
+      expect((await stat(join(packageRoot, relativePath))).isFile(), relativePath).toBe(true);
+    }
+    const pdf = await readFile(join(packageRoot, 'OpenPrism-Office-competition-submission.pdf'));
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+    const video = await stat(join(packageRoot, 'evidence/demo/office-demo.webm'));
+    expect(video.size).toBeGreaterThan(1_000_000);
+    const compatibleVideo = await stat(join(packageRoot, 'evidence/demo/office-demo.mp4'));
+    expect(compatibleVideo.size).toBeGreaterThan(1_000_000);
+    const timestamps = await readFile(join(packageRoot, 'evidence/demo/timestamps.md'), 'utf8');
+    expect(timestamps).toMatch(/02:(?:[2-5]\d)/);
+    expect(timestamps).toContain('受控演示');
+  });
+
+  it('keeps the complete package manifest synchronized with file bytes', async () => {
+    const manifest = JSON.parse(await readFile(join(packageRoot, 'submission-manifest.json'), 'utf8'));
+    expect(manifest.officialJudgement).toBe(false);
+    expect(manifest.readiness).toBe('technical-package-complete');
+    expect(manifest.missingRequiredFiles).toEqual([]);
+    expect(manifest.unresolvedGaps).toContain('真实业务全成本样本及负责人确认');
+    for (const entry of manifest.files) {
+      const bytes = await readFile(join(packageRoot, entry.path));
+      expect(bytes.length, entry.path).toBe(entry.bytes);
+      expect(createHash('sha256').update(bytes).digest('hex'), entry.path).toBe(entry.sha256);
+    }
+  });
+
+  it('does not leak machine paths or credentials into submission text and state samples', async () => {
+    const checked = [
+      'README.md',
+      'M01-proposal.md',
+      'M05-effect-evidence.md',
+      'reviewer-guide.md',
+      'evidence/workflow-state-samples/office-track.json',
+      'evidence/workflow-state-samples/office-workspace.json',
+      'evidence/workflow-state-samples/office-workflow.json',
+    ];
+    const text = (await Promise.all(checked.map(path => readFile(join(packageRoot, path), 'utf8')))).join('\n');
+    expect(text).not.toMatch(/\/data\d*\/home\/|\/home\/[A-Za-z0-9._-]+\//);
+    expect(text).not.toMatch(/\b(?:sk-|ghp_|github_pat_)[A-Za-z0-9._-]{8,}/i);
+    expect(text).not.toMatch(/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i);
+    expect(text).not.toMatch(/\b(?:password|api[_-]?key|access[_-]?token|secret)\s*[:=]\s*[^\s]{6,}/i);
+  });
+
+  it('ships a blank real-pilot register instead of fixture productivity claims', async () => {
+    const csv = await readFile(join(packageRoot, 'evidence/E05-effect-measurement.csv'), 'utf8');
+    expect(csv).toContain('baseline_minutes,ai_minutes,review_minutes,retry_minutes,setup_minutes,maintenance_minutes');
+    expect(csv).toContain('待真实业务任务填写');
+    expect(csv).not.toMatch(/,120,45,20,5,10,2,/);
+  });
+});

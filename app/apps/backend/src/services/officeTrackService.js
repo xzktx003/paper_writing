@@ -18,6 +18,12 @@ const GENERATED_SUBMISSION_PATHS = new Set([
   'submission/blank-initial-score-sheet.md',
   'submission/finals-pack.md',
   'submission/finals-score-guide.md',
+  'submission/90plus-readiness-pack.md',
+  'submission/90plus-score-evidence-matrix.md',
+  'submission/demo-evidence-plan.md',
+  'submission/pilot-measurement-register.csv',
+  'submission/reviewer-qna.md',
+  'submission/data-compliance-checklist.md',
   'submission/submission-manifest.json',
 ]);
 
@@ -1138,6 +1144,158 @@ function renderFinalsPack(state) {
   ].join('\n');
 }
 
+function render90PlusReadinessPack(state, audit) {
+  return [
+    '# 90+ 提交准备总包',
+    '',
+    '本文件用于把作品材料整理到高分提交状态。它不是获奖或官方 90 分承诺；只有真实演示、真实业务样本和人工复核记录补齐后，才具备冲击 90+ 的证据基础。',
+    '',
+    '## 交付目标',
+    '',
+    '| 目标 | 当前系统可证明 | 需要参赛方补充的真实证据 |',
+    '| --- | --- | --- |',
+    `| 提效成效 26+/30 | 六阶段流程、全成本复算、缺口提示；当前建议状态：${audit.scoreFormation.scoreStatus} | 至少一组同口径基线/AI/复核/返工/维护数据，样本、周期和原始记录可追溯 |`,
+    '| 场景价值 26+/30 | Brief、用户、频率、原流程、痛点和交付标准字段 | 真实部门/岗位/任务频率，脱敏业务样例或使用记录 |',
+    '| 创新性 17+/20 | 证据索引、规则审核、人工审批、manifest、六阶段工作台 | 迭代记录、Prompt/Skill 版本、失败态和人工修订记录 |',
+    '| 可推广性 18+/20 | 模板、SOP、复用资产、权限和维护字段 | 复用试点、培训记录、部署成本、目标岗位反馈 |',
+    '',
+    '## 90+ 门禁',
+    '',
+    '| 门禁 | 通过标准 | 当前状态 |',
+    '| --- | --- | --- |',
+    `| 四项必交材料 | M01-M04 均可读取且内容定位明确 | ${audit.materials.every(item => item.pass) ? '通过' : '待补'} |`,
+    `| 3 分钟实操 | 连续录屏不超过 3 分钟，展示收件、处理、审阅、审批、度量、交付和失败态 | ${audit.scoreFormation.scoreStatus === 'ready' ? '可形成建议分' : '待补演示或材料'} |`,
+    `| E3/E2 成效证据 | 至少有原始测量表、日志、录屏或真实业务记录 | ${state.evidence.some(item => item.status === 'verified' && item.level === 'E3') ? '有 E3' : '待补 E3'} |`,
+    `| 全成本复算 | AI 时间包含生成、复核、返工、配置、维护 | ${audit.effect.normalized.includesReviewAndRetry ? '通过' : '待补成本项'} |`,
+    `| 风险可解释 | 所有敏感信息、材料缺失、矛盾数据均有处理说明 | ${audit.risks.length ? '需处理风险' : '自动审核无阻断'} |`,
+    '',
+    '## 提交包排序建议',
+    '',
+    '1. M01 作品说明：先讲真实办公痛点、原流程和新流程。',
+    '2. M02 演示视频：用 3 分钟连续操作证明系统跑通和诚实失败态。',
+    '3. M05 成效证据：把基线、AI、复核、返工、配置、维护和样本量放在同一张表。',
+    '4. reviewer-guide：让评委快速定位证据、扣分项和人工复核点。',
+    '5. 90plus-score-evidence-matrix：按 30/30/20/20 对齐证据强度。',
+    '6. data-compliance-checklist：提交前脱敏和权限说明。',
+    '',
+    '## 不得写入的内容',
+    '',
+    '- 不写未经测量的百分比。',
+    '- 不把演示数据写成真实业务落地。',
+    '- 不把准备建议分写成官方评分。',
+    '- 不隐藏人工复核、返工、配置和维护成本。',
+  ].join('\n');
+}
+
+function render90PlusScoreEvidenceMatrix(state, audit) {
+  const rows = [
+    ['提效成效', 30, '26-30', '同类任务前后对比，全成本净节省，质量不下降，高频或持续使用', 'M02、M05、原始日志、submission-manifest.json'],
+    ['场景价值', 30, '26-30', '真实高频办公痛点，影响多个岗位或稳定部门流程', 'M01、M04、脱敏业务样例、使用记录'],
+    ['方案创新性', 20, '17-20', '证据约束、规则审核、人工审批、流程编排、迭代记录，不是普通问答', 'M01、M02、Prompt/Skill、审阅/审批日志'],
+    ['可推广性', 20, '18-20', '模板、SOP、权限、成本、维护、培训和复用边界清楚', 'M03、M06、reuse/SOP、培训/反馈记录'],
+  ];
+  return [
+    '# 90+ 评分证据矩阵',
+    '',
+    `当前准备建议分：${scoreDisplay(audit.totalGuidanceScore)}；状态：${audit.scoreFormation.scoreStatus}；置信度：${audit.confidence}。`,
+    '',
+    '| 模块 | 满分 | 90+ 目标档 | 必须证明 | 推荐证据位置 | 当前系统建议 | 缺口 |',
+    '| --- | ---: | --- | --- | --- | ---: | --- |',
+    ...rows.map(([name, max, band, proof, location]) => {
+      const key = name === '提效成效' ? 'efficiency' : name === '场景价值' ? 'scenario' : name === '方案创新性' ? 'innovation' : 'portability';
+      const module = audit.modules[key];
+      return `| ${name} | ${max} | ${band} | ${proof} | ${location} | ${module.score}/${module.max} | ${tableCell(module.deductions.join('；'), '待补真实证据后复核')} |`;
+    }),
+    '',
+    '## 已登记证据',
+    '',
+    state.evidence.length
+      ? state.evidence.map(item => `- ${item.id}: ${item.claim}，${item.level}/${item.status}，${evidenceLocation(item)}，边界：${evidenceBoundary(item)}`).join('\n')
+      : '- 尚无已登记证据；请先补 M02 演示、M05 成效表和原始日志。',
+  ].join('\n');
+}
+
+function renderDemoEvidencePlan(state) {
+  return [
+    '# M02 演示取证计划',
+    '',
+    '目标：用不超过 3 分钟的连续浏览器录屏证明作品真实可运行，并主动展示“缺证据不形成总建议分”的诚实边界。',
+    '',
+    '| 时间 | 画面 | 评委看到的证据 | 讲稿要点 |',
+    '| --- | --- | --- | --- |',
+    '| 00:00-00:20 | 项目与交付面板 | 作品名称、办公场景、六阶段导航 | OpenPrism Office 是可核验办公材料工作台 |',
+    '| 00:20-00:45 | 收件 | 导入脱敏材料，状态 ready | 资料进入项目内账本，不散落在聊天窗口 |',
+    '| 00:45-01:10 | 处理 | 配方、运行状态、OfficeCLI unavailable/blocked 态 | 外部能力缺失时如实阻断，不伪造结果 |',
+    '| 01:10-01:40 | 审阅 | 检索分数、证据图、评论和建议 | AI 草稿必须回到证据和人工意见 |',
+    '| 01:40-02:00 | 审批 | approved/published 本地状态 | 对外交付前保留人工批准记录 |',
+    '| 02:00-02:25 | 度量 | baseline/AI/review/retry/setup/maintenance | 提效按全成本复算，不只算生成时间 |',
+    '| 02:25-02:50 | 交付 | audit、M01-M06、manifest | 提交包可回查文件和哈希 |',
+    '| 02:50-03:00 | 风险态 | 待补材料/未形成总建议分 | 缺少真实证据不会写成高分结论 |',
+    '',
+    '## 录制输出',
+    '',
+    '- 原始录屏：`docs/competition/submission_90plus/evidence/demo/office-demo.webm`。',
+    '- 截图：同目录 `*.png`，命名包含步骤序号。',
+    '- 时间戳清单：同目录 `timestamps.md`。',
+    '- 演示数据必须标注为受控演示，不得作为真实业务提效证据。',
+    '',
+    '## 当前脚本口径',
+    '',
+    state.finals.demoScript || '导入资料；检索证据；审阅建议；人工批准；记录度量；导出提交包；展示待补风险。',
+  ].join('\n');
+}
+
+function renderPilotMeasurementRegister() {
+  return [
+    'sample_id,task_date,task_type,baseline_minutes,ai_minutes,review_minutes,retry_minutes,setup_minutes,maintenance_minutes,output_count,accepted_count,rejected_count,quality_result,evidence_path,reviewer,notes,status',
+    'PILOT-001,,,,,,,,,,,,,,,"填写真实 reviewer",待补真实业务数据,planned',
+    'PILOT-002,,,,,,,,,,,,,,,"填写真实 reviewer",待补真实业务数据,planned',
+  ].join('\n');
+}
+
+function renderReviewerQna(state, audit) {
+  const defaultQuestions = [
+    ['如何证明不是普通 AI 写作？', '请展示证据索引、审阅建议、人工审批、规则审核、manifest 和缺证据失败态；普通聊天工具通常没有这条可核验链路。'],
+    ['提效比例如何计算？', '使用 M05 和 pilot-measurement-register.csv，公式为基线耗时减去 AI、人工复核、返工、配置和维护的合计耗时；缺项时不写精确比例。'],
+    ['如何防止幻觉？', '关键结论必须绑定证据编号、来源路径、精确位置和 E0-E3 等级；E0 或未核验内容不得进入正式结论。'],
+    ['如何推广到其他部门？', '复用模板、SOP、Skill、权限说明、培训时长和维护负责人；推广前替换本部门资料库和指标口径。'],
+    ['现在能否保证 90 分以上？', '不能保证官方评分。当前系统能补齐材料结构和取证链路，90+ 取决于真实业务证据、样本和评委判断。'],
+  ];
+  const userQuestions = state.finals.questions.map(question => [question, '按材料证据回答；没有证据时明确说明待补充或需人工复核。']);
+  return [
+    '# 评委问答准备稿',
+    '',
+    `当前建议状态：${audit.scoreFormation.scoreStatus}；总建议分：${scoreDisplay(audit.totalGuidanceScore)}。以下回答仅用于答辩准备，不替代现场评委判断。`,
+    '',
+    '| 问题 | 建议回答 | 证据位置 |',
+    '| --- | --- | --- |',
+    ...[...defaultQuestions, ...userQuestions].map(([question, answer]) => `| ${tableCell(question)} | ${tableCell(answer)} | M01-M06、reviewer-guide、90plus-score-evidence-matrix |`),
+  ].join('\n');
+}
+
+function renderDataComplianceChecklist(audit) {
+  return [
+    '# 数据合规与脱敏清单',
+    '',
+    '提交前逐项人工确认。系统只能做材料处理提醒，不能替代组织合规审核。',
+    '',
+    '| 检查项 | 通过标准 | 证据/处理记录 | 状态 |',
+    '| --- | --- | --- | --- |',
+    '| Token/API Key/密码/私钥 | 录屏、截图、日志、配置文件中不可见 | 待填写 | 待核 |',
+    '| 个人信息 | 姓名、手机号、邮箱、身份证等已脱敏或获授权 | 待填写 | 待核 |',
+    '| 客户和商业敏感信息 | 客户名、合同、报价、财务、生产地址已处理 | 待填写 | 待核 |',
+    '| 内部路径和地址 | 本机路径、内网 URL、未授权截图不外流 | 待填写 | 待核 |',
+    '| 外部 AI 工具使用 | 使用范围、数据边界、审批记录可说明 | 待填写 | 待核 |',
+    '| 演示数据标识 | 受控演示数据和真实业务数据明确区分 | 待填写 | 待核 |',
+    '',
+    '## 自动扫描提醒',
+    '',
+    audit.informationRisks?.length
+      ? audit.informationRisks.map(item => `- ${item.severity || 'risk'}：${item.message || JSON.stringify(item)}`).join('\n')
+      : '- 当前自动扫描无明显提醒；仍需人工检查录屏和附件。',
+  ].join('\n');
+}
+
 export async function exportOfficeTrackPackage(projectRoot, inputState) {
   const state = inputState || await loadOfficeTrackState(projectRoot);
   const audit = await auditOfficeTrackProject(projectRoot, state);
@@ -1153,6 +1311,12 @@ export async function exportOfficeTrackPackage(projectRoot, inputState) {
   files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/blank-initial-score-sheet.md`, renderBlankScoreSheet()));
   files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/finals-pack.md`, renderFinalsPack(state)));
   files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/finals-score-guide.md`, renderFinalsScoreGuide(audit)));
+  files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/90plus-readiness-pack.md`, render90PlusReadinessPack(state, audit)));
+  files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/90plus-score-evidence-matrix.md`, render90PlusScoreEvidenceMatrix(state, audit)));
+  files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/demo-evidence-plan.md`, renderDemoEvidencePlan(state)));
+  files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/pilot-measurement-register.csv`, renderPilotMeasurementRegister()));
+  files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/reviewer-qna.md`, renderReviewerQna(state, audit)));
+  files.push(await writeText(projectRoot, `${SUBMISSION_DIR}/data-compliance-checklist.md`, renderDataComplianceChecklist(audit)));
 
   const manifest = {
     version: 1,

@@ -1,0 +1,242 @@
+{
+  "version": 1,
+  "schema": "openprism-office-workflow",
+  "connectors": [
+    {
+      "id": "office-source",
+      "type": "local-folder",
+      "displayName": "Office source",
+      "params": {
+        "relativePath": "sources"
+      },
+      "capabilities": [
+        "read",
+        "write",
+        "watch"
+      ],
+      "configured": true,
+      "executionReady": true,
+      "status": "ready",
+      "statusReason": "Local project folder connector is available.",
+      "updatedAt": "2026-08-27T13:51:34.158Z"
+    },
+    {
+      "id": "office-delivery",
+      "type": "local-folder",
+      "displayName": "Office delivery",
+      "params": {
+        "relativePath": "submission"
+      },
+      "capabilities": [
+        "read",
+        "write",
+        "watch"
+      ],
+      "configured": true,
+      "executionReady": true,
+      "status": "ready",
+      "statusReason": "Local project folder connector is available.",
+      "updatedAt": "2026-08-27T13:51:34.158Z"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "evidence-office-delivery",
+      "name": "证据办公交付",
+      "description": "",
+      "triggerConnectorId": "office-source",
+      "publishConnectorId": "office-delivery",
+      "steps": [
+        "ingest",
+        "retrieve",
+        "draft",
+        "review",
+        "approve",
+        "publish"
+      ],
+      "humanApprovalRequired": true,
+      "enabled": true,
+      "version": "v1",
+      "updatedAt": "2026-08-27T13:51:34.158Z"
+    }
+  ],
+  "runs": [
+    {
+      "id": "run-mtbkydnl-a48r0",
+      "recipeId": "evidence-office-delivery",
+      "status": "published",
+      "trigger": {
+        "connectorId": "office-source",
+        "kind": "manual",
+        "actor": {
+          "type": "human",
+          "id": "operator",
+          "model": "",
+          "source": "",
+          "location": ""
+        }
+      },
+      "timeline": [
+        {
+          "from": null,
+          "to": "triggered",
+          "actor": {
+            "type": "human",
+            "id": "operator",
+            "model": "",
+            "source": "",
+            "location": ""
+          },
+          "at": "2026-08-27T13:50:22.117Z",
+          "notes": "Run triggered."
+        },
+        {
+          "from": "triggered",
+          "to": "processing",
+          "actor": {
+            "type": "ai",
+            "id": "office-agent",
+            "model": "configured-provider",
+            "source": "",
+            "location": ""
+          },
+          "at": "2026-08-27T13:50:22.156Z",
+          "notes": ""
+        },
+        {
+          "from": "processing",
+          "to": "review",
+          "actor": {
+            "type": "human",
+            "id": "reviewer",
+            "model": "",
+            "source": "",
+            "location": ""
+          },
+          "at": "2026-08-27T13:50:22.228Z",
+          "notes": ""
+        },
+        {
+          "from": "review",
+          "to": "approved",
+          "actor": {
+            "type": "human",
+            "id": "approver",
+            "model": "",
+            "source": "",
+            "location": ""
+          },
+          "at": "2026-08-27T13:51:10.650Z",
+          "notes": ""
+        },
+        {
+          "from": "approved",
+          "to": "published",
+          "actor": {
+            "type": "human",
+            "id": "publisher",
+            "model": "",
+            "source": "",
+            "location": ""
+          },
+          "at": "2026-08-27T13:51:10.721Z",
+          "notes": ""
+        }
+      ],
+      "reviewThreads": [
+        {
+          "paragraphId": "p-1",
+          "comments": [
+            {
+              "id": "comment-mtbkyww1-2sy45",
+              "paragraphId": "p-1",
+              "body": "请删除“长期稳定提效”这类未由真实样本证明的结论。",
+              "assignee": "author",
+              "deadline": null,
+              "provenance": {
+                "type": "human",
+                "id": "reviewer",
+                "model": "",
+                "source": "",
+                "location": ""
+              },
+              "suggestion": {
+                "id": "suggestion-mtbkyww1-miw4h",
+                "kind": "replace",
+                "originalText": "",
+                "suggestedText": "受控演示仅证明流程跑通，真实提效以试点表为准。",
+                "semanticDiff": {
+                  "intent": "ground-claim",
+                  "changedClaims": [
+                    "系统包含架构评审材料。",
+                    "演示数据已经证明长期稳定提效。"
+                  ],
+                  "risk": "medium"
+                },
+                "status": "accepted",
+                "decidedAt": "2026-08-27T13:50:47.224Z",
+                "decisionProvenance": {
+                  "type": "human",
+                  "id": "approver",
+                  "model": "",
+                  "source": "",
+                  "location": ""
+                }
+              },
+              "replies": [],
+              "createdAt": "2026-08-27T13:50:47.047Z"
+            }
+          ]
+        }
+      ],
+      "approvalEvents": [
+        {
+          "id": "approval-mtbkzf3i-tetly",
+          "status": "approved",
+          "actor": {
+            "type": "human",
+            "id": "approver",
+            "model": "",
+            "source": "",
+            "location": ""
+          },
+          "notes": "人工核对来源、修改与交付边界。",
+          "at": "2026-08-27T13:51:10.643Z"
+        }
+      ],
+      "createdAt": "2026-08-27T13:50:22.117Z",
+      "updatedAt": "2026-08-27T13:51:34.158Z"
+    }
+  ],
+  "telemetry": [
+    {
+      "id": "metric-mtbkzx8p-34218",
+      "role": "writer",
+      "frequency": "weekly",
+      "version": "recipe-v1",
+      "timings": {
+        "baselineMinutes": 120,
+        "aiMinutes": 45,
+        "reviewMinutes": 20,
+        "retryMinutes": 5,
+        "setupMinutes": 10,
+        "maintenanceMinutes": 2
+      },
+      "volumes": {
+        "documents": 1,
+        "words": null,
+        "tasks": 1
+      },
+      "decisions": {
+        "accepted": 1,
+        "rejected": 1
+      },
+      "quality": {
+        "scoreBefore": null,
+        "scoreAfter": null,
+        "rubric": ""
+      }
+    }
+  ],
+  "updatedAt": "2026-08-27T13:51:34.159Z"
+}

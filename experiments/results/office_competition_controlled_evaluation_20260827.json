@@ -1,0 +1,120 @@
+{
+  "schema": "openprism-office-controlled-evaluation-v1",
+  "generatedAt": "2026-08-27T13:13:25.610Z",
+  "scope": "受控技术演练；证明检索、证据关系和会议提取的可复现性，不代表企业生产率或真实业务落地。",
+  "environment": {
+    "node": "v24.14.0",
+    "platform": "linux",
+    "architecture": "x64"
+  },
+  "corpus": {
+    "documents": 4,
+    "chunks": 4
+  },
+  "searchCases": [
+    {
+      "query": "试点批准",
+      "expectedTopPath": "controlled/sources/审批纪要.md",
+      "observedTopPath": "controlled/sources/审批纪要.md",
+      "passed": true,
+      "scoreBreakdown": {
+        "bm25": 2.432214,
+        "vector": 0.243332,
+        "rerank": 0.416667,
+        "final": 1.530217
+      }
+    },
+    {
+      "query": "没有证明稳定提效",
+      "expectedTopPath": "controlled/sources/风险记录.md",
+      "observedTopPath": "controlled/sources/风险记录.md",
+      "passed": true,
+      "scoreBreakdown": {
+        "bm25": 8.28995,
+        "vector": 0.6799,
+        "rerank": 0.9125,
+        "final": 5.116989
+      }
+    },
+    {
+      "query": "人工审批后导出",
+      "expectedTopPath": "controlled/sources/流程说明.md",
+      "observedTopPath": "controlled/sources/流程说明.md",
+      "passed": true,
+      "scoreBreakdown": {
+        "bm25": 4.126641,
+        "vector": 0.390095,
+        "rerank": 0.571429,
+        "final": 2.575425
+      }
+    },
+    {
+      "query": "模板 SOP 评审清单",
+      "expectedTopPath": "controlled/sources/复用说明.md",
+      "observedTopPath": "controlled/sources/复用说明.md",
+      "passed": true,
+      "scoreBreakdown": {
+        "bm25": 7.603151,
+        "vector": 0.51387,
+        "rerank": 0.925,
+        "final": 4.666766
+      }
+    }
+  ],
+  "claimCases": [
+    {
+      "id": "pilot-approved",
+      "text": "办公材料核验试点已批准。",
+      "expectedRelation": "support",
+      "observedRelations": [
+        "support"
+      ],
+      "passed": true
+    },
+    {
+      "id": "efficiency-proven",
+      "text": "受控演练已经证明稳定提效。",
+      "expectedRelation": "conflict",
+      "observedRelations": [
+        "conflict"
+      ],
+      "passed": true
+    },
+    {
+      "id": "human-approval",
+      "text": "对外交付必须经过人工确认。",
+      "expectedRelation": "support",
+      "observedRelations": [
+        "support"
+      ],
+      "passed": true
+    },
+    {
+      "id": "payroll-integration",
+      "text": "系统已经接入薪资平台。",
+      "expectedRelation": "missing",
+      "observedRelations": [
+        "missing"
+      ],
+      "passed": true
+    }
+  ],
+  "meetingCheck": {
+    "decisionCount": 1,
+    "actionItemCount": 1,
+    "speakerDiarization": "not-claimed",
+    "passed": true
+  },
+  "repeatedRun": {
+    "iterations": 100,
+    "p50Milliseconds": 1.234,
+    "p95Milliseconds": 2.442,
+    "maxMilliseconds": 6.916
+  },
+  "summary": {
+    "checks": 9,
+    "passed": 9,
+    "failed": 0,
+    "allPassed": true
+  }
+}

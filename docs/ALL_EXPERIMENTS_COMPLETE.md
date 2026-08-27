@@ -19,3 +19,12 @@
 - **结果数据**：批准主张产生 `support`，耗时下降主张产生 `conflict`；独立中文材料、组合段落单测与真实路由 E2E 均通过。
 - **结论**：整段 conflict marker 只能作为候选信号，不能替代面向主张的局部否定判断。
 - **结构化结果**：`experiments/results/chinese_evidence_relation_regression.json`
+
+## 2026-08-27：办公赛道受控证据链复现评估
+
+- **目的**：为参赛材料提供不依赖主观描述的技术证据，验证中文材料检索、支持/冲突/缺失关系、会议决定/待办提取和重复运行稳定性，同时明确该实验不替代真实业务提效试点。
+- **方法原理**：构造 4 份脱敏受控材料、4 个检索问题、4 个证据主张和 1 份带时间戳逐字稿；使用本地 BM25 + 128 维哈希向量 + deterministic reranker、证据关系图和会议解析器运行 100 次，并保存原始 JSON。
+- **关键参数**：chunk size 80、overlap 10、search topK 3、graph topK 4、重复 100 次；Node/平台信息随结果保存，但不记录主机路径、凭据或业务敏感数据。
+- **结果数据**：首次运行 9 项检查通过 8 项，暴露“没有证明稳定提效”被误判为 support；补充红灯测试并修复否定动作词后，9/9 通过。最终 100 次重复运行的 p50、p95、max 延迟以结果 JSON 为准。
+- **结论**：当前实现能在受控样本中可复现地区分 support/conflict/missing 并提取时间戳决定/待办；这些结果只证明技术正确性和演示可复现性，不得写成企业生产率或稳定真实落地。
+- **结构化结果**：`experiments/results/office_competition_controlled_evaluation_20260827.json`

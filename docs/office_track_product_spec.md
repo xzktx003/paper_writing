@@ -97,6 +97,8 @@
 - `reviewer-guide.md`；
 - `initial-score-guide.md` 与 `blank-initial-score-sheet.md`；
 - `finals-pack.md` 与 `finals-score-guide.md`；
+- `90plus-readiness-pack.md` 与 `90plus-score-evidence-matrix.md`；
+- `demo-evidence-plan.md`、`pilot-measurement-register.csv`、`reviewer-qna.md` 与 `data-compliance-checklist.md`；
 - `submission-manifest.json`，包含文件 SHA-256、生成时间、规则版本和未解决缺口。
 
 登记的原始材料与证据不得指向上述生成文件，避免导出覆盖来源或让生成结果反过来冒充原始证据。推荐把来源放在 `sources/`、`evidence/`、`metrics/` 与 `reuse/`。

@@ -21,12 +21,13 @@ const SUPPORT_MARKERS = [
 const CONFLICT_MARKERS = [
   'did not', 'does not', 'cannot', 'failed', 'without', 'no evidence',
   'not reduce', 'blocked', 'rejected', 'contradict',
-  '未批准', '未确认', '无法', '失败', '没有证据', '缺少证据', '未降低', '未减少', '已驳回', '相矛盾',
+  'no proof', 'not proven', 'not prove',
+  '未批准', '未确认', '无法', '失败', '没有证据', '缺少证据', '没有证明', '未证明', '不能证明', '未降低', '未减少', '已驳回', '相矛盾',
 ];
 const NEGATABLE_ACTION_TERMS = new Set([
   'approve', 'approved', 'approval', 'launch', 'reduce', 'reduced', 'reduces',
-  'drafting', 'time', 'integrate', 'integrates', 'payroll',
-  '批准', '上线', '降低', '减少', '集成', '工时', '耗时',
+  'drafting', 'time', 'integrate', 'integrates', 'payroll', 'prove', 'proven', 'proof',
+  '批准', '上线', '降低', '减少', '集成', '工时', '耗时', '证明', '证实',
 ]);
 
 export function buildHybridRetrievalIndex(documents = [], options = {}) {

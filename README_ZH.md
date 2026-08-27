@@ -158,7 +158,7 @@ Provider 设置页顶部提供四步快速向导，明确区分 Paper Writer 的
 
 在受管理项目中打开“AI 助手 → 任务”，即可使用可审查的 CLI Task Agent。后端会在项目外创建隔离快照，以固定文件权限运行选定 CLI，并返回新增、修改、删除文件、unified diff 和执行来源信息。`.venv`、`venv`、`node_modules`、版本控制目录、本地缓存、编译产物和 Paper Writer 运行状态不会复制进任务快照；被纳入快照的其他路径仍严格拒绝符号链接。Reject 永远不会修改原项目；Accept 在用户确认已审查全部文件后才可用，并会先检查原项目是否发生漂移，再通过持久化回滚日志应用变更。任务历史可跨页面刷新和后端重启恢复。详细说明见 [CLI Task Agent](docs/cli_task_agent.md)。
 
-办公赛道文案写作可从 **OpenPrism Office 写作交付包** 模板新建项目，再打开“AI 助手 → Delivery / 交付”。该面板会把 Brief、材料、证据、成效、复用资产和决赛准备保存到项目内 `.openprism/office-track.json`，审计必交材料、证据等级、成本口径、特殊上限和敏感信息提醒，并导出 `submission/M01-*.md` 到 `submission/M06-*.md`、评委说明、初赛评分表、决赛准备文件和 `submission/submission-manifest.json`。审计结果只是参赛准备建议，不代表官方评分。
+办公赛道文案写作可从 **OpenPrism Office 写作交付包** 模板新建项目，再打开“AI 助手 → Delivery / 交付”。该面板会把 Brief、材料、证据、成效、复用资产和决赛准备保存到项目内 `.openprism/office-track.json`，审计必交材料、证据等级、成本口径、特殊上限和敏感信息提醒，并导出 `submission/M01-*.md` 到 `submission/M06-*.md`、评委说明、初赛/决赛准备、90+ 证据矩阵、演示计划、试点登记表、问答稿、合规清单和 `submission/submission-manifest.json`。可复现受控演示脚本和可提交源材料位于 `docs/competition/submission_90plus/`；审计结果只是参赛准备建议，不代表官方评分，也不会把演示 fixture 当作真实业务成效。
 
 LaTeX 或 Markdown/Pandoc 编译成功后，最终 PDF 会同时保存到隐藏的 `.compile/output/` 稳定缓存和论文工程根目录，例如 `main.tex` 对应 `main.pdf`。根目录副本会显示在项目文件中，并作为“最终 PDF”的优先预览来源；失败编译不会覆盖上一次成功产物。
 

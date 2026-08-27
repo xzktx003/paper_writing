@@ -1,0 +1,239 @@
+{
+  "version": 1,
+  "brief": {
+    "title": "OpenPrism Office 办公赛道演示",
+    "team": "受控演示团队",
+    "scenario": "用脱敏 Office 材料生成可审查的办公参赛材料",
+    "users": "项目申报负责人、材料审核人、PMO",
+    "writingTasks": [
+      "作品方案",
+      "三分钟演示讲稿",
+      "效果证明",
+      "复用说明"
+    ],
+    "valueProposition": "AI 辅助整理和起草，证据定位与人工审批决定最终采纳。",
+    "humanApprovalRequired": true,
+    "reuseStatement": "通过模板、SOP、Skill、证据表和导出清单复用到相近办公材料场景。",
+    "significance": "把办公文案生产转为可追溯、可复算、可审批的流程。",
+    "frequency": "受控演示：面向每月多次的办公材料流程",
+    "originalProcess": "人工逐份阅读 Office 材料，复制事实，整理成提交文档。",
+    "painPoints": [
+      "来源分散",
+      "事实核验耗时",
+      "返工意见不沉淀"
+    ],
+    "deliveryStandard": "所有对外主张必须可定位到证据并经人工审批。",
+    "dependencies": [
+      "本地脱敏 Office 材料",
+      "项目模板内 SOP/Skill/指标表"
+    ],
+    "constraints": [
+      "不得虚构提效数据",
+      "演示数据不作为真实业务成效"
+    ]
+  },
+  "materials": [
+    {
+      "id": "m01-proposal",
+      "name": "M01 作品方案",
+      "type": "proposal",
+      "path": "sources/competition/M01-proposal.md",
+      "status": "ready",
+      "notes": "静态提交包材料，可读 ready。"
+    },
+    {
+      "id": "m02-demo",
+      "name": "M02 三分钟演示脚本",
+      "type": "demo-video-script",
+      "path": "sources/competition/M02-demo-script.md",
+      "status": "ready",
+      "notes": "本次录屏脚本和取证计划。"
+    },
+    {
+      "id": "m03-reuse",
+      "name": "M03 复用价值说明",
+      "type": "reuse-statement",
+      "path": "sources/competition/M03-reuse-statement.md",
+      "status": "ready",
+      "notes": "静态提交包材料，可读 ready。"
+    },
+    {
+      "id": "m04-significance",
+      "name": "M04 作品意义",
+      "type": "significance",
+      "path": "sources/competition/M04-significance.md",
+      "status": "ready",
+      "notes": "静态提交包材料，可读 ready。"
+    },
+    {
+      "id": "m-docx-demo",
+      "name": "受控 DOCX 示例",
+      "type": "other",
+      "path": "sources/demo-architecture-review.docx",
+      "status": "ready",
+      "notes": "native-ooxml · controlled demo input"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e-docx-controlled-demo",
+      "claim": "受控 DOCX 已成功解析，演示链路已运行。",
+      "sourcePath": "sources/demo-architecture-review.docx",
+      "location": "native-ooxml import record",
+      "level": "E2",
+      "status": "verified",
+      "notes": "仅证明受控 DOCX 解析和演示链路跑通，不证明真实业务提效。"
+    }
+  ],
+  "effect": {
+    "baselineMinutes": 120,
+    "aiMinutes": 45,
+    "retryMinutes": 5,
+    "reviewMinutes": 20,
+    "setupMinutes": 10,
+    "maintenanceMinutes": 2,
+    "qualityNotes": "受控演示数据；未完成真实业务试点，不形成真实提效结论。",
+    "sampleSize": 1,
+    "measurementStatus": "designed",
+    "unit": "受控演示样本",
+    "period": "2026-08-27 录屏演示",
+    "taskFrequency": "真实频率待试点补充",
+    "coveragePeople": 1,
+    "calculationNotes": "演示中保留全成本字段，但 measurementStatus=designed；真实提效需另行用业务样本复算。"
+  },
+  "reusableAssets": [
+    {
+      "id": "asset-main-template",
+      "name": "办公赛道主文档模板",
+      "type": "template",
+      "path": "main.md",
+      "status": "ready",
+      "notes": "项目模板内实际存在。",
+      "targetRoles": [
+        "项目申报负责人",
+        "PMO"
+      ],
+      "learningMinutes": 20,
+      "deploymentNotes": "从 office-track-writing 模板创建项目后替换 Brief、证据和指标。",
+      "permissionNotes": "仅处理项目授权资料。",
+      "maintenanceOwner": "材料负责人"
+    },
+    {
+      "id": "asset-sop",
+      "name": "复用 SOP",
+      "type": "sop",
+      "path": "reuse/SOP.md",
+      "status": "ready",
+      "notes": "项目模板内实际存在。",
+      "targetRoles": [
+        "材料审核人",
+        "PMO"
+      ],
+      "learningMinutes": 15,
+      "deploymentNotes": "按 SOP 完成收件、证据、审批和导出。",
+      "permissionNotes": "提交前人工脱敏。",
+      "maintenanceOwner": "PMO"
+    },
+    {
+      "id": "asset-skill",
+      "name": "复用 Skill",
+      "type": "prompt",
+      "path": "reuse/Skill.md",
+      "status": "ready",
+      "notes": "项目模板内实际存在。",
+      "targetRoles": [
+        "写作人",
+        "审核人"
+      ],
+      "learningMinutes": 15,
+      "deploymentNotes": "按 Skill 提示词组织写作与审阅。",
+      "permissionNotes": "不得写入未核验数据。",
+      "maintenanceOwner": "材料负责人"
+    },
+    {
+      "id": "asset-effect-metrics",
+      "name": "效果测量表",
+      "type": "dataset",
+      "path": "metrics/effect.csv",
+      "status": "ready",
+      "notes": "项目模板内实际存在；演示中不预填真实提效。",
+      "targetRoles": [
+        "PMO",
+        "流程负责人"
+      ],
+      "learningMinutes": 10,
+      "deploymentNotes": "用真实业务样本填充。",
+      "permissionNotes": "不得把受控演示数据当成业务成效。",
+      "maintenanceOwner": "PMO"
+    }
+  ],
+  "finals": {
+    "demoScript": "收件导入 DOCX；处理失败态；审阅证据；人工审批；记录 designed 成效字段；审核导出并展示准备建议分和风险。",
+    "questions": [
+      "如何避免无依据数字？",
+      "如何复算提效？",
+      "为什么受控演示不等同真实业务成效？"
+    ],
+    "operatorChecklist": [
+      "确认四项必交材料 ready",
+      "确认 SOP/Skill/指标表 ready",
+      "确认 E2 证据只证明演示链路",
+      "确认 measurementStatus=designed"
+    ],
+    "landingEvidence": {
+      "usagePeriod": "待真实试点补充",
+      "users": [
+        "受控演示操作者"
+      ],
+      "useCount": 1,
+      "outputs": [
+        "受控演示提交包"
+      ],
+      "feedback": [
+        "演示链路跑通；真实业务提效待试点"
+      ]
+    },
+    "rolloutPlan": {
+      "targetRoles": [
+        "项目申报负责人",
+        "材料审核人",
+        "PMO"
+      ],
+      "milestones": [
+        "受控演示",
+        "小样本试点",
+        "部门复用"
+      ],
+      "owner": "PMO",
+      "resources": [
+        "模板",
+        "SOP",
+        "Skill",
+        "指标表"
+      ],
+      "costs": "单人培训 15-30 分钟，真实试点需另计复核成本。",
+      "risks": [
+        "真实样本不足",
+        "敏感信息未脱敏",
+        "误把演示数据当成业务成效"
+      ],
+      "metrics": [
+        "全成本净节省分钟",
+        "返工次数",
+        "证据缺口数"
+      ]
+    },
+    "aiOptimization": {
+      "versions": [
+        "office-demo-v1"
+      ],
+      "evaluation": "检查 DOCX 解析、证据登记、材料完整性、审核导出和风险提示。",
+      "iterations": [
+        "补齐四项 ready 材料登记",
+        "补齐 ready 复用资产",
+        "保留 designed 成效风险"
+      ]
+    }
+  },
+  "updatedAt": "2026-08-27T13:52:01.741Z"
+}

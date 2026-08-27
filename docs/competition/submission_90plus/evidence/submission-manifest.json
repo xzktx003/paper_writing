@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "ruleVersion": "AI材料审核与评分规则@2026-08-27",
+  "generatedAt": "2026-08-27T13:52:01.741Z",
+  "officialJudgement": false,
+  "directory": "submission",
+  "files": [
+    {
+      "path": "submission/M01-proposal.md",
+      "sha256": "08687ce9dd0b5844ebe13f648d5e0c1e00b085649d359631f8f5023abc476299"
+    },
+    {
+      "path": "submission/M02-demo-script.md",
+      "sha256": "bf83001d5fdbf6063f15944227deb59a68088983f80a53795b49c546f3e72d5f"
+    },
+    {
+      "path": "submission/M03-reuse-statement.md",
+      "sha256": "8e53b613782f249daf4d7ff667b09ef4ac2f9fdf0071c4fc02d4fbb04d84f4db"
+    },
+    {
+      "path": "submission/M04-significance.md",
+      "sha256": "071343b296850120eadb8b9d7f3cca1c22550ff63bb2ee68f0761de09ebc8bf0"
+    },
+    {
+      "path": "submission/M05-effect-evidence.md",
+      "sha256": "a392467ffcde39917957576b952daa9a192a38352dcc5754f0de80d816393184"
+    },
+    {
+      "path": "submission/M06-reuse-assets.md",
+      "sha256": "bb4c9330309588223161f5bc26aa44db45b06a0a267a443bb38b9a59abf0616f"
+    },
+    {
+      "path": "submission/reviewer-guide.md",
+      "sha256": "fc4192068a81d598b79a23423ca07ed30e0a955be1127be8a3cbb2c9c113a010"
+    },
+    {
+      "path": "submission/initial-score-guide.md",
+      "sha256": "f1966b9b0e02db34927e3194db6693dc204faebe4627c8b471b23783fe6acb73"
+    },
+    {
+      "path": "submission/blank-initial-score-sheet.md",
+      "sha256": "ba30e3a078fcdeb1b15404af57af8719dbc9d3e896e34dcab060d8f8b2dc92fb"
+    },
+    {
+      "path": "submission/finals-pack.md",
+      "sha256": "5dcd738faa9f00dabd3b85e2420901c7549c9a1ec601d7af8a3df81e558aff7f"
+    },
+    {
+      "path": "submission/finals-score-guide.md",
+      "sha256": "cc379933e2db1fd76491663cc08f16c5bd3e9c4a05fa3a8f39df7c8cd0b399c3"
+    },
+    {
+      "path": "submission/90plus-readiness-pack.md",
+      "sha256": "25807926b37c86b2d02c185e5425801596be962c0d9d05f556dc30d68d28e496"
+    },
+    {
+      "path": "submission/90plus-score-evidence-matrix.md",
+      "sha256": "54081027da2708c74ba855ec216e44ba4b8cca1ea3be5c2dbb14e02e76a877e7"
+    },
+    {
+      "path": "submission/demo-evidence-plan.md",
+      "sha256": "ba222e612574c6e021183549efd8089762dfe770be2399834eb545cf12334c55"
+    },
+    {
+      "path": "submission/pilot-measurement-register.csv",
+      "sha256": "98e22b599c66d44bbd92b328544bd2b042b7df507992c0f92a6bc4d11aeae981"
+    },
+    {
+      "path": "submission/reviewer-qna.md",
+      "sha256": "5e6453c35c473f9707742b2a407f46a1d7208b7ea7646e7a31d34e9a8ee1f6aa"
+    },
+    {
+      "path": "submission/data-compliance-checklist.md",
+      "sha256": "6228e678a6e2cdc5c82d9932e78b6ff2f176c9f7973d537e5f314427af962009"
+    }
+  ],
+  "unresolvedGaps": [
+    {
+      "id": "effect-not-measured",
+      "severity": "medium",
+      "message": "成效尚未完成可复核测量，不能使用确定性效率提升结论。"
+    },
+    {
+      "id": "information-review-required",
+      "severity": "medium",
+      "message": "材料中出现凭据、PII 或内部地址特征，仅提示人工复核，不自动定性违规。"
+    },
+    {
+      "id": "readability-review-required",
+      "severity": "medium",
+      "message": "部分材料或证据文件不可读、缺失或需人工确认。"
+    }
+  ],
+  "audit": {
+    "totalGuidanceScore": 94,
+    "scoreStatus": "ready",
+    "confidence": "low",
+    "caps": [],
+    "risks": [
+      {
+        "id": "effect-not-measured",
+        "severity": "medium",
+        "message": "成效尚未完成可复核测量，不能使用确定性效率提升结论。"
+      },
+      {
+        "id": "information-review-required",
+        "severity": "medium",
+        "message": "材料中出现凭据、PII 或内部地址特征，仅提示人工复核，不自动定性违规。"
+      },
+      {
+        "id": "readability-review-required",
+        "severity": "medium",
+        "message": "部分材料或证据文件不可读、缺失或需人工确认。"
+      }
+    ]
+  }
+}
