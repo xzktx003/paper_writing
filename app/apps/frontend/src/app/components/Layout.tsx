@@ -18,6 +18,11 @@ const RIGHT_PANEL_MIN_WIDTH = 180;
 const CENTER_PANEL_MIN_WIDTH = 360;
 const RESIZE_HANDLE_WIDTH = 5;
 type MobileView = 'files' | 'editor' | 'assistant';
+type FloatingPosition = { x: number; y: number };
+
+const TERMINAL_TOGGLE_SIZE = 36;
+const TERMINAL_TOGGLE_MARGIN = 8;
+const STATUS_BAR_HEIGHT = 24;
 
 function clampPanelWidth(width: number, minWidth: number, maxWidth: number) {
   return Math.max(minWidth, Math.min(Math.max(minWidth, maxWidth), width));
@@ -35,7 +40,9 @@ export function Layout() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(220);
   const [terminalMaximized, setTerminalMaximized] = useState(false);
+  const [terminalTogglePosition, setTerminalTogglePosition] = useState<FloatingPosition | null>(null);
   const restoredLayoutRef = React.useRef<string | null>(null);
+  const terminalToggleWasDraggedRef = React.useRef(false);
 
   React.useEffect(() => {
     const projectPath = app.project.path;
@@ -49,6 +56,11 @@ export function Layout() {
       if (typeof saved?.rightCollapsed === 'boolean') setRightCollapsed(saved.rightCollapsed);
       if (Number.isFinite(saved?.terminalHeight)) setTerminalHeight(Math.max(100, Math.min(600, saved.terminalHeight)));
       if (typeof saved?.terminalMaximized === 'boolean') setTerminalMaximized(saved.terminalMaximized);
+      if (Number.isFinite(saved?.terminalTogglePosition?.x) && Number.isFinite(saved?.terminalTogglePosition?.y)) {
+        setTerminalTogglePosition(saved.terminalTogglePosition);
+      } else {
+        setTerminalTogglePosition(null);
+      }
     } catch { /* ignore invalid browser state */ }
     restoredLayoutRef.current = projectPath;
   }, [app.project.path]);
@@ -63,8 +75,57 @@ export function Layout() {
       rightCollapsed,
       terminalHeight,
       terminalMaximized,
+      terminalTogglePosition,
     }));
-  }, [app.project.path, leftWidth, rightWidth, leftCollapsed, rightCollapsed, terminalHeight, terminalMaximized]);
+  }, [app.project.path, leftWidth, rightWidth, leftCollapsed, rightCollapsed, terminalHeight, terminalMaximized, terminalTogglePosition]);
+
+  const clampTerminalTogglePosition = useCallback((position: FloatingPosition): FloatingPosition => ({
+    x: Math.max(TERMINAL_TOGGLE_MARGIN, Math.min(window.innerWidth - TERMINAL_TOGGLE_SIZE - TERMINAL_TOGGLE_MARGIN, position.x)),
+    y: Math.max(TERMINAL_TOGGLE_MARGIN, Math.min(window.innerHeight - STATUS_BAR_HEIGHT - TERMINAL_TOGGLE_SIZE - TERMINAL_TOGGLE_MARGIN, position.y)),
+  }), []);
+
+  React.useEffect(() => {
+    const handleResize = () => setTerminalTogglePosition(previous => previous ? clampTerminalTogglePosition(previous) : previous);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [clampTerminalTogglePosition]);
+
+  const handleTerminalTogglePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let moved = false;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      if (!moved && Math.hypot(deltaX, deltaY) < 4) return;
+      moved = true;
+      setTerminalTogglePosition(clampTerminalTogglePosition({ x: rect.left + deltaX, y: rect.top + deltaY }));
+    };
+    const finishDrag = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', finishDrag);
+      window.removeEventListener('pointercancel', finishDrag);
+      document.body.style.userSelect = '';
+      terminalToggleWasDraggedRef.current = moved;
+    };
+
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', finishDrag);
+    window.addEventListener('pointercancel', finishDrag);
+  }, [clampTerminalTogglePosition]);
+
+  const handleTerminalToggleClick = useCallback(() => {
+    if (terminalToggleWasDraggedRef.current) {
+      terminalToggleWasDraggedRef.current = false;
+      return;
+    }
+    app.toggleTerminal();
+  }, [app.toggleTerminal]);
 
   const currentChapterSkills = (() => {
     if (app.activeFileIndex < 0) return [];
@@ -165,6 +226,7 @@ export function Layout() {
             activeFileIndex={app.activeFileIndex}
             onFileChange={app.updateFileContent}
             onFileSave={app.saveFile}
+            onReloadExternalFile={app.reloadExternalFile}
             onTabSelect={app.setActiveFileIndex}
             onTabClose={app.closeFile}
             terminalVisible={app.terminalVisible}
@@ -213,6 +275,7 @@ export function Layout() {
                 onClose={app.removeConversation}
                 onCreate={app.createConversation}
                 onSend={app.sendMessage}
+                onCancel={app.cancelMessage}
                 onUploadAttachment={app.uploadConversationAttachment}
                 onRemoveAttachment={app.removeConversationAttachment}
                 onSetRagDocuments={app.setConversationRagDocuments}
@@ -260,19 +323,23 @@ export function Layout() {
       {/* Floating Terminal Toggle Button (bottom-right) */}
       {!app.terminalVisible && (
         <button
-          onClick={app.toggleTerminal}
+          data-testid="terminal-toggle"
+          onClick={handleTerminalToggleClick}
+          onPointerDown={handleTerminalTogglePointerDown}
           title={t('Open Terminal')}
           style={{
             position: 'fixed',
-            bottom: 36,
-            right: 16,
+            ...(terminalTogglePosition
+              ? { left: terminalTogglePosition.x, top: terminalTogglePosition.y }
+              : { bottom: 36, right: 16 }),
             width: 36,
             height: 36,
             borderRadius: '50%',
             border: '1px solid var(--border)',
             background: 'var(--panel)',
             color: 'var(--text-secondary)',
-            cursor: 'pointer',
+            cursor: 'grab',
+            touchAction: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

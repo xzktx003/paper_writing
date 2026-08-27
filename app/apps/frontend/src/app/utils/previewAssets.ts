@@ -1,6 +1,18 @@
 export const BROWSER_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
 export const GRAPHIC_EXTENSIONS = [...BROWSER_IMAGE_EXTENSIONS, '.pdf', '.eps'];
-export const TEXT_EXTENSIONS = ['.md', '.markdown', '.tex', '.txt', '.bib', '.sty', '.cls', '.bst', '.yaml', '.yml', '.json', '.py', '.sh', '.js', '.ts', '.tsx', '.css', '.html', '.htm', '.xml', '.csv', '.toml', '.ini', '.cfg', '.conf', '.log', '.diff', '.patch', '.rs', '.go', '.java', '.c', '.cpp', '.h', '.hpp', '.rb', '.php', '.r', '.R', '.lua', '.vim', '.dockerfile', '.makefile', '.cmake', '.sql', '.graphql', '.proto', '.tf', '.dockerignore', '.gitignore', '.env', '.editorconfig', '.prettierrc', '.eslintrc'];
+export const TEXT_EXTENSIONS = [
+  '.md', '.markdown', '.tex', '.txt', '.bib', '.sty', '.cls', '.bst',
+  '.yaml', '.yml', '.json', '.jsonl', '.csv', '.tsv', '.toml', '.ini', '.cfg', '.conf', '.log',
+  '.py', '.r', '.jl', '.lua', '.rb', '.php', '.java', '.go', '.rs', '.c', '.cpp', '.h', '.hpp',
+  '.sh', '.bash', '.zsh', '.fish', '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx',
+  '.css', '.scss', '.sass', '.less', '.html', '.htm', '.xml',
+  '.diff', '.patch', '.sql', '.graphql', '.proto', '.tf', '.ipynb', '.mmd', '.mermaid',
+  '.cmake', '.dockerignore', '.gitignore', '.env', '.editorconfig', '.prettierrc', '.eslintrc',
+];
+const EXTENSIONLESS_TEXT_FILENAMES = new Set([
+  'dockerfile', 'makefile', 'readme', 'license', 'authors', 'contributors',
+  'changelog', 'notice', 'copying', 'procfile', 'gemfile', 'rakefile',
+]);
 export const DRAWIO_EXTENSIONS = ['.drawio'];
 
 const PROJECT_ROOT_DIRS = new Set([
@@ -38,7 +50,10 @@ export function isPdfPath(filePath: string): boolean {
 
 export function isPreviewableTextPath(filePath: string): boolean {
   const clean = stripQueryAndHash(filePath).toLowerCase();
-  return TEXT_EXTENSIONS.some((ext) => clean.endsWith(ext));
+  const parts = clean.split('/');
+  const basename = parts[parts.length - 1] || '';
+  return EXTENSIONLESS_TEXT_FILENAMES.has(basename)
+    || TEXT_EXTENSIONS.some((ext) => clean.endsWith(ext));
 }
 
 export function isDrawioPath(filePath: string): boolean {

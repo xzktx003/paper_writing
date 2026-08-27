@@ -143,6 +143,135 @@ test.describe('项目 CRUD 操作', () => {
     }).toBe(savedContent);
   });
 
+  test('外部文件修改会刷新干净标签但不会覆盖未保存草稿', async ({ page, request, testProject }) => {
+    const filePath = 'Tab/full_qwen3_50.tex';
+    const initialContent = 'DiEP$^{\\dagger}$ & 137.42 & 4.53 & 4.89 & 3.04 & -0.50 & 4.52 & 1.30 & 6.46 & 3.46 \\\\\n';
+    const externalContent = 'DiEP$^{\\dagger}$ & 137.42 & 4.53 & 4.89 & 3.04 & 0 & 4.52 & 1.30 & 6.46 & 3.46 \\\\\n';
+    const localDraft = 'DiEP$^{\\dagger}$ & 137.42 & 4.53 & 4.89 & 3.04 & 1.25 & 4.52 & 1.30 & 6.46 & 3.46 \\\\\n';
+    const laterExternalContent = 'DiEP$^{\\dagger}$ & 137.42 & 4.53 & 4.89 & 3.04 & 2.00 & 4.52 & 1.30 & 6.46 & 3.46 \\\\\n';
+    const savedFromPaperWriting = 'DiEP$^{\\dagger}$ & 137.42 & 4.53 & 4.89 & 3.04 & 3.00 & 4.52 & 1.30 & 6.46 & 3.46 \\\\\n';
+    const write = async (content: string) => {
+      const response = await request.put(`/api/projects/${testProject.id}/file`, {
+        data: { path: filePath, content },
+      });
+      expect(response.ok(), await response.text()).toBeTruthy();
+    };
+
+    await write(externalContent);
+    await page.addInitScript(({ projectId, filePath: savedPath, draft }) => {
+      window.localStorage.setItem(`paper-agent-workspace:__paper_agent__:${projectId}`, JSON.stringify({
+        version: 1,
+        activeFile: savedPath,
+        tabs: [{ path: savedPath, type: 'other', dirty: true, draft }],
+      }));
+    }, { projectId: testProject.id, filePath, draft: initialContent });
+    await page.goto(`/editor/${testProject.id}`);
+    await page.getByText('Tab', { exact: true }).click();
+    await page.getByText('full_qwen3_50.tex', { exact: true }).click();
+    const editor = page.locator('.cm-content');
+    await expect(editor).toContainText('3.04 & 0 & 4.52');
+    await expect(editor).not.toContainText('-0.50');
+    await expect(page.getByTestId('manual-save-button')).toBeDisabled();
+
+    await write(laterExternalContent);
+    await expect(editor).toContainText('3.04 & 2.00 & 4.52', { timeout: 5_000 });
+    await expect(page.getByTestId('manual-save-button')).toHaveAttribute('data-content-matches-disk', 'true');
+    await expect(page.getByTestId('manual-save-button')).toBeDisabled();
+
+    await editor.fill(localDraft);
+    await write(externalContent);
+    const conflict = page.getByTestId('external-file-change');
+    await expect(conflict).toBeVisible({ timeout: 5_000 });
+    await expect(editor).toContainText('3.04 & 1.25 & 4.52');
+    await expect(editor).not.toContainText('3.04 & 0 & 4.52');
+
+    await conflict.getByRole('button', { name: '重新加载外部版本' }).click();
+    await expect(editor).toContainText('3.04 & 0 & 4.52');
+    await expect(conflict).toHaveCount(0);
+    await expect(page.getByTestId('manual-save-button')).toBeDisabled();
+
+    await editor.fill(savedFromPaperWriting);
+    await page.getByTestId('manual-save-button').click();
+    await expect.poll(async () => {
+      const response = await request.get(`/api/projects/${testProject.id}/file`, { params: { path: filePath } });
+      return (await response.json()).content;
+    }).toBe(savedFromPaperWriting);
+  });
+
+  test('任意已打开文本文件都会持续读取真实磁盘内容', async ({ page, request, testProject }) => {
+    const files = ['notes.md', 'analysis.py', 'results.json'];
+    for (const filePath of files) {
+      const response = await request.put(`/api/projects/${testProject.id}/file`, {
+        data: { path: filePath, content: `initial:${filePath}\n` },
+      });
+      expect(response.ok(), await response.text()).toBeTruthy();
+    }
+
+    await page.goto(`/editor/${testProject.id}`);
+    for (const [index, filePath] of files.entries()) {
+      await page.getByText(filePath, { exact: true }).click();
+      const editor = page.locator('.cm-content');
+      await expect(editor).toContainText(`initial:${filePath}`);
+
+      const externalValue = `external:${filePath}:${Date.now()}:${index}`;
+      const response = await request.put(`/api/projects/${testProject.id}/file`, {
+        data: { path: filePath, content: `${externalValue}\n` },
+      });
+      expect(response.ok(), await response.text()).toBeTruthy();
+      await expect(editor).toContainText(externalValue, { timeout: 5_000 });
+      await expect(page.getByTestId('manual-save-button')).toBeDisabled();
+    }
+  });
+
+  test('终端入口可拖动且 Chat 操作行不会覆盖输入内容', async ({ page, request, testProject }) => {
+    const conversationResponse = await request.post(`/api/conversations/${testProject.id}`, {
+      data: {
+        name: 'Composer layout regression',
+        context_scope: { type: 'project' },
+        active_skills: [],
+        mode: 'chat',
+      },
+    });
+    expect(conversationResponse.ok(), await conversationResponse.text()).toBeTruthy();
+
+    await page.goto(`/editor/${testProject.id}`);
+    const terminalToggle = page.getByTestId('terminal-toggle');
+    await expect(terminalToggle).toBeVisible();
+    const before = await terminalToggle.boundingBox();
+    expect(before).not.toBeNull();
+    await terminalToggle.hover();
+    await page.mouse.down();
+    await page.mouse.move(before!.x - 80, before!.y - 80, { steps: 5 });
+    await page.mouse.up();
+    const after = await terminalToggle.boundingBox();
+    expect(after).not.toBeNull();
+    expect(after!.x).toBeLessThan(before!.x - 20);
+    expect(after!.y).toBeLessThan(before!.y - 20);
+
+    const actions = page.getByTestId('chat-composer-actions');
+    await expect(actions).toBeVisible();
+    const textarea = actions.locator('xpath=preceding-sibling::textarea[1]');
+    await textarea.fill('This final text must remain visible and unobstructed.');
+    const textareaBox = await textarea.boundingBox();
+    const actionsBox = await actions.boundingBox();
+    expect(textareaBox).not.toBeNull();
+    expect(actionsBox).not.toBeNull();
+    expect(textareaBox!.y + textareaBox!.height).toBeLessThanOrEqual(actionsBox!.y);
+
+    let releaseStream: (() => void) | undefined;
+    await page.route('**/api/ai/stream', async route => {
+      await new Promise<void>(resolve => { releaseStream = resolve; });
+      await route.abort('failed').catch(() => {});
+    });
+    await textarea.fill('Keep this request pending until I stop it.');
+    await actions.getByRole('button', { name: '发送', exact: true }).click();
+    const stopButton = actions.getByRole('button', { name: '停止', exact: true });
+    await expect(stopButton).toBeVisible();
+    await stopButton.click();
+    await expect(actions.getByRole('button', { name: '发送', exact: true })).toBeVisible();
+    releaseStream?.();
+  });
+
   test('删除项目后项目从当前列表消失', async ({ page, testProject }) => {
     await goToProjects(page);
     const row = page.locator('tr', { hasText: testProject.name });

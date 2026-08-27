@@ -73,7 +73,7 @@ test('real project UI creates a blank project, preserves stable identity, and ro
     await page.goto('/projects');
     let row = page.locator('tr', { hasText: project.id });
     await expect(row).toContainText(`项目 ID: ${project.id}`);
-    await expect(row).toContainText(`存储目录: ${project.directoryName}`);
+    await expect(row).toContainText(`工程文件夹: ${project.directoryName}`);
     await row.getByRole('button', { name: '重命名', exact: true }).click();
     const renameInput = page.locator('input.inline-input');
     await renameInput.fill(renamedName);

@@ -24,9 +24,10 @@ test('independently lazy-loaded Markdown and LaTeX quick previews remain usable'
     });
 
     await page.goto(`/editor/${project.id}`);
-    await expect(page.getByTitle('刷新文件列表')).toBeVisible();
-    await page.getByTitle('刷新文件列表').click();
-    await page.getByText('paper.md', { exact: true }).click();
+    await expect(page.getByTitle('刷新文件列表')).toHaveCount(0);
+    const markdownFile = page.getByText('paper.md', { exact: true });
+    await expect(markdownFile).toBeVisible();
+    await markdownFile.click();
     await expect(page.getByRole('heading', { name: 'Lazy Markdown Preview' })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('paragraph').filter({ hasText: 'Rendered markdown body.' })).toBeVisible();
 

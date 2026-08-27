@@ -673,7 +673,6 @@
   "RAG Context (for prompt injection)": "RAG Context (for prompt injection)",
   "Refresh": "Refresh",
   "Refresh error": "Refresh error",
-  "Refresh file list": "Refresh file list",
   "Refreshing...": "Refreshing...",
   "Rename": "Rename",
   "Renamed {{from}} → {{to}}": "Renamed {{from}} → {{to}}",
@@ -1076,5 +1075,7 @@
   "Source filename": "Source filename",
   "Source content": "Source content",
   "Corpus query": "Corpus query",
+  "This file changed outside Paper Writer. Your unsaved draft was preserved.": "This file changed outside Paper Writer. Your unsaved draft was preserved.",
+  "Reload external version": "Reload external version",
   "Re-enter the model API key after changing the provider endpoint.": "Re-enter the model API key after changing the provider endpoint."
 }

@@ -3,7 +3,7 @@ import {
   listConversations, getConversation, createConversation,
   deleteConversation, updateConversation, sendMessage, sendMessageStream,
   uploadConversationAttachment, deleteConversationAttachment,
-  Conversation, ConversationSummary, AttachedFileData, EditProposalData, AIStreamResponseError
+  Conversation, ConversationSummary, AttachedFileData, EditProposalData, AIStreamAbortError, AIStreamResponseError
 } from '../api/conversationApi';
 import { writeFile as writeProjectFile } from '../../api/client';
 import { writeChapter } from '../api/projectApi';
@@ -54,9 +54,15 @@ export function useConversations(projectId: string | null, requestContext: Proje
   const [uploadProgress, setUploadProgress] = useState<{ percent: number; stage: string } | null>(null);
   const [activities, setActivities] = useState<ConversationActivity[]>([]);
   const activitySequenceRef = useRef(0);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const currentProjectRef = useRef<string | null>(projectId);
   const restoringProjectRef = useRef<string | null>(null);
   currentProjectRef.current = projectId;
+
+  useEffect(() => {
+    streamAbortRef.current?.abort();
+    return () => streamAbortRef.current?.abort();
+  }, [projectId]);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -223,6 +229,9 @@ export function useConversations(projectId: string | null, requestContext: Proje
   /** Streaming send with token-by-token updates */
   const send = useCallback(async (message: string, projectConfig: any, files?: AttachedFileData[]) => {
     if (!projectId || !activeConv || !requestContext) return;
+    streamAbortRef.current?.abort();
+    const streamController = new AbortController();
+    streamAbortRef.current = streamController;
 
     // Optimistic: add user message immediately
     const userMsg = { role: 'user' as const, content: message };
@@ -318,8 +327,14 @@ export function useConversations(projectId: string | null, requestContext: Proje
           setUploadProgress(null);
           setActivities(prev => failConversationTrace(prev, msg));
         },
-      });
+      }, { signal: streamController.signal });
     } catch (err) {
+      if (err instanceof AIStreamAbortError) {
+        setLoading(false);
+        setUploadProgress(null);
+        setActivities(prev => failConversationTrace(prev, 'Generation stopped by user.'));
+        return;
+      }
       // The backend already recorded the user turn and surfaced the SSE error.
       // Do not issue a second non-streaming request that would duplicate it.
       if (err instanceof AIStreamResponseError) {
@@ -336,8 +351,14 @@ export function useConversations(projectId: string | null, requestContext: Proje
         setUploadProgress(null);
         setActivities(prev => failConversationTrace(prev, err instanceof Error ? err.message : 'Request failed'));
       }
+    } finally {
+      if (streamAbortRef.current === streamController) streamAbortRef.current = null;
     }
   }, [projectId, activeConv, requestContext, sendRaw, enqueueEditProposal]);
+
+  const cancel = useCallback(() => {
+    streamAbortRef.current?.abort();
+  }, []);
 
   const acceptEdit = useCallback(async (editId: string) => {
     const edit = pendingEdits.find(e => e.id === editId);
@@ -378,7 +399,7 @@ export function useConversations(projectId: string | null, requestContext: Proje
 
   return {
     conversations, activeConv, loading, uploadProgress, activities, pendingEdits: activePendingEdits,
-    refresh, select, create, remove, rename, send,
+    refresh, select, create, remove, rename, send, cancel,
     uploadAttachment, removeAttachment, setRagDocuments, setActiveSkills, acceptEdit, rejectEdit,
   };
 }

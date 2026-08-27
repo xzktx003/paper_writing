@@ -28,7 +28,7 @@ for (const viewport of [
     try {
       await page.setViewportSize(viewport);
       await page.goto('/projects');
-      await expect(page.getByRole('heading', { name: '我的项目' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: '全部项目' })).toBeVisible();
       await expect(page.getByText(project.name, { exact: true })).toBeVisible();
       await assertNoViewportOverflow(page);
 

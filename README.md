@@ -237,6 +237,8 @@ Draw image generation is project-bound. Every Draw read, list, upload, download,
 2. Create a project from a built-in template, create an empty project, or import an existing folder/archive.
 3. Open the project to enter the editor.
 4. Use the file tree to create, rename, upload, download, or delete files.
+
+The managed-project file tree synchronizes with the real directory automatically and has no manual refresh button. In-app file operations, accepted CLI tasks, and successful PDF compilation trigger immediate synchronization; while the project is visible, a low-frequency reconciliation also detects files created, deleted, renamed, or edited by a terminal, external editor, or another tool. Clean open text tabs refresh to external content automatically, and changes saved in Paper Writing are written back to the same disk file. If the external file and an unsaved browser draft both change, Paper Writing preserves the draft and exposes an explicit reload-external-version action instead of silently overwriting either side.
 5. Keep the compilation entry file (`main.tex`, `paper.tex`, or `manuscript.tex`) in the project, or select a source containing `\documentclass` when compiling.
 
 Managed projects are stored under the Project Locator's authoritative `OPENPRISM_DATA_DIR`. By default this is `papers/` at the repository root, which is intentionally ignored by Git. New projects use a readable safe directory name plus a short UUID suffix (for example, `My-Paper--79692122`) while retaining the full UUID in `project.json` as their stable identity. Renaming a project updates both its display name and directory transactionally; older UUID-only and imported folders remain discoverable through metadata.

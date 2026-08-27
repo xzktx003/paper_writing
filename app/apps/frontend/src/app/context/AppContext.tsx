@@ -7,7 +7,18 @@ import { listSkills, reloadSkills, SkillInfo } from '../api/skillApi';
 import { isImagePath, isPdfPath, isPreviewableTextPath } from '../utils/previewAssets';
 import type { OpenFile } from '../types';
 import { externalProjectRequest, managedProjectRequest, type ProjectRequestContext } from '../api/projectRequestContext';
-import { writeFile as writeManagedProjectFile } from '../../api/client';
+import {
+  getFile as getManagedProjectFile,
+  getProjectTree as getManagedProjectTree,
+  writeFile as writeManagedProjectFile,
+} from '../../api/client';
+import {
+  mergeSyncedProjectTree,
+  PROJECT_TREE_SYNC_EVENT,
+  PROJECT_TREE_SYNC_INTERVAL_MS,
+  reconcileOpenFileContent,
+  type SyncedProjectItem,
+} from '../utils/projectTreeSync';
 
 interface AppState {
   projectId: string | null;
@@ -19,6 +30,7 @@ interface AppState {
   openFile: (file: { path: string; type: 'chapter' | 'code' | 'other' }) => Promise<void>;
   updateFileContent: (index: number, content: string) => void;
   saveFile: (index: number) => Promise<void>;
+  reloadExternalFile: (index: number) => void;
   closeFile: (index: number) => void;
   setActiveFileIndex: (index: number) => void;
   conversations: any[];
@@ -32,6 +44,7 @@ interface AppState {
   removeConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, newName: string) => Promise<void>;
   sendMessage: (message: string, files?: { id: string; dataUrl: string; name: string; type: string; isImage: boolean; size: number }[]) => Promise<void>;
+  cancelMessage: () => void;
   uploadConversationAttachment: (
     file: { dataUrl: string; name: string; type: string; isImage: boolean; size: number },
     onProgress?: (percent: number) => void
@@ -55,9 +68,11 @@ interface PersistedWorkspaceTab {
   type: OpenFile['type'];
   dirty?: boolean;
   draft?: string;
+  lastSyncedContent?: string;
 }
 
 interface PersistedWorkspaceState {
+  version?: number;
   tabs?: PersistedWorkspaceTab[];
   activeFile?: string;
   terminalVisible?: boolean;
@@ -81,8 +96,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
   async function loadPaperAgentProject(id: string) {
     setProject(p => ({ ...p, loading: true, error: null }));
     try {
-      const treeRes = await fetch(`/api/projects/${id}/tree`);
-      const treeData = await treeRes.json();
+      const treeData = await getManagedProjectTree(id);
       const items: { path: string; type: string }[] = treeData.items || [];
 
       const texFiles = items
@@ -93,8 +107,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
 
       let title = 'Untitled';
       try {
-        const metaRes = await fetch(`/api/projects/${id}/file?path=project.json`);
-        const metaData = await metaRes.json();
+        const metaData = await getManagedProjectFile(id, 'project.json');
         const meta = JSON.parse(metaData.content);
         title = meta.name || title;
       } catch {}
@@ -120,6 +133,83 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [terminalVisible, setTerminalVisible] = useState(false);
   const restoredWorkspaceRef = useRef<string | null>(null);
+  const syncingProjectTreesRef = useRef<Set<string>>(new Set());
+  const openFilesRef = useRef<OpenFile[]>([]);
+  openFilesRef.current = openFiles;
+
+  const getPaperAgentId = useCallback(() => {
+    if (project.path?.startsWith('__paper_agent__:')) {
+      return project.path.replace('__paper_agent__:', '');
+    }
+    return null;
+  }, [project.path]);
+
+  const syncManagedProjectTree = useCallback(async () => {
+    const id = getPaperAgentId();
+    if (!id || syncingProjectTreesRef.current.has(id)) return;
+    syncingProjectTreesRef.current.add(id);
+    try {
+      const result = await getManagedProjectTree(id);
+      const items = (result.items || []).filter((item): item is SyncedProjectItem => item.type === 'file' || item.type === 'dir');
+      setProject(previous => {
+        if (previous.path !== `__paper_agent__:${id}` || !previous.config) return previous;
+        const config = mergeSyncedProjectTree(previous.config, items);
+        return config === previous.config ? previous : { ...previous, config };
+      });
+      const visibleFilePaths = new Set(items.filter(item => item.type === 'file').map(item => item.path));
+      const refreshedFiles = await Promise.all(openFilesRef.current
+        .filter(file => visibleFilePaths.has(file.filename) && isPreviewableTextPath(file.filename))
+        .map(async file => ({
+          filename: file.filename,
+          expectedContent: file.content,
+          expectedDirty: file.dirty,
+          content: (await getManagedProjectFile(id, file.filename)).content || '',
+        })));
+      const refreshedByPath = new Map(refreshedFiles.map(file => [file.filename, file]));
+      if (refreshedByPath.size > 0) {
+        setOpenFiles(previous => previous.map(file => {
+          const refreshed = refreshedByPath.get(file.filename);
+          if (!refreshed || file.content !== refreshed.expectedContent || file.dirty !== refreshed.expectedDirty) return file;
+          return reconcileOpenFileContent(file, refreshed.content);
+        }));
+      }
+    } catch {
+      // A transient polling failure should not replace a usable project tree with an error state.
+    } finally {
+      syncingProjectTreesRef.current.delete(id);
+    }
+  }, [getPaperAgentId, setProject]);
+
+  useEffect(() => {
+    const id = getPaperAgentId();
+    if (!id) return;
+
+    const syncIfVisible = () => {
+      if (document.visibilityState === 'visible') void syncManagedProjectTree();
+    };
+    const handleRequestedSync = (event: Event) => {
+      const requestedProjectId = (event as CustomEvent<{ projectId?: string }>).detail?.projectId;
+      if (!requestedProjectId || requestedProjectId === id) void syncManagedProjectTree();
+    };
+    const handleCliTaskApplied = (event: Event) => {
+      const appliedProjectId = (event as CustomEvent<{ projectId?: string }>).detail?.projectId;
+      if (appliedProjectId === id) void syncManagedProjectTree();
+    };
+
+    void syncManagedProjectTree();
+    const interval = window.setInterval(syncIfVisible, PROJECT_TREE_SYNC_INTERVAL_MS);
+    document.addEventListener('visibilitychange', syncIfVisible);
+    window.addEventListener('focus', syncIfVisible);
+    window.addEventListener(PROJECT_TREE_SYNC_EVENT, handleRequestedSync);
+    window.addEventListener('paper-writer:cli-task-applied', handleCliTaskApplied);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', syncIfVisible);
+      window.removeEventListener('focus', syncIfVisible);
+      window.removeEventListener(PROJECT_TREE_SYNC_EVENT, handleRequestedSync);
+      window.removeEventListener('paper-writer:cli-task-applied', handleCliTaskApplied);
+    };
+  }, [getPaperAgentId, syncManagedProjectTree]);
 
   useEffect(() => {
     if (project.path) {
@@ -130,13 +220,6 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
       }
       convHook.refresh();
     }
-  }, [project.path]);
-
-  const getPaperAgentId = useCallback(() => {
-    if (project.path?.startsWith('__paper_agent__:')) {
-      return project.path.replace('__paper_agent__:', '');
-    }
-    return null;
   }, [project.path]);
 
   const openFile = useCallback(async (file: { path: string; type: 'chapter' | 'code' | 'other' }) => {
@@ -152,8 +235,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
       if (paId && (isImagePath(file.path) || isPdfPath(file.path))) {
         content = '';
       } else if (paId && (isPreviewableTextPath(file.path) || file.type === 'other')) {
-        const res = await fetch(`/api/projects/${paId}/file?path=${encodeURIComponent(file.path)}`);
-        const data = await res.json();
+        const data = await getManagedProjectFile(paId, file.path);
         content = data.content || '';
       } else if (file.type === 'chapter') {
         const result = requestContext ? await readChapter(requestContext, file.path) : { content: '' };
@@ -171,7 +253,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     }
     setOpenFiles(prev => {
       setActiveFileIndex(prev.length);
-      return [...prev, { filename: file.path, content, type: file.type, dirty: false }];
+      return [...prev, { filename: file.path, content, type: file.type, dirty: false, lastSyncedContent: content }];
     });
   }, [openFiles, project.path, getPaperAgentId]);
 
@@ -201,9 +283,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
           if (paId && (isImagePath(tab.path) || isPdfPath(tab.path))) {
             content = '';
           } else if (paId && (isPreviewableTextPath(tab.path) || tab.type === 'other')) {
-            const response = await fetch(`/api/projects/${paId}/file?path=${encodeURIComponent(tab.path)}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
+            const data = await getManagedProjectFile(paId, tab.path);
             content = data.content || '';
           } else if (tab.type === 'code') {
             content = (await readCodeFile(projectPath, tab.path)).content || '';
@@ -214,12 +294,17 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
           console.warn(`Unable to restore tab ${tab.path}:`, error);
           return null;
         }
-        return {
+        const restoreDraft = saved?.version === 2 && tab.dirty && typeof tab.draft === 'string';
+        const restoredFile: OpenFile = {
           filename: tab.path,
           type: tab.type,
-          content: tab.dirty && typeof tab.draft === 'string' ? tab.draft : content,
-          dirty: Boolean(tab.dirty && typeof tab.draft === 'string'),
-        } as OpenFile;
+          content: restoreDraft ? tab.draft! : content,
+          dirty: Boolean(restoreDraft),
+          lastSyncedContent: saved?.version === 2 && typeof tab.lastSyncedContent === 'string'
+            ? tab.lastSyncedContent
+            : content,
+        };
+        return reconcileOpenFileContent(restoredFile, content);
       }));
 
       if (cancelled) return;
@@ -240,7 +325,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     const timer = window.setTimeout(() => {
       try {
         localStorage.setItem(`paper-agent-workspace:${project.path}`, JSON.stringify({
-          version: 1,
+          version: 2,
           activeFile: openFiles[activeFileIndex]?.filename || null,
           terminalVisible,
           tabs: openFiles.map(file => ({
@@ -248,6 +333,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
             type: file.type,
             dirty: file.dirty,
             ...(file.dirty ? { draft: file.content } : {}),
+            ...(typeof file.lastSyncedContent === 'string' ? { lastSyncedContent: file.lastSyncedContent } : {}),
           })),
         }));
       } catch (error) {
@@ -258,7 +344,16 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
   }, [project.path, openFiles, activeFileIndex, terminalVisible]);
 
   const updateFileContent = useCallback((index: number, content: string) => {
-    setOpenFiles(prev => prev.map((f, i) => i === index ? { ...f, content, dirty: true } : f));
+    setOpenFiles(previous => previous.map((file, fileIndex) => {
+      if (fileIndex !== index) return file;
+      const matchesDisk = file.lastSyncedContent !== undefined && content === file.lastSyncedContent;
+      return {
+        ...file,
+        content,
+        dirty: !matchesDisk,
+        ...(matchesDisk ? { externalContent: undefined } : {}),
+      };
+    }));
   }, []);
 
   const saveFile = useCallback(async (index: number) => {
@@ -270,8 +365,26 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     } else if (file.type === 'chapter') {
       if (requestContext) await writeChapter(requestContext, file.filename, file.content);
     }
-    setOpenFiles(prev => prev.map((f, i) => i === index ? { ...f, dirty: false } : f));
+    setOpenFiles(prev => prev.map((f, i) => i === index ? {
+      ...f,
+      dirty: false,
+      lastSyncedContent: f.content,
+      externalContent: undefined,
+    } : f));
   }, [openFiles, project.path, getPaperAgentId, requestContext]);
+
+  const reloadExternalFile = useCallback((index: number) => {
+    setOpenFiles(previous => previous.map((file, fileIndex) => {
+      if (fileIndex !== index || file.externalContent === undefined) return file;
+      return {
+        ...file,
+        content: file.externalContent,
+        dirty: false,
+        lastSyncedContent: file.externalContent,
+        externalContent: undefined,
+      };
+    }));
+  }, []);
 
   const closeFile = useCallback((index: number) => {
     setOpenFiles(prev => prev.filter((_, i) => i !== index));
@@ -300,7 +413,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     const accepted = await convHook.acceptEdit(editId);
     if (edit && accepted) {
       setOpenFiles(prev => prev.map(file => file.filename === edit.filename
-        ? { ...file, content: edit.new_content, dirty: false }
+        ? { ...file, content: edit.new_content, dirty: false, lastSyncedContent: edit.new_content, externalContent: undefined }
         : file));
     }
   }, [convHook, project.path]);
@@ -316,6 +429,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     openFile,
     updateFileContent,
     saveFile,
+    reloadExternalFile,
     closeFile,
     setActiveFileIndex,
     conversations: convHook.conversations,
@@ -329,6 +443,7 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     removeConversation: convHook.remove,
     renameConversation: convHook.rename,
     sendMessage,
+    cancelMessage: convHook.cancel,
     uploadConversationAttachment: convHook.uploadAttachment,
     removeConversationAttachment: convHook.removeAttachment,
     setConversationRagDocuments: convHook.setRagDocuments,
@@ -342,11 +457,11 @@ export function AppProvider({ children, projectId }: { children: React.ReactNode
     toggleTerminal,
   }), [
     project, open, create, openFiles, activeFileIndex, openFile,
-    updateFileContent, saveFile, closeFile,
+    updateFileContent, saveFile, reloadExternalFile, closeFile,
     convHook.conversations, convHook.activeConv, convHook.loading, convHook.uploadProgress, convHook.activities,
     convHook.refresh, convHook.select, convHook.create, convHook.remove,
     convHook.rename, convHook.uploadAttachment, convHook.removeAttachment, convHook.setRagDocuments, convHook.setActiveSkills,
-    convHook.pendingEdits, convHook.rejectEdit,
+    convHook.pendingEdits, convHook.rejectEdit, convHook.cancel,
     sendMessage, acceptEdit, skills, activateSkill, terminalVisible, toggleTerminal,
   ]);
 

@@ -24,8 +24,9 @@ test('core pages and LaTeX preview do not request remote font or CDN stylesheets
     expect(fileResponse.ok(), await fileResponse.text()).toBeTruthy();
 
     await page.goto(`/editor/${project.id}`);
-    await page.getByTitle('刷新文件列表').click();
-    await page.getByText('main.tex', { exact: true }).click();
+    const mainFile = page.getByText('main.tex', { exact: true });
+    await expect(mainFile).toBeVisible();
+    await mainFile.click();
     await expect(page.locator('.latex-preview-page')).toContainText('Offline Font Probe');
     const fontState = await page.locator('body').evaluate(async element => {
       await document.fonts.ready;

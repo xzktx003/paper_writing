@@ -3,6 +3,8 @@ export interface OpenFile {
   content: string;
   type: 'chapter' | 'code' | 'other';
   dirty: boolean;
+  lastSyncedContent?: string;
+  externalContent?: string;
 }
 
 export interface PendingEdit {

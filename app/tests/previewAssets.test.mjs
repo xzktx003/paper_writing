@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { resolveProjectAssetUrl, resolveProjectPath, isImagePath } from '../apps/frontend/src/app/utils/previewAssets.ts';
+import { resolveProjectAssetUrl, resolveProjectPath, isImagePath, isPreviewableTextPath } from '../apps/frontend/src/app/utils/previewAssets.ts';
 import { renderLatex } from '../apps/frontend/src/app/components/LatexPreview.tsx';
 import {
   buildProjectTree,
@@ -14,6 +14,19 @@ import {
 } from '../apps/frontend/src/app/utils/projectTree.ts';
 
 describe('preview asset resolution', () => {
+  it('recognizes common paper, code, data, shell, and extensionless text files for live disk synchronization', () => {
+    for (const filePath of [
+      'main.tex', 'notes.md', 'references.bib', 'scripts/check.py', 'scripts/run.mjs',
+      'src/view.jsx', 'data/results.tsv', 'notebooks/analysis.ipynb', 'styles/paper.scss',
+      'scripts/deploy.zsh', 'Dockerfile', 'Makefile', 'README',
+    ]) {
+      expect(isPreviewableTextPath(filePath), filePath).toBe(true);
+    }
+    for (const filePath of ['fig/model.png', 'paper.pdf', 'archive.zip']) {
+      expect(isPreviewableTextPath(filePath), filePath).toBe(false);
+    }
+  });
+
   it('resolves root fig paths through the project blob endpoint', () => {
     const url = resolveProjectAssetUrl('project-1', 'sec/intro.tex', 'fig/diagram.png');
     expect(url).toBe('/api/projects/project-1/blob?path=fig%2Fdiagram.png');

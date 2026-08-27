@@ -23,6 +23,9 @@
 - 项目图片、PDF 和文件下载统一使用认证 fetch 获取 Blob，再通过短生命周期 object URL 预览或下载；Bearer Token 不写入资源 URL，资源切换和组件卸载时回收 object URL。
 - 正式 React 论文工作区的章节、AI、Review、Anti-AI、Citation、Pipeline、文件 watcher 和 Terminal 主路径统一发送 managed `projectId`，文件操作使用项目内 `relativePath`。旧 `__paper_agent__:<id>` marker 仅作为带弃用响应头和日志的兼容输入；外部 Code/MCP 绝对路径能力保持独立受控，不与 managed 项目 API 混用。
 - RAG 面板采用“导入即自动重建索引”的单一语义；后端同时提供受测的 `/rag/index` 与 `/rag/search` 契约，搜索结果保留来源路径与证据片段。项目普通文件树默认隐藏 `.openprism`、`.compile` 和 `research_corpus`，证据资料统一从 RAG 面板管理。
+- 受管项目文件树不再提供手动刷新按钮；前端通过带服务器访问令牌的 `/api/projects/:id/tree` 统一同步真实目录结构。上传、新建、删除、重命名、移动、复制、CLI Task Accept 和成功编译会触发立即同步，标签页可见时每 2 秒低频校验外部 shell/工具产生的变化，窗口聚焦或页面恢复可见时也立即校验；同步更新 Files、Editor 与 Assistant 共用的文件元数据，并自动刷新已打开且没有本地未保存修改的文本内容，`dirty` 草稿保持原样。
+- 全局终端入口在终端关闭时以可拖动悬浮按钮显示，拖动位置按项目保存并限制在可视区域内，避免遮挡 Assistant；Chat 输入按钮位于文本框下方独立操作行，生成期间发送按钮切换为“停止”，可主动中断当前 AI 流式执行。
+- 受管项目文本文件支持双向同步：外部编辑器写入后，Paper Writing 的干净标签自动刷新且不会被误标为未保存；Paper Writing 内修改并保存后立即写回同一磁盘文件。同步逻辑按通用文件路径和内容工作，不绑定项目、目录、文件名或固定字符串，覆盖论文源文件、Markdown、BibTeX、配置、数据、常用编程/脚本文件、Notebook 以及 Dockerfile/Makefile/README 等无扩展名文本文件。若两边在同一时间修改，Paper Writing 保留当前草稿并显示外部版本冲突提示，用户可以明确选择重新加载外部版本，避免静默覆盖任一侧内容。
 - 编辑器会按项目恢复最后活动会话；保存的会话失效时回退到最近更新的有效会话，并隔离并发项目切换产生的迟到请求。
 - Skills 数量和分类以运行时目录及生成 manifest 为准，不再用固定上限断言；分类不合法会在测试中失败，前端不会展示数量为零的空分类。
 - 390×844 等窄屏下，项目列表改为可操作的响应式布局；论文工作区提供 Files / Editor / Assistant 三个互斥移动视图。文档语言随 i18n 切换，字体栈包含本地 CJK 回退；Center、Chat、Draw、Review、Citation、Anti-AI 和 Pipeline 主面板的核心按钮、空状态、错误及运行时状态均通过中英文 locale 管理，并由静态契约与隔离 Playwright 逐面板验收。

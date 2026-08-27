@@ -390,5 +390,13 @@
 - 2026-07-25：成功编译的 PDF 必须同时原子持久化到 `.compile/output/<base>.pdf` 与项目根目录 `<base>.pdf`，LaTeX 和 Markdown/Pandoc 路径必须复用同一 helper；最新 PDF 查询优先根目录副本。不要用直接 `writeFile` 覆盖用户可见 PDF，应用同目录临时文件 + rename，避免半写和 symlink 跟随。
 - 2026-07-25：`Quick Preview` 与 `Final PDF` 是互斥的语义边界：前者始终用 `RenderedPreviewPane` / `LatexPreview` 渲染当前源码，后者才可使用 `AuthenticatedPdf`。不得因为 `compiledPdfUrl` 已存在，就让 Quick Preview 分支显示 PDF；打开 Quick Preview 不读取 PDF、不触发编译。
 - 2026-07-25：Chat 的“工作过程”只能展示可验证执行活动，不得暴露模型私有思维链。SSE 工具事件只传后端生成的 `{ name, activity }` 安全摘要，禁止恢复 raw input/raw result；前端默认折叠并展示当前阶段、步骤数、工具状态和失败位置，切换会话或开始新请求时重置。
+- 2026-07-25：受管项目文件树必须以认证 `/api/projects/:id/tree` 为唯一目录真实来源，不得用返回文件正文的 `/files` 接口伪装刷新。UI 不保留手动刷新按钮；AppContext 在文件动作/编译/CLI Accept 后立即同步，并在页面可见时每 2 秒、focus/visibility 恢复时校验。同步还必须通过认证文件 API 更新已打开的干净文本标签；`dirty=true` 草稿不可覆盖，重叠请求和相同树/内容更新必须抑制。
+- 2026-07-28：悬浮终端入口使用 Pointer Events 拖拽并按项目持久化位置；拖动与点击必须区分，且位置始终限制在视口和 24px 状态栏之上，resize 后重新 clamp。
+- 2026-07-28：Chat composer 的附件、图片、发送/停止操作必须位于 textarea 外部的独立操作行，不得靠固定右内边距为绝对定位按钮让位。
+- 2026-07-28：AI 流式取消必须沿 `AbortController -> XMLHttpRequest.abort() -> 客户端断连 -> 后端 AbortController` 链路传播。前端取消使用 `AIStreamAbortError`，不得进入非流式 fallback，否则会把用户刚停止的指令重新发送一次。
+- 2026-07-28：文件双向同步必须区分磁盘基线、Paper Writing 草稿和外部新版本。OpenFile 保存 `lastSyncedContent`；CodeMirror 接收 React/磁盘内容时必须带 transaction annotation，禁止把程序替换回调成用户编辑。workspace version 1 没有可靠磁盘基线，升级到 version 2 时必须以当前磁盘内容为准，避免历史 dirty 草稿永久遮蔽外部修改；只有 version 2 草稿可参与冲突保护。干净文件外部变化自动刷新；version 2 dirty 草稿遇到不同磁盘内容时设置 `externalContent` 并显示冲突操作；Paper Writing 保存后同步更新磁盘基线并清除冲突。
+- 2026-07-28：文件同步实现和测试不得特判项目、文件名或内容值。通用文本识别需覆盖论文、数据、配置、代码、脚本、Notebook 和常见无扩展名文本；回归测试除真实问题样例外，还要用多个文件类型和运行时随机外部内容证明轮询读取的是当前磁盘正文。
+- 2026-08-27：项目首页的当前产品文案是“全部项目”和“工程文件夹”；移动工作区与项目生命周期 E2E 必须断言当前可见语义，不能因旧文案“我的项目/存储目录”制造假回归。文案调整后应同步更新相关浏览器契约，但继续验证同一用户结果：页面可操作、稳定 ID 可见、实际目录可对账。
+- 2026-08-27：`app/apps/frontend/dist/` 是一个完整的哈希构建集，不能只追踪其中的 `index.html`。否则 HTML 引用的 `assets/index-*.js` 被忽略，新克隆不可运行。现与既有 `dist/` 忽略规则保持一致，生成页面不再追踪；发布时必须通过 `npm run build` 产生成套资产。
 - 2026-07-24：Claude CLI 的严格 MCP 空配置必须是 `{"mcpServers":{}}`，不能传 `{}`；后者在新版 CLI schema 校验阶段直接失败。保持 `--strict-mcp-config` 和空 server map，以证明任务没有启用 MCP，而不是删除严格模式绕过错误。
 - 2026-07-24：Claude CLI 的 `--print --output-format stream-json` 参数组合必须带 `--verbose`；该标志是新版输出协议要求，不扩大工具权限。固定参数测试应同时锁定 stream-json、verbose、Read/Edit/Write、严格空 MCP 和无 Bash。

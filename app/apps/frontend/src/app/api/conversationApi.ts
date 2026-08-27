@@ -56,6 +56,13 @@ export class AIStreamResponseError extends Error {
   }
 }
 
+export class AIStreamAbortError extends Error {
+  constructor(message = 'AI generation was cancelled') {
+    super(message);
+    this.name = 'AIStreamAbortError';
+  }
+}
+
 export async function listConversations(projectId: string): Promise<ConversationSummary[]> {
   return apiFetch(`${BASE}/conversations/${projectId}`);
 }
@@ -138,7 +145,7 @@ export async function sendMessageStream(
     onError: (message: string) => void;
     onProgress?: (percent: number, stage: string) => void;
   },
-  options: { ephemeralConversation?: boolean } = {},
+  options: { ephemeralConversation?: boolean; signal?: AbortSignal } = {},
 ) {
   const token = getServerAccessToken();
   const hasTransientFiles = Boolean(files?.length);
@@ -155,6 +162,8 @@ export async function sendMessageStream(
     let eventBuffer = '';
     let finished = false;
     let terminalError: AIStreamResponseError | null = null;
+    const removeAbortListener = () => options.signal?.removeEventListener('abort', abortRequest);
+    const abortRequest = () => xhr.abort();
 
     const dispatchEvent = (block: string) => {
       let eventType = '';
@@ -212,6 +221,7 @@ export async function sendMessageStream(
       consumeResponse();
     };
     xhr.onload = () => {
+      removeAbortListener();
       consumeResponse(true);
       if (xhr.status < 200 || xhr.status >= 300) {
         const message = 'HTTP ' + xhr.status + (xhr.statusText ? ': ' + xhr.statusText : '');
@@ -231,9 +241,20 @@ export async function sendMessageStream(
       }
       resolve();
     };
-    xhr.onerror = () => reject(new Error('Network error while uploading attachment'));
-    xhr.onabort = () => reject(new Error('Attachment upload was cancelled'));
+    xhr.onerror = () => {
+      removeAbortListener();
+      reject(new Error('Network error while uploading attachment'));
+    };
+    xhr.onabort = () => {
+      removeAbortListener();
+      reject(new AIStreamAbortError());
+    };
     callbacks.onProgress?.(0, hasTransientFiles ? 'uploading' : 'sending');
+    if (options.signal?.aborted) {
+      xhr.abort();
+      return;
+    }
+    options.signal?.addEventListener('abort', abortRequest, { once: true });
     xhr.send(body);
   });
 }

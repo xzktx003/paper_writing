@@ -13,8 +13,9 @@ test('Draw.io network failure becomes an actionable offline XML fallback', async
     await page.route(/embed\.diagrams\.net/, route => route.abort('internetdisconnected'));
 
     await page.goto(`/editor/${project.id}`);
-    await page.getByTitle('刷新文件列表').click();
-    await page.getByText('diagram.drawio', { exact: true }).click();
+    const diagramFile = page.getByText('diagram.drawio', { exact: true });
+    await expect(diagramFile).toBeVisible();
+    await diagramFile.click();
     await expect(page.getByRole('alert')).toContainText(/Draw\.io/i, { timeout: 10_000 });
     await expect(page.getByRole('button', { name: 'Retry Draw.io' })).toBeVisible();
     await page.getByRole('button', { name: 'Edit XML source' }).click();

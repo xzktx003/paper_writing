@@ -673,7 +673,6 @@
   "RAG Context (for prompt injection)": "RAG 上下文（用于注入提示词）",
   "Refresh": "刷新",
   "Refresh error": "刷新出错",
-  "Refresh file list": "刷新文件列表",
   "Refreshing...": "正在刷新...",
   "Rename": "重命名",
   "Renamed {{from}} → {{to}}": "已将 {{from}} 重命名为 {{to}}",
@@ -1076,5 +1075,7 @@
   "Source filename": "资料文件名",
   "Source content": "资料内容",
   "Corpus query": "资料库查询",
+  "This file changed outside Paper Writer. Your unsaved draft was preserved.": "此文件已在 Paper Writing 外部发生变化；当前未保存草稿已保留。",
+  "Reload external version": "重新加载外部版本",
   "Re-enter the model API key after changing the provider endpoint.": "修改模型服务地址后，请重新输入模型 API Key。"
 }

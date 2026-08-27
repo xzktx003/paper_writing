@@ -61,9 +61,9 @@ test('a real browser session unlocks protected projects, previews assets, and do
     await row.getByRole('button', { name: '打开', exact: true }).click();
     await page.waitForURL(new RegExp(`/editor/${project.id}$`));
     phase = 'loading-project-files';
-    await page.getByTitle('刷新文件列表').click();
 
     const file = page.getByText('figure.svg', { exact: true });
+    await expect(file).toBeVisible();
     await file.click();
     const image = page.locator('img[alt="figure.svg"]');
     await expect(image).toBeVisible();

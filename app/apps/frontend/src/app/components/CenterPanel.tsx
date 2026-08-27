@@ -6,6 +6,7 @@ import { compileProject, compileFullPaper, getLatestCompiledPdf, syncTexSourceTo
 import { createConversation, deleteConversation, sendMessageStream } from '../api/conversationApi';
 import { managedProjectRequest } from '../api/projectRequestContext';
 import { AuthenticatedImage, AuthenticatedPdf, openAuthenticatedFile } from './AuthenticatedAsset';
+import { requestProjectTreeSync } from '../utils/projectTreeSync';
 
 const MarkdownEditor = lazy(() => import('./MarkdownEditor').then(module => ({ default: module.MarkdownEditor })));
 const RenderedPreviewPane = lazy(() => import('./RenderedPreviewPane').then(module => ({ default: module.RenderedPreviewPane })));
@@ -48,6 +49,8 @@ interface OpenFile {
   content: string;
   type: 'chapter' | 'code' | 'other';
   dirty: boolean;
+  lastSyncedContent?: string;
+  externalContent?: string;
 }
 
 interface PendingEdit {
@@ -65,6 +68,7 @@ interface Props {
   activeFileIndex: number;
   onFileChange: (index: number, content: string) => void;
   onFileSave: (index: number) => Promise<void>;
+  onReloadExternalFile: (index: number) => void;
   onTabSelect: (index: number) => void;
   onTabClose: (index: number) => void;
   onToggleTerminal: () => void;
@@ -81,7 +85,7 @@ interface Props {
 type PreviewTab = 'preview' | 'translate' | 'diff' | 'pdf';
 type TranslationState = { result: string; error: string };
 
-export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSave, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, projectFiles = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSave, onReloadExternalFile, onTabSelect, onTabClose, onToggleTerminal, terminalVisible, projectPath, editorMode = 'latex', chaptersCount = 0, projectFiles = [], pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const { t } = useTranslation();
   const [editorViewMode, setEditorViewMode] = useState<'source' | 'split' | 'rendered'>('split');
   const [editorRatio, setEditorRatio] = useState(0.5);
@@ -354,6 +358,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
       if (result.ok && result.pdfUrl) {
         setCompiledPdfUrl(`${result.pdfUrl}&_t=${Date.now()}`);
         setCompiledPdfSource('fresh');
+        requestProjectTreeSync(projectId);
       }
     } catch (e: any) {
       setCompileResult({ ok: false, error: e.message });
@@ -376,6 +381,7 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
         setCompiledPdfUrl(`${result.pdfUrl}&_t=${Date.now()}`);
         setCompiledPdfSource('fresh');
         setLatestPdfChecked(true);
+        requestProjectTreeSync(projectId);
       }
     } catch (e: any) {
       setCompileAllResult({ ok: false, error: e.message });
@@ -438,6 +444,8 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
           <button
             className="btn ghost"
             data-testid="manual-save-button"
+            data-content-matches-disk={String(activeFile.content === activeFile.lastSyncedContent)}
+            data-has-external-change={String(activeFile.externalContent !== undefined)}
             type="button"
             disabled={!activeFile.dirty || saving}
             onClick={() => void saveActiveFile()}
@@ -535,6 +543,33 @@ export function CenterPanel({ openFiles, activeFileIndex, onFileChange, onFileSa
           </button>
         )}
       </div>
+
+      {activeFile?.externalContent !== undefined && (
+        <div
+          data-testid="external-file-change"
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '7px 12px',
+            borderBottom: '1px solid #f59e0b',
+            background: '#fffbeb',
+            color: '#92400e',
+            fontSize: 12,
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ flex: 1 }}>{t('This file changed outside Paper Writer. Your unsaved draft was preserved.')}</span>
+          <button
+            type="button"
+            onClick={() => onReloadExternalFile(activeFileIndex)}
+            style={{ border: '1px solid #d97706', borderRadius: 6, background: '#fff', color: '#92400e', padding: '3px 9px', cursor: 'pointer', fontSize: 11 }}
+          >
+            {t('Reload external version')}
+          </button>
+        </div>
+      )}
 
       {/* Editor + Preview area */}
       {activeFile ? (

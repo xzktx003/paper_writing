@@ -21,6 +21,10 @@ class FakeStreamingXhr {
     this.onprogress?.();
     this.onload?.();
   }
+
+  abort() {
+    this.onabort?.();
+  }
 }
 
 describe('AI SSE terminal errors', () => {
@@ -76,5 +80,29 @@ describe('AI SSE terminal errors', () => {
       undefined,
       { onToken: vi.fn(), onDone: vi.fn(), onError: vi.fn() },
     )).rejects.toThrow('AI response ended unexpectedly');
+  });
+
+  it('aborts the active XHR without reporting a transport failure when the caller cancels', async () => {
+    class PendingStreamingXhr extends FakeStreamingXhr {
+      send() {}
+    }
+    vi.stubGlobal('XMLHttpRequest', PendingStreamingXhr);
+    const controller = new AbortController();
+    const onError = vi.fn();
+
+    const request = sendMessageStream(
+      'project-id',
+      'conversation-id',
+      managedProjectRequest('project-id'),
+      'question',
+      {},
+      undefined,
+      { onToken: vi.fn(), onDone: vi.fn(), onError },
+      { signal: controller.signal },
+    );
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: 'AIStreamAbortError' });
+    expect(onError).not.toHaveBeenCalled();
   });
 });

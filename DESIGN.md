@@ -22,6 +22,9 @@
   - `app/apps/frontend/src/app/components/ChatView.tsx`
   - `app/apps/frontend/src/app/hooks/useConversations.ts`
   - `app/apps/frontend/src/app/utils/conversationActivity.ts`
+  - `app/apps/frontend/src/app/components/ProjectTree.tsx`
+  - `app/apps/frontend/src/app/context/AppContext.tsx`
+  - `app/apps/frontend/src/app/utils/projectTreeSync.ts`
   - `docs/template_compile_preview_contract.md`
 
 ## Brand
@@ -172,6 +175,10 @@
     - Remains collapsed by default for each request. Its summary shows the step count and current activity; the user explicitly expands the ordered timeline.
     - Tool inputs and results are summarized and redacted on the server before SSE delivery. File contents, edit bodies, credentials, tokens, and unrestricted command output must not appear in the disclosure.
     - Failed and interrupted activities remain visible so users can identify where execution stopped.
+  - Managed-project file tree:
+    - Has no manual refresh command. The tree is a live projection of the authenticated managed-project `/tree` contract rather than a user-maintained cache.
+    - Local file actions and artifact-producing workflows request immediate synchronization; visible pages also perform a low-frequency two-second reconciliation so shell, CLI, compiler, or other external filesystem changes appear without user action.
+    - Synchronization updates shared project metadata for the Files, Editor, and Assistant surfaces, but never replaces the content of open editor tabs or unsaved drafts.
 - Variants and states:
   - Skill card states: recommended, selected, disabled, missing required context, advanced, imported.
   - RAG document states: uploaded, parsing, parsed, indexed, failed, stale, too large, metadata-only.
@@ -250,6 +257,7 @@
   - RAG parsing should show current phase: upload, text extraction, chunking, indexing.
   - Chat should show whether it is waiting on model, RAG search, or tool call.
   - Chat work stays compact: the collapsed header shows the current activity, and the complete ordered trace appears only after explicit expansion.
+  - File-tree synchronization is silent during normal operation. A transient polling failure keeps the last usable tree instead of replacing it with an empty/error state or requiring repetitive user intervention.
 - Empty:
   - Empty RAG library should offer "上传 PDF/文献" and "从 arXiv/CrossRef 搜索".
   - Empty skill search should show task examples.
@@ -291,6 +299,7 @@
 - Design-token constraints:
   - Keep operational UI compact and consistent with existing tool surfaces.
 - Performance constraints:
+  - Managed project tree reconciliation runs only while the document is visible, suppresses overlapping requests per project, performs structural equality checks before React state updates, and synchronizes immediately on focus/visibility restoration.
   - PDF parsing can be asynchronous; indexing must not block the whole editor.
   - RAG search should return enough diagnostics without flooding the chat prompt.
 - Compatibility constraints:

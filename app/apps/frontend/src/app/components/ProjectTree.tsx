@@ -22,6 +22,7 @@ import {
   removeTreeItem,
 } from '../utils/projectTree';
 import { downloadAuthenticatedFile } from './AuthenticatedAsset';
+import { requestProjectTreeSync } from '../utils/projectTreeSync';
 
 interface Props {
   projectPath: string;
@@ -149,6 +150,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
       return;
     }
     setFileItems(prev => removeTreeItem(prev, node.path));
+    requestProjectTreeSync(projectId);
     setStatus(t('Deleted {{path}}', { path: node.path }));
   };
 
@@ -196,6 +198,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
       setStatus(body.error || t('Failed to rename {{path}}', { path: oldPath }));
     } else {
       setFileItems(prev => moveTreeItem(prev, oldPath, newPath));
+      requestProjectTreeSync(projectId);
       setStatus(t('Renamed {{from}} → {{to}}', { from: oldName, to: trimmed }));
     }
     setRenamingPath(null);
@@ -220,6 +223,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
       return;
     }
     setFileItems(prev => moveTreeItem(prev, source.path, destinationPath));
+    requestProjectTreeSync(projectId);
     setExpandedSections(prev => new Set(prev).add(targetFolderPath));
     setStatus(t('Moved {{path}} to {{target}}', { path: source.path, target: targetFolderPath || t('project root') }));
     if (clipboardItem?.action === 'cut' && clipboardItem.path === source.path) setClipboardItem(null);
@@ -239,6 +243,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
       return;
     }
     setFileItems(prev => copyTreeItem(prev, source.path, destinationPath));
+    requestProjectTreeSync(projectId);
     setExpandedSections(prev => new Set(prev).add(targetFolderPath));
     setStatus(t('Copied {{from}} to {{to}}', { from: source.path, to: destinationPath }));
   };
@@ -272,6 +277,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
     }
     const itemType: FileItem['type'] = type === 'folder' ? 'dir' : 'file';
     setFileItems(prev => [...prev, { path: destinationPath, type: itemType }]);
+    requestProjectTreeSync(projectId);
     setExpandedSections(prev => {
       const next = new Set(prev).add(targetFolderPath || 'files');
       if (itemType === 'dir') next.add(destinationPath);
@@ -311,6 +317,7 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
             type: 'file' as const,
           }));
           setFileItems(prev => [...prev, ...newItems]);
+          requestProjectTreeSync(projectId);
 
           if (targetFolder) {
             setExpandedSections(prev => new Set(prev).add(targetFolder));
@@ -329,26 +336,6 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
 
     document.body.appendChild(input);
     input.click();
-  };
-
-  // Refresh file list from server
-  const refreshFiles = async () => {
-    if (!projectId) return;
-    setStatus(t('Refreshing...'));
-    try {
-      const res = await fetch(`/api/projects/${projectId}/files`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.files) {
-          setFileItems(data.files);
-          setStatus(t('Loaded {{count}} files', { count: data.files.length }));
-        }
-      } else {
-        setStatus(t('Failed to refresh'));
-      }
-    } catch {
-      setStatus(t('Refresh error'));
-    }
   };
 
   return (
@@ -401,34 +388,6 @@ export function ProjectTree({ projectPath, config, onFileSelect, onChapterReorde
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'transparent'; }}
             >
               {uploading ? `⏳ ${t('Uploading...')}` : `↑ ${t('Upload')}`}
-            </button>
-          )}
-          {projectId && (
-            <button
-              type="button"
-              title={t('Refresh file list')}
-              onClick={(e) => {
-                e.stopPropagation();
-                void refreshFiles();
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--muted)',
-                fontSize: '11px',
-                padding: '1px 4px',
-                lineHeight: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                borderRadius: '3px',
-                transition: 'color 0.15s, background 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-strong)'; e.currentTarget.style.background = 'var(--accent-soft)'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'transparent'; }}
-            >
-              🔄
             </button>
           )}
         </div>

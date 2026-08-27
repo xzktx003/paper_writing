@@ -55,6 +55,7 @@ interface Props {
   onClose: (id: string) => void;
   onCreate: (data: any) => void;
   onSend: (message: string, files?: AttachedFile[]) => void;
+  onCancel: () => void;
   onUploadAttachment: (
     file: { dataUrl: string; name: string; type: string; isImage: boolean; size: number },
     onProgress?: (percent: number) => void
@@ -73,7 +74,7 @@ interface Props {
   onRejectEdit?: (editId: string) => void;
 }
 
-export function RightPanel({ conversations, activeConv, loading, uploadProgress, activities = [], chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onUploadAttachment, onRemoveAttachment, onSetRagDocuments, onSetActiveSkills, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
+export function RightPanel({ conversations, activeConv, loading, uploadProgress, activities = [], chapters, skills, projectFiles, onSelect, onClose, onCreate, onSend, onCancel, onUploadAttachment, onRemoveAttachment, onSetRagDocuments, onSetActiveSkills, onRename, globalSkills = [], chapterSkills = [], onActivateSkill = () => {}, projectPath, activeFile, pendingEdits = [], onAcceptEdit, onRejectEdit }: Props) {
   const { t } = useTranslation();
   const managedProjectId = getPaperAgentProjectId(projectPath);
   const requestContext = useMemo(() => managedProjectId
@@ -105,6 +106,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
   const citationRequestRef = useRef(0);
   const citationAbortRef = useRef<AbortController | null>(null);
   const selectedRagDocs = activeConv?.rag_documents || [];
+  const canCancelGeneration = loading && uploadProgress != null;
 
   // Conversation skills are persistent and must follow the active conversation.
   useEffect(() => {
@@ -240,6 +242,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
   }, []);
 
   const handleSend = async () => {
+    if (loading) return;
     if (!inputValue.trim() && attachedFiles.length === 0) return;
     if (attachedFiles.some(file => ['reading', 'uploading', 'error'].includes(file.readStatus || ''))) return;
     
@@ -265,7 +268,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (!loading) void handleSend();
     }
   };
 
@@ -660,7 +663,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                       resize: 'vertical',
                       border: isDragOver ? '2px dashed var(--accent)' : '1px solid var(--border)',
                       borderRadius: '10px',
-                      padding: '10px 48px 10px 12px',
+                      padding: '10px 12px',
                       fontSize: '13px',
                       boxSizing: 'border-box',
                       background: 'var(--paper)',
@@ -672,7 +675,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                     onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-soft)'; }}
                     onBlur={e => { e.currentTarget.style.borderColor = isDragOver ? 'var(--accent)' : 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
                   />
-                  <div style={{ position: 'absolute', right: '8px', bottom: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <div data-testid="chat-composer-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-end', marginTop: '8px' }}>
                     {/* File upload button - left of image button */}
                     <input
                       ref={fileInputRef}
@@ -730,21 +733,21 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                       🖼️
                     </button>
                     <button
-                      onClick={handleSend}
-                      disabled={(!inputValue.trim() && attachedFiles.length === 0) || attachedFiles.some(file => ['reading', 'uploading', 'error'].includes(file.readStatus || '')) || loading}
+                      onClick={canCancelGeneration ? onCancel : handleSend}
+                      disabled={(loading && !canCancelGeneration) || (!loading && ((!inputValue.trim() && attachedFiles.length === 0) || attachedFiles.some(file => ['reading', 'uploading', 'error'].includes(file.readStatus || ''))))}
                       style={{
                         border: 'none',
-                        background: (inputValue.trim() || attachedFiles.length > 0) ? 'var(--accent)' : 'var(--bg-secondary)',
-                        color: (inputValue.trim() || attachedFiles.length > 0) ? '#fff' : 'var(--muted)',
+                        background: canCancelGeneration ? 'var(--danger, #dc2626)' : (inputValue.trim() || attachedFiles.length > 0) ? 'var(--accent)' : 'var(--bg-secondary)',
+                        color: canCancelGeneration || inputValue.trim() || attachedFiles.length > 0 ? '#fff' : 'var(--muted)',
                         borderRadius: '8px',
                         padding: '5px 12px',
                         fontSize: '11px',
                         fontWeight: 600,
-                        cursor: (inputValue.trim() || attachedFiles.length > 0) ? 'pointer' : 'default',
+                        cursor: canCancelGeneration || inputValue.trim() || attachedFiles.length > 0 ? 'pointer' : 'default',
                         transition: 'all 0.2s',
                       }}
                     >
-                      {t('Send')}
+                      {canCancelGeneration ? t('Stop') : t('Send')}
                     </button>
                   </div>
                 </div>

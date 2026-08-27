@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import { EditorState, StateField, StateEffect } from '@codemirror/state';
+import { Annotation, EditorState, StateField, StateEffect } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -26,6 +26,8 @@ const academicHighlightStyle = HighlightStyle.define([
   { tag: tags.operator, color: '#be123c' },
   { tag: tags.invalid, color: '#dc2626', textDecoration: 'wavy underline' },
 ]);
+
+const externalContentUpdate = Annotation.define<boolean>();
 
 class GhostTextWidget extends WidgetType {
   constructor(readonly text: string) { super(); }
@@ -245,7 +247,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           aiCompletionKeymap,
           ghostTextField,
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
+            const isExternalContentUpdate = update.transactions.some(transaction => transaction.annotation(externalContentUpdate));
+            if (update.docChanged && !isExternalContentUpdate) {
               onChangeRef.current(update.state.doc.toString());
             }
           }),
@@ -307,6 +310,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       if (currentContent !== content) {
         view.dispatch({
           changes: { from: 0, to: currentContent.length, insert: content },
+          annotations: externalContentUpdate.of(true),
         });
       }
     }, [content]);
