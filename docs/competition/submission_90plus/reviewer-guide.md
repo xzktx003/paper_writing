@@ -29,7 +29,7 @@ OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说
 | 编号 | 文件 | 评审用途 | 当前状态 |
 | --- | --- | --- | --- |
 | M01 | `M01-proposal.md` | 看作品方案、原流程、新流程、AI 介入点和边界 | 已完成；真实岗位材料仍可增强 |
-| M02 | `evidence/demo/office-demo-submission.mp4`、`office-demo.mp4`、`office-demo.webm` | 先看 160.840 秒字幕成片，必要时回查 148.840 秒原始连续录屏 | 已完成提交成片、可编辑字幕、解说词、封面、原始录屏、时间戳和截图 |
+| M02 | `evidence/demo/office-demo-submission.mp4`、`office-demo.mp4`、`office-demo.webm`、`coverage.json` | 先看 85.76 秒字幕成片，必要时回查 73.76 秒原始连续录屏与 19 张分步截图 | 已完成提交成片、可编辑字幕、解说词、封面、原始录屏、时间戳、覆盖率和功能成功日志 |
 | M03 | `M03-reuse-statement.md` | 看复用岗位、部署条件、学习成本和推广边界 | 已完成；独立用户复用待验证 |
 | M04 | `M04-significance.md` | 看业务意义、质量控制意义和数字化价值 | 已完成 |
 | M05 | `M05-effect-evidence.md`、`evidence/E05-effect-measurement.csv` | 看流程变化、受控评估和真实试点接口 | 受控证据已完成；业务样本待实际试点 |

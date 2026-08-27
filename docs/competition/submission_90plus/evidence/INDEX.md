@@ -4,7 +4,9 @@
 
 | 编号 | 结论 | 等级 | 状态 | 位置 | 边界 |
 | --- | --- | --- | --- | --- | --- |
-| E3-01 | 六阶段办公流程可在真实浏览器中连续操作 | E3 | 已核验：160.840 秒提交成片、148.840 秒原始连续操作 | `demo/office-demo-submission.mp4`、`demo/office-demo.mp4`、`demo/office-demo.webm`、`demo/office-demo-submission-transcript.md`、`demo/timestamps.md` | 成片仅增加片头、字幕和片尾；受控演示不代表生产落地 |
+| E3-01 | 六阶段办公流程可在真实浏览器中连续操作 | E3 | 已核验：85.76 秒提交成片、73.76 秒原始连续操作、19 张分步截图 | `demo/office-demo-submission.mp4`、`demo/office-demo.mp4`、`demo/office-demo.webm`、`demo/coverage.json`、`demo/timestamps.md` | 成片仅增加片头、字幕和片尾；受控演示不代表生产落地 |
+| E3-05 | 本次受控演示的主要功能均返回成功结果 | E3 | 已核验：六阶段 success；OfficeCLI `ok / validate` | `demo/coverage.json`、`logs/officecli-verification.txt`、`logs/competition-demo-contract.txt` | 证明本机受控演示，不证明生产部署或业务成效 |
+| E2-06 | 分步截图可读且覆盖输入、执行、结果与风险边界 | E2 | 视觉验收 94/100，通过 90 阈值 | `logs/visual-verdict.json`、`demo/01-inbox-input.png` 至 `demo/19-deliver-export.png` | 视觉验收不是官方比赛评分 |
 | E3-02 | 浏览器用例覆盖收件、处理、审阅、审批、度量、交付和诚实缺口状态 | E3 | 已核验 | `app/tests/e2e/office-delivery.spec.ts` | 可运行代码与测试 |
 | E3-03 | 审批状态机拒绝非法跳转，必须保留人类批准事件 | E3 | 已核验 | `app/apps/backend/src/services/__tests__/officeWorkflowService.test.js` | 代码行为 |
 | E3-04 | 系统能生成 M01-M06、评委材料和 SHA-256 manifest | E3 | 已核验 | `app/apps/backend/src/services/officeTrackService.js` 及测试 | 代码行为 |
@@ -20,6 +22,6 @@
 ## 证据使用规则
 
 1. 关键主张必须引用本表编号和具体文件位置。
-2. E3-01 至 E3-04 可证明产品和演示行为，不能自动升级为 BIZ-01。
+2. E3-01 至 E3-05 可证明产品和演示行为，不能自动升级为 BIZ-01。
 3. 测试中的 120、45、20 等数字是 fixture，只验证计算逻辑，不作为比赛提效数据。
 4. 任何真实业务数据进入提交包前必须脱敏，并由数据负责人或业务负责人确认。

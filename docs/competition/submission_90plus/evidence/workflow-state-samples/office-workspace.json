@@ -2,7 +2,45 @@
   "version": 1,
   "inbox": [
     {
-      "id": "inbox-dc80cf97a46ad19c66e3",
+      "id": "inbox-7f501d053b425392a22a",
+      "sourcePath": "sources/demo-note.txt",
+      "filename": "demo-note.txt",
+      "format": "text",
+      "status": "ready",
+      "parser": {
+        "id": "plain-text",
+        "mode": "local"
+      },
+      "quality": {
+        "status": "complete",
+        "score": 1,
+        "textCharacters": 34,
+        "structured": false
+      },
+      "warnings": [],
+      "sections": [
+        {
+          "id": "sources/demo-note.txt#paragraph-1",
+          "heading": "Line 1",
+          "location": "line:1",
+          "text": "受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。"
+        }
+      ],
+      "chunks": [
+        {
+          "id": "chunk-75eb6cbd4b636ceecd4f",
+          "text": "受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。",
+          "source": {
+            "path": "sources/demo-note.txt",
+            "location": "line:1",
+            "heading": "Line 1"
+          }
+        }
+      ],
+      "importedAt": "2026-08-27T16:36:07.017Z"
+    },
+    {
+      "id": "inbox-a5d0cc382196bf4b4026",
       "sourcePath": "sources/demo-architecture-review.docx",
       "filename": "demo-architecture-review.docx",
       "format": "docx",
@@ -172,19 +210,19 @@
           }
         }
       ],
-      "importedAt": "2026-08-27T13:49:58.195Z"
+      "importedAt": "2026-08-27T16:36:00.381Z"
     }
   ],
   "searches": [
     {
-      "id": "search-e78c9192822573c384ca",
-      "query": "architecture review scheduler",
+      "id": "search-ca0434c05d4d53cd47e5",
+      "query": "调度器 全局队列 工作节点",
       "results": [
         {
           "id": "dc3307b5215fa8b1",
           "text": "批任务调度架构纪要（示例 Word） 本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。 1. 总体结构 调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。 下图为模块关系示意（示例配图，非真实架构图）。 2. 痛点与目标 异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。 队列与异构节点示意： 3. 模块对照 资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。",
           "source": {
-            "id": "inbox-dc80cf97a46ad19c66e3",
+            "id": "inbox-a5d0cc382196bf4b4026",
             "path": "sources/demo-architecture-review.docx",
             "title": "demo-architecture-review.docx"
           },
@@ -207,17 +245,61 @@
               }
             }
           },
-          "score": 0.429897,
+          "score": 3.278236,
           "scoreBreakdown": {
-            "bm25": 0.395563,
-            "vector": 0.459803,
-            "rerank": 0.533333,
-            "final": 0.429897
+            "bm25": 5.350462,
+            "vector": 0.37539,
+            "rerank": 0.548435,
+            "final": 3.278236
           },
           "matchedTerms": [
-            "architecture"
+            "作节",
+            "全局",
+            "局队",
+            "工作",
+            "度器",
+            "节点",
+            "调度",
+            "队列"
           ],
           "rank": 1
+        },
+        {
+          "id": "6942b94504dbe8e2",
+          "text": "受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。",
+          "source": {
+            "id": "inbox-7f501d053b425392a22a",
+            "path": "sources/demo-note.txt",
+            "title": "demo-note.txt"
+          },
+          "chunk": {
+            "id": "6942b94504dbe8e2",
+            "ordinal": 0,
+            "range": {
+              "wordStart": 0,
+              "wordEnd": 1
+            },
+            "editModel": {
+              "id": "6942b94504dbe8e2",
+              "originalText": "受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。",
+              "editedText": "受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。",
+              "status": "indexed",
+              "provenance": {
+                "sourcePath": "sources/demo-note.txt",
+                "sourceTitle": "demo-note.txt",
+                "chunkOrdinal": 0
+              }
+            }
+          },
+          "score": 0.069013,
+          "scoreBreakdown": {
+            "bm25": 0,
+            "vector": 0.215666,
+            "rerank": 0,
+            "final": 0.069013
+          },
+          "matchedTerms": [],
+          "rank": 2
         }
       ],
       "retrievalProfile": {
@@ -232,59 +314,214 @@
           "kind": "deterministic-term-coverage-proximity"
         }
       },
-      "createdAt": "2026-08-27T13:50:46.537Z"
+      "createdAt": "2026-08-27T16:36:24.990Z"
     }
   ],
   "evidenceGraphs": [
     {
-      "id": "graph-28a50cda7625de8cf65e",
+      "id": "graph-f6166d408b740918aefe",
       "claims": [
         {
           "id": "claim-1",
-          "text": "系统包含架构评审材料。"
+          "text": "调度器维护全局队列。"
         },
         {
           "id": "claim-2",
-          "text": "演示数据已经证明长期稳定提效。"
+          "text": "受控演示数据证明稳定提效。"
+        },
+        {
+          "id": "claim-3",
+          "text": "系统已在真实企业全面落地。"
         }
       ],
       "edges": [
         {
-          "id": "144668379e04d04b",
+          "id": "aeea294c4921a333",
           "claimId": "claim-1",
-          "type": "missing",
-          "reason": "No retrieved chunk passed the support or conflict threshold."
+          "chunkId": "dc3307b5215fa8b1",
+          "type": "support",
+          "score": 3.36507,
+          "scoreBreakdown": {
+            "bm25": 5.476918,
+            "vector": 0.355633,
+            "rerank": 0.746552,
+            "final": 3.36507
+          },
+          "matchedTerms": [
+            "全局",
+            "器维",
+            "局队",
+            "度器",
+            "护全",
+            "维护",
+            "调度",
+            "调度器维护全局队列",
+            "队列"
+          ],
+          "source": {
+            "id": "inbox-a5d0cc382196bf4b4026",
+            "path": "sources/demo-architecture-review.docx",
+            "title": "demo-architecture-review.docx"
+          },
+          "excerpt": "批任务调度架构纪要（示例 Word） 本文档为专利技能示例用虚构材料，与 Markdown 版 architecture.md 口径一致，用于测试 docx → Markdown 与内嵌图片抽取。 1. 总体结构 调度器维护全局队列；工作节点上报 CPU/内存/IO；配置中心提供优先级与阈值。 下图为模块关系示意（示例配图，非真实架构图）。 2. 痛点与目标 异构集群下大任务占满高性能节点、小任务长尾等待；目标为降低饥饿、可接受分钟级调度、限频重排。 队列与异构节点示意： 3. 模块对照 资源画像聚合、匹配打分、限频重排队、派发、心跳契约 — 详见同目录 architecture.md 表格。"
         },
         {
-          "id": "06ebaae40eac2d19",
+          "id": "582bdb16b205eeb9",
           "claimId": "claim-2",
+          "chunkId": "6942b94504dbe8e2",
+          "type": "conflict",
+          "score": 6.00222,
+          "scoreBreakdown": {
+            "bm25": 9.852798,
+            "vector": 0.638327,
+            "rerank": 0.833333,
+            "final": 6.00222
+          },
+          "matchedTerms": [
+            "受控",
+            "定提",
+            "控演",
+            "提效",
+            "数据",
+            "明稳",
+            "演示",
+            "示数",
+            "稳定",
+            "证明"
+          ],
+          "source": {
+            "id": "inbox-7f501d053b425392a22a",
+            "path": "sources/demo-note.txt",
+            "title": "demo-note.txt"
+          },
+          "excerpt": "受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。"
+        },
+        {
+          "id": "35ceacb26152643e",
+          "claimId": "claim-3",
           "type": "missing",
           "reason": "No retrieved chunk passed the support or conflict threshold."
         }
       ],
-      "conflicts": [],
-      "gaps": [
-        {
-          "claimId": "claim-1",
-          "claim": "系统包含架构评审材料。",
-          "reason": "missing-source"
-        },
+      "conflicts": [
         {
           "claimId": "claim-2",
-          "claim": "演示数据已经证明长期稳定提效。",
+          "claim": "受控演示数据证明稳定提效。",
+          "sources": [
+            {
+              "id": "inbox-7f501d053b425392a22a",
+              "path": "sources/demo-note.txt",
+              "title": "demo-note.txt"
+            }
+          ]
+        }
+      ],
+      "gaps": [
+        {
+          "claimId": "claim-3",
+          "claim": "系统已在真实企业全面落地。",
           "reason": "missing-source"
         }
       ],
       "coverage": {
-        "totalClaims": 2,
-        "supportedClaims": 0,
-        "conflictedClaims": 0,
-        "missingClaims": 2,
-        "coverageRatio": 0
+        "totalClaims": 3,
+        "supportedClaims": 1,
+        "conflictedClaims": 1,
+        "missingClaims": 1,
+        "coverageRatio": 0.666667
       },
-      "createdAt": "2026-08-27T13:50:46.715Z"
+      "createdAt": "2026-08-27T16:36:28.215Z"
     }
   ],
-  "meetings": [],
-  "updatedAt": "2026-08-27T13:50:46.716Z"
+  "meetings": [
+    {
+      "id": "meeting-34fd246e6734403c0680",
+      "title": "Meeting Intake: meeting-transcript.txt",
+      "createdAt": "2026-08-27T16:36:20.654Z",
+      "source": {
+        "filename": "meeting-transcript.txt",
+        "lineCount": 3,
+        "speakerDiarization": "not-claimed"
+      },
+      "summary": "讨论：讨论证据缺口。；记录 1 项决定、1 项待办。",
+      "decisions": [
+        {
+          "id": "4be5003c9df25e31",
+          "timestamp": "00:02:00",
+          "speaker": "李强",
+          "text": "保留人工审批门禁。",
+          "evidence": {
+            "id": "a3ae78c3e8329e3a",
+            "timestamp": "00:02:00",
+            "speaker": "李强",
+            "text": "决定：保留人工审批门禁。",
+            "source": {
+              "filename": "meeting-transcript.txt",
+              "line": 2
+            }
+          }
+        }
+      ],
+      "actionItems": [
+        {
+          "id": "fec1e64e0237256b",
+          "timestamp": "00:03:00",
+          "speaker": "王敏",
+          "owner": "陈晨",
+          "due": "2026-08-30",
+          "text": "陈晨负责于2026-08-30前补齐效果表。",
+          "evidence": {
+            "id": "85a2645ff7e298ee",
+            "timestamp": "00:03:00",
+            "speaker": "王敏",
+            "text": "待办：陈晨负责于2026-08-30前补齐效果表。",
+            "source": {
+              "filename": "meeting-transcript.txt",
+              "line": 3
+            }
+          }
+        }
+      ],
+      "timestampEvidence": [
+        {
+          "id": "6c9a031263c5d1ca",
+          "timestamp": "00:01:00",
+          "speaker": "王敏",
+          "text": "讨论证据缺口。",
+          "source": {
+            "filename": "meeting-transcript.txt",
+            "line": 1
+          }
+        },
+        {
+          "id": "a3ae78c3e8329e3a",
+          "timestamp": "00:02:00",
+          "speaker": "李强",
+          "text": "决定：保留人工审批门禁。",
+          "source": {
+            "filename": "meeting-transcript.txt",
+            "line": 2
+          }
+        },
+        {
+          "id": "85a2645ff7e298ee",
+          "timestamp": "00:03:00",
+          "speaker": "王敏",
+          "text": "待办：陈晨负责于2026-08-30前补齐效果表。",
+          "source": {
+            "filename": "meeting-transcript.txt",
+            "line": 3
+          }
+        }
+      ],
+      "workflowDocument": {
+        "kind": "meeting-transcript",
+        "path": "meetings/meeting-transcript.meeting.md",
+        "title": "Meeting Intake: meeting-transcript.txt",
+        "content": "# Meeting Intake: meeting-transcript.txt\n\n## Summary\n讨论：讨论证据缺口。；记录 1 项决定、1 项待办。\n\n## Decisions\n- 00:02:00 保留人工审批门禁。\n\n## Action Items\n- 00:03:00 陈晨负责于2026-08-30前补齐效果表。\n\n## Timestamp Evidence\n- 00:01:00 王敏: 讨论证据缺口。\n- 00:02:00 李强: 决定：保留人工审批门禁。\n- 00:03:00 王敏: 待办：陈晨负责于2026-08-30前补齐效果表。",
+        "evidenceCount": 3
+      }
+    }
+  ],
+  "updatedAt": "2026-08-27T16:36:28.216Z"
 }

@@ -13,11 +13,14 @@ describe('OpenPrism Office delivery workspace contract', () => {
     expect(deliveryPanel).toContain('data-testid="office-delivery-panel"');
     expect(deliveryPanel).toContain("stages: ['收件', '处理', '审阅', '审批', '交付', '度量']");
     expect(deliveryPanel).toContain('office-import-material');
+    expect(deliveryPanel).toContain('office-inbox-details');
     expect(deliveryPanel).toContain('office-artifact-plan');
+    expect(deliveryPanel).toContain('office-artifact-status');
     expect(deliveryPanel).toContain('office-search');
     expect(deliveryPanel).toContain('office-approve-run');
     expect(deliveryPanel).toContain('office-export');
     expect(deliveryPanel).toContain('office-record-metric');
+    expect(deliveryPanel).toContain('记录受控演示样本');
     expect(deliveryPanel).toContain('建议分只用于准备，不代表官方评分、晋级或获奖结果');
     expect(deliveryPanel).toContain('scoreFormation?.scoreStatus');
     expect(deliveryPanel).toContain('module.reasons');

@@ -3,7 +3,7 @@
   "date": "2026-08-28",
   "source": {
     "file": "docs/competition/submission_90plus/evidence/demo/office-demo.mp4",
-    "durationSeconds": 148.84,
+    "durationSeconds": 73.76,
     "continuousBrowserOperation": true
   },
   "failedAttempt": {
@@ -19,14 +19,14 @@
   },
   "output": {
     "file": "docs/competition/submission_90plus/evidence/demo/office-demo-submission.mp4",
-    "durationSeconds": 160.84,
+    "durationSeconds": 85.76,
     "codec": "h264",
     "width": 1440,
     "height": 960,
     "pixelFormat": "yuv420p",
     "underThreeMinutes": true
   },
-  "visualChecksSeconds": [2.5, 18, 65, 125, 145, 157],
+  "visualChecksSeconds": [2, 24, 64, 72, 82],
   "result": "pass",
   "boundary": "Controlled demonstration data; not evidence of real business productivity improvement."
 }

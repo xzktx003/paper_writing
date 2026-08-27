@@ -97,15 +97,15 @@ try {
   const metadata = JSON.parse(probe.stdout);
   const duration = Number(metadata.format?.duration);
   const stream = metadata.streams?.[0];
-  if (!Number.isFinite(duration) || duration <= 150 || duration >= 180) {
-    throw new Error(`Submission video duration must be between 150 and 180 seconds; received ${duration}.`);
+  if (!Number.isFinite(duration) || duration <= 60 || duration >= 180) {
+    throw new Error(`Submission video duration must be longer than 60 seconds and shorter than 180 seconds; received ${duration}.`);
   }
   if (stream?.codec_name !== 'h264' || stream.width !== 1440 || stream.height !== 960 || stream.pix_fmt !== 'yuv420p') {
     throw new Error(`Unexpected submission video format: ${JSON.stringify(stream)}`);
   }
 
   await run(ffmpegExecutable, [
-    '-y', '-loglevel', 'error', '-ss', '140', '-i', outputVideo,
+    '-y', '-loglevel', 'error', '-ss', '72', '-i', outputVideo,
     '-frames:v', '1', '-q:v', '2', outputPoster,
   ]);
 

@@ -7,9 +7,10 @@
 | 项目 | 状态 | 位置或证明 |
 | --- | --- | --- |
 | M01-M06、评委指南、初决赛准备材料可读 | 已完成 | 本目录 Markdown 与合订 PDF |
-| 连续实操演示不超过 3 分钟 | 已完成 | `evidence/demo/office-demo-submission.mp4` 为 160.840 秒；内含 148.840 秒未经跳剪的浏览器操作 |
+| 连续实操演示不超过 3 分钟 | 已完成 | `evidence/demo/office-demo-submission.mp4` 为 85.76 秒；内含 73.76 秒未经跳剪的浏览器操作 |
 | 提交视频字幕、封面和真实性提示 | 已完成 | 已烧录中文流程字幕与受控数据声明；可编辑 ASS、解说词稿和 JPG 封面同目录保留 |
-| 演示覆盖收件、处理、审阅、审批、度量、交付 | 已完成 | `evidence/demo/timestamps.md`、六张关键截图 |
+| 演示覆盖收件、处理、审阅、审批、度量、交付 | 已完成 | `evidence/demo/coverage.json`、`timestamps.md`、19 张关键截图；六阶段均为 success，每阶段至少两张 |
+| 主要功能无失败画面 | 已完成 | OfficeCLI 1.0.145 返回 `ok / validate`；DOCX 解析、会议提取、证据图、审批、度量、审核、导出均有成功结果截图 |
 | 受控技术评估 | 已完成 | 9/9 通过、100 次重复运行，见 M05 和结果 JSON |
 | 系统准备度建议 | 已形成 | 94/100、低置信度、非官方，见 `evidence/submission-manifest.json` |
 | 真实业务成效未被演示数据冒充 | 已完成 | `measurementStatus=designed`、空白试点登记表 |

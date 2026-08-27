@@ -18,7 +18,7 @@
       "executionReady": true,
       "status": "ready",
       "statusReason": "Local project folder connector is available.",
-      "updatedAt": "2026-08-27T13:51:34.158Z"
+      "updatedAt": "2026-08-27T16:36:48.912Z"
     },
     {
       "id": "office-delivery",
@@ -36,7 +36,7 @@
       "executionReady": true,
       "status": "ready",
       "statusReason": "Local project folder connector is available.",
-      "updatedAt": "2026-08-27T13:51:34.158Z"
+      "updatedAt": "2026-08-27T16:36:48.912Z"
     }
   ],
   "recipes": [
@@ -57,12 +57,12 @@
       "humanApprovalRequired": true,
       "enabled": true,
       "version": "v1",
-      "updatedAt": "2026-08-27T13:51:34.158Z"
+      "updatedAt": "2026-08-27T16:36:48.912Z"
     }
   ],
   "runs": [
     {
-      "id": "run-mtbkydnl-a48r0",
+      "id": "run-mtbqvqw1-qk94k",
       "recipeId": "evidence-office-delivery",
       "status": "published",
       "trigger": {
@@ -87,7 +87,7 @@
             "source": "",
             "location": ""
           },
-          "at": "2026-08-27T13:50:22.117Z",
+          "at": "2026-08-27T16:36:16.999Z",
           "notes": "Run triggered."
         },
         {
@@ -100,7 +100,7 @@
             "source": "",
             "location": ""
           },
-          "at": "2026-08-27T13:50:22.156Z",
+          "at": "2026-08-27T16:36:17.072Z",
           "notes": ""
         },
         {
@@ -113,7 +113,7 @@
             "source": "",
             "location": ""
           },
-          "at": "2026-08-27T13:50:22.228Z",
+          "at": "2026-08-27T16:36:17.161Z",
           "notes": ""
         },
         {
@@ -126,7 +126,7 @@
             "source": "",
             "location": ""
           },
-          "at": "2026-08-27T13:51:10.650Z",
+          "at": "2026-08-27T16:36:38.837Z",
           "notes": ""
         },
         {
@@ -139,7 +139,7 @@
             "source": "",
             "location": ""
           },
-          "at": "2026-08-27T13:51:10.721Z",
+          "at": "2026-08-27T16:36:42.095Z",
           "notes": ""
         }
       ],
@@ -148,7 +148,7 @@
           "paragraphId": "p-1",
           "comments": [
             {
-              "id": "comment-mtbkyww1-2sy45",
+              "id": "comment-mtbqw2bd-90uc3",
               "paragraphId": "p-1",
               "body": "请删除“长期稳定提效”这类未由真实样本证明的结论。",
               "assignee": "author",
@@ -161,20 +161,21 @@
                 "location": ""
               },
               "suggestion": {
-                "id": "suggestion-mtbkyww1-miw4h",
+                "id": "suggestion-mtbqw2bd-53p76",
                 "kind": "replace",
                 "originalText": "",
                 "suggestedText": "受控演示仅证明流程跑通，真实提效以试点表为准。",
                 "semanticDiff": {
                   "intent": "ground-claim",
                   "changedClaims": [
-                    "系统包含架构评审材料。",
-                    "演示数据已经证明长期稳定提效。"
+                    "调度器维护全局队列。",
+                    "受控演示数据证明稳定提效。",
+                    "系统已在真实企业全面落地。"
                   ],
                   "risk": "medium"
                 },
                 "status": "accepted",
-                "decidedAt": "2026-08-27T13:50:47.224Z",
+                "decidedAt": "2026-08-27T16:36:32.013Z",
                 "decisionProvenance": {
                   "type": "human",
                   "id": "approver",
@@ -184,14 +185,14 @@
                 }
               },
               "replies": [],
-              "createdAt": "2026-08-27T13:50:47.047Z"
+              "createdAt": "2026-08-27T16:36:31.809Z"
             }
           ]
         }
       ],
       "approvalEvents": [
         {
-          "id": "approval-mtbkzf3i-tetly",
+          "id": "approval-mtbqw7q9-64ykf",
           "status": "approved",
           "actor": {
             "type": "human",
@@ -201,16 +202,16 @@
             "location": ""
           },
           "notes": "人工核对来源、修改与交付边界。",
-          "at": "2026-08-27T13:51:10.643Z"
+          "at": "2026-08-27T16:36:38.821Z"
         }
       ],
-      "createdAt": "2026-08-27T13:50:22.117Z",
-      "updatedAt": "2026-08-27T13:51:34.158Z"
+      "createdAt": "2026-08-27T16:36:16.999Z",
+      "updatedAt": "2026-08-27T16:36:48.912Z"
     }
   ],
   "telemetry": [
     {
-      "id": "metric-mtbkzx8p-34218",
+      "id": "metric-mtbqwfii-sl8z7",
       "role": "writer",
       "frequency": "weekly",
       "version": "recipe-v1",
@@ -238,5 +239,5 @@
       }
     }
   ],
-  "updatedAt": "2026-08-27T13:51:34.159Z"
+  "updatedAt": "2026-08-27T16:36:48.912Z"
 }

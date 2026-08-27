@@ -1,0 +1,8 @@
+OpenPrism Office controlled demo - OfficeCLI verification
+Date: 2026-08-28 (Asia/Shanghai)
+OfficeCLI version: 1.0.145
+SHA-256: 449f0e6a1298e3c6d7da792d26ab53d04ba77bd990f299b51123c7aef383d2ce
+Demo operation: validate
+Demo execution status: ok
+Executable path: intentionally omitted because machine-local paths are not submission evidence.
+Boundary: this verifies the local adapter execution used in the controlled demo; it does not prove production deployment or business impact.

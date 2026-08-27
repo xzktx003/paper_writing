@@ -11,7 +11,7 @@
 | 材料 | 文件 | 状态 | 证据边界 |
 | --- | --- | --- | --- |
 | M01 作品方案 | `M01-proposal.md` | 已完成 | 产品、代码和测试支持 |
-| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo-submission.mp4`（提交成片）、`office-demo.mp4`/`office-demo.webm`（原始证据） | 已核验：160.840 秒成片、148.840 秒连续操作 | 真实浏览器操作，成片内嵌字幕与真实性声明 |
+| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo-submission.mp4`（提交成片）、`office-demo.mp4`/`office-demo.webm`（原始证据）、`coverage.json`（逐帧覆盖） | 已核验：85.76 秒成片、73.76 秒连续操作、19 张截图 | 真实浏览器操作；OfficeCLI 成功、字幕与真实性声明均可回查 |
 | M03 复用价值 | `M03-reuse-statement.md` | 已完成 | 模板、SOP、Skill 支持 |
 | M04 作品意义 | `M04-significance.md` | 已完成 | 方案与流程支持 |
 | M05 效果证明 | `M05-effect-evidence.md` | 受控证据已完成；业务试点待实际使用 | 不把技术测试写成企业提效 |

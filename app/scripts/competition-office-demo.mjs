@@ -1,11 +1,12 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { constants as fsConstants, promises as fs } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import net from 'node:net';
 import os from 'node:os';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { expect } from '@playwright/test';
 import { chromium } from 'playwright';
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,6 +19,7 @@ const outputDir = join(repoRoot, 'docs/competition/submission_90plus/evidence/de
 const evidenceDir = join(repoRoot, 'docs/competition/submission_90plus/evidence');
 const workflowSamplesDir = join(evidenceDir, 'workflow-state-samples');
 const browserLibraries = resolve(repoRoot, '.playwright-deps/usr/lib/x86_64-linux-gnu');
+const officeCliPath = process.env.OFFICECLI_PATH || '';
 
 async function reservePort() {
   const server = net.createServer();
@@ -162,7 +164,7 @@ async function enrichCompetitionState(baseURL, token, projectId) {
       sampleSize: 1,
       measurementStatus: 'designed',
       unit: '受控演示样本',
-      period: '2026-08-27 录屏演示',
+      period: '2026-08-28 录屏演示',
       taskFrequency: '真实频率待试点补充',
       coveragePeople: 1,
       calculationNotes: '演示中保留全成本字段，但 measurementStatus=designed；真实提效需另行用业务样本复算。',
@@ -175,7 +177,7 @@ async function enrichCompetitionState(baseURL, token, projectId) {
     ],
     finals: {
       ...state.finals,
-      demoScript: '收件导入 DOCX；处理失败态；审阅证据；人工审批；记录 designed 成效字段；审核导出并展示准备建议分和风险。',
+      demoScript: '收件导入 DOCX 并展开解析证据；执行 OfficeCLI 校验成功；检索和证据图显示支持/冲突/缺口；人工审批；记录 designed 成效字段；审核导出并展示准备建议分和风险。',
       questions: ['如何避免无依据数字？', '如何复算提效？', '为什么受控演示不等同真实业务成效？'],
       operatorChecklist: ['确认四项必交材料 ready', '确认 SOP/Skill/指标表 ready', '确认 E2 证据只证明演示链路', '确认 measurementStatus=designed'],
       landingEvidence: { usagePeriod: '待真实试点补充', users: ['受控演示操作者'], useCount: 1, outputs: ['受控演示提交包'], feedback: ['演示链路跑通；真实业务提效待试点'] },
@@ -199,6 +201,12 @@ function stamp(startedAt) {
 await fs.access(frontendDist).catch(() => {
   throw new Error('Frontend dist is missing. Run `npm run build` in app/ before recording the competition demo.');
 });
+if (!isAbsolute(officeCliPath)) {
+  throw new Error('Competition recording requires an absolute OFFICECLI_PATH so the Produce stage can show a real successful operation.');
+}
+await fs.access(officeCliPath, fsConstants.X_OK).catch(() => {
+  throw new Error('OFFICECLI_PATH must point to an executable OfficeCLI binary.');
+});
 await fs.access(sampleDocx);
 await fs.access(join(staticSubmissionDir, 'M01-proposal.md'));
 await fs.access(join(staticSubmissionDir, 'M02-demo-script.md'));
@@ -207,8 +215,10 @@ await fs.access(join(staticSubmissionDir, 'M04-significance.md'));
 await fs.mkdir(outputDir, { recursive: true });
 await fs.mkdir(workflowSamplesDir, { recursive: true });
 
-for (const file of ['office-demo.webm', 'office-demo.mp4', '01-inbox.png', '02-produce.png', '03-review.png', '04-approve.png', '05-measure.png', '06-deliver.png']) {
-  await fs.rm(join(outputDir, file), { force: true });
+for (const file of await fs.readdir(outputDir)) {
+  if (/^\d{2}-.*\.png$/.test(file) || ['office-demo.webm', 'office-demo.mp4', 'coverage.json'].includes(file)) {
+    await fs.rm(join(outputDir, file), { force: true });
+  }
 }
 for (const file of ['office-track.json', 'office-workspace.json', 'office-workflow.json']) {
   await fs.rm(join(workflowSamplesDir, file), { force: true });
@@ -231,6 +241,7 @@ const env = {
   OPENPRISM_PUBLIC_HOST: '127.0.0.1',
   OPENPRISM_API_TOKEN: token,
   OPENPRISM_E2E_API_TOKEN: token,
+  OFFICECLI_PATH: officeCliPath,
   LD_LIBRARY_PATH: libraryPath,
 };
 
@@ -258,7 +269,7 @@ try {
   const projectRoot = join(dataDir, project.directoryName || project.id);
   await fs.mkdir(join(projectRoot, 'sources'), { recursive: true });
   await fs.copyFile(sampleDocx, join(projectRoot, 'sources/demo-architecture-review.docx'));
-  await fs.writeFile(join(projectRoot, 'sources/demo-note.txt'), '受控演示数据：缺少真实试点样本时，不得宣称稳定提效。\n', 'utf8');
+  await fs.writeFile(join(projectRoot, 'sources/demo-note.txt'), '受控演示数据未证明稳定提效；缺少真实试点样本时，不得宣称长期效果。\n', 'utf8');
   await copyCompetitionMaterial(projectRoot, 'M01-proposal.md');
   await copyCompetitionMaterial(projectRoot, 'M02-demo-script.md');
   await copyCompetitionMaterial(projectRoot, 'M03-reuse-statement.md');
@@ -269,11 +280,29 @@ try {
     viewport: { width: 1440, height: 960 },
     recordVideo: { dir: outputDir, size: { width: 1440, height: 960 } },
   });
-  await context.addInitScript(value => {
-    window.sessionStorage.setItem('paper-agent-server-access-token', value);
-  }, token);
+  await context.addInitScript(({ accessToken, projectPath }) => {
+    window.sessionStorage.setItem('paper-agent-server-access-token', accessToken);
+    window.localStorage.setItem(`paper-agent-layout:${projectPath}`, JSON.stringify({
+      leftWidth: 120,
+      rightWidth: 760,
+      leftCollapsed: true,
+      rightCollapsed: false,
+      terminalHeight: 220,
+      terminalMaximized: false,
+      terminalTogglePosition: { x: 20, y: 870 },
+    }));
+  }, { accessToken: token, projectPath: projectRoot });
   const page = await context.newPage();
   const startedAt = Date.now();
+  const workspaceBeforeRecording = await api(baseURL, token, `/api/projects/${encodeURIComponent(project.id)}/office-track/workspace`);
+  const officeCliCapability = workspaceBeforeRecording.capabilities.find(capability => capability.id === 'officecli');
+  if (!officeCliCapability?.available) throw new Error(`OfficeCLI must be available before recording: ${officeCliCapability?.reason || 'capability missing'}`);
+  const coverage = {
+    version: 2,
+    controlledDemo: true,
+    officeCli: { status: 'ok', version: officeCliCapability.version || 'verified at recording time' },
+    stages: ['inbox', 'produce', 'review', 'approve', 'measure', 'deliver'].map(id => ({ id, outcome: 'success', screenshots: [] })),
+  };
   const timestamps = [
     '# 演示时间戳清单',
     '',
@@ -292,7 +321,7 @@ try {
         overlay.style.left = '24px';
         overlay.style.top = '20px';
         overlay.style.zIndex = '2147483647';
-        overlay.style.maxWidth = '760px';
+        overlay.style.maxWidth = '610px';
         overlay.style.padding = '14px 18px';
         overlay.style.border = '2px solid #2563eb';
         overlay.style.borderRadius = '8px';
@@ -305,11 +334,16 @@ try {
       overlay.innerHTML = `<div>${title}</div><div style="font-size:14px;font-weight:500;margin-top:4px;color:#475569">${note}</div>`;
     }, { title, note });
   };
-  const capture = async (name, title, note) => {
+  const capture = async (stage, name, title, note) => {
     await showStage(title, note);
-    await page.waitForTimeout(23_000);
+    await page.waitForTimeout(2_700);
     await page.screenshot({ path: join(outputDir, `${name}.png`), fullPage: false });
     timestamps.push(`| ${stamp(startedAt)} | ${title} | ${note} | ${name}.png |`);
+    coverage.stages.find(item => item.id === stage).screenshots.push({ file: `${name}.png`, at: stamp(startedAt), proof: note });
+  };
+  const focus = async locator => {
+    await locator.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(350);
   };
 
   await page.goto(`${baseURL}/editor/${project.id}`);
@@ -333,40 +367,81 @@ try {
   await panel.locator('#office-dependencies').fill('本地脱敏 Office 材料');
   await panel.locator('#office-constraints').fill('不得虚构提效数据\n演示数据不作为真实业务成效');
   await panel.locator('#office-import-path').fill('sources/demo-architecture-review.docx');
+  await focus(panel.locator('#office-import-path'));
+  await capture('inbox', '01-inbox-input', '① 收件｜选择脱敏 DOCX', '用户在项目相对路径中选择受控 DOCX，准备执行本地解析。');
   await panel.getByTestId('office-import-material').click();
   await panel.getByTestId('office-inbox-item').waitFor();
-  await capture('01-inbox', '收件导入 DOCX', '界面显示 built-in OOXML/native-ooxml 解析和 ready 状态。');
+  await expect(panel.getByTestId('office-inbox-item').first()).toContainText('ready');
+  await focus(panel.getByTestId('office-inbox-item').first());
+  await capture('inbox', '02-inbox-ready', '① 收件｜DOCX 解析成功', '界面显示 native-ooxml、ready、来源路径与解析器，证明导入不是静态图片。');
+  await panel.getByTestId('office-inbox-details').click();
+  await focus(panel.getByTestId('office-inbox-details'));
+  await capture('inbox', '03-inbox-details', '① 收件｜展开解析证据', '展开段落数、检索分块、字符数与原文摘录，完整展示解析成功结果。');
+  await panel.locator('#office-import-path').fill('sources/demo-note.txt');
+  await panel.getByTestId('office-import-material').click();
+  await expect(panel.getByTestId('office-inbox-item').first()).toContainText('ready');
 
   await panel.getByTestId('office-stage-produce').click();
   await panel.locator('#office-artifact-input').fill('sources/demo-architecture-review.docx');
   await panel.getByTestId('office-artifact-plan').click();
+  await expect(panel.getByTestId('office-artifact-status')).toContainText('planned');
+  await focus(panel.getByTestId('office-artifact-status'));
+  await capture('produce', '04-produce-plan', '② 处理｜生成安全执行计划', 'OfficeCLI validate 计划展示受控 argv；此时尚未修改文件。');
   await panel.getByTestId('office-artifact-run').click();
+  await expect(panel.getByTestId('office-artifact-status')).toContainText('ok');
+  await expect(panel.getByTestId('office-artifact-status')).toContainText('validate');
+  await focus(panel.getByTestId('office-artifact-status'));
+  await capture('produce', '05-produce-success', '② 处理｜OfficeCLI 执行成功', '真实 OfficeCLI 返回 ok / validate，失败态已由成功执行结果替换。');
   await panel.getByTestId('office-create-run').click();
   await panel.getByRole('button', { name: '进入处理' }).click();
   await panel.getByRole('button', { name: '提交审阅' }).click();
-  await capture('02-produce', '处理与失败态', '外部 OfficeCLI 未配置时显示 unavailable，仍保留真实状态。');
+  await expect(panel.getByTestId('office-workflow-run')).toContainText('review');
+  await focus(panel.getByTestId('office-workflow-run'));
+  await capture('produce', '06-produce-workflow', '② 处理｜配方进入人工审阅', '本地配方完成 triggered → processing → review，强制保留人工审阅门禁。');
+  await panel.locator('#office-meeting-transcript').fill('[00:01:00] 王敏：讨论证据缺口。\n[00:02:00] 李强：决定：保留人工审批门禁。\n[00:03:00] 王敏：待办：陈晨负责于2026-08-30前补齐效果表。');
+  await panel.getByTestId('office-import-meeting').click();
+  await expect(panel.getByTestId('office-meeting-result')).toContainText('决定 1 · 待办 1');
+  await focus(panel.getByTestId('office-meeting-result'));
+  await capture('produce', '07-produce-meeting', '② 处理｜会议决定与待办提取成功', '带时间戳逐字稿提取出 1 项决定和 1 项待办，并明确不宣称自动说话人分离。');
 
   await panel.getByTestId('office-stage-review').click();
-  await panel.locator('#office-search-query').fill('architecture review scheduler');
+  await panel.locator('#office-search-query').fill('调度器 全局队列 工作节点');
   await panel.getByTestId('office-search').click();
-  await panel.locator('#office-claims').fill('系统包含架构评审材料。\n演示数据已经证明长期稳定提效。');
+  await expect(panel).toContainText('BM25');
+  await focus(panel.getByText('BM25', { exact: false }).last());
+  await capture('review', '08-review-search', '③ 审阅｜混合检索返回来源和分数', '同屏展示来源路径、BM25、哈希向量、Rerank 与最终得分。');
+  await panel.locator('#office-claims').fill('调度器维护全局队列。\n受控演示数据证明稳定提效。\n系统已在真实企业全面落地。');
   await panel.getByTestId('office-build-graph').click();
+  await expect(panel.getByTestId('office-evidence-graph')).toContainText('support');
+  await expect(panel.getByTestId('office-evidence-graph')).toContainText('conflict');
+  await expect(panel.getByTestId('office-evidence-graph')).toContainText('missing');
+  await focus(panel.getByTestId('office-evidence-graph'));
+  await capture('review', '09-review-graph', '③ 审阅｜支持、冲突与缺口同时可见', '证据图对三条主张分别给出 support、conflict、missing，不用单一分数掩盖风险。');
   await panel.getByTestId('office-add-evidence').click();
   const evidence = panel.getByTestId('office-evidence-0');
-  await evidence.getByLabel('需证明的结论').fill('导入了脱敏 DOCX 办公材料');
+  await evidence.getByLabel('需证明的结论').fill('调度器维护全局队列');
   await evidence.getByLabel('来源路径').fill('sources/demo-architecture-review.docx');
-  await evidence.getByLabel('精确位置').fill('document.xml');
+  await evidence.getByLabel('精确位置').fill('paragraph:4');
   await evidence.getByLabel('证据等级').selectOption('E2');
   await panel.locator('#office-comment-body').fill('请删除“长期稳定提效”这类未由真实样本证明的结论。');
   await panel.locator('#office-suggested-text').fill('受控演示仅证明流程跑通，真实提效以试点表为准。');
   await panel.getByTestId('office-add-comment').click();
   await panel.getByRole('button', { name: '接受建议' }).click();
-  await capture('03-review', '审阅证据和建议', '展示检索、证据图、评论建议和诚实降级。');
+  await expect(panel.getByText('accepted', { exact: true })).toBeVisible();
+  await focus(panel.getByText('accepted', { exact: true }));
+  await capture('review', '10-review-suggestion', '③ 审阅｜人工接受修订建议', '审阅意见删除无真实样本支持的提效结论，accepted 决策进入留痕。');
 
   await panel.getByTestId('office-stage-approve').click();
+  await focus(panel.getByTestId('office-approve-run'));
+  await capture('approve', '11-approve-gate', '④ 审批｜发布前必须人工确认', '运行仍在 review，系统明确要求核对来源、数字、敏感信息与建议决策。');
   await panel.getByTestId('office-approve-run').click();
+  await expect(panel.getByTestId('office-publish-run')).toBeVisible();
+  await focus(panel.getByTestId('office-publish-run'));
+  await capture('approve', '12-approve-approved', '④ 审批｜人工批准事件已记录', '状态进入 approved，审批人与时间事件独立保存在审批账本。');
   await panel.getByTestId('office-publish-run').click();
-  await capture('04-approve', '人工审批', 'approved/published 只表示本地人工批准链路。');
+  await expect(panel).toContainText('published');
+  await focus(panel.getByText('published', { exact: true }).first());
+  await capture('approve', '13-approve-published', '④ 审批｜本地发布状态完成', 'published 只表示本地工作流状态，参赛文件仍需在交付阶段另行人工导出。');
 
   await panel.getByTestId('office-stage-measure').click();
   await panel.locator('#office-baselineMinutes').fill('120');
@@ -379,8 +454,12 @@ try {
   await panel.locator('#office-measure-status').selectOption('designed');
   await panel.getByLabel('采纳次数').fill('1');
   await panel.getByLabel('拒绝次数').fill('1');
+  await focus(panel.locator('#office-baselineMinutes'));
+  await capture('measure', '14-measure-inputs', '⑤ 度量｜全成本字段完整录入', '基线、AI、人工复核、重试、配置、维护和样本量全部进入同一测量记录。');
   await panel.getByTestId('office-record-metric').click();
-  await capture('05-measure', '全成本度量', '样本标为 designed/受控演示，不作为真实业务成效。');
+  await expect(panel.getByTestId('office-measurement-boundary')).toContainText('measurementStatus=designed');
+  await focus(panel.getByTestId('office-measurement-boundary'));
+  await capture('measure', '15-measure-controlled', '⑤ 度量｜受控样本成功记录', '演示计算结果明确标记 measurementStatus=designed，只验证记录与计算，不作为业务提效证明。');
 
   await panel.getByTestId('office-save').click();
   await page.waitForTimeout(1_000);
@@ -389,10 +468,19 @@ try {
   await page.getByTestId('right-panel-delivery-tab').click();
 
   await panel.getByTestId('office-stage-deliver').click();
+  await focus(panel.getByTestId('office-run-audit'));
+  await capture('deliver', '16-deliver-before-audit', '⑥ 交付｜审核前保持人工门禁', '交付页要求先运行证据审核，再核对真实数据、敏感信息和审批责任。');
   await panel.getByTestId('office-run-audit').click();
+  await expect(panel.getByTestId('office-audit-result')).toContainText('94 / 100');
+  await focus(panel.getByTestId('office-audit-result').locator(':scope > div').first());
+  await capture('deliver', '17-deliver-audit', '⑥ 交付｜准备度审核完成', '非官方准备度建议 94 / 100、low 置信度与形成条件同时展示。');
+  await focus(panel.getByTestId('office-audit-risks'));
+  await capture('deliver', '18-deliver-risks', '⑥ 交付｜风险与证据边界展开', 'effect-not-measured、信息复核和可读性风险保持可见，防止把演示包装成业务成效。');
   await panel.getByTestId('office-export-confirm').check();
   await panel.getByTestId('office-export').click();
-  await capture('06-deliver', '审核导出', '展示准备建议分、effect designed 风险、非官方提示，并导出 manifest。');
+  await expect(panel.getByTestId('office-export-files')).toBeVisible();
+  await focus(panel.getByTestId('office-export-files'));
+  await capture('deliver', '19-deliver-export', '⑥ 交付｜参赛文件与哈希生成成功', 'M01—M06、评委材料和 SHA-256 manifest 真实生成并列出短哈希。');
 
   const replacements = [
     [tempRoot, '<demo-temp-root>'],
@@ -405,6 +493,7 @@ try {
   await copySanitizedJson(join(projectRoot, '.openprism/office-workspace.json'), join(workflowSamplesDir, 'office-workspace.json'), replacements);
   await copySanitizedJson(join(projectRoot, '.openprism/office-workflow.json'), join(workflowSamplesDir, 'office-workflow.json'), replacements);
   await copySanitizedJson(join(projectRoot, 'submission/submission-manifest.json'), join(evidenceDir, 'submission-manifest.json'), replacements);
+  await fs.writeFile(join(outputDir, 'coverage.json'), `${JSON.stringify(coverage, null, 2)}\n`, 'utf8');
 
   const video = page.video();
   await page.close();

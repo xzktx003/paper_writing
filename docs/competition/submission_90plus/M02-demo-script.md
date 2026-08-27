@@ -4,13 +4,14 @@
 
 | 时间 | 操作画面 | 讲稿 | 取证点 |
 | --- | --- | --- | --- |
-| 00:00-00:14 | 打开项目和六阶段工作台 | 这是 OpenPrism Office，可核验的 AI 办公材料工作台。 | 项目名、六阶段导航 |
-| 00:14-00:26 | 收件导入脱敏 DOCX | 原来资料散落在文档和聊天记录中，现在先进入项目账本。 | inbox ready、native-ooxml、来源路径 |
-| 00:26-00:50 | 处理阶段运行计划/配方 | AI 可辅助整理和起草；外部能力缺失时系统明确 unavailable。 | OfficeCLI 外部能力诚实失败态 |
-| 00:50-01:15 | 审阅阶段检索和证据图 | 关键结论必须能回到来源，支持、冲突和缺失都会展示。 | BM25/向量/rerank 分数、support/conflict/missing |
-| 01:15-01:38 | 评论、建议和人工审批 | AI 只给建议，最终采纳由人批准。 | 评论、accepted、approved/published |
-| 01:38-02:02 | 度量阶段填写全成本 | 提效计算包含生成、复核、返工、配置和维护成本；演示样本保持 designed。 | baseline/AI/review/retry/setup/maintenance、effect-not-measured |
-| 02:02-02:28 | 审核、建议分与导出 | 系统显示非官方准备度建议 94、低置信度和风险，并导出 M01-M06、评委说明与 manifest。 | totalGuidanceScore、confidence、risks、submission 文件列表 |
+| 00:00-00:05 | 片头 | 这是 OpenPrism Office，可核验的 AI 办公材料工作台。 | 作品名、办公赛道、成片时长 |
+| 00:05-00:20 | 收件：输入、ready 与解析详情 | DOCX 不只显示“已导入”，还展开段落数、检索分块、字符数和原文摘录。 | `01`—`03` 三张截图、native-ooxml、来源路径、原文摘录 |
+| 00:20-00:38 | 处理：安全计划、OfficeCLI 成功、配方、会议 | OfficeCLI 真实返回 ok / validate；配方进入人工 review，逐字稿形成 1 项决定和 1 项待办。 | `04`—`07` 四张截图、OfficeCLI 1.0.145、review、决定/待办 |
+| 00:38-00:48 | 审阅：检索、证据图与人工建议 | 检索展示来源和分数，三条主张分别形成 support、conflict、missing，未证实提效表述被人工修订。 | `08`—`10` 三张截图、BM25/向量/rerank、accepted |
+| 00:48-00:58 | 审批：人工门禁、批准与发布留痕 | AI 只给建议，review、approved、published 都由人操作并写入本地账本。 | `11`—`13` 三张截图、审批人和时间事件 |
+| 00:58-01:08 | 度量：完整成本字段与受控边界 | 记录生成、复核、返工、配置和维护成本；`measurementStatus=designed` 明确不作为业务提效证明。 | `14`—`15` 两张截图、全成本字段、非业务结论声明 |
+| 01:08-01:18 | 交付：审核、风险、文件与哈希 | 系统显示非官方准备度建议 94、low 置信度和风险，并真实导出 M01-M06 与 SHA-256 manifest。 | `16`—`19` 四张截图、risk、文件列表、短哈希 |
+| 01:18-01:25 | 片尾 | 19 个画面已覆盖输入、执行、结果与风险边界；真实业务成效仍待试点。 | 真实性声明 |
 
 ## 录制要求
 
@@ -20,6 +21,6 @@
 - 不展示 Token、账号、客户名、生产地址、个人信息或未授权截图。
 - 保留原始 WebM/MP4、关键截图、时间戳清单和导出 manifest。
 
-实际成片：优先上传 `evidence/demo/office-demo-submission.mp4`，ffprobe 核验时长为 160.840 秒，1440×960、H.264、yuv420p。成片由 5 秒片头、148.840 秒未经跳剪的真实浏览器操作和 7 秒片尾组成，已烧录六阶段流程字幕、“受控演示数据”标识和“不作为真实业务提效证明”声明。
+实际成片：优先上传 `evidence/demo/office-demo-submission.mp4`，ffprobe 核验时长为 85.76 秒，1440×960、H.264、yuv420p。成片由 5 秒片头、73.76 秒未经跳剪的真实浏览器操作和 7 秒片尾组成，已烧录六阶段流程字幕、“受控演示数据”标识和“不作为真实业务提效证明”声明。
 
-原始证据保留为同目录 `office-demo.mp4` 与 `office-demo.webm`，两者均为 148.840 秒；可编辑字幕见 `office-demo-submission.ass`，逐段解说词见 `office-demo-submission-transcript.md`，关键画面和原始时间戳见 `evidence/demo/timestamps.md`。
+原始证据保留为同目录 `office-demo.mp4` 与 `office-demo.webm`，两者均为 73.76 秒；可编辑字幕见 `office-demo-submission.ass`，逐段解说词见 `office-demo-submission-transcript.md`，19 张关键画面、覆盖率和原始时间戳见 `evidence/demo/coverage.json` 与 `evidence/demo/timestamps.md`。

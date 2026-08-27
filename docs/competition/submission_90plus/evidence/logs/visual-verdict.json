@@ -1,0 +1,14 @@
+{
+  "score": 94,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": [
+    "The product keeps the document canvas visible, concentrating functional evidence in the widened right-side office workbench.",
+    "Long audit and export ledgers require separate screenshots so summaries and detailed rows remain legible."
+  ],
+  "suggestions": [
+    "Keep the 19-frame coverage instead of compressing each stage into a single screenshot.",
+    "Keep captions aligned with the coverage timestamps and preserve the controlled-demo boundary."
+  ],
+  "reasoning": "Inputs, real success states, evidence boundaries, human approval and generated outputs are directly visible. The measurement boundary and low-confidence audit summary were reframed after the first visual review."
+}

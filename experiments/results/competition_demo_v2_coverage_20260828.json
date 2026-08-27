@@ -1,0 +1,23 @@
+{
+  "experiment": "competition-demo-v2-evidence-coverage",
+  "date": "2026-08-28",
+  "purpose": "Replace one-frame-per-stage competition evidence with verified input-execution-result coverage and remove the configured OfficeCLI failure from the primary success path.",
+  "method": {
+    "controlledDemo": true,
+    "stages": 6,
+    "screenshots": 19,
+    "failFastAssertions": true,
+    "officeCliVersion": "1.0.145",
+    "visualPassThreshold": 90
+  },
+  "results": {
+    "successfulStages": 6,
+    "officeCliStatus": "ok",
+    "graphRelations": ["support", "conflict", "missing"],
+    "visualVerdict": 94,
+    "rawVideoSeconds": 73.76,
+    "submissionVideoSeconds": 85.76,
+    "contractTestsPassed": 5
+  },
+  "conclusion": "The replacement demo is materially more complete and no failed primary feature appears in the submission path. Real multi-user business measurements and independent user reproduction remain unverified and must not be fabricated."
+}

@@ -55,6 +55,17 @@ const required = [
   'evidence/demo/office-demo.mp4',
   'evidence/demo/office-demo.webm',
   'evidence/demo/timestamps.md',
+  'evidence/demo/coverage.json',
+  'evidence/demo/03-inbox-details.png',
+  'evidence/demo/05-produce-success.png',
+  'evidence/demo/09-review-graph.png',
+  'evidence/demo/15-measure-controlled.png',
+  'evidence/demo/17-deliver-audit.png',
+  'evidence/demo/19-deliver-export.png',
+  'evidence/logs/officecli-verification.txt',
+  'evidence/logs/competition-demo-contract.txt',
+  'evidence/logs/media-probe.json',
+  'evidence/logs/visual-verdict.json',
   'evidence/E05-quality-notes.md',
   'evidence/E06-reuse-assets.md',
 ];
@@ -62,7 +73,7 @@ const paths = new Set(files.map(file => file.path));
 const missingRequiredFiles = required.filter(path => !paths.has(path));
 
 const manifest = {
-  schema: 'openprism-office-competition-submission-v1',
+  schema: 'openprism-office-competition-submission-v2',
   generatedAt: new Date().toISOString(),
   ruleVersion: 'AI材料审核与评分规则@2026-08-27',
   officialJudgement: false,
@@ -70,7 +81,7 @@ const manifest = {
   readiness: missingRequiredFiles.length === 0 ? 'technical-package-complete' : 'missing-required-files',
   missingRequiredFiles,
   evidenceBoundary: {
-    demonstrated: '代码、测试、连续浏览器录屏和受控实验支持产品可运行与流程变化。',
+    demonstrated: '代码、测试、19 张分步截图、连续浏览器录屏和受控实验支持产品可运行、OfficeCLI 成功与流程变化。',
     notDemonstrated: '尚无企业多用户/多周期试点，不能据此声称稳定生产率、真实落地或官方 90 分。',
   },
   unresolvedGaps: [

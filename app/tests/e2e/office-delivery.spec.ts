@@ -109,7 +109,7 @@ test('office operations complete intake, production, review, approval, delivery,
     await panel.getByLabel('采纳次数').fill('8');
     await panel.getByLabel('拒绝次数').fill('2');
     await panel.getByTestId('office-record-metric').click();
-    await expect(panel.getByTestId('office-efficiency-summary')).toContainText('sufficient');
+    await expect(panel.getByTestId('office-efficiency-summary')).toContainText('字段完整');
     await expect(panel.getByTestId('office-efficiency-summary')).toContainText('38');
 
     await panel.getByTestId('office-save').click();

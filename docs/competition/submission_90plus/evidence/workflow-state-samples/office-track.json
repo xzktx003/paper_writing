@@ -96,7 +96,7 @@
     "sampleSize": 1,
     "measurementStatus": "designed",
     "unit": "受控演示样本",
-    "period": "2026-08-27 录屏演示",
+    "period": "2026-08-28 录屏演示",
     "taskFrequency": "真实频率待试点补充",
     "coveragePeople": 1,
     "calculationNotes": "演示中保留全成本字段，但 measurementStatus=designed；真实提效需另行用业务样本复算。"
@@ -168,7 +168,7 @@
     }
   ],
   "finals": {
-    "demoScript": "收件导入 DOCX；处理失败态；审阅证据；人工审批；记录 designed 成效字段；审核导出并展示准备建议分和风险。",
+    "demoScript": "收件导入 DOCX 并展开解析证据；执行 OfficeCLI 校验成功；检索和证据图显示支持/冲突/缺口；人工审批；记录 designed 成效字段；审核导出并展示准备建议分和风险。",
     "questions": [
       "如何避免无依据数字？",
       "如何复算提效？",
@@ -235,5 +235,5 @@
       ]
     }
   },
-  "updatedAt": "2026-08-27T13:52:01.741Z"
+  "updatedAt": "2026-08-27T16:37:05.402Z"
 }

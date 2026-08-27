@@ -1,0 +1,8 @@
+OpenPrism Office competition demo evidence contract
+Date: 2026-08-28 (Asia/Shanghai)
+Command: npm exec -- vitest run tests/officeTrackUiContract.test.mjs tests/competitionDemoEvidenceContract.test.mjs
+Result: PASS
+Test files: 2 passed
+Tests: 5 passed
+Coverage contract: version 2; controlledDemo=true; OfficeCLI status=ok; six stages successful; every stage has at least two screenshots; every screenshot exceeds 50 KB.
+Evidence boundary: automated tests verify code and controlled-demo artifacts, not real business adoption or an official competition score.

@@ -27,6 +27,17 @@ const requiredFiles = [
   'evidence/demo/office-demo.mp4',
   'evidence/demo/office-demo.webm',
   'evidence/demo/timestamps.md',
+  'evidence/demo/coverage.json',
+  'evidence/demo/03-inbox-details.png',
+  'evidence/demo/05-produce-success.png',
+  'evidence/demo/09-review-graph.png',
+  'evidence/demo/15-measure-controlled.png',
+  'evidence/demo/17-deliver-audit.png',
+  'evidence/demo/19-deliver-export.png',
+  'evidence/logs/officecli-verification.txt',
+  'evidence/logs/competition-demo-contract.txt',
+  'evidence/logs/media-probe.json',
+  'evidence/logs/visual-verdict.json',
   'evidence/E05-quality-notes.md',
   'evidence/E06-reuse-assets.md',
   'evidence/workflow-state-samples/office-track.json',
@@ -64,8 +75,12 @@ describe('office competition submission package', () => {
     expect(transcript).toContain('不作为真实业务提效证明');
     expect((await stat(join(packageRoot, 'evidence/demo/office-demo-poster.jpg'))).size).toBeGreaterThan(50_000);
     const timestamps = await readFile(join(packageRoot, 'evidence/demo/timestamps.md'), 'utf8');
-    expect(timestamps).toMatch(/02:(?:[2-5]\d)/);
+    expect(timestamps).toContain('19-deliver-export.png');
     expect(timestamps).toContain('受控演示');
+    const coverage = JSON.parse(await readFile(join(packageRoot, 'evidence/demo/coverage.json'), 'utf8'));
+    expect(coverage.officeCli.status).toBe('ok');
+    expect(coverage.stages).toHaveLength(6);
+    expect(coverage.stages.flatMap(stage => stage.screenshots)).toHaveLength(19);
   });
 
   it('keeps the complete package manifest synchronized with file bytes', async () => {

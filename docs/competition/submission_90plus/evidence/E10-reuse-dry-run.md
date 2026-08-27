@@ -8,7 +8,7 @@
 
 - 新项目由模板创建，不复用已有业务状态。
 - DOCX 由内置 OOXML 解析器读取并进入 inbox。
-- 未配置 OfficeCLI 时明确显示 unavailable，没有伪造 Office 输出。
+- 失败封闭回归仍验证未配置 OfficeCLI 时显示 unavailable；本次主演示另用已核验的 OfficeCLI 1.0.145 返回 `ok / validate`，不再把配置缺失当作主要功能结果。
 - 检索、证据图、建议接受、人工审批、全成本字段和 submission 导出全部可操作。
 - 运行结束后清理临时项目，保留连续录屏、关键截图和脱敏状态样例。
 

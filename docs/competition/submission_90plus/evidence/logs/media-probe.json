@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-08-28T00:38:00+08:00",
+  "rawContinuousDemo": {
+    "path": "evidence/demo/office-demo.mp4",
+    "durationSeconds": 73.76,
+    "bytes": 2005173,
+    "codec": "h264",
+    "width": 1440,
+    "height": 960,
+    "pixelFormat": "yuv420p"
+  },
+  "captionedSubmission": {
+    "path": "evidence/demo/office-demo-submission.mp4",
+    "durationSeconds": 85.76,
+    "bytes": 2650098,
+    "codec": "h264",
+    "width": 1440,
+    "height": 960,
+    "pixelFormat": "yuv420p"
+  },
+  "competitionLimitSeconds": 180,
+  "withinLimit": true
+}

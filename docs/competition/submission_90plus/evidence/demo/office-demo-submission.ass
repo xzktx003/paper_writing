@@ -18,14 +18,14 @@ Style: Watermark,Noto Sans SC Thin,23,&H00E2E8F0,&H00E2E8F0,&H300F172A,&H300F172
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.35,0:00:04.70,Title,,0,0,0,,{\fad(250,250)\pos(720,390)}OpenPrism Office
 Dialogue: 0,0:00:00.70,0:00:04.70,Lead,,0,0,0,,{\fad(250,250)\pos(720,510)}可核验的 AI 办公材料工作台
-Dialogue: 0,0:00:01.10,0:00:04.70,Lead,,0,0,0,,{\fad(250,250)\pos(720,575)}办公赛道 · 2分41秒连续实操演示
-Dialogue: 0,0:00:05.00,0:02:33.84,Watermark,,0,0,0,,办公赛道参赛实操 · 受控演示数据
-Dialogue: 0,0:00:05.00,0:00:30.00,Subtitle,,0,0,0,,{\fad(180,180)}① 收件｜脱敏 DOCX 进入项目账本\N内置 OOXML 解析显示 ready，来源与解析器可以回查
-Dialogue: 0,0:00:30.00,0:00:54.00,Subtitle,,0,0,0,,{\fad(180,180)}② 处理｜外部能力缺失时诚实失败\NOfficeCLI 未配置显示 unavailable，不伪造处理结果
-Dialogue: 0,0:00:54.00,0:01:19.00,Subtitle,,0,0,0,,{\fad(180,180)}③ 审阅｜检索、证据图与人工建议\NBM25 + 哈希向量返回分数，主张标记 support / conflict / missing
-Dialogue: 0,0:01:19.00,0:01:42.00,Subtitle,,0,0,0,,{\fad(180,180)}④ 审批｜AI 建议不直接发布\N评论与建议由人接受；approved / published 仅表示本地审批状态
-Dialogue: 0,0:01:42.00,0:02:06.00,Subtitle,,0,0,0,,{\fad(180,180)}⑤ 度量｜按全成本记录提效\N生成、复核、返工、配置、维护全部纳入；演示样本保持 designed
-Dialogue: 0,0:02:06.00,0:02:33.84,Subtitle,,0,0,0,,{\fad(180,180)}⑥ 交付｜生成可核验参赛材料\N非官方准备度建议 94 / 100（low），并导出 M01—M06 与 SHA-256 manifest
-Dialogue: 0,0:02:34.10,0:02:40.55,Title,,0,0,0,,{\fad(250,250)\pos(720,390)}演示结论
-Dialogue: 0,0:02:34.10,0:02:40.55,Lead,,0,0,0,,{\fad(250,250)\pos(720,510)}技术链路、人工审批与复用资产已经跑通
-Dialogue: 0,0:02:34.10,0:02:40.55,Lead,,0,0,0,,{\fad(250,250)\pos(720,575)}受控演示数据不作为真实业务提效证明
+Dialogue: 0,0:00:01.10,0:00:04.70,Lead,,0,0,0,,{\fad(250,250)\pos(720,575)}办公赛道 · 1分25秒连续实操演示
+Dialogue: 0,0:00:05.00,0:01:18.20,Watermark,,0,0,0,,办公赛道参赛实操 · 受控演示数据
+Dialogue: 0,0:00:05.00,0:00:20.00,Subtitle,,0,0,0,,{\fad(180,180)}① 收件｜DOCX 输入、成功状态与解析证据\N展开段落、检索分块、字符数和原文摘录，不只展示 ready 标签
+Dialogue: 0,0:00:20.00,0:00:38.00,Subtitle,,0,0,0,,{\fad(180,180)}② 处理｜OfficeCLI 真执行成功\N安全计划、ok / validate、配方审阅门禁、会议决定与待办连续入镜
+Dialogue: 0,0:00:38.00,0:00:48.00,Subtitle,,0,0,0,,{\fad(180,180)}③ 审阅｜来源、分数与关系完整可见\NBM25 + 哈希向量 + Rerank，并区分 support / conflict / missing
+Dialogue: 0,0:00:48.00,0:00:58.00,Subtitle,,0,0,0,,{\fad(180,180)}④ 审批｜人工作出采纳与发布决定\Naccepted、approved、published 均写入本地审批账本
+Dialogue: 0,0:00:58.00,0:01:08.00,Subtitle,,0,0,0,,{\fad(180,180)}⑤ 度量｜全成本记录但不冒充业务成效\NmeasurementStatus=designed，只验证计算和记录功能
+Dialogue: 0,0:01:08.00,0:01:18.20,Subtitle,,0,0,0,,{\fad(180,180)}⑥ 交付｜审核、风险、文件与哈希均生成\N非官方建议 94 / 100（low），导出 M01—M06 和 SHA-256 manifest
+Dialogue: 0,0:01:18.35,0:01:24.85,Title,,0,0,0,,{\fad(250,250)\pos(720,390)}演示结论
+Dialogue: 0,0:01:18.35,0:01:24.85,Lead,,0,0,0,,{\fad(250,250)\pos(720,510)}19 个画面覆盖输入、执行、结果与风险边界
+Dialogue: 0,0:01:18.35,0:01:24.85,Lead,,0,0,0,,{\fad(250,250)\pos(720,575)}受控演示数据不作为真实业务提效证明

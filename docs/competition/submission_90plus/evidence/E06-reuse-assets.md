@@ -17,7 +17,7 @@
 ## 技术复用结果
 
 - 演示从新的临时数据目录创建项目，没有复用旧项目状态。
-- 仓库内 DOCX 通过内置 OOXML 收件；OfficeCLI 未配置时明确显示 unavailable。
+- 仓库内 DOCX 通过内置 OOXML 收件；当前受控演示中的 OfficeCLI 1.0.145 已真实返回 `ok / validate`，未配置环境仍明确显示 unavailable。
 - 模板项目完成收件、处理、审阅、审批、度量、交付，并生成材料 manifest。
 - 结束后临时项目被清理，只留下脱敏状态样本、截图和视频。
 
