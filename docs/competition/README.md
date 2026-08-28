@@ -20,8 +20,8 @@
 | 状态留痕 | 项目内 `.openprism/office-track.json` |
 | V2 收件/检索/会议留痕 | 项目内 `.openprism/office-workspace.json` |
 | V2 配方/运行/审阅/审批/遥测留痕 | 项目内 `.openprism/office-workflow.json` |
-| Office 材料能力 | 内置 DOCX/PPTX/XLSX OOXML 抽取；可选 OfficeCLI 创建/编辑/合并/渲染/验证 |
-| 证据关系 | BM25 + 哈希向量 + rerank 分数分解，以及 support/conflict/missing 图 |
+| Office 材料能力 | 可读取受控 Word、PPT、表格和文本示例；复杂版式或外部工具不可用时明确提示 |
+| 证据关系 | 把“有依据、相互矛盾、缺少依据”的材料关系展示给人工复核 |
 | 会议证据 | 用户提供的带时间戳逐字稿、已有 speaker 标签、候选决定和待办 |
 | 参赛导出包 | 项目内 `submission/` |
 | 审核建议 | `/api/projects/:id/office-track/audit` |
@@ -94,4 +94,13 @@ npm run competition:pdf
 npm run competition:manifest
 ```
 
-演示脚本会启动隔离服务，创建 `office-track-writing` 项目，复制仓库内 DOCX 示例，录制浏览器操作，并在 `docs/competition/submission_90plus/evidence/demo/` 输出原始 WebM、H.264 MP4、截图、时间戳和脱敏状态样例；视频封装脚本再生成 10 张输入/人工流程/前后对照 PPT、6 段真实实操、中文神经语音、57 条逐句烧录字幕和 AAC 音轨的 166 秒 1080p H.264 提交成片，实操固定说明典型人工做法、实际输入、实际输出和本步优势，同时保留可编辑 SRT、完整逐字稿、讲解页清单和 JPG 封面；PDF 脚本会把 M01-M06、评委说明和初决赛准备材料合成为 A4 合订本；manifest 脚本为完整静态提交包生成 SHA-256 清单并核对必需文件。录屏使用受控演示数据，只证明产品链路跑通，不作为真实业务提效证明。
+演示资产现在按两支视频组织，主线不再用技术术语堆功能，而是用办公人员能理解的“人工旧流程、工具新流程、逐步实操、成功结果、证据边界”来讲。
+
+| 视频 | 路径 | 适用目的 | 时长与字幕 | 边界 |
+| --- | --- | --- | --- | --- |
+| A 通用办公白话动画 + 六步实操 | `docs/competition/submission_90plus/evidence/demo/office-demo-submission.mp4` | 初赛/通用评审主视频：讲清收件、处理、审阅、审批、度量、交付六步 | 163.040 秒，<3分钟；`office-demo-submission.srt` 提供 77 条逐句字幕，`office-demo-submission-transcript.md` 提供逐字稿 | 只证明受控演示链路跑通，真实节省百分比待试点 |
+| B 论文 / Word / PPT 白话专题 | `docs/competition/submission_90plus/evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4` | 面向完全不懂技术的办公/科研材料评委：解释写论文、整理 Word、准备 PPT 如何共用资料 | 148.174 秒，<3分钟；`paper-word-ppt-submission.srt` 提供 64 条逐句字幕，逐字稿同目录 | 只说明可观察的工作动作减少，不承诺论文录用、最终版式或生产提效 |
+
+结构量化只表示示例工作动作的变化：`4处→1任务`、`学术常见6处→1项目`、`重新整理2次→1次后复用`。这些不是实测时间、生产率或获奖承诺；真实节省百分比必须等同口径试点后填写。
+
+演示脚本会启动隔离服务，创建 `office-track-writing` 项目，复制仓库内 DOCX 示例，录制浏览器操作，并在 `docs/competition/submission_90plus/evidence/demo/` 输出原始 WebM、H.264 MP4、截图、时间戳和脱敏状态样例；PDF 脚本会把 M01-M06、评委说明和初决赛准备材料合成为 A4 合订本；manifest 脚本为完整静态提交包生成 SHA-256 清单并核对必需文件。录屏使用受控演示数据，只证明产品链路跑通，不作为真实业务提效证明。

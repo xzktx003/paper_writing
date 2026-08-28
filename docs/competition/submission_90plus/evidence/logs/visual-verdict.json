@@ -1,17 +1,29 @@
 {
-  "score": 96,
+  "threshold": 90,
   "verdict": "pass",
   "category_match": true,
+  "results": {
+    "generalOfficeExplainer": {
+      "score": 93,
+      "verdict": "pass",
+      "reasoning": "真实 UI 操作承接白话解释，并形成总述、六步实操和量化总结；非技术观众能看懂以前怎么做、现在怎么做以及改进在哪里。"
+    },
+    "paperWordPptExplainer": {
+      "score": 91,
+      "verdict": "pass",
+      "reasoning": "以前/现在双栏、正在发生提示、七阶段流动动画和 6 处到 1 个项目的量化对照，使论文、Word、PPT 的价值能够被非技术观众直接理解。"
+    }
+  },
   "differences": [
-    "Ten PPT pages and six operation chapters form a clear input-to-output and before-to-after narrative.",
-    "Each operation rail distinguishes the typical manual method, actual input, actual output and mechanism of advantage at readable scale.",
-    "The measurement chapter freezes on the complete designed success record, and the delivery chapter begins only after the real delivery page is stable.",
-    "Sentence-level Chinese subtitles stay inside the dedicated bottom subtitle zone without covering the product recording or explanation rail."
+    "两支新版视频均从旧版静态术语页改为白话流程动画。",
+    "通用办公片保留六段真实操作，右侧只解释以前做什么、现在怎么做和最后得到什么。",
+    "论文专题片使用 6 处到 1 个项目、重新整理 2 次到整理 1 次后复用作为结构量化，不冒充实测生产率。",
+    "字幕已增大并修正深色描边，长句拆分为不超过 23 个字符的逐句字幕。"
   ],
   "suggestions": [
-    "Keep the 23-character subtitle limit, dedicated subtitle safe area and four-part operation explanation rail.",
-    "Keep the 19-frame raw evidence coverage alongside the narrated presentation video.",
-    "Add quantitative productivity claims only after a real same-scope pilot; do not substitute controlled fixtures."
+    "最终上传保持当前 1080p 码率，避免真实 UI 小字在平台二次压缩后失真。",
+    "保留节省分钟数待真实任务测量的真实性边界。",
+    "未来真实试点可加入同一任务的人工与工具计时录像。"
   ],
-  "reasoning": "The final 165.791-second video explicitly explains accepted inputs, concrete outputs, the typical manual baseline and the mechanisms of efficiency improvement while retaining six verified real-product operation chapters. Representative frames show no missing glyphs, blocked operations, blank transition freeze, chapter mismatch or subtitle obstruction."
+  "reasoning": "两支视频均超过 90 分视觉阈值，已经从技术术语展示转为可理解的人工前后对照与结果演示。"
 }

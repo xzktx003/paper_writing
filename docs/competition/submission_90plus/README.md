@@ -11,7 +11,7 @@
 | 材料 | 文件 | 状态 | 证据边界 |
 | --- | --- | --- | --- |
 | M01 作品方案 | `M01-proposal.md` | 已完成 | 产品、代码和测试支持 |
-| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo-submission.mp4`（讲解成片）、`office-demo-submission.srt`、`slides/`、`office-demo.mp4`/`office-demo.webm`（原始证据）、`coverage.json` | 已核验：165.791 秒配音成片、10 张 PPT、6 段实操、57 条逐句字幕、73.76 秒原始连续操作、19 张截图 | 具体输入/输出、典型人工流程和效率机制均有讲解；真实操作、OfficeCLI 成功与真实性边界可回查 |
+| M02 三分钟演示 | `M02-demo-script.md`、A 视频 `evidence/demo/office-demo-submission.mp4`、B 视频 `evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4`、各自 SRT/逐字稿/封面、`office-demo.mp4`/`office-demo.webm`（原始证据）、`coverage.json` | 已核验：A 163.040 秒、77 条逐句字幕；B 148.174 秒、64 条逐句字幕；两支均少于 3 分钟；原始连续操作 73.76 秒，19 张截图 | A 用于通用办公主评审，B 用于论文/Word/PPT 白话专题；只证明受控演示链路和示例动作减少，真实节省百分比待试点 |
 | M03 复用价值 | `M03-reuse-statement.md` | 已完成 | 模板、SOP、Skill 支持 |
 | M04 作品意义 | `M04-significance.md` | 已完成 | 方案与流程支持 |
 | M05 效果证明 | `M05-effect-evidence.md` | 受控证据已完成；业务试点待实际使用 | 不把技术测试写成企业提效 |
@@ -34,12 +34,16 @@
 ## 3. 推荐提交顺序
 
 1. 提交 M01-M06、评委指南、复用资产和哈希清单。
-2. 优先将 H.264 `evidence/demo/office-demo-submission.mp4` 作为三分钟内实操演示附件；`office-demo.mp4` 和 `office-demo.webm` 保留为未经剪辑的连续录屏证据。
+2. 优先将 A 视频 H.264 `evidence/demo/office-demo-submission.mp4` 作为通用办公三分钟主视频；如平台允许补充材料，再提交 B 视频 `evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4`，用于解释论文、Word、PPT 共用资料的办公场景。`office-demo.mp4` 和 `office-demo.webm` 保留为未经剪辑的连续录屏证据。
 3. 将关键截图、受控实验摘要和测试证据作为 M05 附件。
 4. 若提交前已有真实业务试点，只向 `pilot-measurement-register.csv` 写入可回查的原始记录，并同步更新 M05；不得用演示 fixture 替代。
 5. 提交前执行 `reuse/operator-checklist.md` 的脱敏、可播放和哈希核对。
 
-合订本可通过 `npm run competition:pdf` 重建；连续演示可通过 `npm run competition:demo` 重录；`npm run competition:video` 会用原始 MP4 生成 10 张 PPT 讲解页、中文神经语音、逐句 SRT、六段输入/输出/人工对照实操解释、166 秒 H.264/AAC 成片及封面；最后运行 `npm run competition:manifest` 重建完整哈希清单。
+合订本可通过 `npm run competition:pdf` 重建；连续演示可通过 `npm run competition:demo` 重录；视频脚本会生成少于 3 分钟的 H.264/AAC 成片、可编辑逐句 SRT、完整逐字稿和封面。A 视频主讲通用办公六步实操，B 视频主讲论文/Word/PPT 白话专题。最后运行 `npm run competition:manifest` 重建完整哈希清单。
+
+## 5. 示例量化口径
+
+材料中出现的数字只表示画面里可观察的示例工作动作：`4处→1任务`、`学术常见6处→1项目`、`重新整理2次→1次后复用`。它们不是实测耗时、生产率或 ROI。真实节省百分比必须由同类真实任务的基线、AI 使用、人工复核、返工和维护时间共同测量后再填写。
 
 ## 4. 90+ 冲刺逻辑
 

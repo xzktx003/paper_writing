@@ -91,7 +91,7 @@ const html = `<!doctype html>
       <h2>可核验的 AI 办公材料工作台</h2>
     </div>
     <div class="cover-note">本合订本汇总 M01-M06、评委导航及初决赛准备材料。技术演示、受控实验和真实业务证据严格分层；准备度建议不代表官方评分或获奖承诺。</div>
-    <div class="meta"><span>申报赛道</span><strong>办公场景</strong><span>材料版本</span><strong>2026-08-28 replacement-v2</strong><span>视频证据</span><strong>evidence/demo/office-demo-submission.mp4</strong><span>完整性校验</span><strong>submission-manifest.json</strong></div>
+    <div class="meta"><span>申报赛道</span><strong>办公场景</strong><span>材料版本</span><strong>2026-08-28 replacement-v4</strong><span>视频证据 A</span><strong>evidence/demo/office-demo-submission.mp4</strong><span>视频证据 B</span><strong>evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4</strong><span>完整性校验</span><strong>submission-manifest.json</strong></div>
   </section>
   <section class="toc"><h1>材料目录</h1><ol>${tableOfContents}</ol></section>
   ${renderedSections.join('\n')}

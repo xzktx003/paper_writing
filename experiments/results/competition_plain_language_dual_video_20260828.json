@@ -1,0 +1,50 @@
+{
+  "experimentId": "competition-plain-language-dual-video-20260828",
+  "date": "2026-08-28",
+  "purpose": "验证白话流程动画、真实办公实操和论文/Word/PPT 专题讲解，是否比静态术语页更容易让非技术观众理解产品价值。",
+  "method": {
+    "redGreenContract": [
+      "先要求两支独立视频、独立字幕、逐字稿、封面和十张讲解页，旧产物因第二支视频缺失而失败。",
+      "再禁止旁白出现解析器名、命令名、英文状态、文件校验算法和材料编号等技术术语。",
+      "最后要求通用办公片保留六段真实操作，论文专题片明确写论文、Word、PPT 的输入、输出和人工边界。"
+    ],
+    "visualDesign": [
+      "每页以七阶段动画依次点亮输入、处理和输出。",
+      "每页固定并排显示以前怎么做与现在改成什么。",
+      "通用办公片使用 4 个工作位置到 1 个任务的结构对照。",
+      "论文专题片使用 6 个工作位置到 1 个项目、重新整理 2 次到整理 1 次后复用的结构对照。"
+    ],
+    "evidenceBoundary": "上述数字来自示例工作流中的位置和重复整理动作数量，不是实测时间或生产率；节省分钟数和百分比仍需真实用户任务测量。"
+  },
+  "parameters": {
+    "resolution": "1920x1080",
+    "frameRate": 25,
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "voiceRate": "+24%",
+    "subtitleMaxCharacters": 23,
+    "visualPassThreshold": 90,
+    "maxSecondsPerVideo": 180
+  },
+  "results": {
+    "firstAcademicVisualReview": {
+      "score": 78,
+      "verdict": "revise",
+      "finding": "仍像卡片逐项亮起，人工前后对照和结构量化不足。"
+    },
+    "generalOfficeVideo": {
+      "durationSeconds": 163.04,
+      "bytes": 7770180,
+      "subtitleCues": 77,
+      "visualScore": 93,
+      "visualVerdict": "pass"
+    },
+    "paperWordPptVideo": {
+      "durationSeconds": 148.174,
+      "bytes": 6220635,
+      "subtitleCues": 64,
+      "visualScore": 91,
+      "visualVerdict": "pass"
+    }
+  },
+  "conclusion": "白话动词、人工与工具同屏对照、可见动作数量变化和分阶段流动动画，显著改善了非技术观众对产品价值的理解。两支视频均通过 90 分视觉阈值，但真实节省时间仍需业务试点。"
+}

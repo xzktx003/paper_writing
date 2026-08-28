@@ -24,7 +24,7 @@
 
 ### 主要扣分风险
 
-- 已有 165.791 秒 PPT+配音+逐句字幕讲解成片、73.76 秒原始连续受控录屏及 19 张分步截图，但它们不替代真实业务样本。
+- 已有 163.040 秒通用办公白话动画+配音+逐句字幕成片、148.174 秒论文/Word/PPT 专题成片、73.76 秒原始连续受控录屏及 19 张分步截图，但它们不替代真实业务样本。
 - 还没有真实样本量、统计周期和基线耗时。
 - 还没有质量指标，例如错误数、返工轮次、审批通过情况。
 - 还没有真实用户或岗位连续使用记录。
@@ -33,7 +33,7 @@
 
 | 证据 | 最低要求 | 路径 |
 | --- | --- | --- |
-| 演示录屏 | 165.791 秒讲解成片先展示典型人工流程和系统输入，再逐步解释六阶段的具体输入/输出与优势，最后做前后对照、成果、效率机制、推广和边界总结；原始连续操作 73.76 秒 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`slides/`（10 张提交讲解材料）、`office-demo.mp4`/`office-demo.webm`（原始版）、`coverage.json`（19 帧覆盖） |
+| 演示录屏 | A 视频 163.040 秒：通用办公白话动画 + 收件、处理、审阅、审批、度量、交付六步实操；B 视频 148.174 秒：论文/Word/PPT 白话专题；两支均少于 3 分钟并提供逐句字幕；原始连续操作 73.76 秒 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4`、`paper-word-ppt-submission.srt`、`office-demo.mp4`/`office-demo.webm`、`coverage.json` |
 | 效果表 | 至少 3 个同类任务，记录全成本耗时 | `evidence/E05-effect-measurement.csv` |
 | 质量说明 | 记录事实错误、无证据主张、返工轮次和审批结果 | `evidence/E05-quality-notes.md` |
 | 版本和输出 | 提供脱敏输入、输出、manifest | `evidence/submission-manifest.json` |
@@ -78,6 +78,7 @@
 
 - 哈希向量不应宣传为神经 embedding。
 - 未配置 OfficeCLI 时，不应宣传完整 Office 版式编辑。
+- 视频里的 `4处→1任务`、`学术常见6处→1项目`、`重新整理2次→1次后复用` 只表示示例工作动作结构变化；真实节省百分比、生产率提升和 ROI 均待试点测量。
 - 若演示只展示普通 AI 写作，创新性证据会变弱。
 
 建议证据路径：`evidence/E04-red-green-tests.md`、`evidence/demo/office-demo.webm`。

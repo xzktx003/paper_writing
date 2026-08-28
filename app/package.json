@@ -31,6 +31,8 @@
     "check:full": "npm run check && npm run test:integration && npm run test:e2e",
     "competition:demo": "node scripts/competition-office-demo.mjs",
     "competition:video": "node scripts/build-competition-application-video.mjs",
+    "competition:video:office": "cross-env COMPETITION_VIDEO_VARIANT=office node scripts/build-competition-application-video.mjs",
+    "competition:video:paper": "cross-env COMPETITION_VIDEO_VARIANT=paper node scripts/build-competition-application-video.mjs",
     "competition:manifest": "node scripts/build-competition-manifest.mjs",
     "competition:pdf": "node scripts/build-competition-submission-pdf.mjs",
     "skills:sync": "node scripts/sync-open-source-skills.mjs",

@@ -9,10 +9,10 @@
 | 时间 | 画面 | 评委应看到的能力 | 证据 |
 | --- | --- | --- | --- |
 | 00:00-00:20 | 打开项目和交付面板 | 正式工作台入口，不是静态原型 | `evidence/demo/office-demo.webm` |
-| 00:20-00:45 | 导入 DOCX/PPTX/XLSX 或文本材料 | 收件箱解析、来源路径、可读性、parser | `evidence/workflow-state-samples/` |
-| 00:45-01:10 | 输入一条查询 | BM25、hashed-vector、rerank 分数分解 | `evidence/E04-red-green-tests.md` |
-| 01:10-01:35 | 生成证据图 | support、conflict、missing 和 coverage | `evidence/E04-red-green-tests.md` |
-| 01:35-01:55 | 导入会议逐字稿 | timestamp evidence、decision、action item | `evidence/demo/office-demo.webm` |
+| 00:20-00:45 | 导入 Word、PPT、表格或文本材料 | 收件箱记录来源、可读性和内容摘录 | `evidence/workflow-state-samples/` |
+| 00:45-01:10 | 输入一条查询 | 系统解释为什么找到这些资料 | `evidence/E04-red-green-tests.md` |
+| 01:10-01:35 | 生成证据图 | 展示有依据、相互矛盾、缺少依据的材料关系 | `evidence/E04-red-green-tests.md` |
+| 01:35-01:55 | 导入会议逐字稿 | 提取带时间点的决定和待办 | `evidence/demo/office-demo.webm` |
 | 01:55-02:20 | 查看评论/建议/审批 | AI 建议不直接发布，人工确认后采纳 | `evidence/E09-approval-log.md` |
 | 02:20-02:45 | 填写效果字段 | 全成本口径，不虚构提效比例 | `evidence/E05-effect-measurement.csv` |
 | 02:45-03:00 | 导出 submission 和 manifest | 交付包完整、文件 hash 可核验 | `evidence/submission-manifest.json` |
@@ -23,6 +23,9 @@
 - 不展示 Token、账号、内部地址或客户信息。
 - 不把 Demo 数据说成真实平均效果。
 - 若 OfficeCLI 或 OCR 未配置，应展示 unavailable/fallback，而不是跳过。
+- 若谈到效率，只说示例动作变化：`4处→1任务`、`学术常见6处→1项目`、`重新整理2次→1次后复用`；不要说真实节省百分比，除非已有试点原始记录。
+
+可用视频：A `evidence/demo/office-demo-submission.mp4` 是 163.040 秒通用办公主视频，含白话动画、六步实操和 77 条逐句字幕；B `evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4` 是 148.174 秒论文/Word/PPT 专题，含 64 条逐句字幕。两支都少于 3 分钟。
 
 ## 2. 决赛附加分准备
 

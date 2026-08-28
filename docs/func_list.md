@@ -25,7 +25,7 @@
 - 导出在人工确认后生成 M01—M06、九节评委说明、初赛建议分与空白评分表、决赛准备包、附加分说明、90+ 准备总包、评分证据矩阵、演示取证计划、试点测量登记表、评委问答、合规清单和 SHA-256 manifest；导出使用临时文件原子替换。
 - 来源登记与生成物严格分离：固定 `submission/*` 产物不能反向登记为来源，防止导出覆盖原材料或形成自证循环；状态和来源不变时重复导出保持内容哈希稳定。
 - 产品规格、规则矩阵、交付架构和参赛准备手册位于 `docs/office_track_*.md` 与 `docs/competition/`。
-- 参赛材料新增 `docs/competition/submission_90plus/` 高分提交包、隔离录屏脚本、讲解成片脚本、A4 PDF 合订脚本和静态包哈希脚本；`npm run competition:demo` 现在先验证 OfficeCLI 可执行文件与真实 `ok / validate` 结果，再连续执行 DOCX 解析、配方、会议提取、混合检索、support/conflict/missing 证据图、人工建议、审批、受控度量、审核和导出，生成原始 WebM/H.264 MP4、19 张分步截图、`coverage.json`、时间戳和脱敏状态样例；任一关键成功断言失败即停止录制。`npm run competition:video` 以原始录屏为证据底片，生成 10 张 1080p PPT 讲解页、6 段带“典型人工做法/实际输入/实际输出/本步优势”解释栏的真实操作、中文神经语音、最多 23 字的 57 条逐句 SRT、烧录字幕、逐字稿与封面，并验证 120—180 秒、H.264/AAC 双声道规格；PPT 单列输入类型、人工旧流程、前后流程、具体输出与效率机制，没有真实样本时不宣称固定提效比例；`npm run competition:pdf` 合并 M01-M06、评委说明和初决赛准备材料，`npm run competition:manifest` 核对必需文件并生成 SHA-256 清单；受控演示数据不冒充真实业务成效。
+- 参赛材料新增 `docs/competition/submission_90plus/` 高分提交包、隔离录屏脚本、讲解成片脚本、A4 PDF 合订脚本和静态包哈希脚本；`npm run competition:demo` 连续执行受控 Word 导入、材料处理、会议提取、依据/冲突/缺口审阅、人工建议、审批、受控度量、审核和导出，生成原始 WebM/H.264 MP4、19 张分步截图、`coverage.json`、时间戳和脱敏状态样例，任一关键成功断言失败即停止录制。演示资产分为两支：A 通用办公白话动画 + 六步实操 `docs/competition/submission_90plus/evidence/demo/office-demo-submission.mp4`（163.040 秒、77 条逐句字幕），B 论文/Word/PPT 白话专题 `docs/competition/submission_90plus/evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4`（148.174 秒、64 条逐句字幕）。两支均少于 3 分钟，并提供可编辑 SRT、逐字稿和封面；`npm run competition:pdf` 合并 M01-M06、评委说明和初决赛准备材料，`npm run competition:manifest` 核对必需文件并生成 SHA-256 清单；受控演示数据不冒充真实业务成效。材料中的 `4处→1任务`、`学术常见6处→1项目`、`重新整理2次→1次后复用` 只表示示例工作动作结构变化，真实节省百分比待试点。
 
 ## Paper Agent 安全边界（2026-07-22）
 

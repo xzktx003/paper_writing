@@ -24,6 +24,21 @@ const requiredFiles = [
   'evidence/demo/office-demo-submission.srt',
   'evidence/demo/office-demo-submission-transcript.md',
   'evidence/demo/presentation-slides.json',
+  'evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4',
+  'evidence/demo/paper-word-ppt/paper-word-ppt-submission.srt',
+  'evidence/demo/paper-word-ppt/paper-word-ppt-submission-transcript.md',
+  'evidence/demo/paper-word-ppt/paper-word-ppt-poster.jpg',
+  'evidence/demo/paper-word-ppt/presentation-slides.json',
+  'evidence/demo/paper-word-ppt/slides/01-problem.png',
+  'evidence/demo/paper-word-ppt/slides/02-input.png',
+  'evidence/demo/paper-word-ppt/slides/03-plan.png',
+  'evidence/demo/paper-word-ppt/slides/04-evidence.png',
+  'evidence/demo/paper-word-ppt/slides/05-draft.png',
+  'evidence/demo/paper-word-ppt/slides/06-word.png',
+  'evidence/demo/paper-word-ppt/slides/07-ppt.png',
+  'evidence/demo/paper-word-ppt/slides/08-human.png',
+  'evidence/demo/paper-word-ppt/slides/09-improvement.png',
+  'evidence/demo/paper-word-ppt/slides/10-output.png',
   'evidence/demo/slides/01-title.png',
   'evidence/demo/slides/02-manual-before.png',
   'evidence/demo/slides/03-inputs.png',
@@ -80,13 +95,20 @@ describe('office competition submission package', () => {
     expect(submissionVideo.length).toBeGreaterThan(1_000_000);
     expect(submissionVideo.subarray(4, 8).toString()).toBe('ftyp');
     const submissionCaptions = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission.srt'), 'utf8');
-    expect(submissionCaptions).toContain('第一步是收件');
-    expect(submissionCaptions).toContain('推广');
+    expect(submissionCaptions).toContain('先把资料放进来');
+    expect(submissionCaptions).toContain('四个地方');
     const transcript = await readFile(join(packageRoot, 'evidence/demo/office-demo-submission-transcript.md'), 'utf8');
     expect(transcript).toContain('逐句字幕');
-    expect(transcript).toContain('证据边界');
+    expect(transcript).toContain('真实性边界');
     const presentation = JSON.parse(await readFile(join(packageRoot, 'evidence/demo/presentation-slides.json'), 'utf8'));
     expect(presentation.slides).toHaveLength(10);
+    const academicVideo = await readFile(join(packageRoot, 'evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4'));
+    expect(academicVideo.length).toBeGreaterThan(1_000_000);
+    expect(academicVideo.subarray(4, 8).toString()).toBe('ftyp');
+    const academicTranscript = await readFile(join(packageRoot, 'evidence/demo/paper-word-ppt/paper-word-ppt-submission-transcript.md'), 'utf8');
+    expect(academicTranscript).toContain('论文、Word、PPT');
+    const academicPresentation = JSON.parse(await readFile(join(packageRoot, 'evidence/demo/paper-word-ppt/presentation-slides.json'), 'utf8'));
+    expect(academicPresentation.slides).toHaveLength(10);
     expect((await stat(join(packageRoot, 'evidence/demo/office-demo-poster.jpg'))).size).toBeGreaterThan(50_000);
     const timestamps = await readFile(join(packageRoot, 'evidence/demo/timestamps.md'), 'utf8');
     expect(timestamps).toContain('19-deliver-export.png');

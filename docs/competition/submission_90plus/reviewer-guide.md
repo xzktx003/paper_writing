@@ -7,7 +7,7 @@
 
 ## 1. 一句话说明
 
-OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说明和答辩稿等办公长文案，把资料导入、证据定位、AI 草拟、冲突检查、人工审批、效果复算和参赛导出整合为一个可核验工作台。
+OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说明和答辩稿等办公长文案，把“收资料、找依据、写初稿、查矛盾、请人确认、整理提交包”放进同一个可核验工作台。
 
 ## 2. 作者做了什么
 
@@ -16,10 +16,10 @@ OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说
 1. 增加办公材料交付模板，包含 Brief、来源登记、证据索引、效果测量表、SOP、Skill 和 submission 说明。
 2. 在正式 React 项目工作台中增加“交付”面板，按收件、处理、审阅、审批、交付、度量组织流程。
 3. 增加办公材料状态、材料登记、证据等级、效果指标、复用资产、决赛准备字段。
-4. 增加 DOCX、PPTX、XLSX 和文本材料的本地抽取能力，并为 PDF 和外部适配器不可用情况提供显式 fallback。
-5. 增加受控 OfficeCLI 规划执行边界，使用固定 argv、`shell: false` 和最小环境变量。
-6. 增加 BM25 + 哈希向量 + rerank 的本地混合检索，返回可解释分数分解。
-7. 增加 claim 到 support、conflict、missing 的证据关系图。
+4. 增加 Word、PPT、表格和文本材料的本地读取能力，并为 PDF、扫描件或外部工具不可用情况提供明确提示。
+5. 增加受控 Office 文件生成与检查边界，失败时不伪装成功。
+6. 增加本地资料查找能力，展示为什么某段材料被选中。
+7. 增加“有依据、相互矛盾、缺少依据”的证据关系图。
 8. 增加带时间戳会议逐字稿输入，提取摘要、决定、待办和时间证据。
 9. 增加人工审批、评论、建议决策和工作流留痕。
 10. 增加按比赛规则生成 M01-M06、初赛说明、决赛准备包和 manifest 的导出器。
@@ -29,7 +29,7 @@ OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说
 | 编号 | 文件 | 评审用途 | 当前状态 |
 | --- | --- | --- | --- |
 | M01 | `M01-proposal.md` | 看作品方案、原流程、新流程、AI 介入点和边界 | 已完成；真实岗位材料仍可增强 |
-| M02 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`slides/`、`office-demo.mp4`、`office-demo.webm`、`coverage.json` | 先看 165.791 秒 PPT+配音+逐句字幕成片，必要时回查 73.76 秒原始连续录屏与 19 张分步截图 | 已完成 10 张输入/人工流程/前后对照 PPT、6 段逐步实操、AAC 中文讲解、可编辑 SRT、逐字稿、封面、原始录屏和功能成功日志 |
+| M02 | A 视频 `evidence/demo/office-demo-submission.mp4`、B 视频 `evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4`、各自 SRT/逐字稿/封面、`office-demo.mp4`、`office-demo.webm`、`coverage.json` | A：163.040 秒通用办公白话动画 + 六步实操；B：148.174 秒论文/Word/PPT 白话专题；两支均少于 3 分钟，均有逐句字幕 | A 用于看产品实操闭环；B 用于给非技术评委解释典型办公材料价值；必要时回查 73.76 秒原始连续录屏与 19 张分步截图 |
 | M03 | `M03-reuse-statement.md` | 看复用岗位、部署条件、学习成本和推广边界 | 已完成；独立用户复用待验证 |
 | M04 | `M04-significance.md` | 看业务意义、质量控制意义和数字化价值 | 已完成 |
 | M05 | `M05-effect-evidence.md`、`evidence/E05-effect-measurement.csv` | 看流程变化、受控评估和真实试点接口 | 受控证据已完成；业务样本待实际试点 |
@@ -44,7 +44,7 @@ OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说
 | --- | --- | --- |
 | 系统有办公模板资产 | `app/templates/office-track-writing/`；`M06-reuse-assets.md` | 代码和目录可证明 |
 | 系统有交付状态与导出器 | `app/apps/backend/src/services/officeTrackService.js`；`officeTrackService.test.js` | 代码和测试可证明 |
-| 系统有 Office 材料解析和受控 OfficeCLI 边界 | `officeArtifactService.js`；`officeArtifactService.test.js` | 代码和测试可证明；外部工具可用性取决于环境配置 |
+| 系统能读取和处理常见办公材料 | `officeArtifactService.js`；`officeArtifactService.test.js` | 代码和测试可证明；复杂文件和外部工具可用性取决于环境配置 |
 | 系统有混合检索和证据图 | `officeIntelligenceService.js`；`officeIntelligenceService.test.js` | 代码和测试可证明；哈希向量不是学习型 embedding |
 | 系统有会议逐字稿输入 | `officeIntelligenceService.js`；`officeIntelligenceService.test.js` | 只处理用户提供的 transcript，不做自动转写 |
 | 系统有 workspace 和 workflow 留痕 | `officeWorkspaceService.js`、`officeWorkflowService.js` 及测试 | 代码和测试可证明 |

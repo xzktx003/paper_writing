@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-28T11:31:26+08:00",
+  "generatedAt": "2026-08-28T14:30:00+08:00",
   "rawContinuousDemo": {
     "path": "evidence/demo/office-demo.mp4",
     "durationSeconds": 73.76,
@@ -9,10 +9,11 @@
     "height": 960,
     "pixelFormat": "yuv420p"
   },
-  "captionedSubmission": {
+  "generalOfficeExplainer": {
     "path": "evidence/demo/office-demo-submission.mp4",
-    "durationSeconds": 165.791,
-    "bytes": 7058716,
+    "durationSeconds": 163.04,
+    "bytes": 7770180,
+    "sha256": "ec4c8744feede6e73932ed35c683ea7cfa19b6c14397838aa14bba894764eb97",
     "codec": "h264",
     "width": 1920,
     "height": 1080,
@@ -20,12 +21,30 @@
     "audioCodec": "aac",
     "audioChannels": 2,
     "audioSampleRate": 48000,
-    "meanVolumeDb": -19.5,
-    "maxVolumeDb": -1.8,
+    "meanVolumeDb": -19.2,
+    "maxVolumeDb": -2.2,
     "presentationSlides": 10,
+    "animatedSlidesUsedInVideo": 6,
     "operationChapters": 6,
-    "subtitleCues": 57
+    "subtitleCues": 77
   },
-  "competitionLimitSeconds": 180,
-  "withinLimit": true
+  "paperWordPptExplainer": {
+    "path": "evidence/demo/paper-word-ppt/paper-word-ppt-submission.mp4",
+    "durationSeconds": 148.174,
+    "bytes": 6220635,
+    "sha256": "a68b61e9befba1c690d4539f13045cac177cafcc603658a35790531514ba2509",
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "pixelFormat": "yuv420p",
+    "audioCodec": "aac",
+    "audioChannels": 2,
+    "audioSampleRate": 48000,
+    "meanVolumeDb": -19.2,
+    "maxVolumeDb": -1.5,
+    "presentationSlides": 10,
+    "subtitleCues": 64
+  },
+  "competitionLimitSecondsPerVideo": 180,
+  "bothWithinLimit": true
 }
