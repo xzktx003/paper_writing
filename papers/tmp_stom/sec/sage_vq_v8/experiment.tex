@@ -1,0 +1,100 @@
+\section{实验}
+
+\subsection{协议}
+
+主模型为 Meta-Llama-3.1-8B-Instruct。共同锚点覆盖 32 层、224 个 Linear，FineWeb-Edu 使用 4096 train/128 validation、Vector-GPTQ 512 条，序列长度 4096。适应只开放 layers 28--31。Task-assignment 与 task-scale 均使用五任务 training split 中每任务 512 train/256 validation/256 audit，以及 4096 条 FineWeb train、互斥 C4 128 validation/512 audit，长度 4096。均训练 2 epochs、seed 0，不扫描 group、学习率或 seed。
+
+WikiText2 raw test PPL 使用 seqlength 2048。准确率为 lm-eval 0.4.4 全量 0-shot ARC-C/E、HellaSwag、LAMBADA、PIQA、WinoGrande，无 \texttt{limit}。公共五任务去掉 LAMBADA 以对齐 GSQ。所有正式实验仅用一张 A100 80GB。
+
+\subsection{两种坐标并不等价}
+
+\begin{table}[t]
+\centering
+\caption{同锚点、同监督与同码率的坐标比较。}
+\label{tab:coordinates}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccrrr}
+\toprule
+状态 & 标签 & 部署改动 & PPL$\downarrow$ & M6$\uparrow$ & M5$\uparrow$\\
+\midrule
+锚点 & 否 & 无 & \textbf{10.4960} & 67.9997 & 68.1046\\
+text-only assign & 否 & 0.4617\% index & 12.2604 & 65.9217 & 67.2062\\
+task-assignment & 是 & 0.3781\% index & 10.7347 & 69.4774 & 69.0744\\
+\textbf{task-scale} & \textbf{是} & 5.52M FP16 & 10.9448 & \textbf{71.7223} & \textbf{72.5484}\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Task-scale 相对锚点的 Macro-6/五任务增益为 +3.7225/+4.4438 pp，task-assignment 为 +1.4777/+0.9698 pp；scale 多 2.2449/3.4740 pp。但 scale 的 PPL 退化 4.2757\%，assignment 只退化 2.2742\%。Scale 是高任务收益、高语言漂移端点；assignment 是较低收益、较低漂移端点。
+
+\begin{table*}[t]
+\centering
+\caption{两类坐标的逐任务分工。}
+\label{tab:tasks_v8}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+状态 & ARC-C & ARC-E & Hella & LAMBADA & PIQA & Wino & Macro-6 & 五任务\\
+\midrule
+锚点 & 47.2696 & 76.0943 & 70.1354 & 67.4753 & 77.0947 & 69.9290 & 67.9997 & 68.1046\\
+task-assignment & 49.6587 & \textbf{79.4192} & 69.9263 & \textbf{71.4923} & 77.1491 & 69.2186 & 69.4774 & 69.0744\\
+task-scale & \textbf{53.7543} & 78.5774 & \textbf{77.5443} & 67.5917 & \textbf{79.5430} & \textbf{73.3228} & \textbf{71.7223} & \textbf{72.5484}\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Scale 主要改善 HellaSwag、ARC-C、WinoGrande 与 PIQA；assignment 在 ARC-E 与 LAMBADA 更好。特别是 LAMBADA，assignment 相对锚点提高 4.0171 pp，而 scale 几乎不变，说明两种坐标携带不同功能方向。
+
+\subsection{独立 Audit 与部署合同}
+
+Task-scale 的 validation macro 由 71.9531\% 升至 76.3281\%，独立 audit 由 69.7656\% 升至 76.0156\%；C4 validation/audit CE 由 2.66053/2.71407 降至 2.44109/2.48685。552 万个 delta 全部非零。落盘后 assignment/codebook bit-exact，scale 保持 FP16，逻辑 bpp 仍为 2.1207557。
+
+Task-assignment 只接受 full 正 switch 的 1/8，即 549,997/145,465,344 个 index；task audit 由 69.7656\% 升至 71.5625\%，码本、scale、normalizer 与非目标层 bit-exact。两条链通过相同强度的独立审计。
+
+\subsection{Assignment 的局部稀疏性}
+
+\begin{table}[t]
+\centering
+\caption{当前码字附近领域的嵌套硬投影。}
+\label{tab:projection_v8}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lrrrr}
+\toprule
+投影 & 切换率 & Acc.$\uparrow$ & Loss$\downarrow$ & CE$\downarrow$\\
+\midrule
+锚点 & 0 & 71.9531 & 0.83785 & 2.66053\\
+\textbf{1/8} & \textbf{0.3781\%} & \textbf{74.1406} & 0.78548 & \textbf{2.48025}\\
+1/4 & 0.7562\% & 73.6719 & \textbf{0.77777} & 2.51655\\
+1/2 & 1.5124\% & 73.4375 & 0.77915 & 2.63600\\
+full & 3.0248\% & 71.5625 & 0.81238 & 2.97347\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+所有 alternative 都来自 8-way 邻域且由负一阶方向选出，但更多 hard switch 不单调改善。Full 相比 1/8 准确率低 2.5781 pp、文本 CE 高 19.88\%，支持局部候选加稀疏信赖域，而非密集 assignment 重训练。
+
+\subsection{监督来源与公开参照}
+
+Teacher/text-only assignment 保持锚点、候选宽度、更新步数与文本预算，但任务标签不进入 proposal、训练、selection 或 audit。它使 C4 validation/audit CE 改善 1.5143\%/1.6906\%，却让 PPL 退化 16.81\%、Macro-6 下降 2.078 pp，排除附近领域 assignment 自动提高通用 PTQ 的解释。
+
+\begin{table}[t]
+\centering
+\caption{监督不同，仅作质量坐标参照。}
+\label{tab:reference_v8}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcrrr}
+\toprule
+方法 & 任务监督 & bpp & PPL$\downarrow$ & 五任务$\uparrow$\\
+\midrule
+GSQ（公开） & 否 & 2.13 & -- & 68.5500\\
+QTIP（复现） & 否 & \textbf{2.00} & \textbf{8.7971} & 69.8749\\
+task-assignment & 是 & 2.1208 & 10.7347 & 69.0744\\
+task-scale & 是 & 2.1208 & 10.9448 & \textbf{72.5484}\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Task-scale 数值高于 QTIP，但使用目标任务 training split 且 PPL 更差，不能称通用 PTQ SOTA。本文的公平结论是同一 VQ checkpoint 内部的坐标比较。
+
+\subsection{成本与局限}
+
+32 层锚点量化约 54.58 小时。Task-scale 校准 1.49 小时，task-assignment 约 6.45 小时；二者都不增加部署 bpp，但后者训练时需要 switch logits 与局部候选。严格同模型证据仅有一个 8B Instruct，适应只训练最后四层，无 70B、跨模型与长上下文生成结果。本文尚未运行 scale 与 assignment 的联合端点，故只证明坐标分工，不证明联合支配。无定制 kernel，逻辑 bpp 不代表实测吞吐。

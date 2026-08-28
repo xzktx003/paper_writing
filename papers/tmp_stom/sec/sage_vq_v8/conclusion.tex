@@ -1,0 +1,3 @@
+\section{结论}
+
+本文研究已有 2-bit block-scaled VQ checkpoint 中哪些部署变量承担任务适应。完全匹配的实验显示，连续 group scale 与当前码字附近领域的离散 assignment 不是等价参数化：scale 带来更大任务增益与更大 PPL 漂移，assignment 通过 0.378\% 稀疏硬切换提供较低扰动的中间点。\method 用共享锚点、坐标特定训练、loss-dominance 验证与独立 audit 把差异变成可归因证据；无标签负对照说明收益来自任务监督而非通用 PTQ。当前最可信的贡献是发现并刻画连续—离散适应坐标的功能非均匀性，联合利用二者仍是必须验证的开放问题。

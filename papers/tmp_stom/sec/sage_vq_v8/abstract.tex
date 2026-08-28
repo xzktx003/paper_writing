@@ -1,0 +1,5 @@
+\begin{abstract}
+已有极低比特量化主要优化如何表示浮点权重，并默认量化 checkpoint 中不同可训练参数只是可互换的任务适应接口。本文揭示这一假设并不成立。Block-scaled VQ 的部署权重由共享码本原型与 group scale 共同重构，因此同时暴露连续尺度和离散原型索引坐标。在完全相同的 Llama-3.1-8B-Instruct 锚点、最后四层、任务监督、4096-token 文本保护与 2.1208-bpp 部署合同下，只训练已有 FP16 group scale 将六任务平均由 68.00\% 提升至 71.72\%（+3.72 pp），但 WikiText2 PPL 退化 4.28\%；只训练当前码字附近领域的 assignment 则提升至 69.48\%（+1.48 pp），PPL 退化 2.27\%。我们据此将 \method 重述为 scale--assignment gated 框架：连续分支学习可折叠 scale delta；离散分支冻结码本与尺度，以功能梯度在当前码字的 8-way 邻域中选一个替代项，用 binary Concrete 学习保持/切换，再经嵌套稀疏硬投影与独立 task/text audit 输出真实索引。无任务标签的完整对照虽改善 held-out teacher 代理，却使 PPL 退化 16.81\%、六任务下降 2.08 pp。本文的发现不是某一坐标全面更强，而是同一 VQ 表示内部存在功能显著非均匀的连续—离散自由度；联合利用它们仍需独立验证。
+\end{abstract}
+
+\noindent\textbf{关键词：}任务自适应量化；大语言模型压缩；向量量化；码字指派；连续—离散优化

@@ -1,0 +1,57 @@
+\section{方法}
+
+\subsection{一个表示，两种坐标}
+
+将 Linear 权重划分为 $d$ 维向量 $w_i$，共享码本为 $\mathcal C=\{c_1,\ldots,c_K\}$，离散索引为 $a_i$，尺度组为 $g(i)$。忽略 row/column normalizer，部署权重为
+\begin{equation}
+\hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+固定码本后，连续 $s_g$ 改变一组向量的共同幅值，离散 $a_i$ 切换单个向量的原型。给定锚点 $(s^0,a^0)$，定义
+\begin{equation}
+\mathcal A_s=\{(s,a^0)\},\quad
+\mathcal A_a=\{(s^0,a):a_i\in\mathcal N(a_i^0)\}.
+\end{equation}
+公平比较固定适应层、任务/文本数据、训练轮数、逻辑码率与评测。
+
+\subsection{共享硬锚点}
+
+锚点构造先令 $u_i=w_i/s_{g(i)}$，在共享域最小化 $\sum_i\omega_i\|u_i-c_{a_i}\|_2^2$，$\omega_i$ 为 Hessian 对角权重。本文使用 $d=6$、$K=4096$、group size 160。固定码本后，Vector-GPTQ 先取几何 top-128，再以向量化二阶目标选码字，并用逆 Hessian 反馈当前误差。该阶段仅提供完整 32 层、2.1208-bpp 的共同起点。
+
+\subsection{连续尺度分支}
+
+对目标层已有 group scale 学习对数增量
+\begin{equation}
+\tilde s_g=s_g^0\exp(r_g),\qquad |r_g|\le\rho.
+\end{equation}
+所有码本、assignment、normalizer 与非目标层冻结。训练后 $\tilde s_g$ 折叠回原 FP16 字段，不新增部署张量或 bpp。该坐标是组级密集更新，能快速改变任务 logit，也可能整体移动语言模型分布。
+
+\subsection{附近领域的离散 Assignment 分支}
+
+对锚点 $a_i^0$ 构造含自身的 8-way 几何邻域。任务监督、浮点教师 KL 与文本 guard 给出权重梯度 $g_i$，候选一阶变化为
+\begin{equation}
+\Delta_i(c)=\langle g_i\odot s_{g(i)}^0,c-c_{a_i^0}\rangle.
+\end{equation}
+只保留最小 $\Delta_i$ 的邻居 $c_i^1$。几何邻域限制步长，功能梯度决定方向。为每个向量学习 switch logit $z_i$：
+\begin{equation}
+p_i=\sigma((z_i+\epsilon_i)/\tau),\quad
+\tilde w_i=s_{g(i)}^0[(1-p_i)c_{a_i^0}+p_i c_i^1].
+\end{equation}
+最终不保存概率，而将正 logit 按置信度构造 1/8、1/4、1/2、full 嵌套硬投影，只落盘真实 int32 assignment。
+
+\subsection{共享 Gate 与独立 Audit}
+
+两个分支使用
+\begin{equation}
+\mathcal L=\mathcal L_{\rm sup}+\lambda_{\rm KL}\mathcal L_{\rm teacher}
++\lambda_{\rm text}\mathcal L_{\rm text}+\mathcal R.
+\end{equation}
+Scale 的 $\mathcal R$ 为 log-scale $L_2$，assignment 为 switch penalty。验证要求 balanced loss 至少改善 0.5\%，macro 最多回退 1 pp，任一任务 loss 与文本 CE 最多相对回退 0.5\%。单一候选还需在互斥 audit 上通过同一规则，否则恢复锚点。最后审计未训练字段、dtype、逻辑 bpp 与 fresh reconstruction。
+
+\subsection{稀疏离散与密集连续的机制解释}
+
+设 assignment 集合 $S$ 的扰动为 $\delta_S=\sum_{i\in S}\delta_i$。二阶展开给出
+\begin{equation}
+\mathcal L(W+\delta_S)=\mathcal L(W)+\sum_{i\in S}g^\top\delta_i+
+\frac12\delta_S^\top H(\xi)\delta_S.
+\end{equation}
+即使每个切换一阶下降，联合交叉项仍可随 $S$ 增大而抵消收益。原型跳变逐向量且不连续，需要 hard trust region；scale 在固定原型上形成有界、组共享连续路径，可用小步共同调整大量坐标。该解释预测 assignment 投影非单调而 scale delta 可密集非零。

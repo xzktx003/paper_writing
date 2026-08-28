@@ -1,0 +1,7 @@
+\section{相关工作}
+
+\paragraph{极低比特表示与非均匀性。}GPTQ 以校准激活 Hessian 近似量化扰动并反馈误差\cite{gptq}。AWQ 发现少量 activation-salient 权重主导量化质量\cite{awq}；OmniQuant、QuaRot 与 SpinQuant 通过尺度或旋转改善量化条件\cite{omniquant,quarot,spinquant}。GPTVQ、AQLM、QuIP\# 与 QTIP 进一步设计向量、加性、格或 trellis 表示\cite{gptvq,aqlm,quipsharp,qtip}。本文不提出通用码本，而研究已有 VQ checkpoint 内部的适应非均匀性。
+
+\paragraph{离散变量与可部署优化。}GSQ 用 Gumbel-Softmax 学习标量网格 assignment\cite{gsq,gumbel}。PV-Tuning 指出极低比特微调中 STE 可能次优，并交替优化连续变量与离散信赖域\cite{pvtuning}。\method 的离散分支限制更窄：码本、scale 和 alternative 固定，每个向量只在当前码字与一个功能邻居间选择，最终只保存真实 assignment。贡献是“附近领域—功能定向—嵌套硬投影—独立审计”的部署闭环，而非首次使用 Concrete\cite{concrete}。
+
+\paragraph{任务自适应量化。}完整 QAT 可更新浮点影子权重或大量量化参数。LoTA-QAF 学习可无损合并的低比特适配变量，强调训练格式和部署格式一致\cite{lotaqaf}。本文不新增 adapter，而公平比较 checkpoint 已有的 group scale 与 assignment。二者部署存储均不增加，但适配耗时不为零；零额外 bpp 不等于免费训练。

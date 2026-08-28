@@ -1,0 +1,19 @@
+\section{引言}
+
+约 2 bit/parameter 的极端压缩迫使量化从逐元素舍入转向结构化表示。GPTVQ、AQLM、QuIP\# 与 QTIP 通过高维码字、加性码本、非相干变换或 trellis 扩大有限比特下的表示能力\cite{gptvq,aqlm,quipsharp,qtip}。它们主要回答如何把浮点模型压缩成高质量低比特 checkpoint；模型部署到特定任务后，还需回答不恢复浮点权重、不增加逻辑码率时，哪些已有变量最适合承担任务适应。
+
+Block-scaled VQ 提供了可分析的最小对象。一个权重向量由共享码本原型和 group scale 共同重构：离散 assignment 选择前者，连续尺度决定后者。若二者只是等价参数化，训练 assignment 的价值只在优化器偏好，而不构成新的压缩后适应机制。
+
+完全匹配的实验否定了这一等价性。在同一 Llama-3.1-8B-Instruct 2.1208-bpp 锚点上，开放最后四层 group scale 后，552 万个连续 delta 几乎全部非零并带来 +3.72 pp 六任务收益；开放 assignment 后，一阶代理虽为约 98\% 目标向量找到下降邻居，最终只有 0.378\% 硬切换通过独立 audit，收益为 +1.48 pp。更强的 scale 适应也造成更大的 PPL 退化，稀疏 assignment 落在锚点与 scale 端点之间。连续尺度与离散原型不是重复坐标：前者提供密集组级幅值重标定，后者提供稀疏局部原型重定向。
+
+该观察修正了 assignment-only 的强叙述。局部码字切换确实可训练、可部署、零额外 bpp，但并非同预算下最强的任务适应接口；其价值是揭示不同的低扰动坐标。只与未使用任务标签的 GSQ/QTIP 比较，会把监督收益与坐标选择混在一起。
+
+基于证据，我们把 \method 定义为 scale--assignment gated 适配框架。尺度对齐 VQ 与 Vector-GPTQ 仅产生共同硬锚点；scale 分支学习已有 FP16 group scale 的对数增量；assignment 分支学习当前码字与功能梯度选中邻居间的 binary Concrete switch。两者使用相同任务、teacher、长文本数据与 loss-dominance Gate，候选必须在独立 audit 上复现改进，否则精确回滚。
+
+贡献如下：
+\begin{itemize}
+\item 揭示 block-scaled VQ 中 scale 与 assignment 的任务适应能力高度非均匀：前者具有更大任务增益和更大 PPL 漂移，后者形成低扰动中间 Pareto 点。
+\item 提出可审计的双坐标适配框架；离散分支通过当前码字 8-way 附近领域、功能梯度定向、binary Concrete 与稀疏硬投影连接训练和真实 index 部署。
+\item 建立同锚点、同监督、同层、同码率的完整比较，并用无标签负对照和字段级审计限定结论。
+\item 明确当前只支持任务适应坐标的发现，不支持通用 PTQ SOTA 或尚未实验的连续—离散联合优越性。
+\end{itemize}
