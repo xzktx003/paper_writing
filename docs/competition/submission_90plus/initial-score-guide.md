@@ -24,7 +24,7 @@
 
 ### 主要扣分风险
 
-- 已有 150.424 秒 PPT+配音+逐句字幕讲解成片、73.76 秒原始连续受控录屏及 19 张分步截图，但它们不替代真实业务样本。
+- 已有 165.791 秒 PPT+配音+逐句字幕讲解成片、73.76 秒原始连续受控录屏及 19 张分步截图，但它们不替代真实业务样本。
 - 还没有真实样本量、统计周期和基线耗时。
 - 还没有质量指标，例如错误数、返工轮次、审批通过情况。
 - 还没有真实用户或岗位连续使用记录。
@@ -33,7 +33,7 @@
 
 | 证据 | 最低要求 | 路径 |
 | --- | --- | --- |
-| 演示录屏 | 150.424 秒讲解成片先解释意义、目标人群和六步流程，再逐步展示 DOCX 解析、OfficeCLI 成功、会议提取、检索、证据图、人工建议、审批、度量、审核与导出，最后总结成果、推广和边界；原始连续操作 73.76 秒 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`slides/`（提交讲解材料）、`office-demo.mp4`/`office-demo.webm`（原始版）、`coverage.json`（19 帧覆盖） |
+| 演示录屏 | 165.791 秒讲解成片先展示典型人工流程和系统输入，再逐步解释六阶段的具体输入/输出与优势，最后做前后对照、成果、效率机制、推广和边界总结；原始连续操作 73.76 秒 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`slides/`（10 张提交讲解材料）、`office-demo.mp4`/`office-demo.webm`（原始版）、`coverage.json`（19 帧覆盖） |
 | 效果表 | 至少 3 个同类任务，记录全成本耗时 | `evidence/E05-effect-measurement.csv` |
 | 质量说明 | 记录事实错误、无证据主张、返工轮次和审批结果 | `evidence/E05-quality-notes.md` |
 | 版本和输出 | 提供脱敏输入、输出、manifest | `evidence/submission-manifest.json` |

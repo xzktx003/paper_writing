@@ -1,13 +1,13 @@
 {
   "schema": "openprism-office-competition-submission-v2",
-  "generatedAt": "2026-08-27T17:44:05.579Z",
+  "generatedAt": "2026-08-28T03:38:02.436Z",
   "ruleVersion": "AI材料审核与评分规则@2026-08-27",
   "officialJudgement": false,
   "packageScope": "办公赛道材料、受控演示、测试/实验、复用资产和准备度说明",
   "readiness": "technical-package-complete",
   "missingRequiredFiles": [],
   "evidenceBoundary": {
-    "demonstrated": "代码、测试、8 张讲解页、中文配音/逐句字幕、19 张分步截图、连续浏览器录屏和受控实验支持产品可运行、OfficeCLI 成功与流程变化。",
+    "demonstrated": "代码、测试、10 张讲解页、中文配音/57 条逐句字幕、19 张分步截图、连续浏览器录屏和受控实验支持产品可运行、OfficeCLI 成功与流程变化。",
     "notDemonstrated": "尚无企业多用户/多周期试点，不能据此声称稳定生产率、真实落地或官方 90 分。"
   },
   "unresolvedGaps": [
@@ -15,7 +15,7 @@
     "非作者普通办公用户独立复现记录",
     "现场答辩录屏/纪要与评委评分"
   ],
-  "fileCount": 84,
+  "fileCount": 86,
   "files": [
     {
       "path": "blank-initial-score-sheet.md",
@@ -129,23 +129,23 @@
     },
     {
       "path": "evidence/demo/office-demo-poster.jpg",
-      "bytes": 133065,
-      "sha256": "190018abaf11a0b0b0b2da37dab3cdcb489ead6ed948f0935d2ce41b5cbdf78b"
+      "bytes": 149275,
+      "sha256": "a32c300d957d0051c0ee9043a04b00a21bb7990ad7bcfde0325480c1585b1803"
     },
     {
       "path": "evidence/demo/office-demo-submission-transcript.md",
-      "bytes": 3647,
-      "sha256": "49660b7a4cff908f12bc71e2d5e02b2d7bf5458d3a32a13d9445628aa1f90eaa"
+      "bytes": 4669,
+      "sha256": "86945daa1ecfd71ea8b7bf670c20d59be431ddf5b1b0ee06acbe509525d4575f"
     },
     {
       "path": "evidence/demo/office-demo-submission.mp4",
-      "bytes": 6635894,
-      "sha256": "a502cc296fb0e18fbcb4714cdd8d7b9401af07416140095fd5be2c269ec7d0d6"
+      "bytes": 7058716,
+      "sha256": "3b5f4e9712539a59996b5eb92691c0a7f42ca8c656aa659d89e42db3917a8c8b"
     },
     {
       "path": "evidence/demo/office-demo-submission.srt",
-      "bytes": 3723,
-      "sha256": "b88680905a375f849b10f31c828338e48201aefb456ae35bc980f87053df895a"
+      "bytes": 4312,
+      "sha256": "32db057a570b85f1536975f0417da758da2f7109d3a99ce0183380e63fb5f29f"
     },
     {
       "path": "evidence/demo/office-demo.mp4",
@@ -159,48 +159,58 @@
     },
     {
       "path": "evidence/demo/presentation-slides.json",
-      "bytes": 4588,
-      "sha256": "4a1481c78dd2711c70077c30b7dfb87fc824da7cf0cd2d6671c6d07cb10f28c2"
+      "bytes": 10423,
+      "sha256": "36217e014b8ad77cceecaa231bbb17403759f87bb9e227ee063ef2412aec4b9e"
     },
     {
       "path": "evidence/demo/slides/01-title.png",
-      "bytes": 121069,
-      "sha256": "7fd6d066508fd40ac031739c7339507da43523fd87260107d6b0c2a774bba512"
+      "bytes": 120316,
+      "sha256": "b067884f6900e57d942cc6d659db8ff28e51e0dc44509c4bceda296617f99096"
     },
     {
-      "path": "evidence/demo/slides/02-problem.png",
-      "bytes": 129378,
-      "sha256": "bf7920763ca3255d3231b3c947af6ad7029dca6e999493605994dd46799d008a"
+      "path": "evidence/demo/slides/02-manual-before.png",
+      "bytes": 133832,
+      "sha256": "7e1b1973261b4143ed6f37c1c40465a1f7af9067c4986ee912f80d2e3499b4ae"
     },
     {
-      "path": "evidence/demo/slides/03-audience.png",
-      "bytes": 125299,
-      "sha256": "3ccb2596d7763ab6d41e43de146224392e2f885271e4a1b352d3260d0e8fccf0"
+      "path": "evidence/demo/slides/03-inputs.png",
+      "bytes": 143044,
+      "sha256": "20894b4cb750a61c847b41b450dc55b3f603bf510446bddf95d6e28b82f5f6d2"
     },
     {
-      "path": "evidence/demo/slides/04-workflow.png",
-      "bytes": 117319,
-      "sha256": "ac1ed0117a189a79df8e0991619dada05d76dee247e490ac1287de16e48930da"
+      "path": "evidence/demo/slides/04-audience.png",
+      "bytes": 134152,
+      "sha256": "30713506c9f3730f9a2975058d4fd69034abf0966cd5f72bd73584caeeb53fbb"
     },
     {
-      "path": "evidence/demo/slides/05-results.png",
-      "bytes": 131889,
-      "sha256": "32b6fa28da229354b33ba12c86bc8fcc11c8296969f06a3675e05dce39bbe2c0"
+      "path": "evidence/demo/slides/05-workflow.png",
+      "bytes": 130736,
+      "sha256": "6439d746104ffe2646c296e401c3b0a51132922ceea79a9e6e70400ab26d3de4"
     },
     {
-      "path": "evidence/demo/slides/06-value.png",
-      "bytes": 140111,
-      "sha256": "0defac2c78bd1c6ff9888f9fc4feaf3fa1d575cfae86073de6b70bdb357567da"
+      "path": "evidence/demo/slides/06-before-after.png",
+      "bytes": 132306,
+      "sha256": "dc685d3a2a09285258f64b75e9987a401389898a7937f8110b25dc594db25395"
     },
     {
-      "path": "evidence/demo/slides/07-promotion.png",
-      "bytes": 142766,
-      "sha256": "c70f0efc31d9c2585be4a79fb846a36eff339e0b8b1a7cc4c07d8a86207fc06d"
+      "path": "evidence/demo/slides/07-results.png",
+      "bytes": 137351,
+      "sha256": "ca16aaea1e61bd031820a6a65d1bd3956cc67f9c6a22213748c9eb070f859b16"
     },
     {
-      "path": "evidence/demo/slides/08-end.png",
-      "bytes": 133362,
-      "sha256": "cdbfb732931e0f48f2738f5b20b64afee26ce5a099ba8966d45fba4c0205e5ca"
+      "path": "evidence/demo/slides/08-efficiency.png",
+      "bytes": 153632,
+      "sha256": "73e9064da267504861714b57d922493024f90b6db25e6af91984099ecfd19a80"
+    },
+    {
+      "path": "evidence/demo/slides/09-promotion.png",
+      "bytes": 143100,
+      "sha256": "71af416913b5ae2c45b28b1baaa7b076bc1c6459d5f65062e47e0535fd94990a"
+    },
+    {
+      "path": "evidence/demo/slides/10-end.png",
+      "bytes": 150158,
+      "sha256": "48f1612f45c0cc330b6737b087306554b45e2333b7787354cb3ed0ebdf91a82f"
     },
     {
       "path": "evidence/demo/timestamps.md",
@@ -274,8 +284,8 @@
     },
     {
       "path": "evidence/INDEX.md",
-      "bytes": 3710,
-      "sha256": "0e43a261acb50a92be3be2e3e794aec34f45a9228d04b71e5292975b6e092f01"
+      "bytes": 3732,
+      "sha256": "0b27011f090bdf8b4bef41a2def87cb608de6917298100bf44e213a16d346772"
     },
     {
       "path": "evidence/logs/competition-demo-contract.txt",
@@ -284,8 +294,8 @@
     },
     {
       "path": "evidence/logs/media-probe.json",
-      "bytes": 764,
-      "sha256": "5280a6103c3a9f1b442ca9d63d9147ed451beb04f0e543d7fe3e782b1d06efff"
+      "bytes": 765,
+      "sha256": "e168e8363da86c7b142cc7b648929c161699c9ed235c8ffef6082eb2aba2cf18"
     },
     {
       "path": "evidence/logs/officecli-verification.txt",
@@ -294,8 +304,8 @@
     },
     {
       "path": "evidence/logs/visual-verdict.json",
-      "bytes": 1137,
-      "sha256": "6ad0cea8b9bb6fb09e9a0a23dd1fc4708000b22101a798423169ff93fe050e7b"
+      "bytes": 1362,
+      "sha256": "dd2c959b13ba5370dc90ab26bd06e17c0a1cd513baa006fc771ca9f220b7e165"
     },
     {
       "path": "evidence/pilot/pilot-measurement-register.csv",
@@ -314,8 +324,8 @@
     },
     {
       "path": "evidence/test-evidence.md",
-      "bytes": 3128,
-      "sha256": "f8dd8feabda1ce3712ac04f283467606b5588f684bd816d624f3aaed7b1578b1"
+      "bytes": 3157,
+      "sha256": "a7de2c8b3843f06cdb31b0e3b6acad3a281d5c3377aedc80eac31460fb92a5be"
     },
     {
       "path": "evidence/workflow-state-samples/office-track.json",
@@ -339,8 +349,8 @@
     },
     {
       "path": "finals-pack.md",
-      "bytes": 7239,
-      "sha256": "4f93b95dafb2035706eb4860c5462b7a2c44ce2f6d0c4974ce5988bc05111d88"
+      "bytes": 7265,
+      "sha256": "29f25288574e7da344a610cd1630b8493fae0d8286433cb1ec203ff96f725233"
     },
     {
       "path": "finals-score-guide.md",
@@ -349,18 +359,18 @@
     },
     {
       "path": "initial-score-guide.md",
-      "bytes": 7208,
-      "sha256": "b30a8b0e3ed32962404147fcc72c4cdce0cfa58de91d90a09b235f52c276fb49"
+      "bytes": 7166,
+      "sha256": "bb7254d8c50aa84af48d6f73ca2988413166f3b945819c16441927f738a047c3"
     },
     {
       "path": "M01-proposal.md",
-      "bytes": 10837,
-      "sha256": "5ff419c89122f63f3d2441002efe94ce7c1ad5c0284716d7eb3299e7d0b87ebf"
+      "bytes": 10917,
+      "sha256": "2b1d4b5451d6e417b40e3047c1a1b6f9f31587b7ad3dd5a02e6aec935010e541"
     },
     {
       "path": "M02-demo-script.md",
-      "bytes": 3170,
-      "sha256": "42058c3597bc2dd4cedaca6a391a4abdfaedc9cda4e9a0adf675a708981f9828"
+      "bytes": 4226,
+      "sha256": "1c48a6b35990ff35388afa59d2183c034b76e5b5b9cd2a945a2ded848660c4ca"
     },
     {
       "path": "M03-reuse-statement.md",
@@ -394,8 +404,8 @@
     },
     {
       "path": "OpenPrism-Office-competition-submission.pdf",
-      "bytes": 277183,
-      "sha256": "551c46e469e5857827c21357a485a309d83123c71ea5cd5ddf4ac0c4798a090f"
+      "bytes": 280014,
+      "sha256": "651dc39f78e5a40f36edc4deb7b127c28aa95c0282b975b7f6ebf9a05cfde1cf"
     },
     {
       "path": "pilot-measurement-register.csv",
@@ -404,8 +414,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4062,
-      "sha256": "4225c72ee6021a521be454fa2ee99f0733689be90e16ecee1f74c6dab6283ceb"
+      "bytes": 4121,
+      "sha256": "da2fa4887264ec08d380e71c317bdddf5061578f3c682e1e9ad1e4b1885be61c"
     },
     {
       "path": "reuse/operator-checklist.md",
@@ -424,8 +434,8 @@
     },
     {
       "path": "reviewer-guide.md",
-      "bytes": 8131,
-      "sha256": "4f3d46ff29cc5cb30481c8ed6798e67ca8df376a6be8d91b687ca0752449de78"
+      "bytes": 8151,
+      "sha256": "b17ae7b9b6245ecefe67b8adf00f4affe5243132f818b53c7ab9a321647a194e"
     },
     {
       "path": "score-evidence-matrix.md",
@@ -434,8 +444,8 @@
     },
     {
       "path": "submission-checklist.md",
-      "bytes": 2966,
-      "sha256": "8c4ceaf82c7bf56c63a7577a1b34b73e25c50bab8dda08bee25138bdb3d7cc1e"
+      "bytes": 2968,
+      "sha256": "771ca7ab29191c8f6afea574ece84a7c5e5f040290b98f3f0d786e9dabb8b311"
     }
   ]
 }

@@ -1,0 +1,74 @@
+{
+  "experiment": "competition-input-output-before-after-video",
+  "date": "2026-08-28",
+  "objective": "Verify that a sub-three-minute competition video can explain concrete accepted inputs, concrete outputs, the typical manual baseline and observable efficiency mechanisms while retaining six real-product operation chapters.",
+  "inputs": {
+    "rawVideo": "docs/competition/submission_90plus/evidence/demo/office-demo.mp4",
+    "rawDurationSeconds": 73.76,
+    "operationChapters": 6,
+    "presentationSlides": 10,
+    "narrationSegments": 16,
+    "narrationVoice": "zh-CN-XiaoxiaoNeural",
+    "narrationRate": "+28%"
+  },
+  "narrativeContract": {
+    "manualBaseline": true,
+    "acceptedInputTypes": true,
+    "concreteOutputs": true,
+    "beforeAfterComparison": true,
+    "efficiencyMechanisms": true,
+    "fixedProductivityClaim": false
+  },
+  "output": {
+    "path": "docs/competition/submission_90plus/evidence/demo/office-demo-submission.mp4",
+    "durationSeconds": 165.791,
+    "bytes": 7058716,
+    "videoCodec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "pixelFormat": "yuv420p",
+    "audioCodec": "aac",
+    "audioSampleRate": 48000,
+    "audioChannels": 2,
+    "meanVolumeDb": -19.5,
+    "maxVolumeDb": -1.8,
+    "subtitleFormat": "srt",
+    "subtitleCues": 57,
+    "maximumSubtitleCharacters": 23,
+    "presentationSlides": 10,
+    "operationChapters": 6
+  },
+  "iterations": [
+    {
+      "status": "failed",
+      "finding": "The detailed first draft would exceed the 180-second competition limit.",
+      "resolution": "Kept complete details on the slide and operation rail, shortened spoken repetition and raised narration rate from +18% to +28%."
+    },
+    {
+      "status": "failed",
+      "visualScore": 88,
+      "finding": "The measurement rail remained visible while the source recording had already changed to the delivery page.",
+      "resolution": "Separated the source-video boundaries for measurement and delivery."
+    },
+    {
+      "status": "failed",
+      "visualScore": 89,
+      "finding": "The first boundary correction froze a blank transition frame at the end of the measurement narration.",
+      "resolution": "Inspected raw frames from 57.5 to 59.0 seconds and fixed the measurement endpoint at the stable 58.0-second designed result; delivery begins at 61.5 seconds."
+    },
+    {
+      "status": "passed",
+      "visualScore": 96,
+      "finding": "Ten slides, six operation chapters and timed subtitles remain legible; representative frames show the concrete input/output and stable successful operation state."
+    }
+  ],
+  "automatedChecks": {
+    "narratedVideoContract": "2/2 passed",
+    "durationWithin120To180Seconds": true,
+    "hasStereoAacNarration": true,
+    "hasEditableSrt": true,
+    "allSlidesOver40000Bytes": true,
+    "measurementAndDeliveryBoundariesLocked": true
+  },
+  "evidenceBoundary": "The result proves the technical workflow, visible workflow changes and a reproducible presentation artifact. It does not prove a fixed productivity percentage, long-term deployment outcome or official competition score."
+}

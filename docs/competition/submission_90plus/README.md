@@ -11,7 +11,7 @@
 | 材料 | 文件 | 状态 | 证据边界 |
 | --- | --- | --- | --- |
 | M01 作品方案 | `M01-proposal.md` | 已完成 | 产品、代码和测试支持 |
-| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo-submission.mp4`（讲解成片）、`office-demo-submission.srt`、`slides/`、`office-demo.mp4`/`office-demo.webm`（原始证据）、`coverage.json` | 已核验：150.424 秒配音成片、8 张 PPT、6 段实操、50 条逐句字幕、73.76 秒原始连续操作、19 张截图 | 中文语音和字幕独立存在；真实操作、OfficeCLI 成功与真实性边界均可回查 |
+| M02 三分钟演示 | `M02-demo-script.md`、`evidence/demo/office-demo-submission.mp4`（讲解成片）、`office-demo-submission.srt`、`slides/`、`office-demo.mp4`/`office-demo.webm`（原始证据）、`coverage.json` | 已核验：165.791 秒配音成片、10 张 PPT、6 段实操、57 条逐句字幕、73.76 秒原始连续操作、19 张截图 | 具体输入/输出、典型人工流程和效率机制均有讲解；真实操作、OfficeCLI 成功与真实性边界可回查 |
 | M03 复用价值 | `M03-reuse-statement.md` | 已完成 | 模板、SOP、Skill 支持 |
 | M04 作品意义 | `M04-significance.md` | 已完成 | 方案与流程支持 |
 | M05 效果证明 | `M05-effect-evidence.md` | 受控证据已完成；业务试点待实际使用 | 不把技术测试写成企业提效 |
@@ -39,7 +39,7 @@
 4. 若提交前已有真实业务试点，只向 `pilot-measurement-register.csv` 写入可回查的原始记录，并同步更新 M05；不得用演示 fixture 替代。
 5. 提交前执行 `reuse/operator-checklist.md` 的脱敏、可播放和哈希核对。
 
-合订本可通过 `npm run competition:pdf` 重建；连续演示可通过 `npm run competition:demo` 重录；`npm run competition:video` 会用原始 MP4 生成 8 张 PPT 讲解页、中文神经语音、逐句 SRT、六段实操解释、150 秒 H.264/AAC 成片及封面；最后运行 `npm run competition:manifest` 重建完整哈希清单。
+合订本可通过 `npm run competition:pdf` 重建；连续演示可通过 `npm run competition:demo` 重录；`npm run competition:video` 会用原始 MP4 生成 10 张 PPT 讲解页、中文神经语音、逐句 SRT、六段输入/输出/人工对照实操解释、166 秒 H.264/AAC 成片及封面；最后运行 `npm run competition:manifest` 重建完整哈希清单。
 
 ## 4. 90+ 冲刺逻辑
 

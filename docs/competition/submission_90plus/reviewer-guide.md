@@ -29,7 +29,7 @@ OpenPrism Office 面向项目申报书、技术方案、研究总结、评审说
 | 编号 | 文件 | 评审用途 | 当前状态 |
 | --- | --- | --- | --- |
 | M01 | `M01-proposal.md` | 看作品方案、原流程、新流程、AI 介入点和边界 | 已完成；真实岗位材料仍可增强 |
-| M02 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`slides/`、`office-demo.mp4`、`office-demo.webm`、`coverage.json` | 先看 150.424 秒 PPT+配音+逐句字幕成片，必要时回查 73.76 秒原始连续录屏与 19 张分步截图 | 已完成 8 张宏观/总结 PPT、6 段逐步实操、AAC 中文讲解、可编辑 SRT、逐字稿、封面、原始录屏和功能成功日志 |
+| M02 | `evidence/demo/office-demo-submission.mp4`、`office-demo-submission.srt`、`slides/`、`office-demo.mp4`、`office-demo.webm`、`coverage.json` | 先看 165.791 秒 PPT+配音+逐句字幕成片，必要时回查 73.76 秒原始连续录屏与 19 张分步截图 | 已完成 10 张输入/人工流程/前后对照 PPT、6 段逐步实操、AAC 中文讲解、可编辑 SRT、逐字稿、封面、原始录屏和功能成功日志 |
 | M03 | `M03-reuse-statement.md` | 看复用岗位、部署条件、学习成本和推广边界 | 已完成；独立用户复用待验证 |
 | M04 | `M04-significance.md` | 看业务意义、质量控制意义和数字化价值 | 已完成 |
 | M05 | `M05-effect-evidence.md`、`evidence/E05-effect-measurement.csv` | 看流程变化、受控评估和真实试点接口 | 受控证据已完成；业务样本待实际试点 |

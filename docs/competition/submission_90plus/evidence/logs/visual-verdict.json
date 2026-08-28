@@ -1,16 +1,17 @@
 {
-  "score": 94,
+  "score": 96,
   "verdict": "pass",
   "category_match": true,
   "differences": [
-    "PPT pages and the operation-side explanation rail have clear hierarchy, color roles and evidence boundaries; emphasis blocks use restrained full borders and top rules.",
-    "Sentence-level Chinese subtitles stay inside the dedicated bottom subtitle zone without covering the product recording.",
-    "The real product recording retains a large light editor canvas; the operation evidence remains legible in the workbench and explanation rail."
+    "Ten PPT pages and six operation chapters form a clear input-to-output and before-to-after narrative.",
+    "Each operation rail distinguishes the typical manual method, actual input, actual output and mechanism of advantage at readable scale.",
+    "The measurement chapter freezes on the complete designed success record, and the delivery chapter begins only after the real delivery page is stable.",
+    "Sentence-level Chinese subtitles stay inside the dedicated bottom subtitle zone without covering the product recording or explanation rail."
   ],
   "suggestions": [
-    "Keep the 23-character subtitle limit and dedicated subtitle safe area.",
+    "Keep the 23-character subtitle limit, dedicated subtitle safe area and four-part operation explanation rail.",
     "Keep the 19-frame raw evidence coverage alongside the narrated presentation video.",
-    "Add richer editor-area content only after a real pilot; do not fabricate business results for visual density."
+    "Add quantitative productivity claims only after a real same-scope pilot; do not substitute controlled fixtures."
   ],
-  "reasoning": "The final 150.424-second video forms a complete macro-introduction, six-step operation, combined-result and promotion narrative. Narration, timed subtitles and visual explanation have distinct roles, and representative frames show no missing glyphs or blocked operations."
+  "reasoning": "The final 165.791-second video explicitly explains accepted inputs, concrete outputs, the typical manual baseline and the mechanisms of efficiency improvement while retaining six verified real-product operation chapters. Representative frames show no missing glyphs, blocked operations, blank transition freeze, chapter mismatch or subtitle obstruction."
 }

@@ -25,13 +25,15 @@ const requiredFiles = [
   'evidence/demo/office-demo-submission-transcript.md',
   'evidence/demo/presentation-slides.json',
   'evidence/demo/slides/01-title.png',
-  'evidence/demo/slides/02-problem.png',
-  'evidence/demo/slides/03-audience.png',
-  'evidence/demo/slides/04-workflow.png',
-  'evidence/demo/slides/05-results.png',
-  'evidence/demo/slides/06-value.png',
-  'evidence/demo/slides/07-promotion.png',
-  'evidence/demo/slides/08-end.png',
+  'evidence/demo/slides/02-manual-before.png',
+  'evidence/demo/slides/03-inputs.png',
+  'evidence/demo/slides/04-audience.png',
+  'evidence/demo/slides/05-workflow.png',
+  'evidence/demo/slides/06-before-after.png',
+  'evidence/demo/slides/07-results.png',
+  'evidence/demo/slides/08-efficiency.png',
+  'evidence/demo/slides/09-promotion.png',
+  'evidence/demo/slides/10-end.png',
   'evidence/demo/office-demo-poster.jpg',
   'evidence/demo/office-demo.mp4',
   'evidence/demo/office-demo.webm',
@@ -84,7 +86,7 @@ describe('office competition submission package', () => {
     expect(transcript).toContain('逐句字幕');
     expect(transcript).toContain('证据边界');
     const presentation = JSON.parse(await readFile(join(packageRoot, 'evidence/demo/presentation-slides.json'), 'utf8'));
-    expect(presentation.slides).toHaveLength(8);
+    expect(presentation.slides).toHaveLength(10);
     expect((await stat(join(packageRoot, 'evidence/demo/office-demo-poster.jpg'))).size).toBeGreaterThan(50_000);
     const timestamps = await readFile(join(packageRoot, 'evidence/demo/timestamps.md'), 'utf8');
     expect(timestamps).toContain('19-deliver-export.png');
