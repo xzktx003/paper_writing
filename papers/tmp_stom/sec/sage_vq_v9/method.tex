@@ -1,0 +1,39 @@
+\section{表示、适应坐标与失配机制}
+\subsection{Block-scaled 共享码本 VQ}
+将权重分成 $d$ 维向量 $w_i$，共享码本为 $\mathcal C=\{c_k\}_{k=1}^K$，索引为 $a_i$，尺度组为 $g(i)$。先令 $u_i=w_i/s_{g(i)}$，再共享量化归一化向量；部署权重为
+\begin{equation}
+\hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+本文使用 $d=6,K=4096$、group size 160；计入码本、尺度与元数据后为 2.1207557 bpp。Vector-GPTQ 先用几何 top-128 缩小候选，再以 Hessian 加权目标选码字，并将当前向量误差通过逆 Hessian 因子反馈给剩余列。这产生完整 32 层、224 个 Linear 的共同硬锚点 $(s^0,a^0)$。
+
+\subsection{两个部署坐标}
+连续分支学习有界 log-scale 增量
+\begin{equation}
+\tilde s_g=s_g^0\exp(r_g),\qquad |r_g|\le\rho,
+\end{equation}
+并冻结 assignment、codebook、normalizer 与非目标层。离散分支从当前码字出发构造含自身的 8-way 几何邻域。任务监督、浮点教师 KL 和长文本 guard 给出功能梯度 $g_i$；邻域内只保留使
+\begin{equation}
+\Delta_i(c)=\langle g_i\odot s^0_{g(i)},c-c_{a_i^0}\rangle
+\end{equation}
+最小的 alternative $c_i^1$。Binary Concrete switch 为
+\begin{equation}
+p_i=\sigma((z_i+\epsilon_i)/\tau),\quad
+\tilde w_i=s^0_{g(i)}[(1-p_i)c_{a_i^0}+p_ic_i^1].
+\end{equation}
+训练后不保存 $p_i$；按置信度构造 1/8、1/4、1/2 与 full 嵌套硬投影，并以真实 int32 assignment 重构和验收。
+
+\subsection{Naive simultaneous joint}
+最直接的联合参数化为
+\begin{equation}
+\tilde w_i=s^0_{g(i)}\exp(r_{g(i)})[(1-p_i)c_{a_i^0}+p_ic_i^1].
+\end{equation}
+尺度与 switch 使用独立 Adam 参数组、共享任务/教师/文本目标；每个尺度快照分别同零切换和四种硬投影组合。该表示可以无额外 bpp 折叠，却不保证训练几何与折叠后的几何一致。
+
+\subsection{补偿--投影失配}
+令软原型 $m_i(p_i)=(1-p_i)c_{a_i^0}+p_ic_i^1$、硬原型 $h_i\in\{c_{a_i^0},c_i^1\}$。尺度增量根据组内所有 $m_i$ 学习共同补偿；若
+\begin{equation}
+R_g=\sum_{i:g(i)=g}\|h_i-m_i(p_i)\|^2
+\end{equation}
+不可忽略，则软状态学到的尺度不再是硬状态上的有效尺度。本文并不把它表述为普遍定理，而通过零切换尺度端点、joint 硬端点与独立坐标三类部署状态检验该机制。
+
+所有候选使用 balanced task loss、macro、单任务 loss 和文本 CE Gate。唯一入选端点只在一组从未观察的 task/C4 audit 上验收一次，失败则整体回滚；最后审计 dtype、固定状态、fresh reconstruction 与逻辑 bpp。负结果导出的最小后续原则是：先固化一个真实 hard checkpoint，再从该权重重新计算下一坐标的功能方向。本版本只提出该待证伪假设。

@@ -1100,6 +1100,17 @@
 - 预期效果：在不增加逻辑bpp、保持码本固定的前提下，取得不低于scale-only的任务macro，并把PPL
   拉向assignment-only；若assignment在scale锚点上no-op或退化，则V8应把assignment明确报告为
   Pareto消融而非主方法核心。
-- 当前状态：已实现、准备正式验证；不扫描seed、group size或学习率。实现不是先后复用两个已看audit
-  的checkpoint，而是在一个参数化里联合训练scale/switch，validation包含零-switch scale端点与嵌套
-  assignment投影，最终只在全新的task offset1024和C4 rows5376--5439上执行一次整体audit。
+- 当前状态：已否决。正式联合端点Macro-6/5为69.7434%/68.9511%、PPL 11.4098，被scale-only的
+  71.7223%/72.5484%、10.9448严格支配。Joint中的零-switch scale端点validation macro仅70.9375%，表明同步软松弛使
+  scale对soft assignment mixture产生补偿，hard projection后两坐标同时失配。该结果否决naive simultaneous joint，
+  不否决部署态分阶段组合。
+
+### 2026-08-29 03:59：部署态连续锚点→稀疏离散修复
+
+- Idea：不再在软assignment mixture上同步学习scale。先独立训练并固化可部署的group-scale硬checkpoint，再以
+  该真实权重为局部锚点重新计算功能梯度和8-way附近领域alternative，只训练稀疏assignment repair。
+- 动机：naive joint中的scale-only硬投影也显著差于独立scale，说明软—硬补偿而非坐标本身不可组合。先固化
+  连续端点可以让assignment的proposal、训练与验证全部发生在同一部署态邻域。
+- 预期效果：保持scale-only 71.72% Macro-6附近，用少量局部index修复LAMBADA/ARC-E或收回PPL；若最佳硬投影
+  为no-op，则证明assignment是另一Pareto分支而非可叠加主模块。
+- 当前状态：待实现/待验证；这是由失败机制直接导出的方法修正，不是调学习率、group size或seed。

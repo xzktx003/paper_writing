@@ -1,0 +1,3 @@
+\begin{abstract}
+极低比特向量量化的部署权重同时包含连续 group scale 与离散 codeword assignment。直觉上，两者放入同一可微松弛应当互补；本文在固定共享码本的 2-bit block-scaled VQ 中给出反例。在相同 Llama-3.1-8B-Instruct、最后四层、监督和 2.1208-bpp 合同下，独立尺度适应达到 71.72\% 六任务平均和 10.9448 WikiText2 PPL，局部 assignment 适应达到 69.48\%/10.7347；同步 binary-Concrete assignment 与尺度的 naive joint 仅为 69.74\%/11.4098，被尺度端点严格支配。只保留 joint 学到的尺度、清零 assignment switch 时，验证平均降至 70.94\%，而独立尺度为 76.33\%。该硬状态反证表明，尺度补偿了训练时的软码字 mixture；hard projection 改变 mixture 后两个坐标同时失配。我们据此提出部署态交接原则：连续与离散坐标只能通过真实 hard checkpoint 交接，且每一步须在部署权重上验收。本文贡献是功能非均匀性与软--硬联合失配的可复现证据，不声称尚未验证的联合优越性或通用 PTQ SOTA。
+\end{abstract}

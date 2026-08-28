@@ -3249,3 +3249,26 @@
 - 首次GPU2启动在训练前显存握手时仅剩22,487 MiB，低于70 GiB门禁，安全退出3且未产生部分checkpoint；
   随后依据既有matched assignment峰值34.15 GB，把入口改为默认GPU2但允许显式覆盖，并选择仍有
   55,031 MiB可用的GPU7，以48 GiB门禁重启。进程仍只暴露一张物理GPU，不并行启动第二项实验。
+
+## 2026-08-28 19:45--2026-08-29 03:45：Llama-3.1-8B-Instruct连续尺度—局部Assignment同步联合（本地GPU7，已完成）
+
+- 目的：在同一软参数化中联合训练FP16 group-scale log delta与当前码字附近领域assignment switch，
+  检验是否能同时保留scale-only的任务增益和assignment-only的较小PPL漂移；不做seed/group/LR扫描。
+- 全量配置：同一Llama-3.1-8B-Instruct Vector-GSQ source、layers28--31、每任务512 train/256 validation/64全新
+  final audit，task audit offset1024；文本4096/128/64，新C4 audit rows5376--5439，length4096，2 epochs。完整运行
+  WikiText2 test seqlength2048与六项0-shot `lm_eval`，无`limit`。
+- 选择：epoch1的1/2硬投影，切换1,252,415 / 145,465,344个assignment（0.860971%）；5,521,408个scale delta
+  全部非零，mean-abs 0.033627。Validation macro 71.9531%->72.8125%；全新audit macro保持76.8750%，balanced loss下降
+  8.5607%、C4 CE下降1.9967%，Gate通过。
+- 正式结果：PPL=`11.4097919464`，Macro-6=`0.6974338550`，公共五任务=`0.6895113498`。相对source提高
+  1.7437/0.8465pp，但PPL退化8.7063%。相对assignment-only，Macro-6仅高0.2660pp、五任务低0.1232pp，PPL再差
+  6.2892%。相对group-scale-only，Macro-6/五任务低1.9789/3.5972pp，PPL还差4.2489%，被其严格支配。
+- 方法诊断：joint epoch1中只保留学到的scale、零switch时validation macro仅70.9375%，明显低于独立scale的
+  76.3281%；选中硬投影也低于独立assignment的74.1406%。这表明scale在软assignment mixture上学到了补偿，
+  hard projection后两个坐标同时失配；失败不能通过seed/LR/投影比例扫描合理解决。
+- 部署合同：assignment与scale改变；codebook、normalizer、固定metadata和非目标状态精确；fresh reconstruction误差0；
+  逻辑bpp仍为2.1207557091。校准27226.14秒、PPL 55.69秒、lm_eval 1501.42秒，终端status0。
+- 结论：完整否决“同一软松弛内同步联合即可互补”。下一方法方向是先固化真实可部署scale端点，再以它为锚点学习
+  稀疏assignment repair，最终组合仅使用一次全新audit；不进行无意义调参。
+- 紧凑JSON：`code/GSQ_nowag_d1_20260716_015355/experiments/results/20260829_035900_llama3_1_8b_joint_scale_assignment_complete.json`；
+  报告：`report/20260829_035900_llama3_1_8b_joint_scale_assignment_result_report.md`。

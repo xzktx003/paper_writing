@@ -462,3 +462,16 @@
 - task split支持与train/validation窗口分离的显式audit offset，并拒绝重叠/越界。新单卡入口
   `run_llama3_1_8b_joint_scale_assignment_local.sh`使用任务offset1024和全新C4 rows5376--5439作一次
   final audit，随后串行执行2048 PPL及六任务全量lm_eval；相关回归测试共71项通过。
+
+## Joint group-scale + anchor-local assignment calibration（2026-08-29）
+
+- `calibrate_task_local_assignments.py` 支持 `--train-group-scales`：在binary Concrete assignment参数化中同时学习已有
+  group scale的有界log delta，使用独立optimizer parameter group、L2约束和FP16折叠。
+- Joint projection包含零-switch scale端点与1/8--full assignment嵌套硬投影；全部候选都以真实可部署权重验证，
+  在Gate内按balanced task loss而非稀疏度排序。
+- `--task-audit-offset` 允许final task audit与train/validation区间分离；joint launcher使用offset1024以及新C4
+  rows5376--5439，保证最终组合端点只做一次从未观察的audit。
+- `fold_deployment_state` 同时折叠hard assignment与FP16 scale，并验证codebook/normalizer/非目标状态、逻辑bpp与
+  fresh reconstruction合同。
+- 完整Llama-3.1-8B实验已验证该路径工程上可执行，但方法效果被独立scale-only严格支配。该负结果已固化为
+  方法边界：后续优先使用“固化部署态scale锚点后再做稀疏assignment repair”，不扫描naive joint超参数。

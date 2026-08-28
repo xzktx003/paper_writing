@@ -12,6 +12,7 @@
 | V6 | 2026-08-28 | 最近码字不是功能最优；assignment 是稀疏信赖域 | 现象、真实方法与审计明显增强；但 task-label supervision 使 GSQ/QTIP 排名不完全公平；缺 text-only 完整实验、阶段消融和二阶交互解释；QTIP 总体支配 | V7 首先校正为 task-adapted 定位；补 teacher/text-only 同模型实验；用既有投影分析一阶预测—真实硬损失偏差；加入二阶余项解释 | 8.0 | 6.5 | 6.0 | 4.5 | 8.0 | 5.0 |
 | V7 | 2026-08-28 | 少量码字切换决定任务适应；固定 VQ 表示上的离散信赖域 | 监督定位、公平负对照和二阶解释使论文达到边缘接收；仍缺同监督task-adaptation基线、70B/跨模型广度、锚点阶段消融；PPL与两任务退化 | 下一轮优先对比同监督同预算任务适应方法；无实验预算时继续收缩锚点贡献并完成官方模板编译 | 8.7 | 6.8 | 7.2 | 6.0 | 8.7 | 6.0 |
 | V8 | 2026-08-28 | 同一 VQ 表示中的连续 scale 与局部 assignment 形成不同 task/PPL 适应坐标 | 同监督scale-only显著超过assignment-only，论文诚实转为双坐标非均匀性；但尚无联合端点，scale更快且任务分数更高；缺第二模型、真实Figure 1和外部task-adaptation基线 | 下一版先验证单次独立audit约束的scale+assignment联合方法；失败则把assignment降为Pareto消融，不做seed/group/LR扫描 | 9.0 | 6.5 | 7.8 | 6.0 | 9.0 | 5.5 |
+| V9 | 2026-08-29 | 同步软联合产生尺度补偿--硬投影失配；部署坐标必须经真实 hard checkpoint 交接 | 联合正式实验被scale-only在PPL和两种任务平均上严格支配；零switch反证定位soft mixture补偿；已补Figure 1并正面承认PV-Tuning先验，但尚无成功hard-handoff方法、组级机制统计或第二模型 | 下一版固定独立scale硬checkpoint，重新计算8-way功能邻居并只训练稀疏assignment repair；预注册剩余不重叠audit，成功标准直接相对scale-only | 9.2 | 5.8 | 8.2 | 5.8 | 9.3 | 5.5 |
 
 ## 评分口径
 

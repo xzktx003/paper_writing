@@ -1,0 +1,9 @@
+\section{相关工作}
+\paragraph{极低比特锚点。}
+GPTQ 以校准激活估计二阶信息并反馈量化误差~\cite{gptq}；AWQ、OmniQuant、QuaRot 与 SpinQuant 分别利用激活显著性、可学习尺度或旋转改善量化条件~\cite{awq,omniquant,quarot,spinquant}。GPTVQ、AQLM、QuIP\# 与 QTIP 使用向量、加性码本、格或 trellis~\cite{gptvq,aqlm,quipsharp,qtip}。本文的共享码本只是暴露连续尺度和离散索引的表示载体，而非主要新意。
+
+\paragraph{连续--离散量化微调。}
+GSQ 用 Gumbel-Softmax 学习量化 assignment~\cite{gsq,gumbel,concrete}。PV-Tuning 更直接地交替优化连续值集和离散 codes，并给出理想坐标步的单调性与收敛分析~\cite{pvtuning}。因此，“坐标交替”不是本文创新。我们的证据限定在固定 codebook/normalizer、已有乘性 block scale、当前码字 8-way 邻域、任务功能方向、真实 hard projection 与一次独立 audit；新发现是同步软组合在这一部署表示上产生的补偿失配。
+
+\paragraph{任务适应边界。}
+LoTA-QAF 等工作关注可合并的低比特适配变量~\cite{lotaqaf}。本文不增加 adapter，而修改 checkpoint 已存在的尺度或索引。由于正结果使用目标任务 training split，QTIP 和 GSQ 只能作为通用 PTQ 质量坐标，不能被描述为同监督条件下被超越的基线。
