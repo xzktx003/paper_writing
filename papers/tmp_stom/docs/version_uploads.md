@@ -14,6 +14,6 @@
 - 关键实验：Llama-3.1-8B-Instruct 的 matched task group-scale 基线，与 assignment-only 在任务收益、PPL 漂移与部署形态上对比。
 - 论文仓库分支：`feat/office-track-writing-workbench`。
 - 算法仓库分支：`paper-v8-coordinate-adaptation`。
-- 论文提交：本次论文证据快照提交（具体提交号由紧随其后的发布索引提交记录）。
+- 论文提交：`06575cc725209845197182a3ad9d1fb48c4668a8`。
 - 算法提交：`ed2224b76b62d3affe3fbf43f1c3974977c6bd68`。
 - 验证：71 项相关 pytest 用例通过；Python 语法、shell 语法、JSON 及 Git whitespace 检查通过；本机缺少 LaTeX 编译器，未生成 PDF。
