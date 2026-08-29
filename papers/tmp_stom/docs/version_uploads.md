@@ -39,3 +39,15 @@
 - 算法提交：`85287e8dd8da4205374adc9afb3951c33bc10fef`。
 - 版本标签：论文和算法仓库均为 `sage-vq-v10`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
 - 验证：35 项聚焦 pytest 通过；Python compile、shell syntax、JSON contract、图像重生成与目检、Markdown/LaTeX 结构和 Git whitespace 均通过；本机无 LaTeX 引擎，未编译论文 PDF。
+
+## V11（2026-08-30）
+
+- 论文主题：四视图严格梯度共识把一阶候选率从 98.20% 筛到 48.71%，但八个真实 hard projection 仍全部失败；跨视图冲突真实存在，符号一致仍不是有限码字跳转的离散可信域。
+- 关键实验：Meta-Llama-3.1-8B-Instruct 最后四层、完整固定校准协议、单张本地 GPU5；最佳 changed endpoint 相对 V10 提高 2.2656pp，但仍低于 scale source 2.4219pp，最终精确 no-op，沿用同一部署状态的 10.9448 PPL / 71.7223% Macro-6 / 2.1208 bpp。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v11-gradient-consensus`。
+- 论文产物提交：`6f89f9d07855f2f554f3dddde7dad7d2eae34a26`。
+- 算法提交：`9555c86b5ed4f83df999a0da2de5c994f7351b1f`。
+- 版本标签：论文和算法仓库均为 `sage-vq-v11`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
+- 上传内容：V11 中文论文、LaTeX 主文件与七个分节/参考文献、独立 ICLR 风格评审、修订记录、正式实验报告、顶会叙事调研、Figure 1 及绘图脚本、实验/idea/功能/debug 台账；算法源码、两个单卡 launcher、聚焦测试和紧凑结果 JSON。未上传 checkpoint、模型权重、token cache 或完整运行日志。
+- 验证：38 项聚焦 pytest 通过；Python compile、shell syntax、JSON parse、Markdown/LaTeX 输入与引用静态检查、图像重生成与目检、Git whitespace 均通过；本机无 LaTeX 引擎，未编译整篇论文 PDF。
