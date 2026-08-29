@@ -475,3 +475,18 @@
   fresh reconstruction合同。
 - 完整Llama-3.1-8B实验已验证该路径工程上可执行，但方法效果被独立scale-only严格支配。该负结果已固化为
   方法边界：后续优先使用“固化部署态scale锚点后再做稀疏assignment repair”，不扫描naive joint超参数。
+
+## Scale-hard assignment repair 与投影 Gate 修复（2026-08-29）
+
+- 新增 `run_llama3_1_8b_scale_hard_assignment_repair_local.sh`：验证并加载已经独立训练、audit通过的
+  FP16 group-scale checkpoint；固定scale/codebook/normalizer，从真实hard state重新计算8-way功能候选，
+  只训练layers28--31 assignment，最后串行运行WikiText2 seqlength2048 PPL和六任务全量lm_eval。
+- `calibrate_task_local_assignments.py` 的task-adapted selector不再要求full endpoint先通过source Gate。
+  只要训练路径产生非零switch，就始终枚举1/8、1/4、1/2、full嵌套hard projection，并让每个真实部署
+  状态独立接受loss/macro/text/rate Gate，锁定非单调稀疏路径可被观察。
+- `build_matched_llama_assignment_cache.py` 新增 `--expected-prefix-cache` 与bit-exact prefix验证：扩展缓存时
+  旧行的shape、metadata和token必须逐项一致。本轮保留既有5440×4096前缀，只新增rows5440--5503。
+- 新增红绿灯覆盖 hard-handoff单卡正式入口、source合同、最大不重叠audit窗口、prefix extension成功/拒绝、
+  full endpoint失败时仍评估稀疏路径及每个投影独立Gate；35项聚焦测试通过。
+- 正式方法结果为安全no-op：八个changed projection全失败，最终checkpoint与scale-only bit-exact。
+  该行为是部署保护合同，不应被报告为非零assignment audit失败。

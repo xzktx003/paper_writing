@@ -3272,3 +3272,12 @@
   稀疏assignment repair，最终组合仅使用一次全新audit；不进行无意义调参。
 - 紧凑JSON：`code/GSQ_nowag_d1_20260716_015355/experiments/results/20260829_035900_llama3_1_8b_joint_scale_assignment_complete.json`；
   报告：`report/20260829_035900_llama3_1_8b_joint_scale_assignment_result_report.md`。
+## 2026-08-29 18:45：Llama-3.1-8B scale-hard assignment repair（正式完整负结果）
+
+- **实验目的：** 检验 V9 的部署态修复原则。先固化已审计的独立 FP16 group-scale checkpoint，冻结 scale，重新计算当前码字 8-way 功能邻居，只训练 assignment；成功标准直接相对 scale-only，不做 seed/LR/group/projection 扫描。
+- **实验原理：** 每个 epoch 将正 switch logit 按置信度构成 1/8、1/4、1/2、full 四个真实 int32 hard projection，并让每个 deployed state 独立通过 task/text loss-dominance Gate。任务使用每项 512/256/31 train/validation/audit，文本使用 4096/128/64 条 4096-token 序列；PPL seqlength=2048，准确率为六任务完整 lm_eval。
+- **关键修复：** 首轮正式 run 暴露 selector 只在 full endpoint 先通过 Gate 时才评估稀疏投影，违背非单调 trust-region 假设。修复为任何非零路径都枚举和独立 Gate 四个投影；cache builder 同时新增 bit-exact prefix extension 合同。首轮 4.93h 诊断失败与最终 run 均保留。
+- **实验结果：** 最终 run 用时 6.65h，峰值 31.80GiB。一阶 proposal 在 145,465,344 个向量上的负方向率为 98.1965%，但两 epoch 共八个 hard projection 全部失败。其 validation Macro 为 67.1094%--71.6406%，均低于 scale baseline 76.3281%；最佳 changed loss 0.736233，仍比 baseline 0.679691 高 8.32%。5% rate 内最佳点低 5.4688pp、loss 高 16.24%。
+- **最终端点：** epoch0/no-op，assignment、scale、codebook、normalizer、逻辑码率和非目标状态均精确不变，reconstruction error=0；WikiText2 PPL 10.9447565，Macro-6 71.7222511%，公共五任务 72.5483625%，2.1207557 bpp，均与 scale-only 完全一致。`audit_gate_passed=false` 表示没有 changed candidate 进入 audit，不表示非零候选 audit 失败。
+- **结论：** hard handoff 避免了同步 soft joint 对 scale 的破坏，但当前一阶 8-way assignment repair 无法叠加到 scale endpoint。Assignment 只能保留为独立 Pareto 分支。下一方法应检验 scale-conditioned curvature 或跨 batch/任务梯度一致性，不继续做超参数或 seed 消融。
+- **产物：** `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260829_184500_llama3_1_8b_scale_hard_assignment_repair_complete.json`；完整报告 `report/20260829_184500_llama3_1_8b_scale_hard_assignment_repair_result_report.md`。

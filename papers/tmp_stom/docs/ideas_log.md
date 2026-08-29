@@ -1113,4 +1113,17 @@
   连续端点可以让assignment的proposal、训练与验证全部发生在同一部署态邻域。
 - 预期效果：保持scale-only 71.72% Macro-6附近，用少量局部index修复LAMBADA/ARC-E或收回PPL；若最佳硬投影
   为no-op，则证明assignment是另一Pareto分支而非可叠加主模块。
-- 当前状态：待实现/待验证；这是由失败机制直接导出的方法修正，不是调学习率、group size或seed。
+- 当前状态：已否决为组合主方法。最终完整 run 在冻结scale硬锚点后实际评估两epoch共八个1/8--full硬投影；
+  98.1965%向量虽有负一阶邻居，但所有changed endpoint均低于scale baseline，最终精确回滚为no-op。
+  Hard handoff可以防止V9的soft compensation污染scale，却不足以证明assignment可叠加。
+
+### 2026-08-29 18:45：Scale-conditioned curvature / gradient-consensus assignment proposal
+
+- Idea：在已经固化的scale硬checkpoint上，不再仅用单个聚合梯度的一阶内积选择8-way alternative。
+  候选必须同时满足低成本曲率近似（如分组对角Gauss--Newton/Fisher代价）或跨batch、跨任务梯度符号/
+  排名一致性，再进入binary Concrete和hard-set选择。
+- 动机：本轮98.1965%的向量具有负一阶alternative，但从0.9635%到14.1665%切换率的八个硬集合全部
+  退化；说明主要瓶颈是proposal对集合级部署损失的预测失准，而不是候选数量、投影比例或训练轮数。
+- 预期效果：显著减少“单点线性项为负、组合硬投影为正”的候选；若存在可叠加自由度，应在不破坏
+  scale baseline的条件下形成小于5%切换率的非零端点。若仍no-op，则停止把assignment作为scale后续模块。
+- 当前状态：待验证；不允许通过seed、LR、group size或projection ratio扫描替代该机制检验。

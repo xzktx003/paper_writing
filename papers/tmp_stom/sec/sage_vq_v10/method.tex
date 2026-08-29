@@ -1,0 +1,40 @@
+\section{方法}
+\subsection{Block scale后的共享码本VQ}
+将Linear权重分为$d$维向量$w_i$，group映射为$g(i)$，共享码本为$\mathcal C=\{c_1,\ldots,c_K\}$。先以group scale统一动态范围，再共享VQ：
+\begin{equation}
+u_i=w_i/s_{g(i)},\quad a_i=\arg\min_k\|u_i-c_k\|_2^2,\quad \hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+实验使用$d=6,K=4096$和group size 160；计入scale、码本和元数据后逻辑码率为2.1207557 bpp。连续$s_g$与离散$a_i$是表示本身的两个部署坐标。
+
+\subsection{Hessian-aware Vector-GPTQ硬锚点}
+几何VQ不能反映激活敏感性。我们在top-128几何候选内使用Hessian加权向量代价；选定第$j$个向量码字后，将误差反馈到剩余列：
+\begin{equation}
+W_{:,j+1:}\leftarrow W_{:,j+1:}-e_j\frac{H^{-1}_{j,j+1:}}{H^{-1}_{jj}}.
+\end{equation}
+由此得到32层、224个Linear的共同硬锚点$(s^0,a^0,\mathcal C)$。后续固定码本与normalizer。
+
+\subsection{连续尺度与局部离散坐标}
+Scale分支学习有界log delta：$\tilde s_g=s_g^0\exp(r_g)$，完成后以FP16写回。Assignment分支为当前码字$a_i^0$构造8-way邻域$\mathcal N(a_i^0)$。在当前hard weight上取得功能梯度$g_i$，以
+\begin{equation}
+\Delta_i(c)=\langle g_i\odot s_{g(i)},c-c_{a_i^0}\rangle
+\end{equation}
+选择一个邻域alternative $c_i^1$。Binary Concrete松弛为
+\begin{equation}
+p_i=\sigma((z_i+\epsilon_i)/\tau),\quad
+\tilde w_i=s_{g(i)}[(1-p_i)c_{a_i^0}+p_ic_i^1].
+\end{equation}
+部署时不保存$p_i$，而将正logit按置信度构成1/8、1/4、1/2和full嵌套int32 assignment。
+
+\subsection{Hard checkpoint handoff}
+同步训练$s_g$与$p_i$时，scale可补偿soft prototype $(1-p_i)c_{a_i^0}+p_ic_i^1$；hard projection改变prototype后补偿失效。本版先独立训练并审计scale，得到$(s^\star,a^0,\mathcal C)$，冻结$s^\star$，在真实重构模型上重新计算$g_i$与$c_i^1$，只训练$z_i$。训练、validation、audit与部署始终共享同一scale状态。没有changed候选通过时，输出必须与source bit-exact。
+
+\subsection{一阶proposal不保证集合改善}
+对切换集合$S$及其总扰动$\delta_S$，
+\begin{equation}
+\mathcal L(W+\delta_S)=\mathcal L(W)+\sum_{i\in S}g^\top\delta_i+
+\tfrac12\delta_S^\top H(\xi)\delta_S.
+\end{equation}
+Proposal只观察线性项；曲率、跨向量交互和不同batch/任务的梯度冲突均可抵消逐向量负方向。本文不把该展开当作唯一因果证明，而用八个真实hard set检查一阶排序。
+
+\subsection{逐投影Gate与审计}
+每个hard set独立相对scale source检查balanced task loss、Macro、单任务loss、文本CE和$5\%$最大切换率，不要求full endpoint预先通过。只有validation接受的唯一changed候选才进入预注册audit；否则选择no-op。最后验证assignment/scale dtype、码本、normalizer、非目标状态、逻辑bpp和fresh reconstruction。

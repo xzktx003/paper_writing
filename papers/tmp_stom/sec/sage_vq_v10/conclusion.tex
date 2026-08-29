@@ -1,0 +1,2 @@
+\section{结论}
+本文检验2-bit block-scaled VQ中连续scale与局部assignment的可组合性。Hard checkpoint handoff消除了同步soft联合中的scale补偿失配，并在失败时精确保护部署checkpoint；但以scale硬状态重算的一阶8-way proposal仍严重失准：$98.20\%$向量具有负一阶邻居，八个真实硬集合却全部降低任务性能。最终scale到assignment端点与scale-only bit-exact，而不是新的质量改进。当前证据支持把二者视为竞争性部署接口：scale是更强任务端点，assignment-only是较低语言漂移的独立分支；现有proposal不能将它们写成可叠加主方法。下一问题必须直接检验scale-conditioned curvature或梯度一致性，而非继续扫描超参数。

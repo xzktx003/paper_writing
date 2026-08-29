@@ -1,0 +1,4 @@
+\begin{abstract}
+极低比特向量量化checkpoint同时保留连续group scale与离散codeword assignment；二者都可训练，但可训练性不保证可叠加。本文研究固定共享码本的2-bit block-scaled VQ。以已经任务适应的scale硬checkpoint为锚点，$98.20\%$量化向量都能在当前码字8-way附近领域内找到负一阶功能变化，但两个epoch共八个真实硬投影无一优于该锚点。我们先以block scale统一不同动态范围，用Hessian-aware Vector-GPTQ产生硬锚点；随后固化FP16 scale、重算局部候选并只训练binary-Concrete assignment。八个端点的验证平均为$67.11\%$--$71.64\%$，全部低于scale的$76.33\%$，最佳changed loss仍高$8.32\%$。部署选择安全回滚为零切换，正式结果与scale-only bit-exact：六任务平均$71.72\%$，WikiText2 PPL 10.9448，逻辑码率2.1208 bpp。结果表明hard checkpoint交接是防止软补偿的必要条件，却不是连续--离散坐标可组合的充分条件；当前一阶逐向量proposal不能可靠预测集合级部署收益。
+\end{abstract}
+\textbf{关键词：}大语言模型压缩；向量量化；码字指派；连续--离散优化；硬投影

@@ -1,0 +1,10 @@
+\section{引言}
+约2 bit/parameter的模型压缩必须组织结构化表示。GPTVQ、AQLM、QuIP\#和QTIP利用向量、加性码本、格码或trellis提高有限码率下的表达能力\cite{gptvq,aqlm,quipsharp,qtip}。一个block-scaled VQ部署checkpoint同时包含共享码本、离散assignment与连续group scale。当不恢复浮点影子权重、不增加逻辑码率地适应任务时，问题不只是哪些变量可训练，而是这些部署坐标能否叠加。
+
+我们先把不同block缩放到共享领域，再以同一4096项六维码本做VQ，并用Hessian-aware Vector-GPTQ构造硬assignment。固定码本后，scale是组级连续径向坐标，assignment是向量级离散坐标。PV-Tuning已经形式化连续value与离散partition/code的交替优化\cite{pvtuning}；因此本文不把坐标交替或训练assignment宣称为首次提出，而追问两个分别有效的坐标能否在真实部署态组合。
+
+单坐标实验显示显著非均匀性：在同一Llama-3.1-8B-Instruct 2.1208-bpp锚点上，训练最后四层FP16 scale得到$71.72\%$六任务平均和10.9448 PPL；只训练当前码字8-way邻域的assignment得到$69.48\%$和10.7347。同步软联合只有$69.74\%$/11.4098，且零switch的joint scale硬状态也退化，说明scale补偿了尚未部署的soft codeword mixture。
+
+本版检验最小修复：固化并冻结已审计scale checkpoint，在其真实权重上重算局部功能候选，只训练assignment。结果出现更强反差：$145{,}465{,}344$个向量中$98.1965\%$有负一阶邻居，但从$0.9635\%$到$14.1665\%$切换率的八个硬集合全部退化。Hard handoff保护了scale，却未产生可叠加assignment。
+
+本文贡献如下：(1)在同一表示中建立scale-only、assignment-only、同步joint与hard handoff的完整因果链；(2)实现真实hard checkpoint重锚定、逐投影独立Gate与bit-exact回滚的部署闭环；(3)以$98.20\%$逐向量负方向和$0/8$集合成功的反差，定位一阶proposal与集合级部署损失的缺口。本文报告可复现边界，不宣称尚不存在的联合质量增益或通用PTQ SOTA。

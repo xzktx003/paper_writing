@@ -1,0 +1,6 @@
+\section{相关工作}
+\paragraph{极低比特表示与锚点。}GPTQ以校准激活近似Hessian并把当前量化误差反馈到剩余权重\cite{gptq}；GPTVQ将决策扩展到向量\cite{gptvq}。AQLM使用加性码本并做block-level refinement\cite{aqlm}，QuIP\#和QTIP使用incoherence、格码或trellis\cite{quipsharp,qtip}。AWQ、OmniQuant、QuaRot与SpinQuant通过显著性、尺度或等价旋转改善量化条件\cite{awq,omniquant,quarot,spinquant}。本文用block-scaled shared VQ与Vector-GPTQ建立共同硬锚点，研究锚点之后已有部署变量的适应。
+
+\paragraph{可学习量化变量。}GSQ使用Gumbel-Softmax学习标量量化assignment\cite{gsq,gumbel}，Concrete分布提供离散变量的连续松弛\cite{concrete}。本文不做4096类全局重分配，而从当前硬码字的8-way几何邻域中由功能梯度选择一个alternative，再学习二元switch。附近领域控制单步半径，但不保证多个一阶有利切换可以组合。
+
+\paragraph{连续--离散坐标与任务适应。}PV-Tuning研究连续value和离散partition/code的交替更新，并在小子空间中使用真实梯度\cite{pvtuning}，所以坐标下降本身不是本文创新。本文补充特定部署证据：同步soft联合会产生补偿失配；hard handoff消除该问题后，一阶局部候选仍无法形成改善的hard set。LoTA-QAF等方法引入可合并低比特适配变量\cite{lotaqaf}；本文只修改checkpoint已有字段。由于正结果使用目标任务training split，通用PTQ的GSQ/QTIP只作质量定位，不能被写成同监督下被超越基线。
