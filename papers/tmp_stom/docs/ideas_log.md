@@ -1126,4 +1126,9 @@
   退化；说明主要瓶颈是proposal对集合级部署损失的预测失准，而不是候选数量、投影比例或训练轮数。
 - 预期效果：显著减少“单点线性项为负、组合硬投影为正”的候选；若存在可叠加自由度，应在不破坏
   scale baseline的条件下形成小于5%切换率的非零端点。若仍no-op，则停止把assignment作为scale后续模块。
-- 当前状态：待验证；不允许通过seed、LR、group size或projection ratio扫描替代该机制检验。
+- 当前状态：共识分支已完成并被否决为充分修复。V11以4个任务分层互斥view把聚合负邻居率
+  98.1973%筛到严格共识48.7101%，并将最佳changed endpoint相对V10提高2.2656pp；但两个epoch共
+  八个hard projection仍0/8通过，最佳点仍低于scale source 2.4219pp且loss高7.10%，最终精确no-op。
+  因此跨视图冲突是真实误差源，却不足以定义离散可信域；assignment-after-scale主路线暂停。只有候选级
+  scale-conditioned Hessian/Gauss--Newton分数先在低成本probe中证明能预测真实hard loss排序，才进入下一次
+  完整训练；不再增加view数或扫描seed、LR、group、epoch、projection ratio。

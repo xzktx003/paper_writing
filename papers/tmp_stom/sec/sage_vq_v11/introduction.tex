@@ -1,0 +1,22 @@
+\section{引言}
+
+约2 bit/parameter的大模型压缩不是把每个浮点数独立换成一个整数。GPTVQ、AQLM、QuIP\#与QTIP分别以低维向量、加性码本、格码和trellis提升有限码率下的表示能力\cite{gptvq,aqlm,quipsharp,qtip}；GPTQ、OmniQuant、QuaRot与SpinQuant则利用激活二阶信息、可学习尺度或等价旋转改变量化条件\cite{gptq,omniquant,quarot,spinquant}。这些路线共同说明：极低比特质量取决于表示几何与模型功能，而不是最近邻权重误差本身。
+
+本文考虑一种直接可部署的表示。每个block先由group scale映射到共同数值领域，随后所有block在同一套4096个六维码字上做VQ；Vector-GPTQ在top-128几何候选中使用激活Hessian并把量化误差反馈给后续列。得到的硬checkpoint不只有assignment，还含FP16 group scale、共享codebook与normalizer。固定码本后，scale是组级连续径向坐标，assignment是向量级离散切向坐标。它们都已存在于checkpoint中，不增加逻辑码率。
+
+部署坐标的可训练性并不等于可组合性。在同一Meta-Llama-3.1-8B-Instruct 2.1208-bpp锚点上，只训练最后四层scale可将六任务平均从68.00\%提至71.72\%，WikiText2 PPL从10.4960变为10.9448；只训练局部assignment，接受0.378\%的index切换，可达到69.48\%与10.7347。同步soft训练二者反而只有69.74\%/11.4098，因为scale补偿了尚未部署的codeword mixture。先固化scale、再冻结它训练assignment的hard handoff消除了该补偿，却仍没有一个硬投影优于scale。
+
+这一失败暴露更尖锐的矛盾：145,465,344个向量中，98.20\%在当前码字8-way邻域内有负一阶候选，而从0.96\%到14.17\%切换率的八个真实集合全部退化。对七个带噪邻居分数取最小值会产生强选择偏差；聚合任务与文本梯度还会掩盖不同样本间的符号冲突。因此上一版无法区分两种解释：proposal主要被跨数据噪声污染，还是一阶信息即使稳定也无法预测有限离散步。
+
+我们用一个最小干预区分二者。完整的2560条任务样本和4096条长文本不增不减地分成四个互斥视图。对每个当前码字邻居分别计算四个一阶变化，只有同一邻居在四个视图中严格为负才允许成为alternative，并在合格邻居中最小化最差视图分数。无共同下降邻居的向量保持anchor，权重扰动严格为零。该设计没有新的连续超参数，且两版除proposal外共享训练、投影和Gate。
+
+结果同时肯定并否定假设的一部分。四视图共识把可提议向量降至48.71\%，说明跨视图冲突确实解释约一半聚合负方向；最佳changed hard state也从71.64\%提到73.91\%。但八个投影仍没有一个触及76.33\%的source，5\%切换率内最佳点低5.00个百分点。符号稳定性是有信息的过滤器，却不是离散可信域。
+
+本文贡献如下：
+\begin{enumerate}
+  \item 建立同一block-scaled VQ中连续scale、离散assignment、同步soft joint与hard handoff的部署因果链，区分状态失配与proposal失配。
+  \item 提出任务分层、互斥四视图的严格共识proposal；它不增加数据或更换seed，将候选池减少50.40\%，直接测量min-of-neighbors偏差。
+  \item 通过两轮八个真实int32投影证明共识改善候选质量但仍0/8成功，将下一方法问题收缩为有限步曲率与集合交互，并以精确no-op保护部署状态。
+\end{enumerate}
+
+我们不声称新的SOTA endpoint。QTIP在无目标任务标签的通用PTQ设置具有更低PPL和名义码率；PV-Tuning已覆盖更一般的连续--离散优化\cite{pvtuning}。本文的认知增量是一个可复现边界：稳定的一阶下降信号仍不能充当极低比特VQ的离散部署证据。

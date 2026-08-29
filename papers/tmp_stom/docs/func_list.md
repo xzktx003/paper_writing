@@ -490,3 +490,24 @@
   full endpoint失败时仍评估稀疏路径及每个投影独立Gate；35项聚焦测试通过。
 - 正式方法结果为安全no-op：八个changed projection全失败，最终checkpoint与scale-only bit-exact。
   该行为是部署保护合同，不应被报告为非零assignment audit失败。
+
+## Cross-view consensus assignment proposal（2026-08-29）
+
+- `calibrate_task_local_assignments.py` 新增 `--proposal-gradient-shards`。当值大于1时，任务训练样本按task
+  分层、文本样本按row轮转，形成确定性、互斥且每个task等量的gradient views；每个样本只前向/反向一次，
+  不靠重复数据或更换seed制造一致性。
+- 新增strict consensus alternative selector：仍从当前码字8-way几何领域出发，但一个邻居必须在所有
+  gradient views中具有负一阶变化；选择时最小化最差view分数。不存在共同下降邻居的向量保持anchor ID，
+  binary路径上的权重扰动为零，switch penalty只会进一步保持其关闭。
+- Summary记录aggregate negative rate、strict-consensus eligible rate、冻结向量数、共同邻居数及selected
+  mean/worst-view delta，直接检验V10的“98.20%负一阶但0/8 hard成功”是否来自min-of-neighbors选择偏差。
+- 新增单卡Gate入口 `run_llama3_1_8b_scale_consensus_assignment_local.sh`：固定4个gradient views和独立scale
+  source，内部校准始终先停止；只有best epoch、非零assignment、validation/audit/rate和序列化合同全部通过，
+  才允许可选的WikiText2-2048与六任务全量评测。新C4 audit rows5504--5567通过bit-exact prefix扩展。
+- 红绿灯覆盖task-stratified互斥分片、共同下降/冲突候选、无consensus精确冻结、单卡Gate launcher；相关
+  38项测试通过。
+- Llama-3.1-8B正式结果：aggregate负方向率98.1973%，四视图strict-consensus率48.7101%，冻结
+  74,609,077 / 145,465,344个向量；两epoch八个hard projection仍全部失败，最终选择epoch0并精确回滚。
+  该结果验证selector的诊断能力，但否定“符号一致即可形成可部署assignment trust region”。
+- Gate在全部changed candidate未通过validation时保持`calibration_noop`，不运行冗余PPL/lm_eval；只有
+  assignment非零、validation/audit/rate和状态合同同时通过才进入正式benchmark，避免把no-op指标复用误写为新测量。

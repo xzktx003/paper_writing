@@ -1,0 +1,67 @@
+\section{方法}
+
+\subsection{Block scale后的共享码本VQ}
+
+将Linear权重划分为$d$维向量$w_i$，group为$g(i)$，共享码本为$\mathcal C=\{c_1,\ldots,c_K\}$。先以group scale归一化：
+\begin{equation}
+u_i=\frac{w_i}{s_{g(i)}},\qquad a_i=\arg\min_k\|u_i-c_k\|_2^2,
+\end{equation}
+部署重构为$\hat w_i=s_{g(i)}c_{a_i}$。实验固定$d=6$、$K=4096$、group size 160；计入FP16 scale、码本与元数据后为2.1207557 bpp。Block scale把不同动态范围移到可共享的领域，而不是给每个block分配独立码本。
+
+\subsection{Hessian-aware Vector-GPTQ硬锚点}
+
+几何最近邻忽略输入激活的方向敏感性。我们以校准激活估计Hessian/逆Hessian因子，在top-128几何候选中比较六维码字的二阶代理；选定第$j$个向量后，把误差$e_j$反馈到剩余列：
+\begin{equation}
+W_{:,j+1:}\leftarrow W_{:,j+1:}-e_j\frac{H^{-1}_{j,j+1:}}{H^{-1}_{jj}}.
+\end{equation}
+该阶段产生硬锚点$(s^0,a^0,\mathcal C)$；后续固定码本、normalizer与逻辑码率。
+
+\subsection{两个部署适应坐标}
+
+Scale坐标学习有界log delta：
+\begin{equation}
+\tilde s_g=s_g^0\exp(r_g),\qquad |r_g|\le\rho.
+\end{equation}
+Assignment坐标为当前码字建立含自身的8-way邻域，从中选一个alternative，再学习二元switch：
+\begin{equation}
+p_i=\sigma(z_i/\tau),\qquad
+\tilde w_i=s_{g(i)}[(1-p_i)c_{a_i^0}+p_ic_{a_i^1}].
+\end{equation}
+同步训练scale与$p_i$允许尺度补偿soft prototype，因此组合实验先把scale折叠为FP16 hard checkpoint，再冻结它重算proposal。
+
+\subsection{聚合梯度的选择偏差}
+
+单聚合梯度方法为邻居计算
+\begin{equation}
+\Delta_i(c)=\langle g_i\odot s_{g(i)},c-c_{a_i^0}\rangle
+\end{equation}
+并选择七个非anchor邻居中最小的一项。即使每项是零均值噪声，最小值也容易为负；聚合任务/文本梯度还会隐藏条件性符号。98.20\%负候选因而不是98.20\%可靠下降步。
+
+\subsection{四视图严格梯度共识}
+
+每个任务的512条训练样本确定性分成四份，每份128条；4096条文本分成四份，每份1024条。各视图互斥且并集等于完整训练集。视图$v$上的一阶变化为
+\begin{equation}
+\Delta_i^{(v)}(c)=\langle g_i^{(v)}\odot s_{g(i)},c-c_{a_i^0}\rangle.
+\end{equation}
+合格集合定义为
+\begin{equation}
+\mathcal E_i=\{c\in\mathcal N(a_i^0)\setminus\{c_{a_i^0}\}:\forall v,\Delta_i^{(v)}(c)<0\}.
+\end{equation}
+若$\mathcal E_i$非空，则
+\begin{equation}
+c_i^1=\arg\min_{c\in\mathcal E_i}\max_v\Delta_i^{(v)}(c);
+\end{equation}
+否则令$a_i^1=a_i^0$，使该向量权重扰动精确为零。共识没有可调阈值，直接检验符号冲突是否为主要失败源。
+
+\subsection{共识为何仍不能保证hard loss}
+
+令集合$S$的离散变化为$\delta_S=\sum_{i\in S}\delta_i$，则存在中间点$\xi$满足
+\begin{equation}
+\mathcal L(W+\delta_S)=\mathcal L(W)+g^\top\delta_S+
+\frac12\delta_S^\top H(\xi)\delta_S.
+\end{equation}
+共识只约束第一项在数据视图上的符号，不约束有限码字跳转的对角曲率或多个切换的交叉项。
+
+\subsection{硬投影Gate与精确回滚}
+
+每个epoch将正logit按置信度构造1/8、1/4、1/2、full四个hard set。候选必须相对scale source改善balanced loss，Macro最多回退1个百分点，任一任务loss与文本CE最多相对回退0.5\%，切换率不超过5\%。只有validation通过的状态才进入candidate-unexposed audit；否则选择no-op。最后检查assignment/scale dtype、codebook、normalizer、非目标状态、逻辑bpp与fresh reconstruction。

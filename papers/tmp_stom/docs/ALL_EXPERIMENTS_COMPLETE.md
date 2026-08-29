@@ -3281,3 +3281,15 @@
 - **最终端点：** epoch0/no-op，assignment、scale、codebook、normalizer、逻辑码率和非目标状态均精确不变，reconstruction error=0；WikiText2 PPL 10.9447565，Macro-6 71.7222511%，公共五任务 72.5483625%，2.1207557 bpp，均与 scale-only 完全一致。`audit_gate_passed=false` 表示没有 changed candidate 进入 audit，不表示非零候选 audit 失败。
 - **结论：** hard handoff 避免了同步 soft joint 对 scale 的破坏，但当前一阶 8-way assignment repair 无法叠加到 scale endpoint。Assignment 只能保留为独立 Pareto 分支。下一方法应检验 scale-conditioned curvature 或跨 batch/任务梯度一致性，不继续做超参数或 seed 消融。
 - **产物：** `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260829_184500_llama3_1_8b_scale_hard_assignment_repair_complete.json`；完整报告 `report/20260829_184500_llama3_1_8b_scale_hard_assignment_repair_result_report.md`。
+## 2026-08-30 05:45：Llama-3.1-8B scale-conditioned consensus assignment（正式完整负结果）
+
+- **目的：** 直接修复V10中“98.20%逐向量负一阶方向但0/8 hard set改善”的proposal失准，不做seed、LR、group或projection ratio扫描。
+- **方法：** 将完整512条/任务与4096条文本训练数据划为4个task-stratified互斥gradient views；8-way附近邻居必须在四个view中都预测下降，并最小化最差view一阶分数，否则向量精确冻结。Scale硬checkpoint、码本与normalizer固定。
+- **配置：** Meta-Llama-3.1-8B-Instruct layers28--31，任务512/256/31 train/validation/audit，文本4096/128/64×4096 token；新文本audit rows5504--5567；单张本地GPU5。任务audit已被V10读取baseline但从未暴露给changed candidate，本轮不称其为fresh。
+- **测试门禁：** 先完整校准并评估所有hard projections；只有非零候选通过validation、candidate-unexposed audit、5% rate与checkpoint合同才运行WikiText2 seqlength2048和六任务全量lm_eval。38项聚焦测试、Python和shell静态检查通过。
+- **Proposal统计：** 145,465,344个六维向量中，聚合梯度的负邻居率为98.1973%，四视图严格共识率降至48.7101%；70,856,267个向量保留alternative，74,609,077个向量因无共同下降邻居精确冻结。28个Linear的共识率为37.4745%--74.9129%。
+- **硬投影结果：** 两个epoch的1/8、1/4、1/2、full共八个真实int32投影全部低于scale source。全范围最佳changed endpoint为epoch2/full，切换率8.1007%、Macro 73.9063%、balanced loss 0.727951；相对source 76.3281%/0.679691仍低2.4219pp且loss高7.10%。5%切换率内最佳点低5.00pp、loss高14.06%。
+- **相对V10：** 最佳changed endpoint提高2.2656pp，relative loss改善1.12%，说明共识过滤有信息；但仍0/8通过，证明跨视图冲突只解释约一半虚假许可，符号一致并非有限码字跳转的离散可信域。
+- **最终端点：** `best_epoch=0`、零switch、`audit_gate_passed=false`。Assignment、scale、codebook、normalizer、逻辑bpp、固定metadata和非目标状态精确不变，fresh reconstruction误差0。由于Gate在validation阶段拒绝全部changed candidate，没有重复运行必然相同的正式benchmark；最终沿用同一scale部署状态的PPL 10.9447565、Macro-6 71.7223%、公共五任务72.5484%、2.1207557 bpp。
+- **资源与状态：** 本地物理GPU5单卡完成，耗时24,078.20秒（6.688小时），峰值31.80GiB，程序正常退出，`pipeline.status=calibration_noop`。下一步不再增加view、epoch或扫描超参数；只有候选级scale-conditioned曲率分数先证明能预测hard loss排序，才重启assignment-after-scale路线。
+- **产物：** 紧凑JSON `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_054500_llama3_1_8b_scale_consensus_assignment_complete.json`；完整报告 `report/20260830_054500_llama3_1_8b_scale_consensus_assignment_result_report.md`；原始summary SHA256 `15762e01f18d459b65681dc8c618a448eff04543ee7ec681ca69f1830bacc201`。

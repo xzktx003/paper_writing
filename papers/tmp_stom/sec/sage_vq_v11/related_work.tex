@@ -1,0 +1,13 @@
+\section{相关工作}
+
+\subsection{极低比特VQ与二阶量化}
+
+GPTQ以层输入构造近似Hessian，并在顺序量化中把当前误差反馈给未量化权重\cite{gptq}。GPTVQ把量化单位扩展为向量\cite{gptvq}。AQLM使用多个码本的加性组合和block-level refinement提升2-bit表达\cite{aqlm}；QuIP\#以Hadamard incoherence与格码改善权重/Hessian几何\cite{quipsharp}；QTIP用trellis解耦有效维度与显式码本规模\cite{qtip}。本文以Hessian-aware硬锚点作为共同起点，研究锚点形成后的任务适应坐标，而非宣称首次向量化GPTQ。
+
+\subsection{可学习量化参数与离散优化}
+
+OmniQuant、SpinQuant等方法训练clipping、scale或等价旋转\cite{omniquant,spinquant}。GSQ使用Gumbel-Softmax学习标量量化assignment\cite{gsq}；Gumbel-Softmax与Concrete为离散变量提供可微松弛\cite{gumbel,concrete}。PV-Tuning将量化参数分为连续value与离散partition/code，并以交替更新超越STE\cite{pvtuning}。因此训练assignment、使用Concrete以及连续后离散都不是本文单独的新颖性。我们的新增证据是：固定共享码本、乘性group scale和当前码字邻域中，soft状态、稳定一阶方向与hard endpoint可以系统性不一致。
+
+\subsection{梯度冲突与鲁棒proposal}
+
+多任务优化关注不同任务梯度冲突，例如PCGrad通过投影冲突梯度减少负迁移\cite{pcgrad}。本文不修改任务目标，而把互斥数据视图作为proposal诊断：只有同一有限码字跳转在所有视图的一阶项都为负，才认为其符号不依赖某个数据子集。该条件仍只约束Taylor展开的线性项；实验表明它不能代替二阶代价。

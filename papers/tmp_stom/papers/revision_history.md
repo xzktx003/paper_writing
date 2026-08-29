@@ -14,6 +14,7 @@
 | V8 | 2026-08-28 | 同一 VQ 表示中的连续 scale 与局部 assignment 形成不同 task/PPL 适应坐标 | 同监督scale-only显著超过assignment-only，论文诚实转为双坐标非均匀性；但尚无联合端点，scale更快且任务分数更高；缺第二模型、真实Figure 1和外部task-adaptation基线 | 下一版先验证单次独立audit约束的scale+assignment联合方法；失败则把assignment降为Pareto消融，不做seed/group/LR扫描 | 9.0 | 6.5 | 7.8 | 6.0 | 9.0 | 5.5 |
 | V9 | 2026-08-29 | 同步软联合产生尺度补偿--硬投影失配；部署坐标必须经真实 hard checkpoint 交接 | 联合正式实验被scale-only在PPL和两种任务平均上严格支配；零switch反证定位soft mixture补偿；已补Figure 1并正面承认PV-Tuning先验，但尚无成功hard-handoff方法、组级机制统计或第二模型 | 下一版固定独立scale硬checkpoint，重新计算8-way功能邻居并只训练稀疏assignment repair；预注册剩余不重叠audit，成功标准直接相对scale-only | 9.2 | 5.8 | 8.2 | 5.8 | 9.3 | 5.5 |
 | V10 | 2026-08-29 | Hard handoff保护scale但不产生组合增益；98.20%逐向量负一阶方向无法形成改善的hard set | 两epoch八个hard projection全部低于scale baseline，最终bit-exact no-op；现象可信且selector bug完整修复，但实用方法仍是scale-only，缺曲率/梯度一致性直接统计、第二模型和同监督外部基线 | 下一版只检验scale-conditioned curvature或跨batch/任务gradient-consensus proposal；不做LR/group/seed/projection扫描，若仍no-op则停止把assignment作为scale后续主模块 | 9.3 | 5.5 | 8.5 | 5.8 | 9.5 | 5.5 |
+| V11 | 2026-08-30 | 四视图严格共识将负一阶候选从98.20%筛至48.71%，却仍0/8通过；符号稳定不是离散可信域 | 机制漏斗、负结果与精确回滚证据强，且相对V10只改变proposal；但最终方法仍是scale-only，曲率与集合交互尚未直接测量，仅覆盖单模型最后四层，缺同监督外部基线和真实kernel | 下一版仅允许先做候选级scale-conditioned curvature排序probe；若不能预测单步/小集合hard loss，停止完整assignment训练并将论文定位为代理失效与部署坐标边界研究 | 9.4 | 5.7 | 8.8 | 6.6 | 9.6 | 5.5 |
 
 ## 评分口径
 

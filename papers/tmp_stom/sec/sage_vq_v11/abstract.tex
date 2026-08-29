@@ -1,0 +1,5 @@
+\begin{abstract}
+极低比特向量量化把大模型权重压入离散码字，同时保留少量连续尺度；这些部署坐标可以训练，却不保证一个坐标改善后另一个仍存在可叠加自由度。本文研究固定共享码本的2-bit block-scaled VQ：先用block scale把不同动态范围映射到共同领域，以Hessian-aware Vector-GPTQ构造硬量化锚点，再比较group scale与当前码字附近领域assignment的任务适应。已有实验发现，在已审计scale硬端点上，98.20\%的1.45亿个六维向量都能从8-way邻域找到负一阶候选，但两轮八个真实hard projection全部退化。我们把完整训练集确定性划为四个任务分层互斥视图；邻居只有在四个视图中都预测下降才可训练，否则精确冻结。严格共识把加权候选率从98.1973\%降至48.7101\%，冻结7461万个向量，并把最佳changed endpoint相对上一版提高2.27个百分点；然而八个硬投影仍全部低于scale baseline，最佳changed state为73.91\%对76.33\%，balanced loss高7.10\%。选择器因此安全回滚为零切换，最终部署状态沿用scale-only的10.9448 WikiText2 PPL、71.72\%六任务平均与2.1208 bpp。结果表明，跨视图符号冲突解释约一半一阶虚假许可，但符号一致仍不是有限码字跳转的离散可信域；剩余方法问题必须显式处理scale-conditioned curvature与集合交互。
+\end{abstract}
+
+\noindent\textbf{关键词：}大语言模型压缩；向量量化；码字指派；梯度一致性；二阶信息；任务适应；硬部署
