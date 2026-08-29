@@ -28,3 +28,14 @@
 - 算法提交：`06e6b46c7570562e9dc80eb80b1c18516ab9092f`。
 - 版本标签：论文和算法仓库均为 `sage-vq-v9`，标签指向上述版本提交。
 - 验证：正式 JSON completion/metrics/bpp/reconstruction、图像重生成与目检、绘图 Python 语法、LaTeX 输入与引用静态检查、Git whitespace 均通过；本机仍缺少 LaTeX 编译器，未生成 PDF。
+
+## V10（2026-08-29）
+
+- 论文主题：hard checkpoint handoff 能保护已审计 scale 状态，但当前一阶 8-way assignment proposal 无法形成可改善的硬集合；98.20% 逐向量负方向对应 0/8 个成功投影。
+- 关键实验：Llama-3.1-8B-Instruct scale→assignment 正式完整实验；八个 changed projection 全部低于 scale validation，最终精确 no-op，正式结果保持 10.9448 PPL / 71.7223% Macro-6 / 2.1208 bpp。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v10-hard-handoff`。
+- 论文产物提交：`2b318ce78d664096369065ff188c83248fb5d087`。
+- 算法提交：`85287e8dd8da4205374adc9afb3951c33bc10fef`。
+- 版本标签：论文和算法仓库均为 `sage-vq-v10`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
+- 验证：35 项聚焦 pytest 通过；Python compile、shell syntax、JSON contract、图像重生成与目检、Markdown/LaTeX 结构和 Git whitespace 均通过；本机无 LaTeX 引擎，未编译论文 PDF。
