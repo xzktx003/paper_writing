@@ -109,3 +109,28 @@
   本地 GPU4 单卡 launcher 与聚焦测试。未上传 checkpoint、模型权重、token cache、数据集或运行日志。
 - 验证：57 项聚焦 pytest、Ruff、Python compile、bash syntax 与 Git whitespace 通过；独立实现复审为
   `LAUNCH`，Blocker 0、Major 0、Minor 2。正式 Llama-3.1-8B 结果尚未产生。
+
+## V15 正式结果与论文版本（2026-08-31）
+
+- 论文主题：Hard-first touched-group 闭式 scale compensation 能降低局部 hard-weight anchor error，并在
+  26/27 个可比动作上减少 assignment-only 文本退化，但仍无法把任何任务收益动作带入完整文本零退化
+  可行域；这是对自然局部幅值修复的机制否决，不是新部署端点。
+- 关键实验：Meta-Llama-3.1-8B-Instruct 最后四层、28 个固定 curvature top-128 bundle；本机物理 GPU4
+  单卡完成，未连接或使用服务器 14。28/28 paired actions 改善 task-train loss，0/28 exact text-feasible；
+  weighted anchor error 降低 1.9477%，accepted switches=0，无 checkpoint、PPL 或 lm_eval。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v15-hard-scale-compensation`。
+- 论文产物提交：`fa9854fedaf51472eed5d379ed42e50b4fe04a0a`。
+- 算法预注册实现提交：`aad17709d28b31ef4e059b46c62dab6f76220a84`。
+- 算法正式结果提交：`98245015abd5f730790c4d092dc012644c1ee463`。
+- 版本标签：论文和算法仓库均为 `sage-vq-v15`；算法标签指向正式结果提交，论文标签包含论文产物与本发布
+  索引。
+- 上传内容：V15 中文论文、LaTeX 主文件与六个分节/参考文献、独立 ICLR 风格审稿及逐项处置、版本修订
+  记录、正式实验报告、计算合同、PNG/PDF Figure 1、实验/idea/功能/debug 台账；算法 hard-first scale
+  compensation 源码、fail-closed probe、本地单卡 launcher、聚焦测试、绘图脚本和紧凑结果 JSON。未上传
+  checkpoint、模型权重、128 GiB prefix cache、数据集或完整运行日志。
+- 验证：59 项聚焦 pytest 通过；紧凑 JSON 的 21 个关键字段与 raw summary 精确一致且 SHA256 匹配；
+  独立结果审查 Blocker/Major/Minor 均 0；Ruff、Python compile、bash syntax、图像重生成与目检、Markdown/
+  LaTeX 结构与引用、JSON 和 Git whitespace 检查通过。独立 ICLR 复核为 5.5/10（Weak/Borderline Reject）。
+  推荐编译命令为 `cd template && xelatex sage_vq_iclr_v15.tex`；本机无 xelatex/latexmk/tectonic，未生成论文
+  PDF。
