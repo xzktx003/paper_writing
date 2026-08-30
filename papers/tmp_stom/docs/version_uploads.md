@@ -51,3 +51,15 @@
 - 版本标签：论文和算法仓库均为 `sage-vq-v11`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
 - 上传内容：V11 中文论文、LaTeX 主文件与七个分节/参考文献、独立 ICLR 风格评审、修订记录、正式实验报告、顶会叙事调研、Figure 1 及绘图脚本、实验/idea/功能/debug 台账；算法源码、两个单卡 launcher、聚焦测试和紧凑结果 JSON。未上传 checkpoint、模型权重、token cache 或完整运行日志。
 - 验证：38 项聚焦 pytest 通过；Python compile、shell syntax、JSON parse、Markdown/LaTeX 输入与引用静态检查、图像重生成与目检、Git whitespace 均通过；本机无 LaTeX 引擎，未编译整篇论文 PDF。
+
+## V12（2026-08-30）
+
+- 论文主题：Scale-conditioned局部曲率能改善严格共识候选排序，却不能稳定超过聚合一阶，也不能授权任何优于冻结source的hard assignment集合；局部二阶信息不是端到端部署证书。
+- 关键实验：Meta-Llama-3.1-8B-Instruct最后四层、28个Linear、三种ranking与四个matched-cardinality预算，共12个真实硬集合；本机物理GPU5单卡完成，未使用服务器14。曲率对strict consensus为4/4胜、对aggregate为2/4胜；最佳点仍低于source 5.4688pp Macro、balanced loss高18.313%，因此未访问候选audit、未写checkpoint、未启动完整训练或正式测试。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v12-curvature-gate`。
+- 论文产物提交：`53d863483ffcd9a2f37758b3e7f889031a344385`。
+- 算法提交：`2c6f003c1b1b0dfea6547daa38564d566f86327c`。
+- 版本标签：论文和算法仓库均为`sage-vq-v12`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
+- 上传内容：V12中文论文、LaTeX主文件与六个分节/参考文献、独立ICLR风格评审、修订记录、正式实验报告、顶会叙事调研、PNG/PDF Figure 1、实验/idea/功能台账；算法probe、单卡launcher、输入二阶矩采集、聚焦测试、绘图脚本与紧凑结果JSON。未上传checkpoint、模型权重、token cache、数据集或完整运行日志。
+- 验证：43项聚焦pytest通过；Python compile、ruff、shell syntax、JSON parse、Markdown/LaTeX结构、图像重生成与目检、Git whitespace均通过；本机无LaTeX引擎，未编译整篇论文PDF。
