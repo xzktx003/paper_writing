@@ -1,0 +1,5 @@
+\section{结论}
+
+本文提出因果集合条件assignment搜索，在已接受硬状态下真实测量当前码字附近bundle的训练边际收益。四个层级坐标全部使训练目标下降，held-out任务loss也改善，说明该方法在当前四层固定bundle设置中缓解了独立候选分数无法表示集合交互的问题。
+
+然而文本validation越过保护线，候选未被部署。真实任务条件收益因此仍非跨域泛化证书。下一版不应扫描bundle、seed或阈值，而应把语言保持作为不可交易约束加入离散坐标接受规则，并以candidate-unexposed文本audit检验其泛化；否则assignment refinement只能被定位为任务适应，而不是通用PTQ。

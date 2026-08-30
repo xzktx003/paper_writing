@@ -582,3 +582,31 @@
 - 根因：新脚本内容和静态语法均正确，但文件模式为`0644`，直接执行路径缺少execute权限。
 - 修复：只补充launcher可执行位，保留命令、数据和实验配置不变；使用唯一run id在本地GPU5重新启动，避免与失败启动记录混淆。
 - 验证：正式run `20260829_222233_llama3_1_8b_scale_consensus_assignment_l28_31_gpu5`完成两轮八投影并正常退出，耗时6.688小时，`pipeline.status=calibration_noop`。
+
+## 2026-08-30 09:48 CST — V13 显存门禁把可安全共享的本地 GPU 误判为不可用
+
+- 现象：启动前GPU7有80,141MiB空闲，但launcher执行门禁时另一进程短暂占用约15GiB，空闲降至
+  65,269MiB；实验以exit 3退出，尚未加载模型或创建结果目录。
+- 根因：门禁硬要求70,000MiB，隐含“近乎整卡空闲”，与用户“只要显存足够即可共享”的约束不一致；
+  同路径V12正式运行实测峰值仅25.285GiB，因此65GiB实际上有充分余量。
+- 修复：默认门禁降为50,000MiB，仍保留接近历史实测峰值两倍的安全余量；不改变模型、数据、方法或
+  任何实验超参数。
+- 验证：红灯先证明launcher仍固定70,000MiB；修复后launcher合同检查要求50,000MiB，并重新运行完整
+  聚焦测试与静态检查。首次失败run未产生实验结果，不计作方法实验。
+
+## 2026-08-30 10:56 CST — Prefix hidden 重放遗漏因果遮罩且 parity 混入 batch 数值差
+
+- 现象：V13第二次启动完成dense teacher与文本分布后，在32例prefix cache parity处退出；cache与
+  singleton完整前向的choice score最大差0.126128，尽管argmax为32/32一致。
+- 根因一：共享`run_hidden_block_output`直接调用DecoderLayer时传入`attention_mask=None`；当前HF完整前向
+  会通过`create_causal_mask`显式构造遮罩，旧重放因此可能看到未来token。
+- 根因二：即使修复遮罩，BF16下batch=4与singleton前向的GEMM/SDPA数值路径不同。真实任务样本上两者
+  score最大差0.254416，而cache重放与同batch完整HF前向仅差0.0005286；旧parity混淆了这两类误差，
+  singleton teacher也会给源状态引入虚假的KL。
+- 修复：direct block使用Transformers官方`create_causal_mask`和HF一致的position IDs；任务dense teacher、
+  source/candidate评分统一使用固定`(total_length, continuation_start)`shape bucket与batch composition；parity
+  对同一cache batch做完整HF前向，仍保留0.02门槛，不以放宽阈值掩盖错误。
+- 验证：causal红灯先观察到mask为None，修复后转绿；逐层诊断显示layers0--30 hidden逐位一致，最终logits
+  最大误差0；同batch分解验证0.0005286误差。相关测试`56 passed`，Python、ruff、shell和whitespace检查通过。
+- 影响边界：失败run在方法搜索前退出，未访问validation/audit/formal test、未写checkpoint，不作为方法实验
+  结论；共享helper的既往direct-block实验需在论文中视为受该实现缺陷影响，不能继续作为可靠证据引用。

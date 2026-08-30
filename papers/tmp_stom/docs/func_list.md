@@ -530,3 +530,27 @@
 - 正式终态合同已验证：曲率对strict consensus 4/4胜、对aggregate 2/4胜，触发
   `curvature_predictor_rejected`；候选audit、checkpoint物化和正式benchmark均保持关闭，证明Gate在失败路径
   不泄露测试数据、不写多GB状态，也不会误启动完整assignment训练。
+
+## Causal set-conditional hard assignment search（2026-08-30）
+
+- `probe_set_conditional_assignment_gain.py`把固定128个curvature-ranked邻域切换组成Linear-local bundle，
+  按Transformer因果层序在当前已接受hard state下真实比较每层7个bundle；只接受完整任务train
+  supervised+teacher-KL严格下降的最佳坐标，每层最多一个，不训练连续参数。
+- 新增任务prefix cache：对全部512×5训练样本的所有choice构建layer28输入BF16 CPU cache，候选只重放
+  layers28--31与lm head；cache在搜索前用32个跨任务、长度与continuation位置分层的example逐choice对比
+  完整HF forward。完整参考严格复用cache的同一shape bucket和batch composition，以隔离真正的重放误差；
+  dense teacher也使用同一batch协议，避免BF16 batch-shape差异污染teacher-KL。
+- `run_hidden_block_output`现在显式调用Transformers `create_causal_mask`并复用HF position/rotary语义；此前
+  `attention_mask=None`会让direct DecoderLayer重放在部分attention backend下看到未来token。逐层集成诊断
+  已验证修复后的最后logits与完整HF forward逐位一致。
+- 每层先物化incumbent即时block输出，再记录7个候选的真实block-output MSE与局部curvature cost，形成不参与
+  选择阈值的正控制；candidate evaluation始终包含此前已接受bundle，因此测量的是条件集合增益而非独立和。
+- Launcher固定本地GPU7、完整任务/文本协议和新C4 audit rows5568--5631；validation/audit只在搜索结束后
+  使用，只有二者均通过才写checkpoint与触发正式PPL/lm_eval。50GiB空闲显存门禁依据同路径历史
+  25.285GiB实测峰值留出近2倍余量，允许安全共享而不要求整卡空闲；失败状态为
+  `set_conditional_gain_rejected`。
+- 红绿灯覆盖causal block replay、batch-matched task score对齐、严格条件接受、task-balanced teacher-KL汇总、
+  Spearman正控制、分层same-batch cache parity、全量数据/单卡launcher合同；当前相关56项测试通过。
+- 正式终态合同已验证：四个条件bundle分别带来正训练增益并通过task validation，但text CE相对退化
+  0.9186%超过0.5%上限；launcher写`set_conditional_gain_rejected`，不写checkpoint、不读取audit、不启动
+  PPL/lm_eval。该路径明确区分“任务条件坐标有效”与“通用部署端点有效”。

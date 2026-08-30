@@ -3316,3 +3316,37 @@
 - **产物：** 紧凑JSON `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_073000_llama3_1_8b_scale_curvature_probe_complete.json`；
   报告 `report/20260830_073000_llama3_1_8b_scale_curvature_probe_result_report.md`；原始summary SHA256
   `436765bcf8590403c2ac64ca78e42884e5a1d1b86a58c53b5cdabe372a6276bc`。
+
+## 2026-08-30 08:32：Llama-3.1-8B causal set-conditional hard gain（正式完成）
+
+- **实验目的：** 直接回答V12留下的集合交互问题，不再修改逐候选曲率分数，也不运行Concrete训练或超参数
+  消融。检验在已接受hard state条件下测得的真实训练边际收益，能否构造优于scale source的离散端点。
+- **方法：** 固定V12的curvature top-128/Linear为28个bundle坐标。按layers28--31顺序，每层在当前
+  incumbent条件下评估7个Linear bundle的完整任务train supervised+0.25 teacher-KL；严格下降时只接受最佳
+  一个，每层最多一个、总计最多512 switches。Validation和audit不参与坐标选择。
+- **全量配置：** Meta-Llama-3.1-8B-Instruct，任务512/256/31 train/validation/audit；proposal仍使用
+  4096条长度4096文本、4个互斥gradient views；text validation 4736--4863，新audit 5568--5631。任务
+  train全部choice在source状态缓存layer28输入，候选重放最后四层；32例跨任务、长度与continuation位置
+  分层的score parity必须通过。
+- **正控制与门禁：** 每个候选记录scale curvature总成本与真实即时block-output MSE，并按层报告Spearman。
+  搜索后只有非零状态通过task/text validation、candidate-unexposed audit才写checkpoint和运行WikiText2
+  seqlength2048及六任务全量lm_eval；失败不访问正式test、不保存多GB状态。
+- **资源与消融边界：** 仅本机物理GPU7默认单卡，50GiB显存和350GiB宿主内存门禁；固定28次候选评估，
+  不扫描bundle size、层序、seed、LR、group、阈值或预算。独立代码审查无启动阻断项，56项聚焦测试及静态
+  检查通过，待本地资源门禁确认后启动。
+- **基础设施失败记录（不计方法结果）：** `20260830_084414`在加载模型前被过严70GiB显存门禁拒绝；
+  `20260830_094655`在方法搜索前被32例cache parity拒绝（max score error=0.126128，argmax=32/32）。
+  逐层诊断定位direct block缺少causal mask，进一步分解得到修复后cache与同batch完整前向最大误差
+  0.0005286，而batch=4与singleton本身可差0.254416。已改为HF同构causal mask、batch-matched dense
+  teacher及same-batch parity；56项聚焦测试通过后进入正式重跑。
+- **正式结果：** run `20260830_110033_llama3_1_8b_set_conditional_gain_l28_31_gpu7`正常退出，耗时
+  12653.27秒（3.515小时）、峰值25.285GiB。Parity最大误差`1.1444e-5`、argmax 32/32。四层依次接受
+  `28:k_proj`、`29:v_proj`、`30:gate_proj`、`31:v_proj`各128 switches；训练联合目标从0.329784降至
+  0.320785（-2.7288%），task validation balanced loss从0.679691降至0.672270（-1.0919%），任务Gate通过。
+- **否决结论：** 文本validation CE从2.441416升至2.463844（+0.9186%），超过预注册+0.5%上限；总体
+  validation Gate失败。Audit未访问、checkpoint未写、正式PPL/lm_eval未运行，状态为
+  `set_conditional_gain_rejected`。条件集合评估在当前四层固定bundle设置中缓解了独立计分失真，却未提供
+  跨域语言保持证书。
+- **产物：** 紧凑JSON为
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_150245_llama3_1_8b_set_conditional_gain_complete.json`；
+  报告为`report/20260830_150245_llama3_1_8b_set_conditional_gain_result_report.md`。

@@ -1154,3 +1154,45 @@
   最佳曲率hard set仍比source低5.4688pp Macro、balanced loss高18.313%。候选audit未访问、checkpoint
   未写、完整assignment训练未授权。结论是局部Linear输出曲率有排序信息但不能代表端到端集合交互；
   assignment-after-scale路线停止，不再扫描曲率权重或训练参数。
+
+### 2026-08-30 08:32：Causal set-conditional hard assignment gain
+
+- Idea：停止给每个向量独立打分后一次性叠加。固定复用V12在无调参条件下表现最好的128/Linear
+  curvature bundle，把“某层某个Linear的128个硬切换”视为一个离散坐标。按layers28--31因果顺序，
+  每层在此前已接受hard state条件下真实评估7个Linear bundle，只允许完整任务训练目标严格下降的最佳
+  bundle进入状态；每层最多接受一个，故总切换不超过512个。
+- 动机：V12证明局部曲率对strict consensus有信息却不能代表集合loss。条件搜索直接重算
+  $F(S\cup B)-F(S)$，使后层选择感知前层已接受误差，而不是把独立$q_i$相加。它与CDQuant的层级二次
+  reconstruction coordinate descent不同：坐标是共享码本assignment bundle，裁决目标是最后四层重放后的
+  任务监督+teacher-KL，且validation/audit不参与坐标选择。
+- 计算策略：为全部512×5任务训练样本的所有choice构造layer28输入hidden cache，并用32个跨任务、序列
+  长度和continuation位置分层的example与完整HF forward做score parity；候选只重放最后四层。每层7次、
+  共28次固定评估，不扫描bundle size、顺序、
+  seed或接受阈值。局部正控制同时记录curvature cost与真实即时block-output MSE的Spearman相关。
+- 预期与否决条件：若有非零training条件增益但validation失败，说明集合搜索仍过拟合training代理；若四层
+  全部不接受，则source附近没有可测单bundle条件下降坐标。只有validation与新文本audit rows5568--5631
+  均通过才写checkpoint并运行正式PPL/lm_eval；否则精确恢复source并结束assignment-after-scale路线。
+- 当前状态：首次资源门禁失败和第二次cache-parity失败均发生在方法搜索前，不构成方法结果。逐层诊断发现
+  direct DecoderLayer重放遗漏causal mask，且旧parity把batch=4重放与singleton完整前向比较，混入BF16
+  batch-shape数值差。现已显式构造与HF一致的causal mask，dense teacher与搜索均使用同一shape bucket，
+  parity改为同batch完整HF前向；修复后手工重放与完整前向logit逐位一致，同batch缓存score最大误差
+  5.286e-4。56项聚焦测试和静态检查通过。正式本机GPU7单卡run完成：四层各接受一个bundle，训练联合
+  目标改善2.7288%，held-out任务balanced loss改善1.0919%，但独立文本CE恶化0.9186%，越过0.5%门禁；
+  audit/checkpoint/formal test均未触发。结论是集合条件裁决在当前四层固定bundle设置中缓解了交互计分，
+  却不能自动提供跨域保持。
+- 当前状态：**已验证为任务条件信号、否决为通用部署证书。** 下一方法不得扫描bundle/seed/阈值；只能把
+  文本保持作为不可交易约束加入条件接受，并由candidate-unexposed文本audit裁决，否则应将assignment明确
+  限定为任务适应。未访问服务器14。
+
+### 2026-08-30 15:02：Lexicographic cross-domain conditional assignment
+
+- Idea：保留V13的固定bundle和因果条件重放，但把接受关系从单一任务标量改为词典序/受约束裁决：候选必须
+  先在固定的文本train保持代理上不退化，再在可行候选中最大化任务条件收益；任务收益不得通过增大语言分布
+  偏移来“购买”。Validation与audit仍不参与坐标选择。
+- 动机：V13已在当前四层固定bundle设置中缓解集合交互计分失败——四个坐标训练单调改善且task validation
+  loss下降；唯一失败项是未进入接受目标的text CE（+0.9186%）。因此自然干预是改变偏序关系，而不是调
+  teacher权重、bundle、seed或阈值。
+- 预期效果：若固定文本train代理能筛除消费语言裕量的bundle，应保留非零task gain并通过未见text validation/
+  audit；若全部候选被拒绝，则证明当前scale source附近的任务适应与语言保持在该坐标族内不可兼得。
+- 当前状态：**待验证。** 需先设计不缩小官方4096×4096文本体量、又能在单卡可承受成本内测量每个bundle
+  文本条件代价的缓存/低秩正控制；在该计算合同成立前不启动正式实验。

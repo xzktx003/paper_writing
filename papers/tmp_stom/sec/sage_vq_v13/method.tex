@@ -1,0 +1,37 @@
+\section{方法}
+
+\subsection{Block-scaled共享码本VQ与硬锚点}
+
+将Linear权重切分为$d=6$维向量$w_i$，group为$g(i)$，共享码本$\mathcal C=\{c_1,\ldots,c_K\}$且$K=4096$：
+\begin{equation}
+u_i=w_i/s_{g(i)},\quad a_i=\arg\min_k\|u_i-c_k\|_2^2,\quad \hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+Vector-GPTQ在几何候选中使用二阶代理，并在选定第$j$个量化单位后反馈误差：
+\begin{equation}
+W_{:,j+1:}\leftarrow W_{:,j+1:}-e_j\frac{H^{-1}_{j,j+1:}}{H^{-1}_{jj}}.
+\end{equation}
+这形成硬状态$(s^0,a^0,\mathcal C)$；后续固定scale、码本、normalizer和码率。
+
+\subsection{附近领域与固定Bundle}
+
+每个anchor只考虑含自身和七个几何邻居的$\mathcal N(a_i^0)$，候选有限跳转为
+\begin{equation}
+\delta_i(c)=s_{g(i)}^0(c-c_{a_i^0}).
+\end{equation}
+四个互斥任务/文本视图给出$\Delta_i^{(v)}(c)=\langle g_i^{(v)},\delta_i(c)\rangle$。以输入二阶矩$m_j=\mathbb E[x_j^2]$定义$q_i(c)=\sum_jm_j\delta_{ij}^2$，在四视图均负的候选中按$\max_v\Delta_i^{(v)}/\sqrt{q_i+\epsilon}$排序；每个Linear固定top-128组成$B_{\ell,m}$。该分数只提出坐标，不负责接受。
+
+\subsection{因果集合条件搜索}
+
+训练目标为五任务等权supervised CE与dense-teacher KL：
+\begin{equation}
+F(S)=\frac1{|\mathcal T|}\sum_t[\mathcal L_{\rm sup}^t(S)+0.25\mathcal L_{\rm KL}^t(S)].
+\end{equation}
+按$\ell=28,\ldots,31$，在当前硬集合$S_{\ell-1}$下真实评估七个Linear：
+\begin{equation}
+G_{\ell,m}=F(S_{\ell-1})-F(S_{\ell-1}\cup B_{\ell,m}).
+\end{equation}
+若最大$G_{\ell,m}>10^{-7}$，接受对应bundle；否则保持状态。每层最多一个。由定义，所有接受步满足$F(S_\ell)<F(S_{\ell-1})$，但该单调性不推出validation或文本保持。
+
+\subsection{重放与部署门禁}
+
+对全部任务train choice缓存layer-28输入，按总长度和continuation起点分桶；dense teacher、source和候选使用同一batch composition，最后四层重放显式构造HF causal mask。32个跨任务/长度样本的同batch完整前向需通过0.02 score误差与全argmax门禁。曲率成本与即时block-output MSE的Spearman只作正控制。搜索结束后，task validation和文本CE分别门禁；只有二者及candidate-unexposed audit通过，才写checkpoint并运行正式PPL/lm\_eval。

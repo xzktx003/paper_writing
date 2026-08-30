@@ -1,0 +1,7 @@
+\section{相关工作}
+
+\paragraph{二阶PTQ与重构。} OBQ和GPTQ以近似Hessian评估量化误差并反馈给尚未量化的权重\cite{obc,gptq}。BRECQ把重构单位提升到block\cite{brecq}，MREM以模块重构降低端到端依赖\cite{mrem}，DiscQuant研究数据依赖rounding与梯度差异\cite{discquant}。本文的Vector-GPTQ是共享硬锚点；新问题是锚点后的离散集合接受。
+
+\paragraph{极低比特VQ。} GPTVQ扩展二阶向量候选\cite{gptvq}；AQLM使用加性码本与block refinement\cite{aqlm}；QuIP\#与QTIP改善incoherent几何和trellis表示\cite{quip,qtip}。这些工作主要面向通用PTQ端点。本文固定2.1207557 bpp表示，只研究少量assignment的任务适应与语言保持。
+
+\paragraph{离散参数训练与集合选择。} GSQ使用Gumbel Softmax优化量化结构\cite{gsq}，PV-Tuning交替优化离散和连续参数\cite{pvtuning}。训练assignment本身并非充分新颖性；本文只在当前码字附近领域提出固定bundle，再由真实hard条件收益接受。多任务梯度冲突说明聚合方向可能隐藏负迁移\cite{pcgrad}；V13进一步表明，即便训练与held-out任务同向，未进入接受目标的文本域仍可能退化。

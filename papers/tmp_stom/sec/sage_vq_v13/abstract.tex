@@ -1,0 +1,3 @@
+\begin{abstract}
+极低比特向量量化不仅要构造紧凑码本，还要判断一组有限码字替换能否形成可部署收益。本文研究约2.12 bpp的block-scaled shared-codebook VQ：权重block先由scale归一到共同领域，Vector-GPTQ再以二阶信息和误差反馈形成硬锚点；锚点之后只允许assignment在当前码字附近领域内变化。此前一阶、跨视图共识和局部曲率均不能把独立候选相加成可靠硬集合。我们提出因果集合条件搜索：固定每个Linear的curvature top-128 bundle，在已经接受的硬状态下真实评估七个bundle的完整任务训练目标，每层只接受严格改善的最佳坐标。Meta-Llama-3.1-8B-Instruct最后四层均接受一个bundle，共512个assignment；训练联合目标改善2.73\%，held-out任务balanced loss改善1.09\%。但独立文本validation CE恶化0.919\%，超过预注册0.5\%上限；程序因此不访问audit、不写checkpoint、不运行正式benchmark。这一正式结果是诊断性失败而非部署成功：集合条件评估只在当前四层固定bundle设置中缓解交互计分缺口，task-only条件收益仍不是通用PTQ的部署证书。
+\end{abstract}
