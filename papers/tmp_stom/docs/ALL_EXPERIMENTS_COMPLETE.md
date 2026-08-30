@@ -3293,3 +3293,26 @@
 - **最终端点：** `best_epoch=0`、零switch、`audit_gate_passed=false`。Assignment、scale、codebook、normalizer、逻辑bpp、固定metadata和非目标状态精确不变，fresh reconstruction误差0。由于Gate在validation阶段拒绝全部changed candidate，没有重复运行必然相同的正式benchmark；最终沿用同一scale部署状态的PPL 10.9447565、Macro-6 71.7223%、公共五任务72.5484%、2.1207557 bpp。
 - **资源与状态：** 本地物理GPU5单卡完成，耗时24,078.20秒（6.688小时），峰值31.80GiB，程序正常退出，`pipeline.status=calibration_noop`。下一步不再增加view、epoch或扫描超参数；只有候选级scale-conditioned曲率分数先证明能预测hard loss排序，才重启assignment-after-scale路线。
 - **产物：** 紧凑JSON `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_054500_llama3_1_8b_scale_consensus_assignment_complete.json`；完整报告 `report/20260830_054500_llama3_1_8b_scale_consensus_assignment_result_report.md`；原始summary SHA256 `15762e01f18d459b65681dc8c618a448eff04543ee7ec681ca69f1830bacc201`。
+
+## 2026-08-30 07:30：Llama-3.1-8B scale-conditioned curvature predictor probe（正式完整负结果）
+
+- **实验目的：** 按V11独立审稿要求，先验证候选级局部二阶代价能否预测真实hard validation loss，再决定是否允许完整assignment训练；不是预算或超参数消融。
+- **方法：** 四个互斥任务分层view给出mean/worst一阶分数；同一次反向捕获Linear输入二阶矩，对真实scale-conditioned码字跳转计算对角局部activation-Hessian代价，并用worst-view一阶收益/$\sqrt q$排序。该代价只声称局部Linear输出曲率，最终用真实任务loss检验其外推能力。
+- **Matched controls：** aggregate first-order、strict consensus、curvature-normalized三种ranking，均在每个Linear应用128/512/2048/8192个nested switch，共12个真实硬集合。门禁预注册为：曲率相对每个control至少3/4预算loss更低且四预算平均loss更低。
+- **完整配置：** Meta-Llama-3.1-8B-Instruct scale source，layers28--31；任务512/256/31 train/validation/audit，文本4096/128/64条、长度4096；不训练参数，不访问formal test。只有一个validation胜出端点可进入一次candidate-unexposed audit；只有audit通过才运行WikiText2-2048与六任务全量lm_eval。
+- **资源与验证：** 仅本地物理GPU5，70GiB空闲显存和350GiB宿主内存门禁；43项聚焦pytest、Python compile、bash syntax、ruff、JSON/状态合同和Git whitespace通过。程序与launcher分别为`probe_scale_conditioned_assignment_curvature.py`和`run_llama3_1_8b_scale_curvature_probe_local.sh`。
+- **候选统计：** 145,465,344个六维向量中，aggregate negative候选为142,842,971（98.1973%），
+  strict-consensus合格候选为70,856,047（48.7099%）。Curvature与consensus共享资格集合，只改变排序。
+- **Matched hard结果：** 曲率相对strict consensus在4/4预算上balanced loss更低，四预算均值
+  1.202667 vs 1.255607；相对aggregate仅2/4胜，虽均值1.202667低于1.216330，仍未达到预注册3/4门槛。
+  Predictor Gate失败。
+- **最佳候选：** curvature 128/Linear，共3584个switch（0.002464%）；Macro 70.8594%、balanced loss
+  0.804163，相对source 76.3281%/0.679691低5.4688pp且loss高18.313%。所有12个hard set均低于source。
+- **状态：** 本地物理GPU5单卡完成，耗时5325.16秒（1.479小时），峰值25.285GiB，程序正常退出。
+  Validation Gate失败后未访问候选audit、未写checkpoint、未运行正式PPL/lm_eval、未授权完整assignment训练。
+  Assignment-after-scale路线停止；无seed、LR、group、视图数、曲率权重或预算扫描。
+- **机制结论：** scale-conditioned对角局部激活曲率能修复strict-consensus候选排序，但不足以预测深网
+  端到端hard loss；剩余误差来自非线性传播、跨层敏感度和集合交叉项，不能靠逐候选独立分数解决。
+- **产物：** 紧凑JSON `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_073000_llama3_1_8b_scale_curvature_probe_complete.json`；
+  报告 `report/20260830_073000_llama3_1_8b_scale_curvature_probe_result_report.md`；原始summary SHA256
+  `436765bcf8590403c2ac64ca78e42884e5a1d1b86a58c53b5cdabe372a6276bc`。

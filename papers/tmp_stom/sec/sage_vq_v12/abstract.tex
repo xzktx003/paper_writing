@@ -1,0 +1,3 @@
+\begin{abstract}
+极低比特向量量化不仅要找到低重构误差码本，还要判断有限码字替换能否形成可部署收益。本文研究约2.12 bpp的block-scaled shared-codebook VQ：权重先经scale归一到共同领域，Vector-GPTQ再用二阶信息和误差反馈形成硬锚点。此前聚合一阶梯度在98.20\%向量上找到负邻居，四视图严格共识将其筛至48.71\%，二者却都不能产生优于冻结scale source的硬集合。我们提出训练前scale-conditioned局部曲率probe，将真实group scale、码字有限差分与Linear输入激活二阶矩结合，并在Meta-Llama-3.1-8B-Instruct最后四层比较三种排序、四个等基数预算，共12个真实hard set。曲率排序相对严格共识4/4胜，但相对聚合一阶仅2/4胜，未通过预注册Gate；最佳点Macro 70.86\%，低于source的76.33\%，balanced loss恶化18.31\%。实验表明局部Linear曲率能改善排序，却不能代表端到端离散集合交互。Gate因此阻止audit、checkpoint、完整训练与正式测试。
+\end{abstract}

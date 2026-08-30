@@ -511,3 +511,22 @@
   该结果验证selector的诊断能力，但否定“符号一致即可形成可部署assignment trust region”。
 - Gate在全部changed candidate未通过validation时保持`calibration_noop`，不运行冗余PPL/lm_eval；只有
   assignment非零、validation/audit/rate和状态合同同时通过才进入正式benchmark，避免把no-op指标复用误写为新测量。
+
+## Scale-conditioned curvature predictor Gate（2026-08-30）
+
+- `_proposal_gradients`可选在真实backward输入上累计每个Linear输入维度二阶矩；inference-only teacher
+  forward不会进入统计，完整样本不增加第二遍校准前向。默认关闭时保持原assignment校准行为。
+- `probe_scale_conditioned_assignment_curvature.py`对当前码字8-way邻居计算真实scale-conditioned weight
+  jump、四视图mean/worst一阶项和对角局部activation-Hessian代价；曲率ranking使用无系数的
+  worst-view/$\sqrt q$收益代价比，不把局部输出二次项写成完整task Hessian。
+- 三种ranking在每个Linear使用相同的128/512/2048/8192 nested预算，通过稀疏原位weight更新逐个运行
+  完整任务validation，并在每次切换ranking前精确恢复source权重。predictor必须相对两个control各赢至少
+  3/4 matched budgets且平均loss更低，才允许后续完整训练。
+- 只有一个validation胜出curvature候选可以读取一次audit；audit通过才物化int32 assignment checkpoint和
+  运行正式PPL/lm_eval。predictor失败不写多GB checkpoint。单卡launcher固定完整数据协议并明确区分
+  `curvature_predictor_rejected`、`curvature_predictor_passed_training_required`和直接端点成功状态。
+- 红绿灯覆盖曲率改变matched ranking、predictor胜负合同、稀疏hard state精确恢复、backward输入二阶矩
+  复用和本地单卡正式入口；当前相关43项测试通过。
+- 正式终态合同已验证：曲率对strict consensus 4/4胜、对aggregate 2/4胜，触发
+  `curvature_predictor_rejected`；候选audit、checkpoint物化和正式benchmark均保持关闭，证明Gate在失败路径
+  不泄露测试数据、不写多GB状态，也不会误启动完整assignment训练。

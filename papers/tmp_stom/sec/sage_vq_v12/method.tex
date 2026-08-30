@@ -1,0 +1,47 @@
+\section{方法}
+
+\subsection{Block-scaled共享码本VQ与硬锚点}
+
+将Linear权重切分为$d=6$维向量$w_i$，所属group为$g(i)$，共享码本$\mathcal C=\{c_1,\ldots,c_K\}$且$K=4096$：
+\begin{equation}
+u_i=w_i/s_{g(i)},\quad a_i=\arg\min_k\|u_i-c_k\|_2^2,\quad \hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+Scale将不同block映射到共同领域。Vector-GPTQ在几何候选中使用二阶代理，并在选定第$j$个量化单位后反馈误差：
+\begin{equation}
+W_{:,j+1:}\leftarrow W_{:,j+1:}-e_j\frac{H^{-1}_{j,j+1:}}{H^{-1}_{jj}}.
+\end{equation}
+该阶段形成硬状态$(s^0,a^0,\mathcal C)$；probe固定scale、码本、normalizer和逻辑码率。
+
+\subsection{当前码字附近领域}
+
+每个anchor只考虑含自身和七个几何邻居的$\mathcal N(a_i^0)$。候选$c$的真实有限跳转为
+\begin{equation}
+\delta_i(c)=s_{g(i)}^0(c-c_{a_i^0}).
+\end{equation}
+若进入训练，binary Concrete switch给出
+\begin{equation}
+p_i=\sigma(z_i/\tau),\quad \tilde w_i=(1-p_i)s^0c_{a_i^0}+p_i s^0c_{a_i^1}.
+\end{equation}
+V12不训练$z_i$，而先验证$a_i^1$选择器。
+
+\subsection{三个Matched排序}
+
+完整训练数据分为四个互斥任务分层视图。视图$v$的一阶变化是
+\begin{equation}
+\Delta_i^{(v)}(c)=\langle g_i^{(v)},\delta_i(c)\rangle.
+\end{equation}
+Aggregate按平均负变化排序。Strict consensus只保留$\Delta_i^{(v)}(c)<0,\forall v$的候选，并最小化$\max_v\Delta_i^{(v)}(c)$。
+
+在相同backward forward中累计Linear输入二阶矩$m_j=\mathbb E[x_j^2]$，定义
+\begin{equation}
+q_i(c)=\sum_jm_j\delta_{ij}(c)^2,
+\end{equation}
+以及曲率归一化分数
+\begin{equation}
+r_i^{\rm curv}(c)=\frac{\max_v\Delta_i^{(v)}(c)}{\sqrt{q_i(c)+\epsilon}}.
+\end{equation}
+$q_i$只对应对角化Linear输出平方误差，不包含非线性、跨层传播或候选交叉项。
+
+\subsection{Predictor Gate}
+
+每个排序在每个Linear选128、512、2048、8192个候选。每个hard set应用后运行完整validation并精确恢复source。曲率必须相对aggregate和consensus各在至少3/4预算降低balanced loss，且四预算平均更低。仅当predictor和source validation都通过，才允许一次candidate-unexposed audit；audit通过后才能写checkpoint和运行正式benchmark。

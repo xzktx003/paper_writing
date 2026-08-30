@@ -1132,3 +1132,25 @@
   因此跨视图冲突是真实误差源，却不足以定义离散可信域；assignment-after-scale主路线暂停。只有候选级
   scale-conditioned Hessian/Gauss--Newton分数先在低成本probe中证明能预测真实hard loss排序，才进入下一次
   完整训练；不再增加view数或扫描seed、LR、group、epoch、projection ratio。
+
+### 2026-08-30 05:58：Scale-conditioned局部曲率的训练前可预测性门禁
+
+- Idea：不直接开启第三次完整assignment训练。复用V11四个互斥gradient view，在同一次反向中累计每个
+  Linear输入维度的二阶矩；对实际weight jump
+  $\delta=s\odot(c_{a'}-c_a)$计算对角局部activation-Hessian代价
+  $q=\sum_j\mathbb E[x_j^2]\delta_j^2$，并以最差视图一阶收益除以$\sqrt q$进行排序。
+- 动机：V11已经证明符号一致只能筛掉约一半虚假许可，仍无法预测有限hard set。若曲率分数连同规模真实
+  validation loss的相对排序都不能改善，就没有方法依据继续做数小时Concrete训练；若能稳定改善，才说明
+  二阶信息值得进入下一版selector。
+- 正式检验：在同一scale硬锚点和完整512/256任务、4096×4096文本协议上，不训练参数；比较aggregate
+  first-order、strict-consensus和curvature-normalized三种排序。每个Linear固定128/512/2048/8192个
+  nested hard switch，共12个matched-cardinality真实部署集合。预注册门禁要求曲率排序相对两个control
+  都在4个预算中至少赢3次，且平均balanced loss更低；只允许一个validation胜出候选进入一次audit。
+- 预期效果与边界：该$q$是对角化Linear输出局部二次代价，不冒充完整任务loss Hessian。若predictor Gate
+  失败，停止assignment-after-scale训练路线；若通过但没有直接端点，才允许启动一次完整曲率引导训练；
+  不扫描曲率权重、预算、seed、LR或group。
+- 当前状态：**已验证并否决为充分预测器。** 本地GPU5单卡正式run完成，耗时1.479小时、峰值25.285GiB。
+  曲率排序相对strict consensus为4/4胜，相对aggregate first-order仅2/4胜，未达到预注册3/4门槛；
+  最佳曲率hard set仍比source低5.4688pp Macro、balanced loss高18.313%。候选audit未访问、checkpoint
+  未写、完整assignment训练未授权。结论是局部Linear输出曲率有排序信息但不能代表端到端集合交互；
+  assignment-after-scale路线停止，不再扫描曲率权重或训练参数。

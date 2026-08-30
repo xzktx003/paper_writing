@@ -1,0 +1,7 @@
+\section{相关工作}
+
+\paragraph{二阶PTQ。} OBQ和GPTQ用近似Hessian评估误差并反馈给尚未量化的权重\cite{obc,gptq}。BRECQ指出参数空间近似不等于模型空间近似，并使用block reconstruction\cite{brecq}；MREM以模块重构打破端到端训练依赖\cite{mrem}。量化误差传播研究进一步强调前层扰动会改变后续输入\cite{qep}。因此本文不把Linear对角输出曲率写成完整任务Hessian。
+
+\paragraph{极低比特VQ。} GPTVQ把二阶量化扩展到向量候选\cite{gptvq}；AQLM使用加性码本与block refinement\cite{aqlm}；QuIP\#与QTIP分别改善incoherent几何和trellis表示\cite{quip,qtip}。本文不声称新的通用PTQ端点，而研究固定VQ表示形成后的assignment代理。
+
+\paragraph{离散参数训练。} GSQ使用Gumbel Softmax优化量化结构\cite{gsq}，PV-Tuning交替优化离散与连续量化参数\cite{pvtuning}。训练assignment本身不是充分新颖性；本文的区别是只训练当前码字附近领域，并在训练前要求候选排序通过真实hard-set Gate。多任务梯度冲突工作说明聚合方向可能隐藏负迁移\cite{pcgrad}，但本文证明符号共识仍不能替代有限步曲率和集合交互。

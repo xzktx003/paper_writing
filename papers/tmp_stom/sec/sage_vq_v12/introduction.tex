@@ -1,0 +1,9 @@
+\section{引言}
+
+2-bit大语言模型量化把连续权重压到极稀疏的离散空间。向量量化以码字表示多个权重，获得强表达力的同时也引入组合assignment。AQLM、QuIP\#和QTIP表明表示几何与二阶敏感度都很重要\cite{aqlm,quip,qtip}；但soft或局部代理上的改进最终必须物化为硬整数索引。
+
+本文从block-scaled shared-codebook VQ出发。Block scale将不同动态范围映射到共同领域，同一套4096个六维码字服务所有block；Vector-GPTQ在top-128几何候选中加入激活二阶信息和误差反馈，形成硬锚点。锚点之后，当前码字附近领域中的assignment是自然的剩余自由度。我们用binary Concrete学习是否切换，但核心问题不是可微性，而是局部信号能否授权hard set。
+
+完整证据依次排除了三个代理。聚合一阶在98.20\%向量上预测下降，却不能形成改善的硬集合；四视图严格共识将资格率降到48.71\%，仍不能越过source。本文进一步计算真实scale-conditioned码字跳转的局部激活曲率，并以matched-cardinality hard validation直接裁决。
+
+曲率相对共识4/4胜，说明二阶代价有信息；相对聚合一阶只有2/4胜，且所有集合都输给source。贡献为：（1）定义无可调系数的scale-conditioned assignment curvature probe；（2）建立三个排序、四个固定预算的hard-set预测门禁；（3）把剩余问题从单点符号或曲率收缩到非线性误差传播与集合交叉项，并停止无依据的完整assignment训练。

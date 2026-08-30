@@ -1,0 +1,5 @@
+\section{结论}
+
+本文在2-bit block-scaled shared-codebook VQ上，以12个matched-cardinality hard set检验scale-conditioned局部曲率能否授权assignment训练。曲率稳定优于严格共识，却未稳定超过聚合一阶，最佳集合仍显著差于冻结source。局部Linear曲率因此是有信息的排序特征，而不是端到端部署证书。
+
+我们据此停止assignment-after-scale完整训练，不用超参数扫描掩盖机制缺口。若重启该路线，应以真实hard小集合的sequential conditional gain、block/layer输出重构或低秩交叉代理直接建模集合级误差传播，并先通过同样的端到端预测门禁。
