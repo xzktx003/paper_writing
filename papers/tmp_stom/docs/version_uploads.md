@@ -75,3 +75,24 @@
 - 版本标签：论文和算法仓库均为`sage-vq-v13`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
 - 上传内容：V13中文论文、LaTeX主文件与六个分节/参考文献、独立ICLR风格评审、修订记录、正式实验报告、顶会叙事调研、PNG/PDF Figure 1、实验/idea/功能/debug台账；算法因果集合条件probe、本地单卡launcher、causal-mask重放修复、batch-matched parity测试、绘图脚本、紧凑正式结果与基础设施失败摘要JSON。未上传checkpoint、模型权重、token cache、数据集或完整运行日志。
 - 验证：56项聚焦pytest通过；Ruff、Python compile、shell syntax、JSON contract、LaTeX输入与引用静态检查、图像重生成与目检、Git whitespace均通过；本机无LaTeX引擎，未编译整篇论文PDF。
+
+## V14（2026-08-30）
+
+- 论文主题：固定局部assignment动作中任务收益丰富，但完整文本零退化可行域为空；当前问题已从scorer和
+  接受规则推进到动作空间，而不是新部署端点。
+- 关键实验：Meta-Llama-3.1-8B-Instruct最后四层、28个固定curvature top-128 bundle；本机物理GPU5
+  单卡完成，未使用服务器14。27/28个bundle改善task-train objective，但0/27满足固定top-32 teacher分布上
+  的exact full-vocabulary text-train CE非退化；最小退化+0.0078526%，accepted switches=0。Validation、
+  audit、checkpoint、PPL和lm_eval均按合同保持未访问/未生成。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v14-text-constrained`。
+- 论文产物提交：`81b4955925e280cf3d1445725203b1e9bc6b2020`。
+- 算法提交：`76ff152a437c38a8dab52c9f278147cc258192eb`。
+- 版本标签：论文和算法仓库均为`sage-vq-v14`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
+- 上传内容：V14中文论文、LaTeX主文件与六个分节/参考文献、独立ICLR风格评审与后审修订记录、版本跟踪、
+  正式实验报告、顶会叙事调研、计算合同、PNG/PDF Figure 1、实验/idea/功能/debug台账；算法exact
+  text-constrained probe、本地单卡launcher、聚焦测试、绘图脚本与紧凑正式结果JSON。未上传checkpoint、
+  模型权重、128GiB prefix cache、数据集或完整运行日志。
+- 验证：64项聚焦pytest通过；Ruff、Python compile、shell syntax、紧凑结果从原始summary精确重算、JSON
+  解析、LaTeX输入与引用静态检查、图像重生成与目检、Git whitespace均通过；独立审稿复核`PASS`，总体
+  5.5/10（Weak/Borderline Reject）。本机无xelatex引擎，未编译整篇论文PDF。
