@@ -1,0 +1,47 @@
+\section{方法}
+
+\subsection{Block-scaled共享码本VQ与硬锚点}
+
+将Linear权重切分为$d=6$维向量$w_i$，group为$g(i)$，共享码本$\mathcal C=\{c_1,\ldots,c_K\}$且$K=4096$：
+\begin{equation}
+u_i=w_i/s_{g(i)},\quad a_i=\arg\min_k\|u_i-c_k\|_2^2,\quad \hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+Block scale将不同幅值映射到共同领域，使有限码本可被整层复用。Vector-GPTQ在几何候选中加入二阶代理，并在选定第$j$个量化单位后反馈误差：
+\begin{equation}
+W_{:,j+1:}\leftarrow W_{:,j+1:}-e_j\frac{H^{-1}_{j,j+1:}}{H^{-1}_{jj}}.
+\end{equation}
+这形成硬状态$(s^0,a^0,\mathcal C)$；后续固定scale、码本、normalizer、元数据和码率。
+
+\subsection{附近领域与固定Bundle}
+
+每个anchor只考虑含自身和七个几何邻居的$\mathcal N(a_i^0)$，真实跳转为$\delta_i(c)=s_{g(i)}^0(c-c_{a_i^0})$。概率训练可用binary Concrete开关$p_i=\sigma((z_i+\eta_i)/\tau)$混合anchor与alternative，只训练assignment而不改变码本或码率。但V14隔离硬动作可行性，不训练$z_i$。
+
+四个互斥视图给出$\Delta_i^{(v)}(c)=\langle g_i^{(v)},\delta_i(c)\rangle$。以Linear输入二阶矩$m_j=\mathbb E[x_j^2]$定义$q_i(c)=\sum_jm_j\delta_{ij}^2$，在四视图均负的邻居中按$\max_v\Delta_i^{(v)}/\sqrt{q_i+\epsilon}$排序；每个Linear固定top-128组成$B_{\ell,m}$。该分数只提出动作。
+
+\subsection{精确文本约束的词典序搜索}
+
+任务目标为五任务等权supervised CE与dense-teacher KL：
+\begin{equation}
+F(S)=\frac1{|\mathcal T|}\sum_t[\mathcal L_{\rm sup}^t(S)+0.25\mathcal L_{\rm KL}^t(S)].
+\end{equation}
+在当前硬状态$S_{\ell-1}$下，计算$G_{\ell,m}=F(S_{\ell-1})-F(S_{\ell-1}\cup B_{\ell,m})$。只有$G_{\ell,m}>10^{-7}$才计算文本teacher CE $T$，并定义
+\begin{equation}
+\mathcal F_\ell(S)=\{m:G_{\ell,m}>10^{-7},\ T(S\cup B_{\ell,m})\le T(S)\}.
+\end{equation}
+若可行集非空，选择其中$F$最小者；否则保持source。文本可行性先于task排序，因而两类目标不能互相购买。
+
+\subsection{完整文本缓存与精确分块CE}
+
+Text train含4096条长度4096序列。Source在layer 28输入缓存完整BF16 hidden，共
+\begin{equation}
+4096\times4096\times4096\times2=137{,}438{,}953{,}472\text{ bytes}=128\text{ GiB}.
+\end{equation}
+所有task-improving候选共享incumbent prefix，候选最终hidden沿batch拼接。LM head按8192词表块累计完整词表log-sum-exp，并收集固定teacher top-32位置：
+\begin{equation}
+H(p_T,p_B)=\operatorname{LSE}(z_B)-\sum_{j\in\operatorname{topk}(T)}p_T(j)z_B(j).
+\end{equation}
+对固定截断并重归一化teacher分布，该式与一次性完整词表softmax的CE等价；所有路径用\texttt{hidden[:, :-1]}对齐next-token。
+
+\subsection{数据隔离与Fail-Closed合同}
+
+搜索前只构造train teacher。只有非零endpoint才访问task/text validation；validation通过后才构造candidate-unexposed audit；audit通过才写checkpoint并运行WikiText2-2048与六任务全量lm\_eval。Task cache用32例same-batch完整HF前向做0.02 parity；text cache用覆盖首尾的8条完整序列做0.001 CE parity。Parity失败是基础设施失败，零switch是方法不可行。

@@ -610,3 +610,19 @@
   最大误差0；同batch分解验证0.0005286误差。相关测试`56 passed`，Python、ruff、shell和whitespace检查通过。
 - 影响边界：失败run在方法搜索前退出，未访问validation/audit/formal test、未写checkpoint，不作为方法实验
   结论；共享helper的既往direct-block实验需在论文中视为受该实现缺陷影响，不能继续作为可靠证据引用。
+
+## 2026-08-30 15:39 CST — V14 text cache 的 next-token 错位与 held-out teacher 生命周期
+
+- 现象一：独立代码审查用4096-token hidden和4095-position teacher复现了
+  `teacher tensors must cover every batch and token`；若直接启动，程序会在text cache parity阶段、方法搜索前
+  确定性退出。
+- 根因一：dense teacher按next-token协议存储`logits[:, :-1]`，而新分块LM-head路径最初把包含最后一个位置的
+  完整hidden传给CE。修复为source cache、完整HF parity和候选批处理三条路径统一使用`hidden[:, :-1]`；测试
+  明确构造`sequence`与`sequence-1`形状并验证候选批处理等价于独立suffix。
+- 现象二：V13虽未用validation/audit参与候选接受，但启动时一次性物化了train/validation/audit文本teacher，
+  因此“audit完全未访问”的字面表述过强；它不构成自适应选择泄漏，但不满足最严格的候选不可见合同。
+- 修复二：V14搜索前只构造train teacher。坐标搜索结束且task Gate通过后，先把量化模型卸载到CPU，再在GPU
+  单独加载dense teacher并只构造text validation；释放teacher、载回量化模型后才做source/candidate文本门禁。
+  只有validation整体通过，才以同样的一模型驻留协议构造text audit teacher并评分task/text audit。
+- 验证：红灯先因V14模块缺失失败；实现后分块CE与完整词表一致、候选批处理与独立suffix一致、next-token
+  对齐、128GiB缓存和本地单卡launcher合同共7项测试通过；Python compile、Ruff、shell和whitespace检查通过。

@@ -1,0 +1,5 @@
+\begin{abstract}
+极低比特向量量化不仅要构造紧凑码本，还要判断硬码字附近的离散assignment自由度能否在不破坏语言行为的前提下用于任务适应。本文研究约2.12 bpp的block-scaled shared-codebook VQ：权重block先由scale归一到共同领域并共享4096个六维码字，Vector-GPTQ再以二阶信息和误差反馈形成硬锚点；锚点之后只允许assignment在当前码字8-way邻域内变化。此前集合条件搜索能找到真实任务收益，却破坏held-out文本。为区分事后泛化失败与局部动作冲突，我们固定28个curvature top-128 bundle，以完整4096$\times$4096-token数据上、固定top-32 teacher分布的exact full-vocabulary cross entropy定义零退化可行域，只在可行域内最小化任务损失。128-GiB prefix cache、候选batch重放和分块词表精确CE使全量约束可在单卡计算。正式结果中27/28个bundle改善任务目标，但0/27满足文本非退化；最小文本代价仍为$+0.00785\%$，最终0 switch。程序按预注册合同不访问validation/audit、不写checkpoint、不运行正式测试。结果只表明当前硬锚点、最后四层和固定bundle粒度下任务收益方向与零文本代价可行域无交集；它否决在同一固定动作集合内仅靠重排序得到零退化端点，不外推到其他动作空间。
+\end{abstract}
+
+\noindent\textbf{关键词：}大语言模型量化；向量量化；共享码本；离散Assignment；可行域；语言保持

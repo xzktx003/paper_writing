@@ -3350,3 +3350,28 @@
 - **产物：** 紧凑JSON为
   `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_150245_llama3_1_8b_set_conditional_gain_complete.json`；
   报告为`report/20260830_150245_llama3_1_8b_set_conditional_gain_result_report.md`。
+
+## 2026-08-30 15:47--17:23：Llama-3.1-8B exact text-constrained conditional assignment（正式完整负结果）
+
+- **实验目的：** 回答V13审稿的唯一方法问题：把文本保持从事后0.5%门禁前移为候选接受时不可交易的
+  零退化约束，能否在固定assignment坐标中保留非零task gain。实验固定V13的模型、source、28个
+  curvature top-128 bundle、层序和数据，不扫描seed、bundle、阈值、group或学习率。
+- **方法原理：** 每层先真实测量七个bundle相对当前incumbent的task-train combined loss；只对严格
+  task-improving候选计算完整text-train teacher CE。可行候选必须满足文本CE不高于incumbent，再按任务loss
+  排序。文本4096条×4096 token全部参与约束；BF16 layer-28 prefix cache为128GiB，LM head按8192词表块
+  计算精确full-vocab log-sum-exp与teacher top-k期望，不使用token sketch。
+- **配置与验证：** Meta-Llama-3.1-8B-Instruct，source 2.1207557 bpp，layers28--31；五任务各512条
+  train，预留256/31条validation/audit；文本train/validation/audit为4096/128/64条、长度4096。Task cache
+  32例同batch parity最大score误差`1.1444e-5`、argmax 32/32；text cache 8行覆盖首尾，CE误差0。仅本机
+  物理GPU5单卡，未使用服务器14。
+- **正式结果：** 28个固定bundle中27个严格改善task-train objective，只有layer29 q_proj为负；但27个
+  task-improving候选的text CE全部上升，text-feasible为0。最小相对上升为layer31 down_proj的
+  `+0.0078526%`，最大为layer29 k_proj的`+0.7998089%`。四层均保持source，accepted bundles/switches均为0。
+- **终态与边界：** 程序正常退出0，`pipeline.status=text_constrained_gain_rejected`；耗时13303.33秒
+  （3.695小时），峰值25.285GiB。因零switch，task/text validation、audit和formal test均未访问，checkpoint
+  未写。结论仅适用于当前source、最后四层、固定top-128 bundle和零文本退化约束，不推出所有assignment
+  refinement全局不可行，也不能用于与QTIP/GSQ排名。
+- **产物：** 紧凑JSON
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_172328_llama3_1_8b_text_constrained_gain_complete.json`；
+  完整报告`report/20260830_180000_llama3_1_8b_text_constrained_gain_result_report.md`；原始summary SHA256
+  `57eb2589170d418379d7852c4c418f37817a1ea195c94200fa2c58f6d4211cff`。

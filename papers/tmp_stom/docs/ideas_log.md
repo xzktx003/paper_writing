@@ -1194,5 +1194,23 @@
   teacher权重、bundle、seed或阈值。
 - 预期效果：若固定文本train代理能筛除消费语言裕量的bundle，应保留非零task gain并通过未见text validation/
   audit；若全部候选被拒绝，则证明当前scale source附近的任务适应与语言保持在该坐标族内不可兼得。
-- 当前状态：**待验证。** 需先设计不缩小官方4096×4096文本体量、又能在单卡可承受成本内测量每个bundle
-  文本条件代价的缓存/低秩正控制；在该计算合同成立前不启动正式实验。
+- 当前状态：**已验证并否决当前固定坐标族。** 不缩小4096×4096文本train，也不使用随机sketch。程序在
+  source状态一次性缓存layer28输入hidden（BF16精确128GiB），对每层全部task-improving bundle共享当前
+  incumbent前缀，并在候选维批处理最后四层输出；LM head按8192词表块计算数学等价的精确log-sum-exp和
+  teacher top-k期望，避免物化完整候选×token×vocab logits。接受规则固定为：text-train CE相对当前
+  incumbent不增加，随后在可行集合中选task-train combined loss最小者。Task/text validation和audit仍只在
+  搜索完全结束后各访问一次；不扫描阈值、bundle、seed、层序、LR或group。正式本地GPU5结果中28个
+  bundle有27个task-improving，但27个完整text-train CE全部上升；零退化可行集为空，accepted switches=0，
+  validation/audit/formal test未访问。该结果停止“在同一固定bundle集合内只靠重排序寻找零退化端点”的路线；下一研究idea
+  必须改变可行动作本身，例如更细粒度可撤销子bundle或显式成对补偿坐标，并在方法实验前先证明非空可行域。
+
+## 2026-08-30：成对补偿的局部Assignment动作（V15候选方向）
+
+- Idea描述：不再把单个Linear的固定128-switch bundle作为不可分坐标，而构造一个task-improving主bundle与
+  一个来自不同Linear/层的text-restoring补偿bundle，优化满足净task gain为正、净text CE不增的成对动作。
+- 动机：V14的27/27任务收益方向都消费文本裕量，说明继续改scorer不会创造可行方向；但最小文本代价仅
+  0.00785%，尚不能排除两个不同局部方向的抵消。成对动作直接改变可行操作空间，而不是放宽约束或调阈值。
+- 预期效果：若跨Linear误差方向存在互补，成对坐标可能在零文本退化下保留task收益；若低成本text-restoring
+  候选本身不存在，则应停止通用PTQ assignment主路线并把现有方法定位为task-adapted VQ。
+- 当前状态：**待方法级可行性设计。** 必须先给出不枚举$O(N^2)$对、保持完整文本合同且不访问validation的
+  筛选原理；不得通过放宽text budget、缩小bundle、seed或group扫描伪造新实验。

@@ -17,6 +17,7 @@
 | V11 | 2026-08-30 | 四视图严格共识将负一阶候选从98.20%筛至48.71%，却仍0/8通过；符号稳定不是离散可信域 | 机制漏斗、负结果与精确回滚证据强，且相对V10只改变proposal；但最终方法仍是scale-only，曲率与集合交互尚未直接测量，仅覆盖单模型最后四层，缺同监督外部基线和真实kernel | 下一版仅允许先做候选级scale-conditioned curvature排序probe；若不能预测单步/小集合hard loss，停止完整assignment训练并将论文定位为代理失效与部署坐标边界研究 | 9.4 | 5.7 | 8.8 | 6.6 | 9.6 | 5.5 |
 | V12 | 2026-08-30 | Scale-conditioned局部曲率对严格共识4/4胜，却未过aggregate predictor Gate；局部二阶信息不是端到端部署证书 | Matched-cardinality硬集合和预注册失败路径可信，且直接测量了V11缺失的局部曲率；但仍无新Pareto端点，只覆盖单模型最后四层，集合交互仍是遗漏项解释而未直接估计 | 下一版停止独立候选ranking；仅做小集合sequential conditional gain，并加入Linear/block reconstruction正控制，直接检验局部正确而传播失效 | 9.5 | 5.8 | 8.9 | 7.0 | 9.7 | 5.5 |
 | V13 | 2026-08-30 | 因果集合条件评估把四个固定局部bundle转化为单调train收益和held-out任务loss改善，但text CE越过保护线；task-only条件收益仍非跨域部署证书 | 直接估计了V12缺失的集合交互，并以causal mask、同batch parity和正控制保证机制证据；但方法接近贪心坐标下降，仅一个8B模型最后四层，无部署端点、正式benchmark或同设置QTIP/GSQ排名，且每层正控制仅$n=7$ | 下一版只做text-train不可交易约束下的词典序条件接受，validation/audit保持不可见；先完成4096序列成本与parity合同，不做seed/bundle/阈值调参；若仍失败则停止通用PTQ assignment主路线 | 7.5 | 5.5 | 5.0 | 4.5 | 8.0 | 5.0 |
+| V14 | 2026-08-30 | 固定28个局部bundle中27个改善task train，但0/27满足完整text-train零退化；任务收益丰富而当前动作空间的零文本代价可行域为空 | 词典序约束、4096×4096完整文本、128GiB cache与fail-closed协议可信；但零switch、无checkpoint/validation/formal benchmark，仅单模型最后四层，约束过滤不是强算法创新，零预算和bundle粒度仍可能过严 | 下一版不得继续重排同一bundle或事后放宽阈值；只有构造有原理的补偿动作，并先在train上证明正task gain与非增text CE，才允许新实验；否则停止通用PTQ assignment主路线 | 8.0 | 5.5 | 5.5 | 4.5 | 8.5 | 5.5 |
 
 ## 评分口径
 

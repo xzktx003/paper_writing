@@ -1,0 +1,13 @@
+\section{相关工作}
+
+\subsection{二阶PTQ与误差传播}
+
+OBQ与GPTQ用校准激活构造近似Hessian，并把当前量化误差反馈给尚未量化的权重\cite{obc,gptq}。本文的Vector-GPTQ将候选单位扩展为六维共享码字，作为后续固定硬锚点。BRECQ与模块级重构使目标更接近网络函数\cite{brecq,mrem}，但局部block output仍不等同于最终任务或跨域语言行为；本文以曲率--即时block MSE作正控制，以真实task/text目标作可行性裁决。
+
+\subsection{极低比特向量与结构化编码}
+
+AQLM以多码本加性组合和block联合优化提升2-bit表示并提供实际kernel\cite{aqlm}。QuIP\#用随机Hadamard变换与E8格码改善incoherence和shaping\cite{quipsharp}；QTIP以trellis code解耦有效维度和指数码本规模\cite{qtip}；GPTVQ把GPTQ式敏感度扩展到向量候选\cite{gptvq}。这些工作面向通用PTQ Pareto。V14没有新checkpoint，不能复用source数字声称超过它们。
+
+\subsection{离散量化变量与多目标保持}
+
+Gumbel-Softmax和Concrete为离散变量提供可微松弛\cite{gumbel,concrete}，PV-Tuning直接交替优化离散与连续量化参数\cite{pvtuning}。GSQ预印本在少量标量levels上联合学习assignment与group scale并强调scalar kernel兼容性\cite{gsq}。因此训练assignment本身并非充分创新；本文研究从局部概率/代理到硬VQ动作的可信门禁。加权和允许任务收益购买teacher退化，多任务梯度也可能隐藏域间冲突\cite{pcgrad}。我们采用文本先定义可行集的词典序规则，但仍把独立validation、audit与正式测试保留为非零端点的必要后续审计。

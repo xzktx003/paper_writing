@@ -554,3 +554,25 @@
 - 正式终态合同已验证：四个条件bundle分别带来正训练增益并通过task validation，但text CE相对退化
   0.9186%超过0.5%上限；launcher写`set_conditional_gain_rejected`，不写checkpoint、不读取audit、不启动
   PPL/lm_eval。该路径明确区分“任务条件坐标有效”与“通用部署端点有效”。
+
+## Exact text-constrained conditional assignment search（2026-08-30）
+
+- `probe_text_constrained_assignment_gain.py`保留V13固定curvature bundle和因果task conditional replay，但将
+  优化从加权和改为词典序约束：先要求候选在完整text-train teacher CE上相对当前incumbent不退化，再在
+  可行集合中选择task-train combined loss最低的bundle；两类收益不能互相购买。
+- 完整4096条×4096 token文本train在source量化状态构造layer28 BF16 prefix hidden cache，共16,777,216
+  tokens与137,438,953,472 bytes（128GiB）。缓存开始层强制等于首个搜索层，并在搜索前用均匀覆盖首尾的
+  8条序列对同batch完整HF transformer前向做CE parity。
+- 每层只对task-train严格改善的bundle计算文本约束。所有候选复用incumbent到当前层之前的hidden；当前层
+  仅覆盖候选Linear权重，后续层保持incumbent状态。候选最终hidden在batch维拼接，LM head通过候选批处理
+  提高单卡GEMM利用率，并按8192词表块计算精确log-sum-exp与teacher top-k期望；计算量仍随候选数增长，
+  但不需要随机token sketch，也不物化完整候选全词表logits。
+- 数据隔离保持fail-closed：搜索前只构造task/text train teacher；坐标结束后才加载独立dense teacher并构造
+  task/text validation，validation通过后才构造candidate-unexposed text audit和评分task audit；audit通过
+  才写checkpoint并启动WikiText2 seqlength2048与六任务全量lm_eval。
+- 本地launcher默认只暴露物理GPU5，要求50GiB空闲显存与500GiB可用宿主内存，禁止服务器14路径。红绿灯
+  覆盖词典序可行集、分块CE与完整词表等价、候选批处理与独立suffix等价、128GiB缓存合同、全范围parity
+  采样及完整数据/单卡/fail-closed launcher合同。
+- 正式运行已覆盖完整失败终态：28个bundle中27个task-improving，但其完整text-train CE全部上升；零退化
+  可行集为空，四层均不接受坐标。Launcher写`text_constrained_gain_rejected`，validation/audit/formal test
+  保持未访问，不写checkpoint。该行为证明词典序门禁按预注册合同fail-closed，而不代表生成了新部署模型。
