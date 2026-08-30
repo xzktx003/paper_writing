@@ -1,0 +1,5 @@
+\begin{abstract}
+极低比特向量量化不仅要构造紧凑码本，还要判断硬码字附近的离散assignment自由度能否在不牺牲通用语言行为的前提下用于任务适应。本文研究约2.12 bpp的block-scaled shared-codebook VQ：权重block先通过FP16 scale归一到共同领域并共享4096个六维码字，Vector-GPTQ再以二阶信息和误差反馈形成可部署硬锚点。锚点之后，当前码字8-way邻域内仍存在不增加码本和逻辑码率的离散动作。此前严格文本约束实验显示，固定28个curvature top-128 assignment bundle中27个改善任务目标，却全部提高固定teacher top-32分布、学生端full-vocabulary normalization的4096$\times$4096-token文本CE。本文检验hard-first local scale compensation这一最小动作空间扩展：先提交真实hard assignment bundle，再只对被切换向量触及的现有row/input group计算闭式加权最小二乘scale，并在FP16舍入后的硬状态上评分。正式结果显示，该补偿使局部weighted anchor error降低1.9477\%，并在26/27个可比动作上降低assignment-only文本退化；但28/28个任务收益动作仍有文本CE上升，最接近点仍为$+0.0074999\%$，最终0 switch。结果不是部署端点，也不声称超过QTIP、GSQ或source；它否决了一个自然修复解释：当前VQ邻域中的瓶颈不只是幅值未跟上，单个局部乘性scale能缓解语言代价，却不能创造零文本代价的任务收益方向。
+\end{abstract}
+
+\noindent\textbf{关键词：}大语言模型量化；向量量化；共享码本；Vector-GPTQ；离散Assignment；Scale补偿；语言保持

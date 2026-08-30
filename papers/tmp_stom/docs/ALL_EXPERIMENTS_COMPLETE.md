@@ -3375,3 +3375,29 @@
   `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260830_172328_llama3_1_8b_text_constrained_gain_complete.json`；
   完整报告`report/20260830_180000_llama3_1_8b_text_constrained_gain_result_report.md`；原始summary SHA256
   `57eb2589170d418379d7852c4c418f37817a1ea195c94200fa2c58f6d4211cff`。
+
+## 2026-08-30 20:35--2026-08-31 00:20：Llama-3.1-8B hard-first局部scale补偿（正式完整负结果）
+
+- **实验目的：** 改变V14的动作空间而非重排同一bundle。检验先提交固定hard assignment，再只对切换
+  实际触及的既有FP16 row/input-group scale做闭式幅值补偿，能否把`0/27 text-feasible`变为非空。
+- **方法原理：** 每个touched group在最终hard assignment上求相对incumbent hard weight的column-normalizer
+  加权一维最小二乘scale，并先舍入FP16再评分。没有optimizer、LR、epoch或正则超参数；assignment、
+  codebook和未触及scale冻结。候选仍必须先满足完整text-train CE零退化，再按task loss选择。
+- **正式配置：** Meta-Llama-3.1-8B-Instruct，matched scale source，layers28--31共28个top-128坐标；
+  五任务各512 train，文本4096×4096 token。Task cache parity最大误差`1.1444e-5`、argmax 32/32；
+  128GiB text cache的8行exact CE parity误差0。仅本机物理GPU4单卡，未连接服务器14。
+- **补偿正控制：** 28个动作共触及2133个group，其中2048个在FP16后真实变化；局部weighted hard-weight
+  error从1.503737降至1.474448（-1.9477%）。相对V14的27个可比assignment-only动作，26个text
+  regression下降，平均下降0.0072663个百分点；说明补偿有一致局部作用，不是纯no-op。
+- **可行性结果：** 28/28个paired action均改善task-train combined loss，但0/28满足exact text CE
+  非退化。最接近可行的是layer31 down_proj：assignment-only `+0.0078526%`改善到compensated
+  `+0.0074999%`，仍严格高于0；最大task gain为layer30 up_proj的0.0053658，对应text `+0.15937%`。
+- **终态：** accepted bundles/switches为0；validation、audit、PPL、lm_eval均未访问，checkpoint不存在。
+  程序正常退出，状态`hard_scale_compensated_gain_rejected`，耗时13510.71秒（3.753小时），峰值
+  25.285GiB。Raw summary SHA256为`45e05f24b98bb677b10d25af2e06585195e026012aac3e91908b1f08342bd2d2`。
+- **机制结论：** 局部乘性scale能缩小assignment的语言代价，却不能旋转残差方向或建模跨Linear/残差流
+  传播，因此不足以创造零退化可行方向。停止scale clipping、group/bundle/seed/阈值扫描；若继续通用
+  PTQ路线，只允许显式text-restoring跨Linear/低秩补偿，否则把assignment限定为task-adapted VQ。
+- **产物：** 紧凑JSON
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260831_003908_llama3_1_8b_hard_scale_compensated_gain_complete.json`；
+  报告`report/20260831_003908_llama3_1_8b_hard_scale_compensated_gain_result_report.md`。

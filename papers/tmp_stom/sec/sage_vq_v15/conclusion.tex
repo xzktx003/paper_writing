@@ -1,0 +1,5 @@
+\section{结论}
+
+本文把block-scaled VQ的局部assignment训练问题拆成三步：先用共享码本和block scale获得低损失表示，再用Vector-GPTQ引入二阶敏感度和误差反馈形成硬锚点，最后在当前码字邻域内检验assignment及其scale补偿是否能提供免费的任务收益方向。V15的hard-first local scale compensation给出了一个有信息量的负结果：局部幅值修复能降低1.9477\%的weighted anchor error，并在26/27个可比动作上减少文本退化，但28/28个任务收益动作仍违反完整text-train CE非退化约束。
+
+因此，当前瓶颈已经从“如何训练assignment”推进到“什么动作空间能够同时改变任务和语言方向”。若继续沿通用PTQ恢复路线推进，下一步不应只是重排同一bundle或扫描阈值，而应设计带有明确机制的cross-Linear、residual-stream或低秩text-restoring补偿坐标；否则，局部VQ assignment更适合被定位为task-adapted quantization，而不是无需交易的通用语言保持改进。

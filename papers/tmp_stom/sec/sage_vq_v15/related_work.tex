@@ -1,0 +1,17 @@
+\section{相关工作}
+
+\subsection{二阶后训练量化与误差反馈}
+
+OBQ/OBC和GPTQ使用校准激活构造近似Hessian，并在顺序量化时把当前误差反馈给尚未处理的权重\cite{obc,gptq}。其核心不是某个固定Linear顺序，而是让后续离散决策感知先前误差。本文的Vector-GPTQ沿用这一原则，但把候选单位从标量levels扩展到六维VQ codeword：先用几何近邻缩小候选，再用二阶代理和误差反馈选择硬assignment。它形成后续assignment训练和补偿实验的source锚点。
+
+\subsection{极低比特向量量化与结构化编码}
+
+AQLM、QuIP\#、QTIP等方法说明，极低比特LLM量化不能只看局部参数误差，还要同时考虑表示几何、二阶敏感度、编码结构和推理可实现性\cite{aqlm,quipsharp,qtip}。GPTVQ也将GPTQ式二阶敏感度扩展到向量候选\cite{gptvq}。本文不把这些方法作为被击败的baseline，因为V15没有产生新的可部署checkpoint，也没有运行正式PPL或accuracy。它们在本文中的作用是定义研究标准：一个真正可用的2-bit VQ方法最终必须在相同模型、相同评测和真实端点下证明质量--效率Pareto。
+
+\subsection{离散assignment的概率训练}
+
+Gumbel-Softmax与Concrete分布为离散categorical或binary变量提供连续可微松弛\cite{gumbel,concrete}。用于量化时，assignment可以被写成锚点码字与邻近码字之间的概率开关，并通过任务或蒸馏loss训练logits。PV-Tuning和GSQ等工作也说明，学习离散assignment与scale是自然方向\cite{pvtuning,gsq}。因此，本文不把“用概率训练assignment”本身包装为唯一创新，而是强调从soft/proposal信号到最终hard integer state的可信门禁：最终接受必须由真实硬状态上的任务收益和语言保持共同决定。
+
+\subsection{局部重构、Scale与多目标约束}
+
+Block reconstruction类方法试图缩小局部参数误差与网络行为之间的差距\cite{brecq,mrem}；scale学习或重参数化则常用于把难表示的幅值分布迁移到更易量化的空间。本文的scale compensation属于更受限的变体：它不重新训练scale，也不优化validation loss，只在hard assignment后对touched group做一维闭式投影。多目标方面，加权和会允许任务收益购买文本退化；梯度冲突研究也提示平均目标可能隐藏特定域损伤\cite{pcgrad}。本文采用词典序约束，先要求固定teacher top-32分布、学生端full-vocabulary normalization的text-train CE不增加，再比较任务loss。这个规则更适合作为机制探针，因为任何一个可行动作都能直接反证“局部邻域无免费方向”。

@@ -1,0 +1,80 @@
+\section{方法}
+
+\subsection{Block scale后的共享码本VQ}
+
+将Linear权重矩阵切分为六维向量$w_i\in\mathbb R^6$。向量$i$所属row/input group为$g(i)$，共享码本为$\mathcal C=\{c_1,\ldots,c_K\}$，其中$K=4096$。VQ在归一化领域进行：
+\begin{equation}
+u_i=\frac{w_i}{s_{g(i)}},\qquad
+a_i=\arg\min_k\|u_i-c_k\|_2^2,\qquad
+\hat w_i=s_{g(i)}c_{a_i}.
+\end{equation}
+这一分解有三个变量：码本描述跨block共享的归一化形状；FP16 scale描述局部幅值；整数assignment描述每个向量选择哪个形状。本文所有后续实验都固定码本大小、向量维度、逻辑格式和source bit rate（约2.1207557 bpp）。
+
+\subsection{Vector-GPTQ硬锚点}
+
+几何VQ只最小化$\|u_i-c_k\|^2$，没有利用激活分布。Vector-GPTQ先为每个向量保留top-128几何候选，再使用校准输入$X$形成Hessian代理$H=XX^\top$。选择第$j$个量化单位后，将对应误差$e_j$反馈给后续列：
+\begin{equation}
+W_{:,j+1:}\leftarrow W_{:,j+1:}-e_j
+\frac{H^{-1}_{j,j+1:}}{H^{-1}_{jj}}.
+\end{equation}
+与标量GPTQ相比，这里的候选不是单个数值level，而是六维codeword；误差反馈仍在列空间传播。输出是硬状态
+\begin{equation}
+S^0=(a^0,s^0,\mathcal C,\text{normalizer},\text{metadata}),
+\end{equation}
+后续动作必须从该状态出发，并在部署格式中保持可表示。
+
+\subsection{邻域assignment与硬bundle}
+
+对每个锚点码字$c_{a_i^0}$，只开放包含自身和七个几何邻居的局部邻域$\mathcal N(a_i^0)$。替换到邻居$c$的真实权重跳转为
+\begin{equation}
+\delta_i(c)=s_{g(i)}^0(c-c_{a_i^0}).
+\end{equation}
+若采用概率训练，可令锚点和一个alternative之间的开关为
+\begin{equation}
+p_i=\sigma((z_i+\eta_i)/\tau),\qquad
+\widetilde w_i=(1-p_i)s^0c_{a_i^0}+p_i s^0c_{a_i^1},
+\end{equation}
+其中$\eta_i$为logistic/Gumbel噪声，$z_i$是assignment logit。该训练只改变assignment概率，不改变码本或码率。但为了避免soft-to-hard投影后指标失真，本文的正式检验沿用固定hard bundle：四个互斥train视图给出一阶变化
+\begin{equation}
+\Delta_i^{(v)}(c)=\langle g_i^{(v)},\delta_i(c)\rangle,
+\end{equation}
+并用Linear输入二阶矩$m_j=\mathbb E[x_j^2]$构造局部曲率
+\begin{equation}
+q_i(c)=\sum_j m_j\delta_{ij}(c)^2.
+\end{equation}
+仅保留四视图均预测下降的邻居，按$\max_v\Delta_i^{(v)}(c)/\sqrt{q_i(c)+\epsilon}$排序，每个Linear取top-128形成固定bundle$B_{\ell,m}$。Proposal分数只决定候选集合；最终接受只看真实硬forward。
+
+\subsection{Hard-first局部scale补偿}
+
+V14的assignment-only动作保持$s^0$不变。V15改变一次动作的定义：先把$B_{\ell,m}$真实写入assignment，得到新的归一化重建$q^1$，再只对被切换向量触及的row/input group重新计算scale。
+
+对一个touched group，记原硬重建的归一化向量为$q^0$，新assignment的归一化向量为$q^1$，原scale为$s^0$，column normalizer为$r_j$，并令权重$w_j=r_j^2$。实现中的row normalizer在同一row/group内对新旧重建是公共正比例项，因而从该一维argmin中抵消。补偿目标不是拟合原始FP16权重，而是让新hard assignment的带scale重建尽量靠近incumbent hard source：
+\begin{equation}
+\min_s \sum_j w_j(s q^1_j-s^0 q^0_j)^2.
+\end{equation}
+当分母为正且投影给出正scale时，其闭式解为
+\begin{equation}
+s^\star=s^0\frac{\sum_j w_jq_j^1q_j^0}{\sum_jw_j(q_j^1)^2}.
+\end{equation}
+否则该候选被标记为补偿不可行，并继续评估其余候选。可行解立即舍入为最终checkpoint会存储的FP16，再进行task/text评分。未触及group的scale、未选择的assignment、codebook、normalizer和metadata全部冻结。该动作没有学习率、步数、clip、正则或validation-selected超参数；没有switch时$q^1=q^0$，因此scale compensation退化为source identity。这里``local''指补偿支持集仅限被switch触及的既有group，而非预设scale变化幅度很小；正式实验观察到的最大单group相对变化为31.4247\%。
+
+\subsection{词典序接受与数据隔离}
+
+任务目标为五个内部任务等权的supervised CE与dense-teacher KL：
+\begin{equation}
+F(S)=\frac1{|\mathcal T|}\sum_{t\in\mathcal T}
+\left[\mathcal L_{\rm sup}^t(S)+0.25\mathcal L_{\rm KL}^t(S)\right].
+\end{equation}
+对每个paired action $A_{\ell,m}$（hard assignment + touched-scale compensation），先计算
+\begin{equation}
+G_{\ell,m}=F(S)-F(S\cup A_{\ell,m}).
+\end{equation}
+只有$G_{\ell,m}>10^{-7}$的动作才进入text-train CE计算。文本目标使用4096条长度4096的序列和固定dense teacher top-32分布，学生端log-sum-exp覆盖完整词表；后文所谓``精确文本CE''均指这一固定teacher分布上的full-vocabulary-normalized CE：
+\begin{equation}
+H(p_T,p_S)=\operatorname{LSE}(z_S)-\sum_{j\in\operatorname{top32}(T)}p_T(j)z_S(j).
+\end{equation}
+可行集定义为
+\begin{equation}
+\mathcal F_\ell(S)=\{m:G_{\ell,m}>10^{-7},\ T(S\cup A_{\ell,m})\le T(S)\}.
+\end{equation}
+只有当$\mathcal F_\ell(S)$非空时，才在其中选择任务loss最低者；否则该层保持source。Validation、audit、checkpoint、PPL和lm\_eval全部位于可行endpoint之后；若train可行集为空，程序必须fail closed。

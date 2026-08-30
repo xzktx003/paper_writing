@@ -1229,3 +1229,21 @@
 - 当前状态：**实现与预注册完成，等待本地 GPU4 正式运行。** 56 项相关回归测试、ruff、Python compile、
   bash syntax 与 git whitespace 已通过；独立实现审查进行中。正式 run 固定完整 4096×4096 text train，
   不连接服务器14，不做 seed/group/bundle/阈值扫描。
+
+- 当前状态更新：**已验证并否决为充分补偿动作。** 正式本地GPU4单卡run中，28/28个paired action均
+  改善task-train loss，但0/28通过exact text-train零退化。闭式补偿在27个V14可比坐标中26次降低
+  text regression，局部weighted anchor error总计下降1.9477%，但最佳可行性margin仍为`+0.0074999%`。
+  这说明局部乘性幅值自由度有修复作用却不足以改变残差方向。该分支停止，不扫描scale clipping、group、
+  bundle、seed或text budget。
+
+## 2026-08-31 00:39：显式 text-restoring 低秩/跨Linear补偿（后续候选，尚未授权实验）
+
+- Idea描述：若继续通用PTQ assignment路线，补偿动作必须直接含有与task bundle文本梯度相反的方向，且
+  能跨越单个group的纯乘性自由度；候选形式可以是受固定秩约束的跨Linear weight residual，或预先证明
+  text CE下降的第二个hard assignment bundle。
+- 动机：V15在26/27坐标上缩小text regression仍0/28可行，证明“局部幅值没对齐”只解释小部分冲突；
+  剩余误差需要旋转方向、跨Linear耦合或残差流级补偿。
+- 预期效果：在固定额外码率/格式合同下产生至少一个task gain为正且完整text-train CE不增的动作；若新增
+  residual需要额外比特，必须与同bpp source/QTIP/GSQ重新做公平比较，不能声称免费。
+- 当前状态：**待理论与码率设计，未授权实验。** 在给出非$O(N^2)$构造、明确存储成本和train/validation
+  隔离前不得启动；另一条更诚实的路线是终止通用PTQ主张，将现有assignment方法定位为task-adapted VQ。

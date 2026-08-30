@@ -1,0 +1,17 @@
+\section{引言}
+
+2-bit大语言模型量化把连续权重压入极小的离散空间。标量量化把每个权重独立舍入到少量levels；向量量化则用一个整数索引表示多个权重，能够通过码字形状更有效地利用比特预算。代价是优化变量从独立标量rounding变成一组相互耦合的离散assignment：一次码字替换会同时改变多个维度，并通过attention、MLP与residual stream影响后续层。
+
+本文从block-scaled shared-codebook VQ出发。权重先被切分成六维向量；每个row/input group使用FP16 scale把局部幅值归一到共同领域；所有group共享同一套4096$\times$6码本。这样，码本学习归一化后的形状，scale恢复局部幅值，assignment决定每个六维向量采用哪个共享原型。该设计把表示几何和幅值范围拆开，使2-bit左右的逻辑码率仍能表达非均匀权重分布。
+
+仅靠几何最近邻还不够。我们使用Vector-GPTQ形成硬锚点：对每个六维向量保留top-128几何近邻，再用校准激活构造的Hessian代理选择候选，并把当前量化误差反馈给后续列。它是GPTQ思想在VQ候选空间中的对应版本：决策单位从标量grid变成六维codeword，误差反馈仍让后续选择感知先前离散误差。经过这一阶段，模型拥有可部署的整数assignment、FP16 scale和固定码本。
+
+锚点之后仍有一个容易被低估的问题：当前码字附近的assignment是否还能被训练成更好的模型？这不是码本重训练，也不是增加额外residual，而是在同一个码率下重新选择部分向量的邻近码字。概率化训练可给assignment开关提供梯度；固定bundle评估可避免soft-to-hard失配，直接测量最终整数状态。真正的科学问题不是assignment能不能优化某个局部loss，而是它在硬化后是否存在同时改善任务且保持语言分布的可行动作。
+
+此前实验给出一个尖锐现象。对Meta-Llama-3.1-8B-Instruct最后四层的28个Linear，固定curvature-ranked top-128 assignment bundle，并把完整text-train teacher CE作为不可交易约束：候选只有在任务训练loss下降且文本CE不增加时才能被接受。结果是27/28个bundle改善任务训练目标，但0/27满足文本非退化；最小文本代价仍为$+0.0078526\%$。这说明任务收益方向很多，但在该固定assignment-only动作空间内没有观察到免费的语言保持方向。
+
+本文问一个更进一步、也更接近VQ结构的问题：失败是否只是因为assignment改变了归一化码字方向，却没有同步修复对应block的幅值？如果是，那么hard assignment之后对被触及group重新计算scale，可能把文本CE拉回source，同时保留任务收益。我们因此提出hard-first local scale compensation：先提交真实硬assignment bundle，再只对被切换向量覆盖的已有row/input group求一个闭式加权最小二乘scale；scale先舍入为FP16，再进行task/text评分。该动作不引入学习率、epoch、正则强度或validation选择，也不改变码本、normalizer、未触及scale、未选assignment与逻辑码率。
+
+正式实验显示，补偿确实不是无效操作。它把全部touched groups的局部weighted anchor error降低1.9477\%，并在26/27个与assignment-only可比的task-improving动作上降低文本退化，平均减少0.0072663个百分点。但所有28个paired动作仍严格提高固定teacher top-32分布、学生端full-vocabulary normalization的文本CE，text-feasible数量仍为0，最终checkpoint不写入，validation/audit/PPL/lm\_eval均按预注册合同不访问。图~\ref{fig:v15_compensation_feasibility}展示了补偿前后的配对移动和仍为空的零退化可行域。
+
+本文贡献如下：（1）检验hard-first local scale compensation这一VQ assignment后的最小动作空间扩展，在最终硬码字状态上闭式修复touched group的FP16 scale，直接测试soft--hard错位之外的局部幅值解释；（2）给出一个可证伪的VQ机制诊断：局部幅值补偿几乎一致降低assignment-only文本代价并降低局部hard-weight anchor error，但不足以让任何任务收益动作进入零文本退化可行域；（3）建立严格负结果边界：该实验只否决当前Llama-3.1-8B最后四层、固定top-128邻域bundle、零文本预算下的局部乘性修复路线，不外推为所有assignment全局不可行，也不构成新部署端点或SOTA声明。

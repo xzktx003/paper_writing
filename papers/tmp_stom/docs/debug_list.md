@@ -626,3 +626,18 @@
   只有validation整体通过，才以同样的一模型驻留协议构造text audit teacher并评分task/text audit。
 - 验证：红灯先因V14模块缺失失败；实现后分块CE与完整词表一致、候选批处理与独立suffix一致、next-token
   对齐、128GiB缓存和本地单卡launcher合同共7项测试通过；Python compile、Ruff、shell和whitespace检查通过。
+
+## 2026-08-30 20:02 CST — V15 不可补偿候选会中断全程且成功 checkpoint 缺少 fresh 证据
+
+- 现象：正式启动前的独立代码审查发现，合法checkpoint若某个candidate的闭式scale投影不存在正解，旧路径
+  会直接抛出`ValueError`并中断其余27个候选；另一个问题是audit成功分支虽写assignment+scale checkpoint，
+  summary只记录文件存在，不能自证fresh reload后的状态与运行中权重一致。
+- 根因：最初实现没有区分“checkpoint几何损坏”和“当前动作数学不可行”，也复用了V14只改assignment的
+  简化写出合同，没有为paired state增加assignment/scale/metadata/fresh reconstruction审计。
+- 修复：新增`CompensationInfeasibleError`，候选级捕获后记录`scale_compensation_infeasible`并继续搜索；
+  成功checkpoint写出后强制fresh reload，核验int32 assignment、FP16 scale、固定codebook/normalizer、
+  untouched state、逻辑bpp与逐元素fresh reconstruction，失败则删除刚写文件并异常退出。Launcher同步增加
+  jq合同断言。
+- 验证：新增非正投影fail-closed用例和运行中paired weight vs fresh logical reconstruction用例；57项聚焦
+  pytest、Ruff、Python compile、bash syntax和Git whitespace通过。独立复审结论`LAUNCH`，Blocker/Major均0；
+  随后的GPU4正式run正常完成28个候选且按零可行路径不写checkpoint。

@@ -589,3 +589,6 @@
   assignment 与原位 FP16 group scale，不新增参数张量或逻辑比特。
 - 本地单卡入口 `run_llama3_1_8b_hard_scale_compensated_gain_local.sh`默认物理 GPU4，禁止远端路径；基础
   launcher 的 V14 默认模式保持不变。
+- 正式失败终态已验证：28个paired action全部task-improving但0个text-feasible，launcher写
+  `hard_scale_compensated_gain_rejected`；validation/audit/formal test未访问，checkpoint不存在。运行中
+  2133个touched group有2048个FP16 scale真实变化，证明失败不是补偿no-op。
