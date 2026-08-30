@@ -1214,3 +1214,18 @@
   候选本身不存在，则应停止通用PTQ assignment主路线并把现有方法定位为task-adapted VQ。
 - 当前状态：**待方法级可行性设计。** 必须先给出不枚举$O(N^2)$对、保持完整文本合同且不访问validation的
   筛选原理；不得通过放宽text budget、缩小bundle、seed或group扫描伪造新实验。
+
+## 2026-08-30 18:40：Hard-first assignment 与受影响 group-scale 闭式补偿（V15）
+
+- Idea描述：把 V14 的 assignment-only 坐标扩展为一个原子 paired action。首先提交固定 top-128 hard
+  assignment；随后仅对切换向量触及的 row/input group，用相对 incumbent hard weight 的加权最小二乘
+  闭式解重算既有 FP16 group scale。最终 task/text 评分始终发生在舍入后的真实硬状态。
+- 动机：V14 的 27 个 task-improving bundle 全部增加 text CE，说明固定动作空间缺少恢复自由度；V9 的
+  soft joint 又因 scale 补偿 soft codeword mixture 而在 hard projection 后失配。Hard-first 让 scale 看到
+  的就是最终离散误差，局部闭式投影避免重新引入 LR、epoch、正则或子集选择。
+- 预期效果：在不改变逻辑 bpp 和序列化格式的前提下，把 `0/27 text-feasible` 变为非空，同时保留 task
+  gain；若补偿只会撤销 task gain 或仍不能恢复完整 text-train CE，则停止该 source 邻域的通用 assignment
+  路线。
+- 当前状态：**实现与预注册完成，等待本地 GPU4 正式运行。** 56 项相关回归测试、ruff、Python compile、
+  bash syntax 与 git whitespace 已通过；独立实现审查进行中。正式 run 固定完整 4096×4096 text train，
+  不连接服务器14，不做 seed/group/bundle/阈值扫描。

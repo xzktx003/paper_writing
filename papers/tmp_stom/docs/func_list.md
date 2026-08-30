@@ -576,3 +576,16 @@
 - 正式运行已覆盖完整失败终态：28个bundle中27个task-improving，但其完整text-train CE全部上升；零退化
   可行集为空，四层均不接受坐标。Launcher写`text_constrained_gain_rejected`，validation/audit/formal test
   保持未访问，不写checkpoint。该行为证明词典序门禁按预注册合同fail-closed，而不代表生成了新部署模型。
+
+## Hard-first local group-scale compensation（2026-08-30）
+
+- `hard_scale_compensation.py`为 hard assignment bundle 计算受影响 row/input-group 的闭式 FP16 scale
+  投影；只触碰实际覆盖 group，并报告投影前后加权 anchor error、FP16 后真实变更组数和最大相对 scale
+  变化。
+- `HardScaleCompensatedApplicator`以 group 为事务边界稀疏写入 paired hard state，并能精确恢复 source；
+  单元测试验证运行中权重与修改后 checkpoint 的 fresh logical reconstruction 逐元素一致。
+- `probe_text_constrained_assignment_gain.py --hard-scale-compensation`复用 V14 全量 task/text cache、候选和
+  fail-closed Gate，但候选权重由 assignment+scale 原子动作生成。通过 audit 时 checkpoint 同时落盘 int32
+  assignment 与原位 FP16 group scale，不新增参数张量或逻辑比特。
+- 本地单卡入口 `run_llama3_1_8b_hard_scale_compensated_gain_local.sh`默认物理 GPU4，禁止远端路径；基础
+  launcher 的 V14 默认模式保持不变。
