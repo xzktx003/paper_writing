@@ -96,3 +96,16 @@
 - 验证：64项聚焦pytest通过；Ruff、Python compile、shell syntax、紧凑结果从原始summary精确重算、JSON
   解析、LaTeX输入与引用静态检查、图像重生成与目检、Git whitespace均通过；独立审稿复核`PASS`，总体
   5.5/10（Weak/Borderline Reject）。本机无xelatex引擎，未编译整篇论文PDF。
+
+## V15 方法预注册快照（2026-08-30）
+
+- 研究主题：在 V14 assignment-only 零可行域之后，把一次动作扩展为 hard assignment 与受影响既有
+  FP16 group scale 的闭式局部补偿；该快照只发布预注册方法与可执行代码，不提前声称实验成功。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v15-hard-scale-compensation`。
+- 论文/方法合同提交：`0378841c171c9eec71579b2b7604cae3636c11b8`。
+- 算法提交：`aad17709d28b31ef4e059b46c62dab6f76220a84`。
+- 上传内容：V15 计算与数据预注册合同、idea/功能台账；hard-scale compensation 源码、V14 兼容 probe、
+  本地 GPU4 单卡 launcher 与聚焦测试。未上传 checkpoint、模型权重、token cache、数据集或运行日志。
+- 验证：57 项聚焦 pytest、Ruff、Python compile、bash syntax 与 Git whitespace 通过；独立实现复审为
+  `LAUNCH`，Blocker 0、Major 0、Minor 2。正式 Llama-3.1-8B 结果尚未产生。
