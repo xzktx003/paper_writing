@@ -63,3 +63,15 @@
 - 版本标签：论文和算法仓库均为`sage-vq-v12`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
 - 上传内容：V12中文论文、LaTeX主文件与六个分节/参考文献、独立ICLR风格评审、修订记录、正式实验报告、顶会叙事调研、PNG/PDF Figure 1、实验/idea/功能台账；算法probe、单卡launcher、输入二阶矩采集、聚焦测试、绘图脚本与紧凑结果JSON。未上传checkpoint、模型权重、token cache、数据集或完整运行日志。
 - 验证：43项聚焦pytest通过；Python compile、ruff、shell syntax、JSON parse、Markdown/LaTeX结构、图像重生成与目检、Git whitespace均通过；本机无LaTeX引擎，未编译整篇论文PDF。
+
+## V13（2026-08-30）
+
+- 论文主题：把固定局部assignment bundle作为离散坐标，在已接受hard state下测量真实集合条件收益；当前四层设置中train与held-out任务loss改善，但text CE越过保护线，说明task-only条件收益不是跨域部署证书。
+- 关键实验：Meta-Llama-3.1-8B-Instruct最后四层、28个Linear、每层七个固定curvature top-128 bundle；本机物理GPU7单卡完成，未使用服务器14。四层合计接受512个switch，train joint loss改善2.7288%、task validation balanced loss改善1.0919%，但text CE恶化0.9186%并触发预注册拒绝；audit、checkpoint、PPL和lm_eval均未启动。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v13-set-conditional-gain`。
+- 论文产物提交：`6051afc6c6dda73213bed79dbc8224ff2177cedd`。
+- 算法提交：`0be0eab11a62f1c9ac2af7aebe0cfa22ceb11654`。
+- 版本标签：论文和算法仓库均为`sage-vq-v13`；算法标签指向上述代码提交，论文标签包含产物提交及本发布索引。
+- 上传内容：V13中文论文、LaTeX主文件与六个分节/参考文献、独立ICLR风格评审、修订记录、正式实验报告、顶会叙事调研、PNG/PDF Figure 1、实验/idea/功能/debug台账；算法因果集合条件probe、本地单卡launcher、causal-mask重放修复、batch-matched parity测试、绘图脚本、紧凑正式结果与基础设施失败摘要JSON。未上传checkpoint、模型权重、token cache、数据集或完整运行日志。
+- 验证：56项聚焦pytest通过；Ruff、Python compile、shell syntax、JSON contract、LaTeX输入与引用静态检查、图像重生成与目检、Git whitespace均通过；本机无LaTeX引擎，未编译整篇论文PDF。
