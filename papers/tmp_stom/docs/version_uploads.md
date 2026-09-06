@@ -134,3 +134,25 @@
   LaTeX 结构与引用、JSON 和 Git whitespace 检查通过。独立 ICLR 复核为 5.5/10（Weak/Borderline Reject）。
   推荐编译命令为 `cd template && xelatex sage_vq_iclr_v15.tex`；本机无 xelatex/latexmk/tectonic，未生成论文
   PDF。
+
+## 五模型 Vector-GSQ/QTIP 正式比较快照（2026-09-06）
+
+- 研究范围：在 Qwen3-4B/8B/14B/32B 与 LLaMA-2-7B 上完成约 2-bit Vector-GSQ 和 QTIP
+  的同模型、近码率比较；统一使用 WikiText2 test/seqlength=2048 与 ARC-C、ARC-E、HellaSwag、
+  LAMBADA、PIQA、WinoGrande 六项完整 0-shot 评测。
+- 论文仓库分支：`feat/office-track-writing-workbench`。
+- 算法仓库分支：`paper-v15-hard-scale-compensation`。
+- 论文实验产物提交：`2bf39cb476375e2ee43f2a893da8935984ff84db`。
+- 算法提交：`649b68cbaa9956c84b5bd7e280385ba15dd3625c`。
+- 上传内容：九份带时间戳实验报告，以及实验、功能、idea、debug 台账；Qwen3-QTIP 架构适配、
+  QTIP 兼容补丁、Vector-GSQ/QTIP 单卡矩阵脚本、45 项聚焦测试、五个原始紧凑 QTIP summary、
+  五个逐模型对比 JSON 和五模型总表 JSON。
+- 结果边界：QTIP 在 5/5 模型上 PPL 更低、4/5 模型上 Macro-6 更高；Qwen3-32B 为唯一混合端点，
+  Vector-GSQ 的 Macro-6 高 0.2506 个百分点并赢 4/6 单项，但 PPL 高 0.6609。Qwen3 端点使用官方
+  layerwise QTIP core、FP32/TF32 Hessian 与维度适配，不包含 full-model e2e finetuning，禁止称为
+  官方 QTIP headline checkpoint。
+- 验证：45 项聚焦 pytest 全部通过；Python compile、两个 launcher 的 bash syntax、QTIP 供应商补丁
+  在干净 `e90c668` worktree 上的 apply check、五个源 summary 与总表逐字段一致性、报告必需章节、
+  JSON 解析及 Git whitespace 检查均通过。两个远程分支已推送并核验。
+- 排除项：未上传 checkpoint、模型权重、8192/384 RP1T token cache、Hessian、量化中间产物、HF
+  weight shards 或完整 lm-eval 日志；这些大文件继续由报告中的本地路径与紧凑结果追踪。
