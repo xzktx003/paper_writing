@@ -3401,3 +3401,158 @@
 - **产物：** 紧凑JSON
   `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260831_003908_llama3_1_8b_hard_scale_compensated_gain_complete.json`；
   报告`report/20260831_003908_llama3_1_8b_hard_scale_compensated_gain_result_report.md`。
+## 2026-08-31 15:05--16:05 CST：目标模型本方法缺失正式指标矩阵（首轮，8B完成/14B路径门禁）
+
+- 实验目的：不重新量化已有完整checkpoint，在本地单卡顺序补齐Qwen3-4B/8B/14B/32B的WikiText2
+  seqlength=2048与ARC-C、ARC-E、HellaSwag、LAMBADA、PIQA、WinoGrande全量0-shot结果；LLaMA-2-7B
+  复用已完成同协议结果。
+- 实验原理：fresh load基础模型，逐层从logical state重建七个Linear；全层、索引、有限性与逐元素重构
+  全部通过后才交给`lm_eval`。脚本只暴露本地物理GPU1，batch size 1，无`--limit`。
+- 实验配置：Qwen3-8B top-128完整36层checkpoint，2.021272 bpp；本地A100 80GB；lm_eval 0-shot、
+  bootstrap 1000、seed0（仅固定评测协议，不做seed实验）。
+- 实验结果：Qwen3-8B完成，ARC-C 51.7918%、ARC-E 78.1987%、HellaSwag 63.4137%、LAMBADA
+  59.3829%、PIQA 73.7214%、WinoGrande 67.8769%，Macro-6 **65.7309%**；评测2302.879秒，峰值显存
+  17.254GB。对应既有WikiText2 PPL为13.8444805。
+- 首轮终止原因：Qwen3-14B默认路径指向仅0--4层的1.104GB阶段镜像，evaluator按合同退出1；这不是
+  算法失败。已定位同名8.836GB full-pull文件并审计为40层/280 Linear，修复入口后使用同一RUN_DIR恢复。
+- 结果JSON：`code/GSQ_nowag_d1_20260716_015355/experiments/results/local_target_matrix/`
+  `20260831_150500_vector_gsq_missing_formal_eval/qwen3_8b/lm_eval/summary.json`。
+- 报告：`report/20260831_160500_target_vector_gsq_matrix_qwen3_8b_complete_14b_path_gate_report.md`。
+
+## 2026-08-31 15:05--18:57 CST：Vector-GSQ 五目标模型正式指标矩阵完成
+
+- 实验目的：补齐 Qwen3-4B/8B/14B/32B 与 LLaMA-2-7B 本方法的完整 PPL 和规定六项
+  `lm_eval`，形成同模型 QTIP 比较前的统一 Vector-GSQ 端点。
+- 实验原理：已有完整 logical checkpoint 不重新训练；fresh load 基座后重建每层
+  q/k/v/o/gate/up/down，完成层数、七 Linear、状态有限性和逐元素 reconstruction 审计后，执行
+  WikiText2 test/seqlength=2048 和六任务完整 0-shot。各模型在单张本地 A100 80GB 上顺序执行。
+- 关键结果：Qwen3-4B PPL/Macro-6=`22.6799/57.1849%`，Qwen3-8B=`13.8445/65.7309%`，
+  Qwen3-14B=`11.0321/69.6229%`，Qwen3-32B=`9.1922/74.4539%`，LLaMA-2-7B=
+  `7.6439/62.6426%`。所有六任务均无`--limit`，0-shot。
+- 覆盖审计：五模型分别完成36/36/40/64/32层，对应252/252/280/448/224个量化Linear；
+  logical effective bpp分别为2.0377/2.0213/2.0145/2.0111/2.0206。
+- 结论：本方法五模型正式矩阵完成；尚不能单凭本表宣称超过QTIP，下一阶段必须补齐同模型QTIP端点。
+- 紧凑结果：`code/GSQ_nowag_d1_20260716_015355/experiments/results/`
+  `20260831_190344_vector_gsq_five_model_formal_summary.json`。
+- 报告：`report/20260831_190344_vector_gsq_five_model_formal_results_report.md`。
+
+## 2026-09-01 00:56--01:43 CST：LLaMA-2-7B 官方 QTIP-2Bit 同协议正式评测完成
+
+- 实验目的：在与Vector-GSQ相同的LLaMA-2-7B、WikiText2 test/seqlength=2048和六项完整0-shot协议下，
+  评测官方QTIP-2Bit checkpoint并给出可比结论。
+- 实验配置：官方checkpoint commit `392a351a81d19c2af0ab0da9203e641cd8e441f9`；tokenizer/base
+  commit `8efe6c9b93655b934e27bd9981e3ec13e55aee9d`；本地物理GPU1；native QTIP kernel manifestation；
+  224个QuantizedLinear；无`--limit`。
+- QTIP结果：PPL=**6.2866504935**；ARC-C 41.6382%、ARC-E 69.6128%、HellaSwag 71.7586%、
+  LAMBADA 70.9878%、PIQA 76.5506%、WinoGrande 67.2455%，Macro-6=**66.2989%**；耗时2816.80秒，
+  峰值显存14.669GB。
+- 同协议Vector-GSQ结果：2.020614 bpp，PPL=7.6439161301，Macro-6=62.6426%。相对QTIP，PPL高
+  1.357266，Macro-6低3.6563个百分点，六个单项均更低；预注册比较器判定
+  `qtip_better_on_both_quality_metrics`。
+- 码率限制：QTIP 2.0来自官方标称配置，Vector-GSQ为logical实测；差0.020614低于0.10门槛，但QTIP
+  文件/元数据逻辑bpp尚待单独审计。
+- 结果：`code/GSQ_nowag_d1_20260716_015355/experiments/results/`
+  `20260901_014500_llama2_7b_vector_gsq_vs_qtip_matched_comparison.json`。
+- 报告：`report/20260901_014500_llama2_7b_vector_gsq_vs_qtip_matched_comparison_report.md`。
+
+## 2026-08-31 19:23--2026-09-01 00:47 CST：Qwen3-4B QTIP 官方单卡 FP64 Hessian 启动失败
+
+- 实验目的：以官方8192×4096 RP1T Hessian协议启动Qwen3-4B QTIP。
+- 结果：运行18,606秒后仍为0个Hessian/0个checkpoint；最终GPU 0%/4MiB、父进程休眠、32个tokenizer
+  worker未返回。该结果只证明数据构造停滞，不是QTIP质量负结果。
+- 修复：构造一次性共享的8192×4096 Hessian与384×4096 fine-tune token cache；模型族、vocab、shape、
+  token range均fail-closed。cache大小140,516,666 bytes，SHA256
+  `a04f75588a1203cf1d73057429d8352f24e448a2e71dcdea0f5c3b9510ba14be`。单卡Hessian改为直接在最终
+  FP32/TF32精度累计同一$X^TX$，产物显式记录精度，不冒充上游FP64执行。
+- 失败JSON：`code/GSQ_nowag_d1_20260716_015355/experiments/results/`
+  `20260901_004713_qwen3_4b_qtip_fp64_hessian_stall.json`。
+- 报告：`report/20260901_004713_qwen3_4b_qtip_fp64_hessian_stall_report.md`。
+
+## 2026-09-01 02:02--12:31 CST：Qwen3-4B QTIP-Qwen3 同协议正式实验完成
+
+- **实验目的：** 在同一Qwen3-4B上补齐近2-bit QTIP端点，并与Vector-GSQ按WikiText2 test
+  `seqlength=2048`和六项完整0-shot协议直接比较。
+- **方法与配置：** 复用官方QTIP bitshift/LDLQ/五轮layerwise fine-tuning，覆盖36层共252个Linear；
+  RP1T Hessian/fine-tune样本为8192/384条、context 4096。单卡Hessian使用显式标注的FP32/TF32累计。
+  9728=`19×512`的非Hadamard MLP宽度使用满足$HH^T=19I$的scaled DCT-II小因子，快速Hadamard部分
+  保持不变；该变体未包含full-model e2e fine-tuning，不称作官方headline checkpoint。
+- **QTIP结果：** PPL=**15.7825849351**；ARC-C 43.7713%、ARC-E 68.6869%、HellaSwag 60.8544%、
+  LAMBADA 51.5816%、PIQA 73.1230%、WinoGrande 63.7727%，Macro-6=**60.2983%**。评测耗时
+  3919.67秒，峰值显存11.294GB，程序正常退出0。
+- **同协议比较：** Vector-GSQ为2.037683 bpp、PPL 22.6799469、Macro-6 57.1849%。Vector相对QTIP
+  PPL高6.897362、Macro低3.1134个百分点，六个单项均更低；当前Qwen3-4B证据支持QTIP更优。
+- **中间故障：** 完整Hessian后首次量化因官方Hadamard实现不支持9728退出；修复后36层量化完成。
+  HF化又因Transformers 4.52/Torch 2.4的`DTensor`命名空间错配退出；兼容映射后成功保存与fresh reload。
+  两次退出均复用既有产物，没有缩小校准集或重做已完成阶段。
+- **产物：** 原始summary为`code/GSQ_nowag_d1_20260716_015355/experiments/results/local_target_qtip/`
+  `20260901_010000_qtip_2bit_formal_matrix/qwen3_4b/eval/summary.json`；紧凑比较JSON为
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260901_124000_qwen3_4b_vector_gsq_vs_qtip_matched_comparison.json`；
+  报告为`report/20260901_124000_qwen3_4b_vector_gsq_vs_qtip_matched_comparison_report.md`。
+
+## 2026-09-01 13:09--2026-09-02 03:50 CST：Qwen3-8B QTIP-Qwen3 同协议正式实验完成
+
+- **实验目的：** 在同一 Qwen3-8B 上补齐近 2-bit QTIP 端点，并与 Vector-GSQ 按 WikiText2 test
+  `seqlength=2048`和六项完整 0-shot 协议直接比较。
+- **方法与配置：** 固定 RP1T Hessian/fine-tune 样本 8192/384 条、context 4096；复用官方 bitshift
+  codebook、incoherence transform、trellis LDLQ 和每 Linear 五轮 layerwise fine-tuning。36 层共 252 个
+  q/k/v/o/up/gate/down Linear 全部量化、组装并 fresh reload。Hessian 明确使用 FP32/TF32 累计；当前
+  Qwen3 变体不含 full-model e2e fine-tuning，不称作官方 headline checkpoint。
+- **QTIP结果：** PPL=**11.6144847261**；ARC-C 50.7679%、ARC-E 75.4209%、HellaSwag 68.4824%、
+  LAMBADA 62.6819%、PIQA 76.3330%、WinoGrande 67.0876%，Macro-6=**66.7956%**。评测耗时
+  3796.56秒，峰值显存19.576GB，程序正常退出0。
+- **同协议比较：** Vector-GSQ为2.021272 bpp、PPL 13.8444805、Macro-6 65.7309%。Vector相对QTIP
+  PPL高2.229996、Macro低1.0647个百分点；双方六任务各胜三项，不能写成QTIP六项全胜。当前主要质量
+  指标支持QTIP更优。
+- **产物：** 原始summary为`code/GSQ_nowag_d1_20260716_015355/experiments/results/local_target_qtip/`
+  `20260901_010000_qtip_2bit_formal_matrix/qwen3_8b/eval/summary.json`；紧凑比较JSON为
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260902_043133_qwen3_8b_vector_gsq_vs_qtip_matched_comparison.json`；
+  报告为`report/20260902_043133_qwen3_8b_vector_gsq_vs_qtip_matched_comparison_report.md`。
+
+## 2026-09-02 04:31--2026-09-03 04:23 CST：Qwen3-14B QTIP-Qwen3 同协议正式实验完成
+
+- **实验目的：** 在同一 Qwen3-14B 上补齐近 2-bit QTIP 端点，并与 Vector-GSQ 按 WikiText2 test
+  `seqlength=2048`和六项完整 0-shot 协议直接比较。
+- **方法与配置：** 固定 RP1T Hessian/fine-tune 样本 8192/384 条、context 4096；复用官方 bitshift
+  codebook、incoherence transform、trellis LDLQ 和每 Linear 五轮 layerwise fine-tuning。40 层共 280 个
+  q/k/v/o/up/gate/down Linear 全部量化、组装并 fresh reload。Hessian 明确使用 FP32/TF32 累计；当前
+  Qwen3 变体不含 full-model e2e fine-tuning，不称作官方 headline checkpoint。
+- **QTIP结果：** PPL=**9.8393318415**；ARC-C 56.5700%、ARC-E 78.7037%、HellaSwag 73.8598%、
+  LAMBADA 68.9695%、PIQA 78.1828%、WinoGrande 72.6914%，Macro-6=**71.4962%**。评测耗时
+  4282.70秒，峰值显存32.742GB，程序正常退出0。
+- **同协议比较：** Vector-GSQ为2.014459 bpp、PPL 11.0321484、Macro-6 69.6229%。Vector相对QTIP
+  PPL高1.192817、Macro低1.8733个百分点；Vector仅ARC-E领先，QTIP在其余五项领先。当前主要质量指标
+  支持QTIP更优。
+- **产物：** 原始summary为`code/GSQ_nowag_d1_20260716_015355/experiments/results/local_target_qtip/`
+  `20260901_010000_qtip_2bit_formal_matrix/qwen3_14b/eval/summary.json`；紧凑比较JSON为
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260903_050548_qwen3_14b_vector_gsq_vs_qtip_matched_comparison.json`；
+  报告为`report/20260903_050548_qwen3_14b_vector_gsq_vs_qtip_matched_comparison_report.md`。
+
+## 2026-09-03 05:08--2026-09-06 19:33 CST：Qwen3-32B QTIP-Qwen3 与五模型正式矩阵完成
+
+- **实验目的：** 补齐 Qwen3-32B 的近 2-bit QTIP 同模型端点，并完成 Qwen3-4B/8B/14B/32B、
+  LLaMA-2-7B 上 Vector-GSQ 与 QTIP 的统一正式矩阵。
+- **方法与配置：** Qwen3-32B 固定 RP1T Hessian/fine-tune 样本 8192/384 条、context 4096；复用官方
+  bitshift codebook、incoherence transform、trellis LDLQ 和每 Linear 五轮 layerwise fine-tuning。
+  64 层共 448 个 q/k/v/o/up/gate/down Linear 全部量化、HF 化并 fresh reload。Hessian 使用显式标注的
+  FP32/TF32 累计；当前 Qwen3 变体不含 full-model e2e fine-tuning，不称作官方 headline checkpoint。
+- **完整性与运行：** 本地物理 GPU7 单卡运行，未使用服务器14。16/16 Hessian split、64/64 层、
+  513 个量化文件（64×8+config）、448 个 manifested `QuantizedLinear` 和 HF 三个权重分片均通过审计。
+  评测耗时 6619.26 秒，峰值显存 68.788GB，程序正常退出0。量化后段触发 Torch Dynamo cache-limit
+  fallback，仅增加耗时，未缩小校准或评测协议。
+- **QTIP结果：** PPL=**8.5312833900**；ARC-C 60.2389%、ARC-E 81.6919%、HellaSwag 79.7351%、
+  LAMBADA 69.7652%、PIQA 79.5974%、WinoGrande 74.1910%，Macro-6=**74.2033%**。
+- **同协议比较：** Vector-GSQ 为 2.011080 bpp、PPL 9.1922169、Macro-6 74.4539%。QTIP 的 PPL 低
+  0.660933；Vector 的 Macro-6 高 0.2506 个百分点并赢得 4/6 单项，因此判定为 `mixed_quality_result`，
+  不能表述为任何一方全面胜出。
+- **五模型结论：** 五个 pair 均通过 0.10 bpp 门槛；QTIP 在 5/5 模型上 PPL 更低，在 4/5 模型上
+  Macro-6 更高。30 个单项中 QTIP 胜22项、Vector胜8项；Qwen3-32B 是唯一出现 Vector Macro-6 领先的
+  端点。当前证据不支持 Vector-GSQ 整体超过 QTIP，但显示其准确率差距随 Qwen3 规模扩大而缩小并发生
+  32B 交叉。
+- **产物：** Qwen3-32B 原始 summary 为
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/local_target_qtip/20260901_010000_qtip_2bit_formal_matrix/qwen3_32b/eval/summary.json`；
+  单模型与五模型紧凑 JSON 分别为
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260906_195437_qwen3_32b_vector_gsq_vs_qtip_matched_comparison.json`
+  和
+  `code/GSQ_nowag_d1_20260716_015355/experiments/results/20260906_195437_vector_gsq_vs_qtip_five_model_formal_summary.json`；
+  报告为 `report/20260906_195437_qwen3_32b_vector_gsq_vs_qtip_matched_comparison_report.md` 与
+  `report/20260906_195437_vector_gsq_vs_qtip_five_model_formal_summary_report.md`。

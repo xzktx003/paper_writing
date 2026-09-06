@@ -641,3 +641,69 @@
 - 验证：新增非正投影fail-closed用例和运行中paired weight vs fresh logical reconstruction用例；57项聚焦
   pytest、Ruff、Python compile、bash syntax和Git whitespace通过。独立复审结论`LAUNCH`，Blocker/Major均0；
   随后的GPU4正式run正常完成28个候选且按零可行路径不写checkpoint。
+
+## 2026-08-31 — QTIP 中断恢复检查遗漏 gate projection
+
+- 现象：官方`quantize_finetune_llama.check_exist`只检查q/k/v/o/up/down和layernorm；若某层在保存
+  `gate.pt`前后中断，重启可能把缺gate的层判定为完成，后续HF化才失败或留下不完整checkpoint。
+- 根因：七个量化Linear的`gate`未加入resume suffix列表，与实际`quant_order`和模型状态合同不一致。
+- 修复：供应商快照的resume检查加入`gate`；Qwen3桥接另设独立artifact审计，要求每层七个Linear和
+  layernorm全部存在，避免只依赖上游早退逻辑。
+- 验证：红灯构造仅缺`0_gate.pt`的伪完成目录并确认拒绝；修复后八个产物完整时通过，Qwen3-QTIP
+  adapter聚焦测试7项全绿。
+
+## 2026-09-01 — QTIP Hadamard 维度合同不覆盖 Qwen3 非 2 次幂 MLP
+
+- 现象：Qwen3-4B完整Hessian生成后，layer 0完成q/k/v/o，在`up_proj`进入incoherence transform时
+  `get_hadK(9728)`触发`is_pow2`断言；已有四个量化产物但该层不完整，launcher退出1。
+- 根因：官方QTIP仅内置论文模型所需的若干实Hadamard小因子；Qwen3-4B/14B/32B的MLP宽度分别含
+  19、17、25奇因子，其中17/19不可能存在标准实Hadamard矩阵。旧分支还会对“可整除但商不是2次幂”
+  的维度过早断言，无法进入通用fallback。
+- 修复：保留所有已有Hadamard精确路径；仅对未覆盖维度提取奇因子K，构造scaled DCT-II小矩阵使
+  $HH^T=KI$，与剩余2次幂快速Hadamard组成可逆Kronecker变换。分支条件同时要求商为2次幂。
+- 验证：红灯复现9728断言；修复后9728/17408/25600的factor为19/17/25，正交Gram与正反往返均通过，
+  Qwen聚焦测试17项全绿；真实36层Qwen3-4B量化正常完成。
+
+## 2026-09-01 — Transformers 4.52 与 Torch 2.4 的 DTensor 保存命名空间错配
+
+- 现象：Qwen3-4B的36层QTIP产物全部完成后，`model.save_pretrained(...safe_serialization=True)`从
+  `torch.distributed.tensor`导入`DTensor`失败；Torch版本为2.4.0，类实际位于
+  `torch.distributed._tensor`。
+- 根因：当前Transformers保存逻辑无条件引用`DTensor`，但其模块级导入只为Torch>=2.5执行；
+  `pytorch_utils.id_tensor_storage`又直接使用新命名空间，造成Torch2.4组合确定性失败。
+- 修复：HF化前把Torch已有的legacy `DTensor`类发布到公共新命名空间，并填充Transformers模块全局；
+  不替换类型、不修改权重、不改变序列化内容。
+- 验证：红灯删除两个符号后复现缺失；兼容函数恢复为同一类，Qwen聚焦测试18项全绿，实际checkpoint
+  成功保存、fresh reload出252个QuantizedLinear，并完成PPL和六任务评测。
+
+## 2026-08-31 — Qwen3-14B 评测入口误指向五层增量 checkpoint
+
+- 现象：目标矩阵完成Qwen3-8B全量六任务后，Qwen3-14B fresh reconstruction立即拒绝：本地默认文件
+  只覆盖layers 0--4，而历史报告声称该run为40层完整checkpoint。
+- 根因：`experiments/results/remote_10_30_0_14/...`中的同名文件是1.104GB阶段镜像；真正完整的8.836GB
+  文件位于`code/remote_10_30_0_14_20260811_full_pull/...`。仅按文件名选择无法区分增量副本。
+- 修复：本地矩阵默认指向full-pull副本；启动前仍由evaluator强制检查0..N-1全层和每层七Linear，禁止
+  用历史报告或文件名绕过状态合同。
+- 验证：完整副本离线审计为40层/280 Linear，首尾层0/39；错误副本保持被拒绝，不作为方法失败或结果。
+
+## 2026-09-01 — QTIP Qwen3 官方多进程采样停滞与单卡 Hessian 精度开销
+
+- 现象：Qwen3-4B正式Hessian入口启动32个`sample_rp1t_concat` worker后5小时10分没有返回、没有层日志、
+  没有产物，最终GPU为0%。原始FP64 $X^TX$即使绕过采样，在单卡对9728维down输入也具有不可接受开销。
+- 根因：大规模token张量经Python multiprocessing pool返回发生停滞；上游为多GPU离线预计算设计的FP64
+  中间累计不适合用户要求的本地单卡矩阵，而最终保存格式本身为FP32。
+- 修复：用单进程fast tokenizer在约36秒生成一次性确定性RP1T cache，四个Qwen3规模复用；严格校验模型族、
+  vocab、8192/384样本、4096长度和token范围。Hessian保持相同样本与$X^TX$定义，直接FP32/TF32累计并在
+  metadata记录`float32_tf32`，避免无声明地声称复现FP64。
+- 验证：cache行为与Qwen3 RoPE adapter/七Linear/launcher联合聚焦测试13项通过；真实cache审计shape、范围、
+  大小和SHA256均通过。
+
+## 2026-09-01 — QTIP LLaMA/Qwen3 隔离环境与 native kernel 导入路径
+
+- 现象：Qwen3专用Transformers 4.52环境加载上游LLaMA custom cache失败；切回已验证LLaMA环境后又因
+  `qtip-kernels`源码目录未加入`sys.path`而找不到native extension。
+- 根因：两种模型适配依赖不同Transformers API；evaluator只加入QTIP仓库根，隐含依赖扩展已全局安装。
+- 修复：LLaMA固定使用旧`qtip`环境及manifest compatibility，Qwen3使用`qtip_qwen`；evaluator和launcher
+  显式加入`QTIP_REPO/qtip-kernels`，同时保留native-extension gate。
+- 验证：36项LLaMA/Qwen桥接测试通过，旧环境`import_qtip(...manifest_model=True)`确认native QTIP kernel；
+  随后LLaMA-2-7B正式PPL与六任务正常完成。

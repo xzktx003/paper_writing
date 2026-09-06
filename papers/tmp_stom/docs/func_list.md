@@ -592,3 +592,39 @@
 - 正式失败终态已验证：28个paired action全部task-improving但0个text-feasible，launcher写
   `hard_scale_compensated_gain_rejected`；validation/audit/formal test未访问，checkpoint不存在。运行中
   2133个touched group有2048个FP16 scale真实变化，证明失败不是补偿no-op。
+
+## 目标模型正式评测矩阵与 Qwen3-QTIP 模型桥接（2026-08-31）
+
+- `run_target_vector_gsq_eval_matrix_local.sh`在单张本地物理GPU上顺序补齐Qwen3-4B/8B/14B/32B
+  已有完整logical checkpoint的缺失正式指标；固定WikiText2 test seqlength=2048、六项全量0-shot
+  `lm_eval`，不重新量化、不使用`--limit`，并对模型层数、hidden size、checkpoint和空闲显存执行门禁。
+- `experiments/qwen_qtip/qwen3_qtip_adapter.py`把标准dense Qwen3每层q/k/v/o/up/gate/down七个无bias
+  Linear替换成官方QTIP `QuantizedLinear`；skip-list、形状、dtype和QTIP配置字段均fail-closed。
+- `hfize_qwen3.py`审计每层八个QTIP产物（七Linear加layernorm）、装载官方trellis/SU/SV状态并保存可
+  重载Qwen3 checkpoint；`evaluate_qtip_checkpoint.py`现按checkpoint family选择官方LLaMA loader或
+  Qwen3桥接loader，PPL/六任务协议和native trellis manifestation gate保持一致。
+- QTIP供应商快照的resume完整性检查已补上遗漏的`gate`产物；缺gate的中断层不会再被误判为完成。
+- 新增红绿灯覆盖七Linear集合、config/shape/dtype/skip-list、bias拒绝、gate完整性和本地单卡评测合同；
+  当前聚焦测试40项通过（QTIP比较29项、adapter 7项、评测矩阵与既有evaluator 11项中有交叠）。
+- 五模型 Vector-GSQ 正式矩阵已完成：统一紧凑 JSON 同时记录每个模型的 logical bpp、WikiText2
+  test/seqlength=2048 PPL、六项0-shot逐任务准确率与Macro-6；QTIP缺失项仍保持显式未完成状态。
+- Qwen3-QTIP新增一次性RP1T校准cache：固定seed0、8192×4096 Hessian与384×4096 layerwise fine-tune，
+  四个Qwen3规模复用；cache严格校验模型族、vocab、shape和token范围，避免上游32进程token张量回传停滞。
+- 单卡Hessian仍计算相同四类输入的$X^TX$，但直接使用最终落盘的FP32/TF32精度；每个artifact记录
+  `accumulation_dtype=float32_tf32`及已合并split，实现原子断点续跑且不把该执行优化写成官方FP64复现。
+- LLaMA和Qwen3使用隔离QTIP环境；native kernel目录显式加入导入路径。LLaMA-2-7B官方QTIP正式评测与
+  Vector-GSQ严格比较已完成，比较器允许仅分隔符不同的完整模型slug别名，同时继续拒绝真实模型不匹配。
+- QTIP的incoherence transform现保留全部官方Hadamard小因子，并为Qwen3的17/19/25奇因子MLP宽度提供
+  scaled DCT-II正交fallback；单测验证Gram与正反往返。HF化入口同时兼容Torch2.4 legacy DTensor命名空间。
+- Qwen3-4B QTIP-Qwen3 layerwise checkpoint已完成36层/252 Linear的保存、fresh reload和正式PPL/六任务
+  评测；结果显式标为无full-model e2e、FP32/TF32 Hessian和DCT维度适配，禁止冒充官方headline端点。
+- Qwen3-8B QTIP-Qwen3 layerwise checkpoint已完成36层/252 Linear的Hessian、量化、保存、fresh reload和
+  正式PPL/六任务评测；比较JSON明确记录双方各胜三项，但QTIP在PPL与Macro-6两个汇总指标上均更优。
+- Qwen3-14B QTIP-Qwen3 layerwise checkpoint已完成40层/280 Linear的Hessian、量化、保存、fresh reload和
+  正式PPL/六任务评测；QTIP在PPL、Macro-6和六任务中的五项领先，Vector-GSQ仅在ARC-E领先。
+- Qwen3-32B QTIP-Qwen3 layerwise checkpoint已完成64层/448 Linear的16个Hessian split、量化、HF化、
+  fresh reload和正式PPL/六任务评测；完整性审计覆盖513个量化文件及三个HF权重分片。QTIP的PPL更低，
+  Vector-GSQ的Macro-6高0.2506个百分点并赢得4/6单项，比较器返回`mixed_quality_result`。
+- 五目标模型Vector-GSQ/QTIP正式矩阵已闭环：`matrix_summary.json`与五个单模型summary均为
+  `completed=true`，统一采用WikiText2 test/seqlength=2048与规定六任务完整0-shot、无`--limit`；紧凑
+  总结JSON记录五组码率、PPL、Macro-6、单项胜数、变体边界和原始证据路径。

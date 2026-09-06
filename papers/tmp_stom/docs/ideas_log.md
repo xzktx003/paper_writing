@@ -1247,3 +1247,34 @@
   residual需要额外比特，必须与同bpp source/QTIP/GSQ重新做公平比较，不能声称免费。
 - 当前状态：**待理论与码率设计，未授权实验。** 在给出非$O(N^2)$构造、明确存储成本和train/validation
   隔离前不得启动；另一条更诚实的路线是终止通用PTQ主张，将现有assignment方法定位为task-adapted VQ。
+
+## 2026-08-31：QTIP 原生流程扩展到 dense Qwen3
+
+- Idea描述：不使用GPTQ/AWQ或跨模型公开数字冒充QTIP，而把官方QTIP的Hessian、incoherence transform、
+  trellis LDLQ和逐层fine-tuning原样作用于Qwen3每层七个Linear；架构侧只新增QuantizedLinear模型桥接、
+  HF序列化/重载和同协议评测。
+- 动机：官方QTIP代码与公开2-bit集合仅覆盖LLaMA；检索到的唯一Qwen3-QTIP模型是非目标1.7B/4-bit且
+  无适配代码，无法回答Qwen3-4B/8B/14B/32B同模型比较。核心Linear优化并不依赖LLaMA名称，Qwen3 dense
+  block也具有q/k/v/o/gate/up/down七个投影，因此可在不改变QTIP量化数学的前提下补齐架构支持。
+- 预期效果：为四个目标Qwen3模型各生成约2-bit QTIP checkpoint，按WikiText2-2048与规定六任务和
+  Vector-GSQ做同模型比较；所有结果显式记录是否包含官方e2e fine-tuning，禁止把无e2e端点写成官方headline。
+- 当前状态：**已验证完成。** Qwen3 QuantizedLinear桥接、artifact完整性审计、HF化/重载入口和通用
+  QTIP evaluator均已实现；四个Qwen3规模已按4B→8B→14B→32B在本地单GPU顺序完成正式量化与评测。
+- 状态更新（2026-09-01）：LLaMA-2-7B官方QTIP同协议端点已完成，结果明确优于当前Vector-GSQ。Qwen3
+  首次官方FP64/32进程Hessian入口在数据构造阶段停滞，已改为同规模确定性共享token cache和显式标注的
+  FP32/TF32单卡$X^TX$；Qwen3-4B将从空Hessian目录恢复，仍不缩小8192/384校准体量。
+- 状态更新（2026-09-01 12:40）：Qwen3-4B正式端点已完成。针对9728非Hadamard宽度，使用保持正交与
+  可逆性的scaled DCT小因子，而非padding或跳过一侧incoherence；36层/252 Linear均量化并fresh reload。
+  QTIP PPL/Macro-6为15.7826/60.2983%，优于Vector-GSQ的22.6799/57.1849%，六任务全胜。该结果仍明确
+  标注为无e2e的Qwen3架构适配；下一步按同一固定协议顺序完成8B、14B、32B，不扫描超参数。
+- 状态更新（2026-09-02 04:31）：Qwen3-8B正式端点已完成36层/252 Linear量化、fresh reload和完整评测。
+  QTIP PPL/Macro-6为11.6145/66.7956%，优于Vector-GSQ的13.8445/65.7309%；但逐任务双方各胜三项，
+  因而只支持汇总质量更优，不支持六任务全面领先。下一步保持同一固定协议完成14B、32B。
+- 状态更新（2026-09-03 05:05）：Qwen3-14B正式端点已完成40层/280 Linear量化、fresh reload和完整评测。
+  QTIP PPL/Macro-6为9.8393/71.4962%，优于Vector-GSQ的11.0321/69.6229%；Vector仅ARC-E领先，
+  QTIP在其余五项领先。该Qwen3端点仍为无full-model e2e的layerwise适配；最后保持同一固定协议完成32B。
+- 状态更新（2026-09-06 19:54）：Qwen3-32B正式端点已完成64层/448 Linear量化、fresh reload和完整
+  评测。QTIP PPL/Macro-6为8.5313/74.2033%，Vector-GSQ为9.1922/74.4539%；QTIP PPL更低，Vector
+  Macro-6高0.2506个百分点并赢4/6单项，形成唯一的规模相关混合端点。至此五目标模型矩阵全部完成：
+  QTIP在5/5模型PPL领先、4/5模型Macro-6领先；当前结果否决“整体超过QTIP”，但支持把32B准确率交叉
+  作为后续方法分析方向。该结论不外推到含full-model e2e的官方未发布Qwen3端点。
