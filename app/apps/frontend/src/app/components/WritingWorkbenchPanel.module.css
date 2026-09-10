@@ -1,0 +1,363 @@
+.panel {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  margin: 0 0 5px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.subtitle,
+.muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.safety {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--success) 8%, var(--panel));
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.safetyDot {
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.file {
+  max-width: 58%;
+  overflow: hidden;
+  color: var(--accent-strong);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.textarea,
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.textarea {
+  min-height: 88px;
+  resize: vertical;
+  padding: 10px 11px;
+}
+
+.input {
+  padding: 8px 10px;
+}
+
+.textarea:focus,
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 2px 10px var(--accent-soft);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.primaryButton,
+.secondaryButton,
+.starterButton,
+.textButton {
+  border: 0;
+  border-radius: 9px;
+  font: inherit;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.primaryButton {
+  flex: 1;
+  padding: 9px 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--accent-strong);
+  transform: translateY(-1px);
+}
+
+.secondaryButton {
+  padding: 9px 11px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 680;
+}
+
+.secondaryButton:hover:not(:disabled),
+.starterButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 18%, var(--paper));
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.starterButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.starters {
+  display: flex;
+  gap: 7px;
+  padding-bottom: 3px;
+  overflow-x: auto;
+  scrollbar-color: var(--border) transparent;
+}
+
+.starterButton {
+  min-width: 150px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--text);
+  text-align: left;
+}
+
+.starterTitle {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.starterHelp {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.statusBand {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  padding: 11px;
+  border-radius: 11px;
+  background: var(--panel-muted);
+}
+
+.statusTitle {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.score {
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+.statusSummary {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.modeRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workflow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.workflowStep {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.workflowReady {
+  background: var(--success);
+}
+
+.workflowBlocked {
+  background: var(--danger);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listItem {
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: var(--panel-muted);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.listItem strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.evidenceText {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.error {
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.review {
+  border-top: 1px solid var(--border);
+  padding-top: 15px;
+}
+
+.review summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.reviewBody {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: 10px;
+}
+
+.reviewResult {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--panel-muted);
+}
+
+.textButton {
+  align-self: flex-start;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.loading {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 520px) {
+  .panel {
+    padding: 13px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .secondaryButton {
+    width: 100%;
+  }
+}

@@ -28,7 +28,10 @@ export async function copyDir(src, dest) {
   }
 }
  
-export async function listFilesRecursive(root, rel = '') {
+export async function listFilesRecursive(root, rel = '', options = {}) {
+  const skipDirectories = options.skipDirectories instanceof Set
+    ? options.skipDirectories
+    : new Set();
   const dirPath = path.join(root, rel);
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
   const items = [];
@@ -37,8 +40,9 @@ export async function listFilesRecursive(root, rel = '') {
     const itemRel = path.join(rel, entry.name);
     const full = path.join(root, itemRel);
     if (entry.isDirectory()) {
+      if (skipDirectories.has(entry.name)) continue;
       items.push({ path: itemRel, type: 'dir' });
-      items.push(...await listFilesRecursive(root, itemRel));
+      items.push(...await listFilesRecursive(root, itemRel, options));
     } else {
       items.push({ path: itemRel, type: 'file' });
     }

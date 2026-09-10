@@ -15,7 +15,7 @@
 
 </div>
 
-OpenPrism Office brings the brief, sources, drafts, claims, measurements, revisions, approvals, and deliverables behind proposals, technical plans, research summaries, and review materials into one local project workspace. Its six-stage ledger connects Office/text intake, controlled production, explainable hybrid evidence retrieval, paragraph review, human approval, delivery, and full-cost measurement. Existing paper and LaTeX workflows remain available as a specialized evidence-heavy writing scenario.
+OpenPrism Office is built on a paper-writing-first workspace: researchers can move from a writing goal to an outline, a matched Skill, project evidence, a reviewable AI draft, claim/citation checks, human-approved diffs, and a compiled PDF without leaving the project. The same auditable foundation also supports proposals, technical plans, research summaries, review materials, and competition delivery through a six-stage office ledger.
 
 The project is designed around evidence and human review: AI-proposed edits are shown as diffs and remain pending until the user accepts them. The Delivery panel records source locations, E0–E3 evidence levels, full workflow effort, reusable assets, readiness gaps, and human approval before exporting a `submission/` package with SHA-256 hashes. Projects and secrets stay local unless you explicitly configure an external model, scholarly API, image service, OCR service, or collaboration tunnel.
 
@@ -47,6 +47,7 @@ The project is designed around evidence and human review: AI-proposed edits are 
 | Project workspace | Multi-project dashboard, file tree, upload/download, text and binary previews, and project-local runtime data |
 | Editing | CodeMirror editing for LaTeX, Markdown, BibTeX, code, configuration files, search, tabs, and dirty-state tracking |
 | AI assistant | Chat, Agent, and Tools modes; streaming responses; image/file attachments; persistent conversations; reviewable diffs |
+| Paper writing workbench | Plain-language task starters, current-file conservative polishing, Chat/Agent/Tools routing, Skill input/output guidance, evidence readiness, workflow steps, draft handoff, and post-generation evidence review |
 | Skills | A searchable bilingual Skill catalog for office writing, research, review, LaTeX debugging, citations, statistics, figures, submission, and more |
 | Compilation | `pdflatex`, `xelatex`, `lualatex`, `latexmk`, and `tectonic`; automatic main-file/engine detection; BibTeX passes; SyncTeX; PDF output |
 | Evidence and RAG | Office/text intake, BM25 + deterministic hashed-vector retrieval with score breakdown, claim support/conflict/missing graph, and existing paper RAG |

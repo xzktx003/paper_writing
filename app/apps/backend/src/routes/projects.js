@@ -35,6 +35,17 @@ const PROJECT_TREE_HIDDEN_ROOTS = new Set([
   '.compile',
   '.openprism',
   'research_corpus',
+  '.git',
+  '.omx',
+  '.pytest_cache',
+  '.ruff_cache',
+  '.mypy_cache',
+  '.tox',
+  '.nox',
+  'node_modules',
+  '.venv',
+  'venv',
+  '__pycache__',
 ]);
 
 function isHiddenProjectTreeItem(item) {
@@ -43,7 +54,8 @@ function isHiddenProjectTreeItem(item) {
 }
 
 async function listVisibleProjectItems(projectRoot) {
-  return (await listFilesRecursive(projectRoot)).filter((item) => !isHiddenProjectTreeItem(item));
+  return (await listFilesRecursive(projectRoot, '', { skipDirectories: PROJECT_TREE_HIDDEN_ROOTS }))
+    .filter((item) => !isHiddenProjectTreeItem(item));
 }
  
 function downloadFileName(relPath, fallbackName) {

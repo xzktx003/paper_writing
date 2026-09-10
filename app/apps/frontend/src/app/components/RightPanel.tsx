@@ -21,13 +21,14 @@ const PaperRagPanel = lazy(() => import('./PaperRagPanel').then(module => ({ def
 const CliTaskPanel = lazy(() => import('./CliTaskPanel').then(module => ({ default: module.CliTaskPanel })));
 const DrawPanel = lazy(() => import('./DrawPanel'));
 const OfficeDeliveryPanel = lazy(() => import('./OfficeDeliveryPanel').then(module => ({ default: module.OfficeDeliveryPanel })));
+const WritingWorkbenchPanel = lazy(() => import('./WritingWorkbenchPanel').then(module => ({ default: module.WritingWorkbenchPanel })));
 
 function PanelLoader() {
   const { t } = useTranslation();
   return <div role="status" style={{ padding: 16, color: 'var(--muted)', fontSize: 12 }}>{t('Loading panel…')}</div>;
 }
 
-type TabType = 'chat' | 'tasks' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations' | 'delivery';
+type TabType = 'chat' | 'tasks' | 'writing' | 'rag' | 'draw' | 'review' | 'anti-ai' | 'pipeline' | 'citations' | 'delivery';
 
 interface AttachedFile {
   id: string;
@@ -54,7 +55,7 @@ interface Props {
   projectFiles?: { path: string; type: 'file' | 'dir' }[];
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
-  onCreate: (data: any) => void;
+  onCreate: (data: any) => void | Promise<unknown>;
   onSend: (message: string, files?: AttachedFile[]) => void;
   onCancel: () => void;
   onUploadAttachment: (
@@ -126,6 +127,35 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
       setSkillSyncError(error instanceof Error ? error.message : t('Failed to save selected Skills.'));
     }
   }, [onSetActiveSkills, selectedSkills, t]);
+
+  const handleUseWritingDraft = useCallback(async ({ prompt, skill, mode, title }: {
+    prompt: string;
+    skill?: string;
+    mode: 'chat' | 'agent' | 'tools';
+    title?: string;
+  }) => {
+    setInputValue(prompt);
+    setActiveTab('chat');
+    setSkillSyncError(null);
+
+    try {
+      if (!activeConv || activeConv.mode !== mode) {
+        await onCreate({
+          name: title ? `论文写作 · ${title}` : t('Paper writing task'),
+          context_scope: activeFile ? { type: 'file', file: activeFile } : { type: 'global' },
+          active_skills: skill ? [skill] : [],
+          mode,
+        });
+        return;
+      }
+
+      if (skill && !selectedSkills.includes(skill)) {
+        await handleSkillsChange([skill]);
+      }
+    } catch (error) {
+      setSkillSyncError(error instanceof Error ? error.message : t('Failed to prepare the writing conversation.'));
+    }
+  }, [activeConv, activeFile, handleSkillsChange, onCreate, selectedSkills, t]);
 
   useEffect(() => {
     citationAbortRef.current?.abort();
@@ -413,6 +443,7 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--panel-muted)', flexShrink: 0, overflow: 'auto' }}>
         {([
           { key: 'chat', label: `💬 ${t('Chat')}` },
+          { key: 'writing', label: t('Writing') },
           { key: 'tasks', label: `🛠️ ${t('Tasks')}` },
           { key: 'draw', label: `🖼️ ${t('Draw')}` },
           { key: 'rag', label: '🔎 RAG' },
@@ -424,10 +455,12 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
         ] as const).map(tab => (
           <button
             key={tab.key}
-            data-testid={tab.key === 'delivery' ? 'right-panel-delivery-tab' : undefined}
+            data-testid={tab.key === 'delivery'
+              ? 'right-panel-delivery-tab'
+              : tab.key === 'writing' ? 'right-panel-writing-tab' : undefined}
             onClick={() => setActiveTab(tab.key)}
             style={{
-              flex: 1, padding: '8px 2px', minWidth: 0,
+              flex: '0 0 auto', padding: '8px 10px', minWidth: 0,
               border: 'none',
               borderBottom: activeTab === tab.key ? '2px solid var(--accent)' : '2px solid transparent',
               background: 'none',
@@ -651,7 +684,14 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
                   )}
                   {uploadProgress?.stage === 'uploading' && (
                     <div style={{ height: 4, margin: '-8px 0 8px', borderRadius: 999, background: 'var(--bg-secondary)', overflow: 'hidden' }}>
-                      <div style={{ width: String(uploadProgress.percent) + '%', height: '100%', background: 'var(--accent)', transition: 'width 120ms linear' }} />
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'var(--accent)',
+                        transform: `scaleX(${uploadProgress.percent / 100})`,
+                        transformOrigin: 'left center',
+                        transition: 'transform 120ms linear',
+                      }} />
                     </div>
                   )}
                   <textarea
@@ -801,6 +841,20 @@ export function RightPanel({ conversations, activeConv, loading, uploadProgress,
           {activeTab === 'tasks' ? (
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <CliTaskPanel projectId={managedProjectId} />
+            </div>
+          ) : activeTab === 'writing' ? (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {managedProjectId ? (
+                <WritingWorkbenchPanel
+                  projectId={managedProjectId}
+                  activeFile={activeFile}
+                  onUseDraft={handleUseWritingDraft}
+                />
+              ) : (
+                <div role="status" style={{ padding: 16, color: 'var(--muted)', fontSize: 12 }}>
+                  {t('Open a managed project to use the paper writing workbench.')}
+                </div>
+              )}
             </div>
           ) : activeTab === 'delivery' ? (
             <div style={{ flex: 1, overflow: 'auto' }}>

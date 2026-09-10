@@ -479,6 +479,39 @@ describe('Project routes', () => {
     expect(filePaths.some((item) => item.startsWith('research_corpus/'))).toBe(false);
   });
 
+  it('prunes nested repository metadata and runtime caches before building a project tree', async () => {
+    const projectId = `large-tree-${crypto.randomUUID()}`;
+    projectIds.push(projectId);
+    await mkdir(join(DATA_DIR, projectId, 'docs'), { recursive: true });
+    await mkdir(join(DATA_DIR, projectId, '.omx', 'logs'), { recursive: true });
+    await mkdir(join(DATA_DIR, projectId, '.git', 'objects'), { recursive: true });
+    await mkdir(join(DATA_DIR, projectId, 'code', 'nested-repo', '.git', 'objects'), { recursive: true });
+    await mkdir(join(DATA_DIR, projectId, 'code', '__pycache__'), { recursive: true });
+    await writeFile(join(DATA_DIR, projectId, 'project.json'), JSON.stringify({
+      id: projectId,
+      name: 'Large Tree',
+      createdAt: new Date().toISOString(),
+    }));
+    await writeFile(join(DATA_DIR, projectId, 'docs', 'draft.md'), '# draft\n');
+    await writeFile(join(DATA_DIR, projectId, '.omx', 'logs', 'runtime.jsonl'), '{}\n');
+    await writeFile(join(DATA_DIR, projectId, '.git', 'objects', 'pack'), 'metadata\n');
+    await writeFile(join(DATA_DIR, projectId, 'code', 'nested-repo', '.git', 'objects', 'pack'), 'metadata\n');
+    await writeFile(join(DATA_DIR, projectId, 'code', '__pycache__', 'module.pyc'), 'cache\n');
+
+    const treeResponse = await fastify.inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/tree`,
+    });
+
+    expect(treeResponse.statusCode).toBe(200);
+    const paths = treeResponse.json().items.map((item) => item.path);
+    expect(paths).toContain('docs/draft.md');
+    expect(paths.some((item) => item === '.omx' || item.startsWith('.omx/'))).toBe(false);
+    expect(paths.some((item) => item === '.git' || item.startsWith('.git/'))).toBe(false);
+    expect(paths.some((item) => item.includes('/.git/') || item.endsWith('/.git'))).toBe(false);
+    expect(paths.some((item) => item.includes('__pycache__'))).toBe(false);
+  });
+
   it('serves extensionless figure blob paths from fig folder', async () => {
     const projectId = `fig-blob-${crypto.randomUUID()}`;
     projectIds.push(projectId);

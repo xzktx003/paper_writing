@@ -1,318 +1,238 @@
-# Design
+---
+name: OpenPrism Paper Writing Workbench
+description: Safe, reviewable writing steps for existing paper files and plain-language goals.
+colors:
+  bg: "#f8f9fc"
+  paper: "#ffffff"
+  panel: "rgba(255, 255, 255, 0.95)"
+  panel-muted: "rgba(248, 249, 252, 0.95)"
+  text: "#1a1d23"
+  text-secondary: "#5f6b7a"
+  muted: "#8492a6"
+  accent: "#4f6ef7"
+  accent-strong: "#3b5bdb"
+  accent-soft: "rgba(79, 110, 247, 0.12)"
+  border: "rgba(0, 0, 0, 0.08)"
+  success: "#10b981"
+  danger: "#ef4444"
+typography:
+  title:
+    fontSize: "17px"
+    fontWeight: 750
+    lineHeight: 1.2
+    letterSpacing: "-0.02em"
+  section:
+    fontSize: "12px"
+    fontWeight: 720
+  body:
+    fontSize: "12px"
+    lineHeight: 1.55
+  label:
+    fontSize: "11px"
+    fontWeight: 650
+    lineHeight: 1.55
+  caption:
+    fontSize: "10px"
+    lineHeight: 1.5
+rounded:
+  control: "9px"
+  field: "10px"
+  band: "11px"
+  pill: "999px"
+spacing:
+  panel-padding: "16px"
+  panel-gap: "18px"
+  section-gap: "9px"
+  control-gap: "8px"
+components:
+  button-primary:
+    backgroundColor: "{colors.accent}"
+    textColor: "#ffffff"
+    rounded: "{rounded.control}"
+    padding: "9px 12px"
+  button-secondary:
+    backgroundColor: "{colors.accent-soft}"
+    textColor: "{colors.accent-strong}"
+    rounded: "{rounded.control}"
+    padding: "9px 11px"
+  badge:
+    backgroundColor: "{colors.accent-soft}"
+    textColor: "{colors.accent-strong}"
+    rounded: "{rounded.pill}"
+    height: "22px"
+---
 
-## Source of truth
-- Status: Active
-- Last refreshed: 2026-07-25
-- Primary product surfaces:
-  - Coding Kanban: multi-agent terminal/workspace console under `apps/`.
-  - Paper Writer: paper authoring backend and shipped frontend bundle under `app/`.
-  - Paper Writer focus for this design pass: RAG, PDF ingestion, skill selection, Chat/Agent/Tools mode clarity.
-- Evidence reviewed:
-  - `README.md`
-  - `docs/func_list.md`
-  - `app/apps/backend/src/routes/paperRag.js`
-  - `app/apps/backend/src/services/paperRagService.js`
-  - `app/apps/backend/src/routes/skills.js`
-  - `app/apps/backend/src/services/skillEngine.js`
-  - `app/apps/backend/src/routes/ai.js`
-  - `app/apps/backend/skills/*.yaml`
-  - `app/apps/frontend/src/app/components/CenterPanel.tsx`
-  - `app/apps/frontend/src/app/components/RenderedPreviewPane.tsx`
-  - `app/apps/frontend/src/app/components/LatexPreview.tsx`
-  - `app/apps/frontend/src/app/components/ChatView.tsx`
-  - `app/apps/frontend/src/app/hooks/useConversations.ts`
-  - `app/apps/frontend/src/app/utils/conversationActivity.ts`
-  - `app/apps/frontend/src/app/components/ProjectTree.tsx`
-  - `app/apps/frontend/src/app/context/AppContext.tsx`
-  - `app/apps/frontend/src/app/utils/projectTreeSync.ts`
-  - `docs/template_compile_preview_contract.md`
+# Design System: OpenPrism Paper Writing Workbench
 
-## Brand
-- Personality:
-  - Quiet, research-focused, trustworthy, and operational.
-  - The UI should feel like a paper cockpit, not a marketing site or generic chatbot.
-- Trust signals:
-  - Show what evidence was read, what was ignored, and why.
-  - Make file privacy and project boundaries explicit.
-  - Prefer deterministic status labels over vague AI promises.
-- Avoid:
-  - Hidden magic skill activation with no explanation.
-  - English-only skill names for Chinese paper-writing workflows.
-  - Large decorative panels that compete with the editor, citations, and evidence.
-  - Upload flows that imply PDF content was indexed when only metadata was indexed.
+## Overview
 
-## Product goals
-- Goals:
-  - Help a researcher move from private papers and drafts to reliable paper sections, citations, reviews, and revisions.
-  - Make RAG feel inspectable: users can see source documents, extraction status, indexed chunks, retrieval hits, and cited snippets.
-  - Make Skill selection obvious without requiring users to know internal skill names.
-  - Make Chat, Agent, and Tools modes easy to distinguish by capability and risk.
-- Non-goals:
-  - Public SaaS collaboration.
-  - Uploading or publishing private paper material by default.
-  - Fully autonomous editing without visible diff and user approval.
-- Success signals:
-  - A user can upload a PDF and verify that real text, figures/tables captions, bibliography, and page spans were extracted.
-  - A user can type a task in natural Chinese and get 3-5 recommended skills with reasons.
-  - A user can hover or focus a skill and understand input, output, when to use it, and risks within 5 seconds.
-  - A user can tell whether a response used draft context, RAG context, skill prompt, or tool output.
+**Creative North Star: "A reviewable writing console."**
 
-## Personas and jobs
-- Primary personas:
-  - PhD student or researcher writing a paper in Chinese/English.
-  - Research engineer preparing experiments, tables, figures, and ablations.
-  - Advisor or senior author reviewing claims, citations, and positioning.
-- User jobs:
-  - Read PDFs and build a trusted project-local literature memory.
-  - Draft introduction, related work, method, results, discussion, abstract, and rebuttal-like responses.
-  - Verify citations and avoid hallucinated claims.
-  - Convert rough notes, experiment logs, and figures into manuscript-ready text.
-  - Ask an agent to inspect project files and propose edits safely.
-- Key contexts of use:
-  - Private local research folders with unpublished manuscripts.
-  - Iterative writing sessions where the user does not remember which skill to choose.
-  - Mixed Chinese UI preference with English academic output requirements.
+The shipped writing workbench turns an existing paper file plus a plain-language goal into one safe, inspectable writing step. The product thesis is narrow: help the user state the goal, see routing, readiness, evidence, and Skill selection, then carry a draft prompt into AI chat without silently changing manuscript files.
 
-## Information architecture
-- Primary navigation:
-  - Project home
-  - Editor
-  - Chat/Agent panel
-  - RAG / Evidence Library
-  - Skill Library
-  - Compile / PDF preview
-  - Review / citation checks
-- Core routes/screens:
-  - Editor page with right-side AI panel.
-  - Evidence Library for corpus upload, parsing, indexing, search, and retrieval diagnostics.
-  - Skill picker embedded in the chat header and available as a full library view.
-  - Agent activity view showing tool calls, proposed edits, and evidence used.
-- Content hierarchy:
-  - Primary: current paper file, selected task, answer/proposed diff.
-  - Secondary: evidence snippets, selected skill, active mode.
-  - Tertiary: logs, parser diagnostics, skill prompt internals.
+This document describes the implementation shipped in `app/apps/frontend/src/app/components/WritingWorkbenchPanel.tsx`, integrated through `RightPanel.tsx` in the official `/projects -> /editor/:projectId` workflow. Reviewed visual evidence: `.impeccable/review/desktop.png`, `.impeccable/review/mobile.png`, and `.impeccable/review/panel.png`.
 
-## Design principles
-- Principle 1: Evidence before eloquence.
-  - Every RAG-backed answer should expose its source snippets and confidence.
-- Principle 2: Recommend before asking users to choose.
-  - The system should infer candidate skills from the user task and show ranked choices.
-- Principle 3: Mode boundaries must be visible.
-  - Chat explains, Agent inspects and proposes edits, Tools can execute controlled file/code actions.
-- Principle 4: Private by default.
-  - Local private folders like `papers/` must never be uploaded or indexed without explicit project-level action.
-- Principle 5: Preview modes must preserve their semantic boundary.
-  - Quick Preview is a source-driven browser rendering that updates with the current LaTeX text and may approximate unsupported commands, references, packages, fonts, layout, and figures.
-  - Final PDF is the last explicitly compiled LaTeX artifact. Opening it reads the existing PDF and must not trigger compilation.
-  - The presence of a compiled PDF must never replace or mask Quick Preview.
-- Tradeoffs:
-  - PDF parsing should be slower but truthful rather than fast and metadata-only.
-  - Skill UI should initially use curated metadata over fully automatic taxonomy if metadata quality is uneven.
-  - Advanced skill prompt details should be available, but hidden behind disclosure by default.
+**Key Characteristics:**
 
-## Visual language
-- Color:
-  - Neutral editor base with restrained semantic accents.
-  - Use distinct accents for modes: Chat, Agent, Tools, RAG evidence, warnings.
-  - Avoid a one-hue palette; evidence and risk states need different colors.
-- Typography:
-  - Chinese labels first for user-facing controls, English skill slug as small secondary text.
-  - Keep dense operational panels readable; no hero-scale text inside tool surfaces.
-- Spacing/layout rhythm:
-  - Compact, scan-friendly panels.
-  - Skill cards should be short rows or small tiles, not large marketing cards.
-- Shape/radius/elevation:
-  - Use 4-8px radius, light borders, minimal shadows.
-  - Cards only for repeated items, popovers, and concrete tools.
-- Motion:
-  - Subtle opacity/transform transitions only.
-  - Respect reduced motion.
-- Imagery/iconography:
-  - Use familiar icons for search, upload, parser status, citation, warning, edit, and run.
-  - Do not use decorative generated imagery in the working interface.
+- Compact operational right-rail assistant, not a landing page or standalone writing product.
+- Existing OpenPrism light UI: white panels, pale gray bands, restrained blue actions, green readiness/safety signals, red blocking states.
+- Human review boundary is visible before output: the panel says suggestions do not overwrite files and Agent edits still require Diff acceptance.
+- Evidence language stays bounded: readiness and evidence states describe what is available or missing; they must not imply official scores, verified productivity gains, or complete source coverage.
+
+## Colors
+
+The palette is light, quiet, and functional. Blue marks primary actions and routing, green marks safe/readiness states, red marks blockers, and neutral gray carries most text and structure.
+
+### Primary
+
+- **Operational Blue** (`#4f6ef7`): primary action buttons, active right-panel tab underline, focus border, routing badges.
+- **Strong Operational Blue** (`#3b5bdb`): emphasized action text, active labels, scores, linked current file names.
+- **Soft Operational Blue** (`rgba(79, 110, 247, 0.12)`): secondary buttons, badges, and low-pressure selected context chips.
+
+### Status
+
+- **Review Green** (`#10b981`): safety dot, workflow ready segments, and positive readiness affordances.
+- **Blocking Red** (`#ef4444`): error callouts and blocking workflow segments.
+
+### Neutral
+
+- **App Background** (`#f8f9fc`): shell background and mobile lower canvas.
+- **Paper Surface** (`#ffffff`): text fields, starter cards, and crisp input surfaces.
+- **Panel Surface** (`rgba(255, 255, 255, 0.95)`): right rail container.
+- **Muted Panel Surface** (`rgba(248, 249, 252, 0.95)`): readiness bands, evidence cards, and tab bars.
+- **Primary Text** (`#1a1d23`): section titles and important values.
+- **Secondary Text** (`#5f6b7a`) and **Muted Text** (`#8492a6`): guidance, explanations, snippets, and secondary metadata.
+- **Hairline Border** (`rgba(0, 0, 0, 0.08)`): field borders, card borders, dividers, and tab separators.
+
+## Typography
+
+The workbench uses the existing app font stack through `font: inherit`. It relies on small, dense type because the right rail must coexist with file tree, source editor, and preview.
+
+### Hierarchy
+
+- **Panel Title** (`17px`, `750`, tight): only for `论文写作助手`.
+- **Section Title** (`12px`, `720`): compact labels such as `常用论文任务`, `推荐 Skill`, and `证据状态`.
+- **Body / Input** (`12px`, `1.55`): task textarea, prompt text, and main button labels.
+- **Label / Hint** (`11px`, `650` or regular): field labels, safety text, helper copy, and secondary buttons.
+- **Dense Metadata** (`10px`, `1.5`): card descriptions, evidence snippets, routing reasons, progress summaries.
+
+### Named Rules
+
+**The Right-Rail Scale Rule.** Do not use hero-scale type inside this surface. The panel competes for attention with the manuscript, so hierarchy comes from order, spacing, bands, and status color.
+
+## Layout
+
+The first desktop viewport is a three-pane editor: left project files, center source/preview split, and the AI assistant in the right rail with the `Writing` tab active. The primary `分析写作任务` action must be visible before scrolling.
+
+The right rail follows a single-column operational stack:
+
+1. Panel title and one-sentence purpose.
+2. Safety boundary.
+3. Goal textarea, optional evidence query, primary analyze action, and current-file polish shortcut.
+4. Horizontal common-task starters.
+5. Readiness band with score.
+6. Mode/routing badge and seven-step workflow strip.
+7. Recommended Skill.
+8. Evidence state and next actions.
+9. Draft handoff to AI chat.
+10. Collapsed AI draft review.
+
+On mobile, the app shell becomes tabbed (`文件`, `编辑器`, `AI 助手`) and the writing panel takes the viewport. Actions stack vertically at `max-width: 520px`. The common-task row remains horizontally scrollable; this preserves density but currently weakens discoverability.
+
+## Elevation & Depth
+
+Depth is mostly tonal. The workbench uses muted surface bands, borders, and soft focus shadows rather than raised cards. The only notable shadow in this surface is the field focus glow (`0 2px 10px var(--accent-soft)`) and the app's floating terminal control, which overlays content in the reviewed screenshots.
+
+### Named Rules
+
+**The Flat Operational Rule.** Default surfaces stay flat. Use background tone and border to separate cards; reserve motion and shadow for focus, hover, or unavoidable floating controls.
+
+## Shapes
+
+The form language is soft but restrained. Controls and list items use 9-11px radius, chips and workflow bars use full pills, and cards stay compact with light borders. Avoid large decorative containers and nested card stacks in the right rail.
+
+- **Controls:** 9px radius.
+- **Inputs:** 10px radius, white fill, 1px hairline border.
+- **Status bands:** 10-11px radius, muted panel fill.
+- **Badges and workflow bars:** 999px radius.
 
 ## Components
-- Existing components to reuse:
-  - Backend skill registry from `skillEngine.js`.
-  - RAG corpus/index/search endpoints in `paperRag.js`.
-  - Chat/Agent/Tools mode guidance in `ai.js`.
-  - Existing skill YAML files as source data.
-- New/changed components:
-  - Editor preview tabs:
-    - `Quick Preview` always renders current source through `RenderedPreviewPane` / `LatexPreview`.
-    - `Final PDF` alone may render `AuthenticatedPdf` and expose explicit compile/recompile actions.
-    - Switching to `Final PDF` may load the previous artifact but never compiles implicitly.
-  - Skill metadata schema:
-    - `display_name_zh`
-    - `subtitle_en`
-    - `task_intents`
-    - `user_questions`
-    - `inputs`
-    - `outputs`
-    - `best_for`
-    - `not_for`
-    - `risk_level`
-    - `estimated_time`
-    - `requires_context`
-  - Skill picker:
-    - Search box accepting natural Chinese tasks.
-    - Category chips: 写作, 文献, 引用, 实验, 图表, 投稿, 润色, 审稿.
-    - Ranked recommendations with reason labels.
-    - Hover/focus popover with basic function, input, output, example prompt, and warning.
-    - Compare mode for 2-3 similar skills.
-  - RAG Evidence Library:
-    - Document list with parse/index state.
-    - PDF extraction preview.
-    - Search test box with top chunks and page/line source.
-    - Re-index button with parser diagnostics.
-  - Chat evidence drawer:
-    - Shows selected skill prompt summary.
-    - Shows injected file context.
-    - Shows RAG snippets used in the answer.
-    - Shows omitted/failed documents.
-  - Chat work-process disclosure:
-    - Represents verifiable request phases, RAG preparation, tool calls, bounded tool-result summaries, answer generation, completion, and failure; it is not a private chain-of-thought viewer.
-    - Remains collapsed by default for each request. Its summary shows the step count and current activity; the user explicitly expands the ordered timeline.
-    - Tool inputs and results are summarized and redacted on the server before SSE delivery. File contents, edit bodies, credentials, tokens, and unrestricted command output must not appear in the disclosure.
-    - Failed and interrupted activities remain visible so users can identify where execution stopped.
-  - Managed-project file tree:
-    - Has no manual refresh command. The tree is a live projection of the authenticated managed-project `/tree` contract rather than a user-maintained cache.
-    - Local file actions and artifact-producing workflows request immediate synchronization; visible pages also perform a low-frequency two-second reconciliation so shell, CLI, compiler, or other external filesystem changes appear without user action.
-    - Synchronization updates shared project metadata for the Files, Editor, and Assistant surfaces, but never replaces the content of open editor tabs or unsaved drafts.
-- Variants and states:
-  - Skill card states: recommended, selected, disabled, missing required context, advanced, imported.
-  - RAG document states: uploaded, parsing, parsed, indexed, failed, stale, too large, metadata-only.
-  - Chat response states: no evidence, evidence-backed, proposed edit, tool result, needs user approval.
-  - Chat work-process states: preparing, running, tool active, completed, failed; completed steps retain duration when available.
-- Token/component ownership:
-  - Product labels and skill taxonomy should live in backend metadata and be returned by `/api/skills`.
-  - Frontend should not hard-code skill definitions beyond rendering categories and states.
 
-## Frontend API contracts
-- Skill list:
-  - `GET /api/skills`
-  - Returns an array of UI-ready skill summaries.
-  - Required display fields: `display_name_zh`, `subtitle_en`, `category_zh`, `tags`, `task_intents`, `inputs`, `outputs`, `best_for`, `not_for`, `risk_level`, `estimated_time`, `requires_context`.
-- Skill detail:
-  - `GET /api/skills/:name`
-  - Returns the same UI metadata shape as the list item for hover/focus popovers and detail drawers.
-  - The first visible title should be `display_name_zh`; `subtitle_en` is secondary text.
-- Skill recommendation:
-  - `POST /api/skills/recommend`
-  - Body: `{ "task": "帮我写 related work", "projectState": { "hasRagDocuments": true, "hasReferences": true }, "limit": 5 }`.
-  - Returns ranked `{ skill, score, reasons, missingContext }` items.
-  - Frontend should show recommendation reasons as visible labels, not only hidden tooltips.
-- Writing workbench context:
-  - `POST /api/projects/:id/writing-workbench/context`
-  - Body: `{ "task": "帮我根据这些 PDF 写 related work", "skillLimit": 5, "evidenceLimit": 3 }`.
-  - Returns one UI-ready object containing `projectState`, `skills.categories`, `skills.recommendations`, `rag.summary`, `rag.recentDocuments`, `rag.evidence`, and `rag.uiHints`.
-  - Also returns `taskRouting` with `mode`, `modeLabel_zh`, `confidence`, `risk_level`, `requiresConfirmation`, `reasons`, `missingContext`, and `nextActions`.
-  - Use this endpoint for the chat-header Skill Picker, Evidence Library summary strip, empty states, and "what should I use for this task?" recommendations.
-  - Use `taskRouting.mode` to preselect Chat / Agent / Tools. Chat is for explanation and advice, Agent is for proposed manuscript edits, and Tools is for execution-heavy work such as compile, code, statistics, or figure/table generation.
-  - Render `taskRouting.reasons` and `taskRouting.nextActions` visibly near the input box so the user understands why the system chose a mode.
-  - `rag.uiHints[]` should render as visible status callouts, for example empty library, metadata-only documents, parse failures, or no evidence hit.
-- RAG context/evidence:
-  - `POST /api/projects/:id/rag/context`
-  - Body: `{ "query": "graph neural retrieval", "limit": 5 }`.
-  - Returns `{ context, evidence }`; `context` is a backward-compatible string and `evidence.results[]` contains ranked snippets with `source.path`, `source.title`, `source.lineStart`, `source.lineEnd`, `score`, and `text`.
-- AI with RAG:
-  - `POST /api/ai/send` and `POST /api/ai/stream` accept optional `rag`.
-  - When RAG is used, responses retain old `ragContext` string and add `ragEvidence` with the structured evidence object.
-  - Streaming emits `rag_context` with `{ evidence }`, then includes `ragEvidence` again in `done`.
-  - Streaming `tool_use` and `tool_result` events expose only `{ name, activity }`, where `activity` is a bounded, server-redacted summary. Raw tool input and raw tool output are not a frontend contract.
-- RAG document state:
-  - Document rows should render `parseStatus`, `parser`, `extractedTextChars`, `chunks`, `extractionError`, and `warnings`.
-  - `parsed` means extracted text was indexed; `metadata-only` means the file is saved but not searchable as full text; `failed` means parsing failed and the error should be shown.
+### Writing Workbench Panel
 
-## Accessibility
-- Target standard:
-  - WCAG 2.1 AA for core writing flows.
-- Keyboard/focus behavior:
-  - Skill cards must be keyboard navigable.
-  - Hover details must also appear on focus.
-  - Popovers must not trap focus unless modal.
-- Contrast/readability:
-  - Evidence snippets and warnings require high contrast.
-  - Long academic text should use comfortable line height and avoid dense all-caps labels.
-- Screen-reader semantics:
-  - Skill recommendation reasons should be readable as text, not only color.
-  - Parser status should announce progress and errors.
-  - The work-process summary is a real button with `aria-expanded` and `aria-controls`; it must be keyboard operable and must not auto-expand while the model is running.
-- Reduced motion and sensory considerations:
-  - Avoid continuous loading animations in editor and evidence panels.
+The panel is the design anchor for paper-writing assistance. It uses a 16px inset, 18px vertical gap, and compact single-column sections. On mobile the inset reduces to 13px.
 
-## Responsive behavior
-- Supported breakpoints/devices:
-  - Desktop first for paper writing.
-  - Tablet acceptable for reading/review.
-  - Mobile should focus on chat, quick review, and notifications, not full manuscript editing.
-- Layout adaptations:
-  - Desktop: editor center, AI/evidence right panel, file/project left panel.
-  - Narrow screens: tabs for Editor / Chat / Evidence / Skills.
-- Touch/hover differences:
-  - Skill hover popover must become tap-to-open on touch devices.
+### Safety Notice
 
-## Interaction states
-- Loading:
-  - RAG parsing should show current phase: upload, text extraction, chunking, indexing.
-  - Chat should show whether it is waiting on model, RAG search, or tool call.
-  - Chat work stays compact: the collapsed header shows the current activity, and the complete ordered trace appears only after explicit expansion.
-  - File-tree synchronization is silent during normal operation. A transient polling failure keeps the last usable tree instead of replacing it with an empty/error state or requiring repetitive user intervention.
-- Empty:
-  - Empty RAG library should offer "上传 PDF/文献" and "从 arXiv/CrossRef 搜索".
-  - Empty skill search should show task examples.
-- Error:
-  - PDF parser failures should state whether text extraction failed, file too large, encrypted PDF, no OCR, or parser unavailable.
-  - Skill unavailable state should explain missing project context or backend error.
-- Success:
-  - After PDF indexing, show extracted character count, chunk count, page range coverage, and example snippets.
-  - After selecting a skill, show the active skill chip in the chat header.
-  - Quick Preview shows source-derived HTML even when a compiled PDF exists; Final PDF shows the authenticated compiled artifact and its cached/fresh status.
-- Disabled:
-  - Disable RAG-backed answer toggle when no indexed chunks exist.
-  - Disable edit-producing agent actions until a project/file context is selected.
-- Offline/slow network:
-  - External search should show source-by-source timeout/failure instead of a single empty result.
+- **Purpose:** state the non-overwrite and human-review boundary before the user enters a task.
+- **Style:** pale green surface using `color-mix(in srgb, var(--success) 8%, var(--panel))`, 10px radius, 11px text, green status dot.
+- **Required wording boundary:** say AI generates suggestions only; file changes require human Diff acceptance.
 
-## Content voice
-- Tone:
-  - Chinese UI labels by default; English academic terminology can appear as subtitles.
-  - Direct, concrete, and workflow-oriented.
-- Terminology:
-  - "技能" for Skill.
-  - "证据库" or "文献证据库" for RAG corpus.
-  - "解析" for document parsing.
-  - "索引" for chunk/index creation.
-  - "引用证据" for citation-backed snippets.
-  - "建议修改" for proposed edits.
-- Microcopy rules:
-  - Do not say "PDF 已索引" unless extracted text was actually indexed.
-  - Use "仅保存文件信息，未抽取正文" for metadata-only uploads.
-  - Skill descriptions should answer "适合什么时候用" before internal mechanics.
-  - Use “工作过程” for execution activity. Do not label activity logs as “思维链” or imply access to hidden model reasoning; model-authored `<think>` content, when present, is labeled only as a model-provided reasoning summary.
+### Task Form
 
-## Implementation constraints
-- Framework/styling system:
-  - Current root product uses React/Vite/Fastify under `apps/`.
-  - Paper Writer backend is Fastify under `app/apps/backend`.
-  - Full Paper Writer frontend source was not present in this workspace snapshot; implementation may require restoring frontend source or editing the upstream source repository, not only built assets.
-- Design-token constraints:
-  - Keep operational UI compact and consistent with existing tool surfaces.
-- Performance constraints:
-  - Managed project tree reconciliation runs only while the document is visible, suppresses overlapping requests per project, performs structural equality checks before React state updates, and synchronizes immediately on focus/visibility restoration.
-  - PDF parsing can be asynchronous; indexing must not block the whole editor.
-  - RAG search should return enough diagnostics without flooding the chat prompt.
-- Compatibility constraints:
-  - Existing API routes should remain backward compatible where possible.
-  - Private directories like `papers/` remain git-ignored.
-- Test/screenshot expectations:
-  - Add backend tests for PDF upload states and RAG search behavior.
-  - Add frontend/component tests for skill recommendation, hover/focus popover, and disabled states when RAG has no indexed text.
-  - Add one manual smoke path: upload a small PDF, parse, search, ask a RAG-backed question, inspect cited snippets.
+- **Goal field:** multiline textarea for the user's plain-language writing goal.
+- **Evidence query:** optional single-line field for local literature retrieval keywords.
+- **Current file:** shown as a right-aligned, ellipsized blue file label.
+- **Primary action:** full-width blue `分析写作任务`, disabled until the task is non-empty or while loading.
+- **Current-file polish:** secondary blue-soft action. The generated polish task must preserve formulas, citation keys, numbers, and LaTeX commands and request reviewable suggestions or diff.
 
-## Open questions
-- [ ] Should Paper Writer UI default language be Chinese for all users, or follow browser/project locale? Owner: product. Impact: skill metadata and UI labels.
-- [ ] Which PDF parser should be the default: local `pdftotext`, PDF.js, MinerU, or a fallback chain? Owner: engineering. Impact: reliability, privacy, install burden.
-- [ ] Should RAG support embeddings/vector search now, or first ship transparent lexical search plus real PDF extraction? Owner: engineering/product. Impact: quality and complexity.
-- [ ] Should skill activation allow multiple simultaneous skills or force one primary skill plus optional context skills? Owner: product. Impact: prompt predictability.
-- [ ] Should Agent mode be allowed to apply edits automatically after trust is established, or always require diff approval? Owner: product. Impact: safety and speed.
+### Common Task Starters
+
+- **Style:** horizontal row of compact bordered cards with 150px minimum width.
+- **Content:** short Chinese task title plus a two-line helper description.
+- **State:** disabled starters keep their card shape with lower opacity and a title explaining why.
+- **Known issue:** horizontal overflow is functional but not sufficiently discoverable in desktop and mobile screenshots.
+
+### Readiness Band
+
+- **Style:** two-column grid with readiness label on the left and tabular score on the right.
+- **Boundary:** the readiness score is a preparation hint only. It must not be presented as an official score, guaranteed quality metric, productivity claim, or publication readiness guarantee.
+
+### Routing And Workflow
+
+- **Mode badge:** shows the chosen Chat/Agent/Tools route in a blue-soft pill.
+- **Reason text:** explains the current route in plain language.
+- **Workflow strip:** seven equal segments; green means ready/complete, red means blocking, neutral means pending.
+- **Behavioral boundary:** Chat explains, Agent proposes manuscript edits, and Tools is reserved for execution-heavy work. Edit-producing actions require file/project context and review.
+
+### Recommended Skill
+
+- **Style:** muted card list with bold Skill title and small input/output summary.
+- **Hierarchy:** show one primary recommendation first; do not force users to understand internal Skill slugs before acting.
+- **Boundary:** Skill text describes fit, input, output, and risks. It must not imply hidden automatic execution.
+
+### Evidence State
+
+- **Style:** badge plus evidence count and bounded evidence snippets.
+- **Boundary:** say `普通写作` or equivalent when evidence is not required. Only claim evidence support when actual evidence items are present. Do not imply a PDF was searched if only metadata exists.
+
+### Draft Handoff
+
+- **Primary command:** `带到 AI 对话`.
+- **Behavior:** fills the chat prompt, switches to the recommended mode, creates or prepares the conversation, and preserves user review before send. It does not send automatically.
+- **Disabled state:** use backend send-gate labels when required context is missing.
+
+### AI Draft Review
+
+- **Style:** collapsed native `details` section below a divider.
+- **Purpose:** user can paste AI output and run an evidence-bound review for source numbering, evidence overreach, context gaps, and human-confirmation requirements.
+
+## Do's and Don'ts
+
+### Do:
+
+- **Do** keep the official entry path as `/projects -> /editor/:projectId`; the writing assistant belongs in the right rail of the editor.
+- **Do** make `分析写作任务` visible in the first viewport on desktop and mobile.
+- **Do** show safety, routing, readiness, Skill, evidence, and draft handoff as separate scan targets.
+- **Do** keep copy concrete and Chinese-first, with English academic terms only where useful (`Related Work`, `Skill`, `Diff`, `RAG`).
+- **Do** describe AI output as suggestions, prompts, or reviewable diffs until the user explicitly accepts a change.
+- **Do** label missing evidence, blocked workflow steps, parser gaps, and unavailable context as visible states.
+
+### Don't:
+
+- **Don't** overwrite paper files, apply Agent edits, or imply automatic manuscript modification from this panel.
+- **Don't** claim productivity gains, official readiness, complete evidence coverage, or publication quality without measured evidence.
+- **Don't** turn the panel into a marketing surface, hero layout, or decorative card stack.
+- **Don't** hide the Chat/Agent/Tools boundary behind internal implementation details.
+- **Don't** let horizontal-only content be the sole path to important tasks; the current starter row needs a clearer affordance.
+- **Don't** allow floating terminal controls to obscure readiness, Skill, evidence, or action cards; screenshots show overlap that should be resolved in a follow-up pass.

@@ -1,0 +1,72 @@
+{
+  "experiment": "paper-writing-workbench-github-audit",
+  "conductedAt": "2026-09-10",
+  "scope": {
+    "productEntry": "/projects",
+    "productionUrl": "http://10.30.0.22:8787",
+    "modelInvoked": false,
+    "externalCodeCopied": false,
+    "newDependencies": []
+  },
+  "reviewedPatterns": [
+    {
+      "repository": "Future-House/paper-qa",
+      "license": "Apache-2.0",
+      "absorbedPattern": "evidence-visible scientific answers"
+    },
+    {
+      "repository": "stanford-oval/storm",
+      "license": "MIT",
+      "absorbedPattern": "research and outline before long-form drafting"
+    },
+    {
+      "repository": "Master-cai/Research-Paper-Writing-Skills",
+      "license": "MIT",
+      "absorbedPattern": "section-oriented skills and reverse-outline review"
+    },
+    {
+      "repository": "manubot/manubot-ai-editor",
+      "license": "BSD-3-Clause",
+      "absorbedPattern": "reviewable per-file AI edits"
+    },
+    {
+      "repository": "chrisyangsong/citegate",
+      "license": "MIT",
+      "absorbedPattern": "separate reference integrity from claim support"
+    },
+    {
+      "repository": "vale-cli/vale",
+      "license": "MIT",
+      "absorbedPattern": "deterministic prose checks as a future gate"
+    }
+  ],
+  "implementation": {
+    "formalWritingPanel": true,
+    "currentFilePolish": true,
+    "taskRoutingVisible": true,
+    "skillInputsOutputsVisible": true,
+    "evidenceStatusVisible": true,
+    "draftHandoffWithoutAutoSend": true,
+    "answerEvidenceReview": true
+  },
+  "redGreenEvidence": {
+    "initialBrowserFailure": "Conservative polish was misrouted to Tools and treated preservation of existing citation keys as a new evidence request.",
+    "rootCause": "A bare Chinese word for command triggered tool execution, while any citation mention triggered citation-sensitive writing.",
+    "fix": "Require executable intent for command routing and distinguish preservation-only citation language from citation creation or verification.",
+    "focusedUnitTests": {
+      "files": 3,
+      "tests": 20,
+      "passed": 20
+    },
+    "isolatedChromium": {
+      "tests": 1,
+      "passed": 1
+    },
+    "frontendProductionBuild": "passed"
+  },
+  "limitations": [
+    "No real model was invoked, so generated prose quality was not measured.",
+    "No productivity percentage is claimed without a real-user baseline and review record.",
+    "Deterministic prose linting, external citation-integrity checks, and multi-format export remain roadmap items."
+  ]
+}

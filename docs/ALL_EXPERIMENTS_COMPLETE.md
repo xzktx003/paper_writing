@@ -2,6 +2,15 @@
 
 本文件记录仓库新增实验的目的、方法、参数、结果与结论。结构化结果统一位于 `experiments/results/`；失败或暴露缺陷的步骤同样保留。
 
+## 2026-09-10：GitHub 论文写作机制筛选与正式工作台闭环验证
+
+- **目的**：验证“继续导入更多功能”与“把已有能力接成用户可见闭环”哪条路线更能改善论文写作，并用真实浏览器检查当前文件润色是否能安全进入 Agent 对话。
+- **方法原理**：通过 GitHub CLI 调研 PaperQA2、STORM、OpenScholar、Research-Paper-Writing-Skills、latex-arxiv-SKILL、Manubot AI Editor、Vale、Citegate、Quarto、Awesome Rebuttal 等候选，按能力、许可证、集成难度和风险筛选；实现时不复制外部源码、不新增依赖，而是复用仓库已有 workbench、Skill、RAG、Agent diff 和审查接口。
+- **关键参数**：正式入口 `/projects`；生产服务 `0.0.0.0:8787`；工作台证据上限 4、Skill 推荐上限 5；润色目标为当前打开文件；隔离 Chromium 使用临时受管项目和 `main.tex`，不调用真实模型、不自动发送消息。
+- **结果数据**：第一次浏览器测试正确暴露“保留引用键/LaTeX 命令”被误判为 Tools + 缺证据；新增路由红灯后修复语义边界。第二次运行通过：3 个相关单测文件共 20 项通过，隔离 Chromium 主路径 1/1 通过，前端生产构建成功。
+- **结论**：当前最短板不是 Skill 数量，而是正式 UI 的能力可见性和任务闭环。把自然语言任务、当前文件、模式/Skill 理由、证据门禁、草稿交接和输出审查接成一条路径，比继续堆叠入口更直接；PaperQA2 sidecar、Vale 风格门禁、Citegate 引用真实性和 Quarto 多格式输出应按独立里程碑继续验证。
+- **结构化结果**：`experiments/results/paper_writing_workbench_github_audit_20260910.json`
+
 ## 2026-08-28：办公白话动画叙事实验（通用办公 + 论文/Word/PPT）
 
 - **目的**：验证参赛演示能否从“技术功能展示”改为完全不懂技术的办公人员也能听懂的叙事：先讲人工旧流程，再讲工具新流程，再给逐步实操和诚实边界。

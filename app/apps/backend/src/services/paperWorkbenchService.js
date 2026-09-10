@@ -48,6 +48,14 @@ function hasExplicitRagMention(text = '') {
   return /(^|[^a-z0-9])rag([^a-z0-9]|$)/i.test(String(text || ''));
 }
 
+function hasCitationPreservationOnlyIntent(text = '') {
+  const normalized = String(text || '');
+  const protectsExistingCitations = /(?:保留|保持|锁定|不要改|不要修改|不改变|原样保留).{0,32}(?:引用(?:键|标记)?|citation(?:\s+keys?)?|references?)|(?:引用(?:键|标记)?|citation(?:\s+keys?)?|references?).{0,32}(?:保留|保持|锁定|不要改|不要修改|不改变|unchanged|intact)/i.test(normalized);
+  const citationWorkText = normalized.replace(/(?:不要|不|无需|禁止|严禁)(?:新增|添加|补充|查找|检索|推荐|生成|替换|核对|验证|审查|修复)/gi, '');
+  const requestsCitationWork = /(?:新增|添加|补充|查找|检索|推荐|生成|替换|核对|验证|审查|修复).{0,20}(?:引用|citation|reference)|(?:引用|citation|reference).{0,20}(?:新增|添加|补充|查找|检索|推荐|生成|替换|核对|验证|审查|修复)|related work|literature review|research gap|文献综述|相关工作|证据支持|文献证据/i.test(citationWorkText);
+  return protectsExistingCitations && !requestsCitationWork;
+}
+
 export async function buildPaperWorkbenchContext(projectRoot, options = {}) {
   const task = String(options.task || '').trim();
   const evidenceQuery = String(options.evidenceQuery || options.ragQuery || options.query || task).trim();
@@ -2152,7 +2160,7 @@ export function routeWritingTask(task, context = {}) {
   const asksForFigureTooling = /(?:csv|\.csv\b|results\.csv|matplotlib|plot\.py|脚本|python|roc\s*curve|柱状图|折线图|生成图|画图|绘图|导出\s*pdf)/i.test(normalizedTask);
   const asksForStatisticalTooling = /(?:t[-\s]?test|p[-\s]?value|显著性检验|异常值|outlier|mean\s*[±+/-]?\s*std|mean±std|计算.{0,16}(?:mean|std|均值|标准差)|results\.csv|实验数据.{0,16}(?:跑|计算|检查|分析))/i.test(normalizedTask);
   const asksForFigureOrStatReview = /(?:caption|图注|figure|fig\.?|图|表格|table).{0,24}(?:是否夸大|夸大|是否写对|写对|一致性|编号|引用|排版太宽|too wide)/i.test(normalizedTask);
-  const asksForToolExecution = ((/运行|执行|编译|脚本|命令|生成图|画图|绘图|统计检验|显著性检验|分析数据|处理数据|run|execute|compile|script|plot|chart/.test(lower) || asksForFigureTooling || asksForStatisticalTooling) && !asksForResponseTable) ||
+  const asksForToolExecution = ((/运行|执行|编译|脚本|命令行|生成图|画图|绘图|统计检验|显著性检验|分析数据|处理数据|run|execute|compile|script|plot|chart/.test(lower) || asksForFigureTooling || asksForStatisticalTooling) && !asksForResponseTable) ||
     (/统计|表格|figure|table/.test(lower) && /运行|执行|生成|计算|检验|脚本|代码|plot|draw|run|execute|compute/.test(lower) && !asksForResponseTable);
 
   if (asksForExplanation) {
@@ -2287,7 +2295,8 @@ export function routeWritingTask(task, context = {}) {
 
   const needsRagEvidence = /文献证据|证据支持|related work|literature|survey|research gap|幻觉引用|假引用|hallucinated citation|citation grounding|和.*证据核对|证据.*核对|negative evidence|反例|相反观点|逐句.*证据|每句话.*引用|每个 claim.*citation|支持.*novelty.*证据/i.test(normalizedTask) || explicitRagMention;
   const pureCitationManagement = /citation key|missing citation|author-year citation|引用格式|参考文献格式|bibtex|references?\\.bib|doi|按 .{0,16}格式整理参考文献/i.test(normalizedTask) && !needsRagEvidence;
-  if (/文献|证据|引用|pdf|related work|literature|survey|citation|reference|bibtex|research gap/.test(lower) && !pureCitationManagement && !asksForSubmissionFileAudit) {
+  const preservesExistingCitationsOnly = hasCitationPreservationOnlyIntent(normalizedTask);
+  if (/文献|证据|引用|pdf|related work|literature|survey|citation|reference|bibtex|research gap/.test(lower) && !pureCitationManagement && !asksForSubmissionFileAudit && !preservesExistingCitationsOnly) {
     if (!hasContextAnswer(contextAnswers, 'rag_documents_or_references') && !projectState.hasRagDocuments && !projectState.hasReferences) {
       missingContext.push('rag_documents_or_references');
       nextActions.push({
@@ -3705,7 +3714,8 @@ function buildCitationPolicy({
   projectState,
 }) {
   const lower = String(task || '').toLowerCase();
-  const citationSensitive = /文献|证据|引用|参考文献|pdf|related work|literature|survey|citation|reference|bibtex|research gap|state of the art|sota/.test(lower);
+  const citationSensitive = /文献|证据|引用|参考文献|pdf|related work|literature|survey|citation|reference|bibtex|research gap|state of the art|sota/.test(lower) &&
+    !hasCitationPreservationOnlyIntent(task);
   const hitCount = evidence?.results?.length || 0;
   const hasEvidenceLibrary = Boolean(projectState.hasRagDocuments || projectState.hasReferences);
   let status = 'not-required';
