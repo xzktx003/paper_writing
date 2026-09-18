@@ -10,6 +10,19 @@ Algorithm~\ref{alg:joint} summarizes the overall iteration, and the appendix giv
 % 每轮只联合处理一个共享尺度组，其余组按固定调度顺序更新；本文不声称同时精确求解多尺度的全局组合问题。
 Each round jointly processes only one shared-scale group, and the remaining groups are updated in a fixed schedule; this paper does not claim to solve the global multi-scale combinatorial problem exactly at once.
 
+% 图 3 汇总完整求解流程：多尺度探针构造候选池，完整残差给出相切分块上界，下包络把笛卡尔积压缩为有限代表区间，最后用真实耦合误差验收候选。
+Figure~\ref{fig:method-overview} summarizes the complete solver. Multi-scale probes construct the candidate pools, the full residual produces a tangent block-separable majorizer, lower envelopes reduce the Cartesian product to finitely many representative intervals, and the true coupled error finally accepts or rejects the proposed state.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figure3_exact_rendered.png}
+\caption{
+% 共享尺度协同码字优化总览。（a）在多个合法探针尺度下合并局部 Top-$K$ 候选。（b）利用完整残差和满足 $D\succeq H$ 的分块对角矩阵构造相切可分离上界。（c）每个位置的仿射候选代价形成下包络；合并切换点后，只需在代表区间内求解一维二次问题。候选状态最终由真实耦合目标验证，只有达到充分下降阈值时才被接受。
+Overview of shared-scale cooperative codeword optimization. (a) Local Top-$K$ candidates are merged across multiple legal probe scales. (b) The full residual and a block-diagonal matrix satisfying $D\succeq H$ construct a tangent separable majorizer. (c) Affine candidate costs form a lower envelope at each position; after merging switch points, only a one-dimensional quadratic problem must be solved within each representative interval. The candidate state is finally verified against the true coupled objective and accepted only when it meets the sufficient-decrease threshold.
+}
+\label{fig:method-overview}
+\end{figure*}
+
 % 联合搜索的代理目标与结构性质
 \subsection{Surrogate Objective and Structural Properties for Joint Search}
 

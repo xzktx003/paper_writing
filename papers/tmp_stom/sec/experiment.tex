@@ -27,6 +27,19 @@ Table~\ref{tab:main-ppl} follows the source table directly: WikiText-2 PPL and a
 % 本文方法在 Qwen3-4B、14B 和 32B 上取得量化方法中最低的 PPL，在 Qwen3-4B 和 8B 上取得最高的汇总准确率。
 Our method obtains the lowest PPL among quantized methods on Qwen3-4B, 14B, and 32B, and the highest aggregate accuracy on Qwen3-4B and 8B. LLVQ remains best in PPL on Qwen3-8B and both Llama models, while QTIP or AQLM gives the strongest aggregate accuracy on the other models. The evidence therefore supports competitive quality rather than uniform dominance.
 
+% 图 2 聚焦 Qwen3-4B，从困惑度和代表性下游任务两个互补视角展示结果；它是表格的可视化摘要，而不是新增的评价口径。
+Figure~\ref{fig:qwen3-4b-overview} focuses on Qwen3-4B and presents two complementary views of the results: an equal-weight mean of WikiText-2 and C4 perplexity, and a radar summary over selected downstream tasks. It is a visualization of the tabulated measurements rather than an additional evaluation protocol.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figure2_qwen3_4b_ppl_mean.png}
+\caption{
+% Qwen3-4B 的质量概览。（a）WikiText-2 与 C4 PPL 的等权算术平均值，越低越好；该均值不是按 token 合并计算。（b）所选方法在 ARC-Easy、HellaSwag、LAMBADA、PIQA 和 WinoGrande 上的准确率雷达图，采用 35--75 的截断径向刻度以显示差异。雷达图只用于紧凑展示所选子集；完整的方法比较以表格为准。
+Quality overview on Qwen3-4B. (a) Equal-weight arithmetic mean of WikiText-2 and C4 perplexity (lower is better); this value is not computed by pooling tokens across datasets. (b) Accuracy radar over ARC-Easy, HellaSwag, LAMBADA, PIQA, and WinoGrande for a selected method subset, shown on a truncated radial scale of 35--75 for visibility. The radar is a compact subset visualization; the tables remain authoritative for complete method comparisons.
+}
+\label{fig:qwen3-4b-overview}
+\end{figure*}
+
 \subsection{Ablation Studies}
 
 % 表 2 比较是否执行端到端尺度微调；单元格内并列值避免原表使用两层勾叉表头造成阅读错位。
