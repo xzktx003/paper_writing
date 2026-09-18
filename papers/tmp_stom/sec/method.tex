@@ -227,59 +227,65 @@ For a generally dense group, Eq.~\eqref{eq:D} must process position pairs; that 
 
 % 算法 1：共享尺度下的联合码字优化。
 \begin{algorithm}[t]
-\caption{Joint codeword optimization under a shared scale}
+\caption{Shared-scale cooperative codeword optimization (\method)}
 \label{alg:joint}
 \begin{algorithmic}[1]
-\Require
-% 输入：W、校准输入 X、初始硬量化状态；固定码本和尺度组；探针尺度集合 Sigma、每探针保留数 K、并集预算 Kmax、合法正尺度集合 S、最大遍历数 T、下降阈值 eta。
-$W$, calibration inputs $X$, an initial hard quantized state; a fixed codebook and scale groups; a probe-scale set $\Sigma$, a per-probe count $K$, a union budget $K_{\max}$, a legal positive scale set $\mathcal S$, a maximum number of traversals $T$, and a decrease threshold $\eta$.
-\Ensure
-% 输出：索引与尺度更新后的硬量化状态。
-A hard quantized state with updated indices and scales.
-\State
-% 计算完整层残差 $R = WX - \widehat W X$。
-Compute the full layer residual $R = WX - \widehat W X$.
-\For{$t = 1,\ldots,T$}
-    \State
-    % accepted = false。
-    $\textit{accepted} \gets \textbf{false}$
-    \For{each shared-scale group $\mathcal{G}$ in a fixed order}
-        \State
-        % 包含 $\mathcal G$ 的全部位置；不允许修改的索引保留单候选。
-        Include all positions of $\mathcal G$; indices that are not allowed to change keep a singleton candidate.
-        \State
-        % 从当前完整残差计算 $g$，并取得组内 $H$。
-        Compute $g$ from the current full residual and obtain the in-group $H$.
-        \State
-        % 构造有效分块上界 $D$，用多尺度探针并集生成含当前码字的候选池。
-        Construct a valid block upper bound $D$ and generate candidate pools from the multi-scale probe union, including the current codewords.
-        \State
-        % 计算每个候选的 $a$、$b$，构造直线下包络。
-        Compute $a$ and $b$ for each candidate and construct the lower envelopes of lines.
-        \State
-        % 合并断点，扫描代表区间，增量更新 $A$、$B$。
-        Merge breakpoints, scan representative intervals, and update $A$ and $B$ incrementally.
-        \State
-        % 在各区间求最优合法尺度，保存上界最优区间与尺度。
-        Solve for the optimal legal scale in each interval and store the upper-bound-optimal interval and scale.
-        \State
-        % 恢复对应硬索引，按真实存储格式重构候选状态。
-        Recover the corresponding hard indices and reconstruct the candidate state in the true storage format.
-        \If{the true objective decreases by more than $\eta$}
-            \State
-            % 接受索引和尺度，增量更新完整残差。
-            Accept the indices and scale, and incrementally update the full residual.
-            \State $\textit{accepted} \gets \textbf{true}$
+% 输入：权重、校准输入、码本、尺度组、初始硬状态、可修改位置、探针与搜索预算、合法尺度域、遍历上限和验收阈值。
+\Require $W,X,\mathcal C,\{\mathcal G_h,\mathcal J_h\}_{h=1}^{G},\theta^{(0)}=(k^{(0)},s^{(0)})$
+\Require $\Sigma,K,K_{\max},\mathcal S,T,\eta$
+% 输出：优化后的硬索引和存储尺度。
+\Ensure $\theta=(k,s)$
+% 初始化完整层残差与当前真实目标。
+\State $\theta\gets\theta^{(0)}$; $r\gets\operatorname{vec}(WX-\widehat W(\theta)X)$; $f\gets\lVert r\rVert_2^2$
+\For{$t=1,\ldots,T$}
+    \State $\mathtt{changed}\gets\textbf{false}$
+    \For{$h=1,\ldots,G$}
+        % 用当前完整残差构造组内二次模型及其分块相切上界。
+        \State $z_h\gets(s_hc_{k_i})_{i\in\mathcal G_h}$; $H\gets\mathcal A_h^\top\mathcal A_h$; $g\gets-\mathcal A_h^\top r$
+        \For{$i\in\mathcal G_h$}
+            \State $D_i\gets H_{ii}+\bigl(\sum_{j\ne i}\lVert H_{ij}\rVert_2+\varepsilon\bigr)I_d$
+            \State $u_i\gets z_i-D_i^{-1}g_i$
+            \State $d_{ik}(\sigma)\gets\lVert\sigma c_k-u_i\rVert_{D_i}^2$
+            % 可修改位置合并多尺度短名单；固定位置只保留当前码字。
+            \If{$i\in\mathcal J_h$}
+                \State $\mathcal P_i\gets\{k_i\}\cup\displaystyle\bigcup_{\sigma\in\Sigma}\operatorname{TopK}_{k}^{K}[-d_{ik}(\sigma)]$
+                \State $\mathcal P_i\gets\operatorname{Prune}(\mathcal P_i,K_{\max};k_i)$
+            \Else
+                \State $\mathcal P_i\gets\{k_i\}$
+            \EndIf
+            % 将每个候选写成尺度上的仿射函数并构造下包络。
+            \For{$k\in\mathcal P_i$}
+                \State $a_{ik}\gets c_k^\top D_i c_k$; $b_{ik}\gets c_k^\top(D_i z_i-g_i)$
+                \State $\ell_{ik}(s)\gets a_{ik}s-2b_{ik}$
+            \EndFor
+            \State $(L_i,\mathcal T_i)\gets\operatorname{LowerEnvelope}(\{\ell_{ik}\}_{k\in\mathcal P_i},\mathcal S)$
+        \EndFor
+        % 合并所有切换点并在每个代表区间中精确求解合法尺度。
+        \State $\mathcal T\gets\partial\mathcal S\cup\displaystyle\bigcup_{i\in\mathcal G_h}\mathcal T_i$
+        \State $\{I_r=[\alpha_r,\beta_r]\}_{r=1}^{R}\gets\operatorname{Partition}(\mathcal T)$
+        \State $(Q^\star,k^\star,s^\star)\gets(+\infty,\varnothing,\varnothing)$
+        \For{$r=1,\ldots,R$}
+            \State $\bar s_r\gets(\alpha_r+\beta_r)/2$; $k_i^{(r)}\gets\arg\min_{k\in\mathcal P_i}\ell_{ik}(\bar s_r)$
+            \State $A_r\gets\sum_{i\in\mathcal G_h}a_{i,k_i^{(r)}}$; $B_r\gets\sum_{i\in\mathcal G_h}b_{i,k_i^{(r)}}$
+            \State $s_r^\star\gets\arg\min_{s\in\mathcal S\cap I_r}\{A_rs^2-2B_rs\}$
+            \If{$Q(k^{(r)},s_r^\star\mid z_h)<Q^\star$}
+                \State $Q^\star\gets Q(k^{(r)},s_r^\star\mid z_h)$
+                \State $(k^\star,s^\star)\gets(k^{(r)},s_r^\star)$
+            \EndIf
+        \EndFor
+        % 用实际存储格式重构候选，并以真实耦合目标决定是否接受。
+        \State $\theta_h^+\gets\operatorname{Pack}(k^\star,s^\star)$; $z_h^+\gets\operatorname{Decode}(\theta_h^+)$
+        \State $r^+\gets r-\mathcal A_h(z_h^+-z_h)$
+        \If{$\lVert r^+\rVert_2^2\le f-\eta$}
+            \State $(\theta_h,r,f)\gets(\theta_h^+,r^+,\lVert r^+\rVert_2^2)$
+            \State $\mathtt{changed}\gets\textbf{true}$
         \EndIf
     \EndFor
-    \If{$\textit{accepted}=\textbf{false}$}
-        \State
-        % 若 accepted = false：终止。
-        \textbf{break}
+    \If{\textbf{not} $\mathtt{changed}$}
+        \State \textbf{break}
     \EndIf
 \EndFor
-\State
-% 返回最终硬量化状态。
-\Return the final hard quantized state
+% 返回部署时实际使用的离散状态。
+\State \Return $\theta$
 \end{algorithmic}
 \end{algorithm}
