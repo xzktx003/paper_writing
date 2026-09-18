@@ -1,4 +1,4 @@
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \setlength{\tabcolsep}{3.2pt}
 \caption{
@@ -6,7 +6,7 @@
 Ablation of end-to-end scale fine-tuning. Each cell reports \emph{fine-tuned / not fine-tuned}; all metrics except perplexity are accuracies (\%).
 }
 \label{tab:finetuning}
-\resizebox{\textwidth}{!}{%
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrr}
 \toprule
 Model & WikiText-2$\downarrow$ & ARC-C$\uparrow$ & ARC-E$\uparrow$ & HellaSwag$\uparrow$ & PIQA$^{\dagger}\uparrow$ & LAMBADA$\uparrow$ & WinoGrande$\uparrow$ \\
@@ -21,4 +21,4 @@ Qwen3-32B & 7.74 / 8.06   & 60.32 / 59.78 & 82.74 / 81.88 & 78.17 / 78.11 & 70.8
 \vspace{1mm}
 % 飞书原文指出 PIQA 微调列与 LAMBADA 完全重复且和另一张表不一致，因此不据此得出结论。
 \footnotesize $^{\dagger}$The source record flags the fine-tuned PIQA column because it exactly duplicates LAMBADA and conflicts with another table. We preserve the transcription for auditability but exclude PIQA from the conclusion pending raw-log verification.
-\end{table*}
+\end{table}

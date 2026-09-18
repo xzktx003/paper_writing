@@ -14,7 +14,7 @@ GPTVQ combines vector representations with layer reconstruction and shows that r
 % VPTQ 用二阶目标构造显式向量码本，并引入残差与异常值编码；AQLM 采用加性码本与块级优化；CRVQ 对少量关键通道放松码本约束。
 VPTQ builds explicit vector codebooks from a second-order objective and adds residual and outlier coding; AQLM uses additive codebooks with block-level refinement; CRVQ relaxes the codebook constraint on a small set of critical channels~\cite{vptq,aqlm,crvq}.
 % QuIP\# 使用 Hadamard 非相干化与可压缩的 $E_8$ 格码本；QTIP 用网格编码把有效维度提升到远高于缓存可容纳的无结构码本；LLVQ 则采用 24 维 Leech 格及其结构化搜索与解码。
-QuIP introduces incoherence processing before quantization, and QuIP\# combines randomized Hadamard transforms with a compressible $E_8$ lattice codebook; QTIP uses trellis-coded quantization to raise the effective dimension far beyond what an unstructured codebook can keep in cache; LLVQ uses a 24-dimensional Leech lattice with structured search and decoding~\cite{quip,quipsharp,qtip,llvq}.
+QuIP\# combines randomized Hadamard transforms with a compressible $E_8$ lattice codebook; QTIP uses trellis-coded quantization to raise the effective dimension far beyond what an unstructured codebook can keep in cache; LLVQ uses a 24-dimensional Leech lattice with structured search and decoding~\cite{quipsharp,qtip,llvq}.
 % RSAVQ 把量化误差投影到 Fisher 度量下的低敏感方向，并按通道曲率分配比特；KBVQ-MoE 针对专家冗余与聚合偏置，在共享主分量之外对专家残差做向量量化。
 RSAVQ projects quantization error onto low-sensitivity directions of a Fisher metric and allocates bits by channel curvature; KBVQ-MoE targets expert redundancy and aggregation bias, applying vector quantization to expert residuals after sharing dominant components~\cite{rsavq,kbvqmoe}.
 % QTIP 已指出无结构高维码本在量化时的近邻代价为 $O(2^{kd}d)$，推理时码本还需放入硬件缓存，因而实用无结构维度通常不超过 8；AQLM 的 8 维码本约 1\,MiB，难以进入 L1，QuIP\# 的可压缩 8 维格码本也仅勉强放入。
@@ -36,7 +36,7 @@ We do not redesign codebook learning; instead, we study how a shared scale coupl
 % 表示确定后，码字之间的交互仍需搜索。
 After the representation is fixed, interactions among codewords still have to be searched.
 % GPTVQ 按列用 Hessian 补偿未量化权重；AQLM 把输出误差展开为单点项与成对交互，并用束搜索近似；VPTQ 用通道独立的二阶修正做更细的向量量化。
-Optimal Brain Compression and GPTQ motivate sequential second-order error compensation, while BRECQ demonstrates block reconstruction with curvature-aware objectives; GPTVQ extends second-order compensation to vector assignments, AQLM expands output error into unary and pairwise terms and approximates the assignment with beam search, and VPTQ uses channel-independent second-order refinement for finer vector quantization~\cite{obc,gptq,brecq,gptvq,aqlm,vptq}.
+GPTVQ applies Hessian-based compensation column by column; AQLM expands output error into unary and pairwise terms and approximates assignment with beam search; VPTQ uses channel-independent second-order refinement for finer vector quantization~\cite{gptvq,aqlm,vptq}.
 % RSAVQ 约束误差方向，CRVQ 把交互预算集中到关键通道，KBVQ-MoE 则处理专家聚合后的偏置。
 RSAVQ constrains the error direction, CRVQ concentrates the interaction budget on critical channels, and KBVQ-MoE handles bias after expert aggregation~\cite{rsavq,crvq,kbvqmoe}.
 % 因此本文不能声称首次对离散码字交互建模。

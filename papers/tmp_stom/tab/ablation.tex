@@ -1,12 +1,24 @@
-\begin{table*}[t]\centering\small
-\caption{Optimization ablation from a common initialization. S: scale optimization; J: joint index--scale optimization.}
+\begin{table}[t]
+\centering
+\setlength{\tabcolsep}{2.8pt}
+\caption{
+% 共享尺度（Scale）与码字分配（Assign）的消融。困惑度越低越好，其余指标越高越好。原文未报告仅优化 Assign 的配置。
+Ablation of shared-scale optimization (Scale) and codeword-assignment optimization (Assign). Lower WikiText-2 perplexity is better; higher task accuracy is better. The assignment-only configuration is not reported in the source manuscript.
+}
 \label{tab:ablation}
-\begin{tabular}{lccrrrrrr}\toprule
-Model & S & J & Wiki2$\downarrow$ & ARC-C & ARC-E & HellaSwag & MMLU & WinoGrande\\\midrule
-Qwen3-4B & $\times$ & $\times$ & 22.69 & 42.24 & 65.87 & 54.45 & 53.49 & 61.96\\
- & $\checkmark$ & $\times$ & 21.01 & 42.38 & 66.73 & 55.73 & 54.49 & 61.59\\
- & $\checkmark$ & $\checkmark$ & 12.18 & 42.92 & 70.12 & 63.16 & 55.01 & 62.90\\\midrule
-Qwen3-8B & $\times$ & $\times$ & 14.41 & 49.57 & 76.98 & 61.96 & 62.38 & 66.54\\
- & $\checkmark$ & $\times$ & 13.85 & 51.79 & 78.20 & 63.41 & 62.78 & 67.88\\
- & $\checkmark$ & $\checkmark$ & 9.76 & 54.52 & 79.92 & 69.80 & 63.23 & 68.67\\\bottomrule
-\end{tabular}\end{table*}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccrrrrrrrrr}
+\toprule
+Model & Scale & Assign & Wiki2$\downarrow$ & ARC-C & ARC-E & HellaS & LAMBADA & PIQA & BoolQ & MMLU & WinoG \\
+\midrule
+Qwen3-4B & $\times$ & $\times$ & 22.69 & 42.24 & 65.87 & 54.45 & 45.31 & 71.00 & 76.14 & 53.49 & 61.96 \\
+          & $\checkmark$ & $\times$ & 21.01 & 42.38 & 66.73 & 55.73 & 46.32 & 71.38 & 75.93 & 54.49 & 61.59 \\
+          & $\checkmark$ & $\checkmark$ & 12.18 & 42.92 & 70.12 & 63.16 & 55.79 & 73.61 & 77.13 & 55.01 & 62.90 \\
+\midrule
+Qwen3-8B & $\times$ & $\times$ & 14.41 & 49.57 & 76.98 & 61.96 & 57.87 & 72.85 & 83.36 & 62.38 & 66.54 \\
+          & $\checkmark$ & $\times$ & 13.85 & 51.79 & 78.20 & 63.41 & 59.38 & 73.72 & 80.39 & 62.78 & 67.88 \\
+          & $\checkmark$ & $\checkmark$ & 9.76 & 54.52 & 79.92 & 69.80 & 62.74 & 76.01 & 80.55 & 63.23 & 68.67 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

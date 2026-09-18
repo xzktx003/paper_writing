@@ -1,4 +1,4 @@
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \setlength{\tabcolsep}{2.7pt}
 \renewcommand{\arraystretch}{1.08}
@@ -7,7 +7,7 @@
 Main results on six models. Lower PPL is better and higher average accuracy is better. Bold denotes the best result among quantized methods.
 }
 \label{tab:main-ppl}
-\resizebox{\textwidth}{!}{%
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{l*{6}{rr}}
 \toprule
 & \multicolumn{2}{c}{Qwen3-4B} & \multicolumn{2}{c}{Qwen3-8B} & \multicolumn{2}{c}{Qwen3-14B} & \multicolumn{2}{c}{Qwen3-32B} & \multicolumn{2}{c}{Llama-3.1-8B-Inst.} & \multicolumn{2}{c}{Llama-3.1-70B-Inst.} \\
@@ -26,7 +26,4 @@ Ours      & \textbf{12.18} & \textbf{61.42} & 9.76 & \textbf{68.61} & \textbf{8.
 \bottomrule
 \end{tabular}%
 }
-\vspace{1mm}
-% 平均准确率沿用飞书实验记录中的聚合值；粗体按照实际数值重新计算。
-\footnotesize Avg. denotes the aggregate accuracy recorded by the evaluation pipeline. Boldface is recomputed from the reported values rather than copied from inconsistent source formatting.
-\end{table*}
+\end{table}

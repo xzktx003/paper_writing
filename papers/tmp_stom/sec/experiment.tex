@@ -20,41 +20,25 @@ Calibration uses 320 RedPajama-Data-1T sequences of length 4,096 per model. We s
 
 \subsection{Main Results}
 
-% 表 1 严格按飞书原表组织：每个模型相邻报告 WikiText-2 PPL 与汇总准确率，避免把 C4 误当成主表的第二指标。
-Table~\ref{tab:main-ppl} follows the source table directly: WikiText-2 PPL and aggregate accuracy are placed side by side for each model. This avoids conflating C4 perplexity with the aggregate-accuracy column.
+% 表 1 汇总同一本地评测协议下的主要结果，各方法以 2 bit/weight 为目标配置。最终比较应按实际存储格式核算索引、码本和尺度等附加开销。
+Table~\ref{tab:main-ppl} summarizes the main results under a unified local evaluation protocol, with each method targeting 2 bits per weight. A final storage comparison should account for indices, codebooks, scales, and other metadata in the actual storage format.
 \input{tab/main_ppl}
-
-% 本文方法在 Qwen3-4B、14B 和 32B 上取得量化方法中最低的 PPL，在 Qwen3-4B 和 8B 上取得最高的汇总准确率。
-Our method obtains the lowest PPL among quantized methods on Qwen3-4B, 14B, and 32B, and the highest aggregate accuracy on Qwen3-4B and 8B. LLVQ remains best in PPL on Qwen3-8B and both Llama models, while QTIP or AQLM gives the strongest aggregate accuracy on the other models. The evidence therefore supports competitive quality rather than uniform dominance.
-
-% 图 2 聚焦 Qwen3-4B，从困惑度和代表性下游任务两个互补视角展示结果；它是表格的可视化摘要，而不是新增的评价口径。
-Figure~\ref{fig:qwen3-4b-overview} focuses on Qwen3-4B and presents two complementary views of the results: an equal-weight mean of WikiText-2 and C4 perplexity, and a radar summary over selected downstream tasks. It is a visualization of the tabulated measurements rather than an additional evaluation protocol.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figure2_qwen3_4b_ppl_mean.png}
-\caption{
-% Qwen3-4B 的质量概览。（a）WikiText-2 与 C4 PPL 的等权算术平均值，越低越好；该均值不是按 token 合并计算。（b）所选方法在 ARC-Easy、HellaSwag、LAMBADA、PIQA 和 WinoGrande 上的准确率雷达图，采用 35--75 的截断径向刻度以显示差异。雷达图只用于紧凑展示所选子集；完整的方法比较以表格为准。
-Quality overview on Qwen3-4B. (a) Equal-weight arithmetic mean of WikiText-2 and C4 perplexity (lower is better); this value is not computed by pooling tokens across datasets. (b) Accuracy radar over ARC-Easy, HellaSwag, LAMBADA, PIQA, and WinoGrande for a selected method subset, shown on a truncated radial scale of 35--75 for visibility. The radar is a compact subset visualization; the tables remain authoritative for complete method comparisons.
-}
-\label{fig:qwen3-4b-overview}
-\end{figure*}
 
 \subsection{Ablation Studies}
 
-% 表 2 比较是否执行端到端尺度微调；单元格内并列值避免原表使用两层勾叉表头造成阅读错位。
-\paragraph{End-to-end scale fine-tuning.} Table~\ref{tab:finetuning} compares runs with and without end-to-end scale fine-tuning. The paired cell format prevents the nested checkmark header in the source from being misread.
+% 表 2 考察量化后端到端尺度微调的作用：在相同量化设置下，对比开启和关闭微调时四个 Qwen3 模型的 WikiText-2 困惑度及零样本准确率。
+\paragraph{End-to-end scale fine-tuning.} Table~\ref{tab:finetuning} studies end-to-end scale fine-tuning after quantization. Under the same quantization setting, it compares WikiText-2 perplexity and zero-shot accuracy with and without fine-tuning for four Qwen3 model sizes.
 \input{tab/finetuning}
 
-% 微调总体改善 PPL，且多数任务有所提升；PIQA 原始列存在明确的数据一致性问题，故不用于结论。
-Fine-tuning consistently improves perplexity and improves most reported tasks. We do not draw a conclusion from PIQA because the supplied record explicitly flags that column for raw-log verification.
+% 四种模型规模在开启微调后均获得更低的 WikiText-2 PPL。除需核查的 PIQA 列外，其余准确率整体以小幅提升为主，但并非所有任务和规模都一致，例如 14B 的 HellaSwag 以及 8B、32B 的 WinoGrande 略有下降。PIQA 微调列与 LAMBADA 完全重复且和表 3 不一致，因此核实原始日志前不据此归纳。
+Fine-tuning lowers WikiText-2 perplexity at all four model sizes. Excluding the PIQA column that requires verification, the reported accuracies mostly improve slightly, although the trend is not universal: HellaSwag decreases for 14B, and WinoGrande decreases for 8B and 32B. The fine-tuned PIQA values exactly duplicate LAMBADA and conflict with Table~\ref{tab:ablation}, so we draw no conclusion from that column before checking the raw logs.
 
-% 表 3 从同一起点分离尺度更新和硬索引—尺度联合更新的贡献。
-\paragraph{Joint index--scale decisions.} Table~\ref{tab:ablation} separates scale-only optimization from joint hard-index and scale optimization under a common initialization.
+% 表 3 消融尺度与码字分配两个优化对象。“×/×”“√/×”“√/√”分别表示均不优化、仅优化尺度、联合优化尺度与分配。由于未报告“×/√”，该表不能单独估计 Assign 的独立贡献。
+\paragraph{Scale and assignment.} Table~\ref{tab:ablation} ablates scale and codeword-assignment optimization. The configurations $\times/\times$, $\checkmark/\times$, and $\checkmark/\checkmark$ denote no optimization, scale-only optimization, and joint scale-and-assignment optimization, respectively. Because $\times/\checkmark$ is not reported, this table cannot isolate the independent contribution of assignment optimization.
 \input{tab/ablation}
 
-% 仅优化尺度把两个模型的 PPL 从 22.69/14.41 降到 21.01/13.85，联合优化进一步降到 12.18/9.76。
-Scale-only optimization reduces Qwen3-4B/8B PPL from 22.69/14.41 to 21.01/13.85; joint optimization further reduces it to 12.18/9.76. The mixed downstream changes caution against equating lower perplexity with universal task improvement.
+% 从均不优化到仅优化尺度，Qwen3-4B/8B 的 PPL 分别从 22.69/14.41 降至 21.01/13.85；联合优化后进一步降至 12.18/9.76。联合优化提高 Qwen3-4B 的全部已列准确率和 Qwen3-8B 的多数准确率，但后者的 BoolQ 从 83.36 降至 80.55。
+Moving from no optimization to scale-only optimization reduces Qwen3-4B/8B perplexity from 22.69/14.41 to 21.01/13.85; joint optimization further reduces it to 12.18/9.76. Joint optimization improves every listed accuracy for Qwen3-4B and most accuracies for Qwen3-8B, although BoolQ on Qwen3-8B decreases from 83.36 to 80.55.
 
 % 表 4 在开启思考模式的 Qwen3.8-27B 上比较推理和代码能力。
 \paragraph{Thinking-mode evaluation.} Table~\ref{tab:qwen38} evaluates Qwen3.8-27B with thinking enabled.

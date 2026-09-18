@@ -1,11 +1,5 @@
 % 结论
 \section{Conclusion}
 
-% 本文把基础码字维度与联合优化范围分开设计，并研究低维码字在共享尺度下的联合选择。
-This paper separates base-codeword dimension from joint optimization range and studies joint selection of low-dimensional codewords under a shared scale.
-% 多尺度探针并集扩大候选覆盖，完整残差上的相切可分离上界控制跨位置交互，正尺度下的直线下包络把候选池内的码字—尺度组合问题化为有限区间搜索。
-A union of multi-scale probes expands candidate coverage, a tangent separable upper bound on the full residual controls cross-position interactions, and the lower envelope of lines on the positive-scale domain converts candidate-pool codeword--scale optimization into a finite interval search.
-% 理论结果界定了候选池内代理最优性、代表区间数量、真实下降可能被保守上界拒绝的条件，以及代理松弛保持代表组合的条件。
-The analysis establishes candidate-pool surrogate optimality, bounds the number of representative intervals, identifies when a conservative upper bound may reject a true descent, and characterizes when surrogate slack preserves representative combinations.
-% 实验显示，联合选择相较仅调尺度显著改善 Qwen3-4B/8B 的困惑度，并在若干模型和任务上与高维结构化量化竞争；结果也揭示 BoolQ、MMLU 与 Llama 指令模型上的非一致增益，因此不作跨模型统一占优的主张。
-Experiments show that joint selection substantially improves Qwen3-4B/8B perplexity over scale-only optimization and is competitive with high-dimensional structured quantization on several models and tasks. The nonuniform gains on BoolQ, MMLU, and Llama instruction models also argue against a claim of universal dominance.
+% 本文研究低维基础码字在共享尺度下的联合选择，将表示维度与优化范围分开设计。本文通过多尺度探针并集、基于完整校准残差的相切可分离上界，以及正尺度下的直线下包络，将候选池内的码字—尺度联合优化转化为有限区间求解。实验中，联合优化将 Qwen3-4B/8B 的 WikiText-2 PPL 分别由 22.69/14.41 降至 12.18/9.76；在 Qwen3.8-27B 的量化比较中，本方法取得更低的 WikiText-2/C4 PPL，并在 LiveCodeBench v6 和 GPQA-D 上高于 QTIP 与 LLVQ，但 BF16 仍在所有指标上更优。维度、搜索成本和推理速度实验进一步给出了当前方法的质量—码率与效率边界。这些结论仅适用于本文列示的模型和实验设置，不构成跨模型统一占优的主张。
+This paper studies joint selection of low-dimensional base codewords under a shared scale and separates representation dimension from optimization range. A union of multi-scale probes, a tangent separable upper bound based on the full calibration residual, and a lower envelope of lines over the positive-scale domain convert candidate-pool codeword--scale optimization into a finite interval search. Joint optimization reduces WikiText-2 perplexity on Qwen3-4B/8B from 22.69/14.41 to 12.18/9.76. In the Qwen3.8-27B quantized comparison, our method obtains lower WikiText-2/C4 perplexity and higher LiveCodeBench v6 and GPQA-D scores than QTIP and LLVQ, although BF16 remains better on every reported metric. The dimension, search-cost, and inference-speed experiments further characterize the method's quality--rate and efficiency boundaries. These conclusions apply only to the models and settings reported here and do not imply uniform dominance across models.

@@ -1,76 +1,48 @@
 % 引言
 \section{Introduction}
 
-% 低比特权重量化能够降低大语言模型的存储与权重读取开销，其有效性取决于有限表示预算下对权重及模型响应的保留程度。
-Low-bit weight quantization reduces the storage and weight-loading cost of large language models, and its effectiveness depends on how well weights and model responses are preserved under a limited representation budget~\cite{gptq,awq,omniquant,spqr,squeezellm}.
-% 向量量化（VQ）用一个索引联合表示多个参数，相比逐标量编码具有更灵活的量化几何。
-Vector quantization (VQ) jointly represents multiple parameters with a single index and therefore offers a more flexible quantization geometry than scalar encoding~\cite{grayneuhoff,gershogray}.
-% 随着研究从低维显式码本扩展至高维结构化编码，量化维度成为提升表示质量的重要设计因素：QTIP 通过 trellis-coded quantization 实现超过 100 维的有效联合编码，LLVQ 则利用 24 维 Leech 格构造量化表示与相应的搜索、索引和解码机制。
-As research has expanded from low-dimensional explicit codebooks to high-dimensional structured encodings, quantization dimension has become an important design factor for representation quality: QTIP uses trellis-coded quantization to realize effective joint coding beyond 100 dimensions, while LLVQ uses a 24-dimensional Leech lattice to construct the quantized representation together with the corresponding search, indexing, and decoding mechanisms~\cite{qtip,llvq}.
-% 高维路线并非没有代价。无结构码本的近邻搜索与缓存占用随维度指数增长，实用无结构维度通常不超过 8；网格与格点用状态或对称性换取更高有效维度，却把相邻子向量绑到路径或格约束上，解码需要专用核，局部改写一个子块并重拟合共享尺度也不再是一次查表。
-The high-dimensional route is not free. Unstructured codebooks incur exponential nearest-neighbour and cache cost, so practical unstructured dimensions are typically at most 8; trellises and lattices buy a higher effective dimension through state or symmetry, but they couple neighbouring subvectors by a path or lattice constraint, need a specialised decoding kernel, and make a local rewrite plus shared-scale refit no longer a table lookup~\cite{qtip,quipsharp,aqlm,llvq}.
-% 因此，一个自然的问题不是“低维表示是否在率失真上优于高维结构码”，而是：在保留可查表、可局部改写的低维码字时，更充分的联合选择能否使模型质量达到甚至超过这些高维方法。
-The natural question is therefore not whether a low-dimensional representation dominates structured high-dimensional codes in a rate--distortion sense, but whether, while retaining lookup-table and locally rewritable low-dimensional codewords, more thorough joint selection can make model quality match or even exceed these high-dimensional methods.
+% 低比特权重量化能够降低大语言模型的存储需求与权重读取开销。向量量化（VQ）通过一个索引联合表示多个参数，相比逐标量编码具有更灵活的表示能力。近年来，QTIP 和 LLVQ 等方法进一步利用 trellis 或格结构提高有效量化维度，但也带来相应的搜索与部署约束：无结构高维码本的近邻搜索和缓存开销随维度快速增长；trellis、网格和格点方法则通过路径或格约束降低搜索难度，同时减少子块独立查表与局部改写的灵活性。因此，本文关注一个核心问题：在保留低维码字可查表性和局部可改写性的前提下，扩大跨位置的联合选择范围，能否使模型质量接近甚至达到高维结构化量化方法的水平？
+Low-bit weight quantization reduces the storage and weight-loading costs of large language models. Vector quantization (VQ) represents multiple parameters jointly with one index and therefore offers greater representational flexibility than scalar quantization~\cite{grayneuhoff,gershogray}. Recent methods such as QTIP and LLVQ increase the effective quantization dimension using trellis or lattice structures~\cite{qtip,llvq}, but they also introduce search and deployment constraints: nearest-neighbor search and cache costs grow rapidly for unstructured high-dimensional codebooks, while trellises and lattices reduce search complexity through path or lattice constraints at the cost of independent lookup and local rewritability. This paper therefore asks whether expanding joint selection across positions can approach the quality of high-dimensional structured quantization while retaining lookup-friendly, locally rewritable low-dimensional codewords.
 
-% 回答这一问题，需要区分向量内部的联合表示与多个向量之间的联合选择。
-Answering this question requires distinguishing joint representation inside a vector from joint selection across multiple vectors.
-% 以共享尺度 VQ 为例，多个位置分别选择低维码字，但共同使用一个幅值尺度。
-In shared-scale VQ, for example, multiple positions each select a low-dimensional codeword while sharing a single amplitude scale.
-% 当尺度也参与优化时，整组码字决定适合的尺度，尺度又改变各位置候选的相对优劣。
-When the scale also participates in optimization, the entire group of codewords determines a suitable scale, and that scale in turn changes the relative ranking of candidates at each position.
-% 因此，在旧尺度下挑选码字可能排除重新调整尺度后更有利的候选；即便每次单位置更新后都重新优化尺度，也可能停留在只有多位置同时变化才能改善的状态。
-Consequently, selecting codewords under an old scale may exclude candidates that would become preferable after the scale is refit; even if the scale is re-optimized after every single-position update, the procedure may still remain at a state that can be improved only when multiple positions change together.
-% 附录 A 给出一个可核算的存在性实例：两个单位置更新在各自重调尺度后都变差，而同步修改两个位置可以消除误差。
-Appendix~\ref{app:example} gives a checkable existence instance in which both one-at-a-time updates become worse after their respective scale refits, whereas changing two positions together eliminates the error.
-% 图 1 进一步用两阶段轨迹直观展示联合停滞：单位置索引更新与尺度重优化收敛后，误差在切换点附近形成平台；改用联合索引更新后，三个尺度组的真实层输出误差继续下降。
-Figure~\ref{fig:motivation} further visualizes joint stagnation with a two-stage trajectory. After single-index updates with scale re-optimization converge, the error forms a plateau around the switching point; after switching to joint-index updates, the true layer-output error continues to decrease for all three scale groups.
-% 右图给出 116 次被接受更新中改动索引数的分布，其中 97.4\% 的更新同时改变至少两个索引，说明有效更新主要来自协调的多位置变化。
-The right panel reports the number of changed indices across 116 accepted updates. In total, 97.4\% of the accepted updates change at least two indices, indicating that the effective moves are predominantly coordinated multi-position changes.
+% 回答这一问题，需要区分向量内部的联合表示与多个向量之间的联合选择。以共享尺度 VQ 为例，同一尺度组内的多个位置分别选择低维码字，但共用同一个尺度参数。由于最优尺度取决于整组码字的组合，它又会反过来改变各位置候选的相对优劣。于是，即便每次单位置更新后都重新优化尺度，逐点方法仍可能陷入联合停滞：没有任何单位置更新能够继续降低误差，但同时改变多个位置仍可能获得真实下降。图 1 用两阶段轨迹展示这一现象；右图进一步给出被接受更新中索引改动数的分布。本文将这一现象形式化为共享尺度下的联合选择问题，研究在不提高基础码字维度的情况下，如何以可控成本发现并验证这类联合更新。
+Answering this question requires distinguishing joint representation within a vector from joint selection across multiple vectors. In shared-scale VQ, positions in the same scale group select low-dimensional codewords independently but share one scale. Because the optimal scale depends on the complete codeword combination and in turn changes the relative ordering of candidates, a pointwise method may stagnate even when it re-optimizes the scale after every single-position update: no individual change reduces the error, whereas a coordinated multi-position change can. Figure~\ref{fig:motivation} illustrates this behavior with two-stage trajectories and reports the number of indices changed by accepted updates. We formulate this phenomenon as joint selection under a shared scale and study how to discover and verify such updates at controlled cost without increasing the base-codeword dimension.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figure1_motivation.png}
+\includegraphics[width=\linewidth]{figure1_motivation_code.png}
 \caption{
-% 共享尺度下的联合停滞与多索引更新。（a）三个共享尺度组在单位置索引更新与尺度重优化阶段逐步进入平台；切换到联合索引更新后，归一化真实层输出误差继续下降。每条曲线以切换时的误差归一化为 1。（b）被接受更新的索引改动数分布；多索引更新占多数（$h\geq2$：97.4\%，$N=116$）。
-Joint stagnation and multi-index updates under shared scales. (a) Three shared-scale groups approach a plateau under single-index updates with scale re-optimization; after switching to joint-index updates, normalized true layer-output error resumes its descent. Each trajectory is normalized to 1 at the switch. (b) Distribution of the number of changed indices per accepted update; multi-index updates predominate ($h\geq2$: 97.4\%, $N=116$).
+% （a）三个共享尺度组在单位置索引更新与尺度重优化阶段逐步进入平台；切换到联合索引更新后，归一化真实层输出误差继续下降。每条曲线均以切换时的误差归一化为 1。（b）被接受更新的索引改动数分布；多索引更新占多数。
+(a) Three shared-scale groups approach a plateau under single-index updates with scale re-optimization; after switching to joint-index updates, the normalized true layer-output error continues to decrease. Each curve is normalized to 1 at the switch. (b) Distribution of the number of changed indices among accepted updates; multi-index updates are the majority.
 }
 \label{fig:motivation}
-\end{figure*}
+\end{figure}
 
-% 我们的切入点是在基础码字维度不变的情况下扩大联合决策范围，而不是将低维码字组合等同于任意高维码本。
-Our starting point is to enlarge the joint decision range while keeping the base-codeword dimension unchanged, rather than equating a combination of low-dimensional codewords with an arbitrary high-dimensional codebook.
+% 为实现可控的联合更新，我们提出共享尺度下的码字协同优化方法。候选池由若干探针尺度下的局部短名单取并集，使搜索不绑定在当前尺度的候选排序上。随后利用完整校准残差建立相切可分离上界，使每个位置的候选代价成为共享尺度的二次函数。利用正尺度域内公共项可消去的性质，我们将候选比较转化为直线下包络，并合并各位置的切换点。在每个代表区间中，联合码字组合保持不变，只需求解一个受合法尺度约束的一维二次问题。该过程直接更新硬索引与实际尺度，不对索引引入概率参数或反向传播；其最优性限定于当前候选池中的代理目标。
+To obtain controllable joint updates, we propose cooperative codeword optimization under a shared scale. Candidate pools are formed by taking the union of local shortlists at several probe scales, so the search is not tied to the candidate ordering at the current scale. We then use the full calibration residual to construct a tangent separable upper bound, under which each candidate cost is quadratic in the shared scale. By canceling the common term over the positive-scale domain, candidate comparison becomes a lower-envelope problem over lines. After merging switch points across positions, the joint codeword combination is fixed within each representative interval, leaving only a one-dimensional quadratic problem over legal scales. The procedure directly updates hard indices and stored scales without probabilistic index parameters or backpropagation; its optimality is restricted to the surrogate objective over the current candidate pools.
 
-% 为实现可控的联合更新，我们提出共享尺度下的码字协同优化方法。
-To obtain controllable joint updates, we propose a method for coordinated codeword optimization under a shared scale.
-% 真实层输出误差包含跨位置二次交互，直接枚举联合候选又具有指数级成本。
-The true layer-output error contains quadratic interactions across positions, while directly enumerating joint candidates has exponential cost.
-% 候选池由若干探针尺度下的局部短名单取并集，使搜索覆盖的码字不绑定在当前尺度的排序上。
-The candidate pool is the union of local shortlists at several probe scales, so that the searched codewords are not bound to the ranking under the current scale.
-% 我们随后利用完整校准残差建立相切可分离上界，使每个位置的候选代价成为共享尺度的二次函数。
-We then use the full calibration residual to construct a tangent separable upper bound, so that the candidate cost at each position becomes a quadratic function of the shared scale.
-% 随后利用正尺度域内公共常数项可消去的性质，将候选比较转化为直线下包络，并合并各位置的切换点。
-We then exploit the fact that a common constant term can be cancelled on the positive-scale domain, convert candidate comparison into a lower envelope of lines, and merge the switching points of all positions.
-% 在每个代表区间中，联合码字组合保持不变，只需求解一个受合法尺度约束的一维二次问题。
-Within each representative interval, the joint codeword combination remains constant, and it remains only to solve a one-dimensional quadratic problem subject to legal-scale constraints.
-% 该过程直接更新硬索引与实际尺度，不要求对索引引入概率参数或反向传播；其最优性限定于当前候选池中的代理目标。
-The procedure directly updates hard indices and the stored scale without introducing probabilistic index parameters or backpropagation; its optimality is restricted to the surrogate objective over the current candidate pool.
-% 我们以 6 维基础码字为主要实验设置，分别比较同一初始化上的后优化增益，以及与 QTIP、LLVQ 等完整量化方案的最终质量。
-We take 6-dimensional base codewords as the main experimental setting, and we separately compare post-optimization gains on the same initialization against the final quality of complete quantization schemes such as QTIP and LLVQ.
-% 评价同时覆盖困惑度、下游任务、实际存储预算和优化成本，并通过固定基础维度、改变联合范围的实验检验协同选择的作用。
-The evaluation covers perplexity, downstream tasks, the actual storage budget, and optimization cost, and it tests the role of coordinated selection by keeping the base dimension fixed while varying the joint range.
-% 完整结果同时报告困惑度、下游准确率、码率与优化时间，避免把单一指标的改善解释为全面占优。
-The complete results report perplexity, downstream accuracy, rate, and optimization time together, avoiding an interpretation of a single improved metric as universal dominance.
+% 实验结果验证了联合决策的有效性。在 Qwen3-4B 和 Qwen3-8B 上，尺度与码字分配联合优化将 WikiText-2 PPL 分别从 22.69/14.41 降至 12.18/9.76，明显优于仅优化共享尺度。在 Qwen3.8-27B 上，本方法相比 QTIP 和 LLVQ 取得更低的 WikiText-2/C4 PPL，并在 LiveCodeBench v6 和 GPQA-D 上获得更高分数。维度消融进一步表明，在约 2 bpw 的实际码率下，低维基础码字结合跨位置联合优化能够取得有竞争力的模型质量。
+Experiments support the effectiveness of joint decisions. On Qwen3-4B and Qwen3-8B, jointly optimizing the scale and codeword assignments reduces WikiText-2 perplexity from 22.69/14.41 to 12.18/9.76, substantially outperforming scale-only optimization. On Qwen3.8-27B, our method achieves lower WikiText-2/C4 perplexity than QTIP and LLVQ and higher scores on LiveCodeBench v6 and GPQA-D. The dimension ablation further shows that low-dimensional base codewords combined with cross-position joint optimization provide competitive model quality at an actual rate of approximately 2 bpw. Figure~\ref{fig:qwen3-4b-overview} visualizes the Qwen3-4B results.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figure2_qwen3_4b_ppl_mean.png}
+\caption{
+% Qwen3-4B 结果概览。（a）WikiText-2 与 C4 PPL 的等权平均值，越低越好。（b）所选方法在五个下游任务上的结果；完整数值比较以表格为准。
+Overview of Qwen3-4B results. (a) Equal-weight mean of WikiText-2 and C4 perplexity; lower is better. (b) Results of selected methods on five downstream tasks. The tables provide the complete numerical comparison.
+}
+\label{fig:qwen3-4b-overview}
+\end{figure}
 
 % 本文将基础码字维度与联合优化范围分开设计，贡献归纳为三点：
-This paper separates the design of the base-codeword dimension from the joint-optimization range, and the contributions can be summarized in three points:
+Our contributions are threefold:
 \begin{itemize}
 \item
 % 提出固定低维表示下的共享尺度联合优化方法，用多尺度探针并集生成候选，并通过完整残差感知的评价协调多个硬码字与尺度。
-We propose a shared-scale joint optimization method under a fixed low-dimensional representation, generating candidates from a union of multi-scale probes and coordinating multiple hard codewords and the scale through evaluation that is aware of the full residual.
+We propose shared-scale joint optimization under a fixed low-dimensional representation, using a union of multi-scale probe candidates and full-residual-aware evaluation to coordinate multiple hard codewords and their shared scale.
 \item
-% 建立相切可分离上界及下包络区间求解，证明候选池内上界最优性、代表区间数界、真实下降被拒绝的充分条件，以及代理松弛不改变区间最优组合的条件。
-We construct a tangent separable upper bound and a lower-envelope interval solver, and we prove upper-bound optimality inside the candidate pool, a bound on the number of representative intervals, a sufficient condition under which a true descent is rejected, and conditions under which surrogate slack does not change the interval-optimal combination.
+% 建立相切可分离上界及下包络区间求解，给出候选池内的上界最优性以及相应的理论边界。
+We construct a tangent separable upper bound and a lower-envelope interval solver, and establish upper-bound optimality within the candidate pools together with its theoretical limits.
 \item
-% 用同起点优化增益、基础维度消融和多模型比较，验证联合选择的收益并明确其在不同模型与任务上的边界。
-We validate the benefit of joint selection through same-start optimization gains, a base-dimension ablation, and multi-model comparisons, while explicitly reporting its boundaries across models and tasks.
+% 通过同起点协同消融、基础维度消融和多模型量化评测，考察联合选择对模型质量与优化效率的影响。
+We evaluate the effect of joint selection on model quality and optimization cost through same-start ablations, a base-dimension ablation, and multi-model quantization experiments.
 \end{itemize}

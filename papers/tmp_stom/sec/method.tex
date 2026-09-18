@@ -10,18 +10,18 @@ Algorithm~\ref{alg:joint} summarizes the overall iteration, and the appendix giv
 % 每轮只联合处理一个共享尺度组，其余组按固定调度顺序更新；本文不声称同时精确求解多尺度的全局组合问题。
 Each round jointly processes only one shared-scale group, and the remaining groups are updated in a fixed schedule; this paper does not claim to solve the global multi-scale combinatorial problem exactly at once.
 
-% 图 3 汇总完整求解流程：多尺度探针构造候选池，完整残差给出相切分块上界，下包络把笛卡尔积压缩为有限代表区间，最后用真实耦合误差验收候选。
-Figure~\ref{fig:method-overview} summarizes the complete solver. Multi-scale probes construct the candidate pools, the full residual produces a tangent block-separable majorizer, lower envelopes reduce the Cartesian product to finitely many representative intervals, and the true coupled error finally accepts or rejects the proposed state.
+% 图 3 展示整体迭代与区间搜索细节。
+Figure~\ref{fig:method-overview} shows the overall iteration and the interval-search procedure.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figure3_exact_rendered.png}
+\includegraphics[width=\linewidth]{figure3_exact_rendered.png}
 \caption{
-% 共享尺度协同码字优化总览。（a）在多个合法探针尺度下合并局部 Top-$K$ 候选。（b）利用完整残差和满足 $D\succeq H$ 的分块对角矩阵构造相切可分离上界。（c）每个位置的仿射候选代价形成下包络；合并切换点后，只需在代表区间内求解一维二次问题。候选状态最终由真实耦合目标验证，只有达到充分下降阈值时才被接受。
-Overview of shared-scale cooperative codeword optimization. (a) Local Top-$K$ candidates are merged across multiple legal probe scales. (b) The full residual and a block-diagonal matrix satisfying $D\succeq H$ construct a tangent separable majorizer. (c) Affine candidate costs form a lower envelope at each position; after merging switch points, only a one-dimensional quadratic problem must be solved within each representative interval. The candidate state is finally verified against the true coupled objective and accepted only when it meets the sufficient-decrease threshold.
+% 上层概述硬量化状态、完整残差、相切上界、区间搜索与真实误差验证的迭代流程；下层展示单位置候选比较、切换点合并和区间内尺度优化。下包络依据精确仿射函数绘制。
+The upper row summarizes the iteration over the hard quantized state, full residual, tangent upper bound, interval search, and true-error verification. The lower row shows per-position candidate comparison, merged switch points, and scale optimization within each interval. The lower envelope is determined by the exact affine candidate functions.
 }
 \label{fig:method-overview}
-\end{figure*}
+\end{figure}
 
 % 联合搜索的代理目标与结构性质
 \subsection{Surrogate Objective and Structural Properties for Joint Search}
@@ -227,65 +227,37 @@ For a generally dense group, Eq.~\eqref{eq:D} must process position pairs; that 
 
 % 算法 1：共享尺度下的联合码字优化。
 \begin{algorithm}[t]
-\caption{Shared-scale cooperative codeword optimization (\method)}
+\caption{Joint codeword optimization under a shared scale}
 \label{alg:joint}
 \begin{algorithmic}[1]
-% 输入：权重、校准输入、码本、尺度组、初始硬状态、可修改位置、探针与搜索预算、合法尺度域、遍历上限和验收阈值。
-\Require $W,X,\mathcal C,\{\mathcal G_h,\mathcal J_h\}_{h=1}^{G},\theta^{(0)}=(k^{(0)},s^{(0)})$
-\Require $\Sigma,K,K_{\max},\mathcal S,T,\eta$
+% 输入：权重、校准输入、初始硬量化状态、固定码本与尺度组、探针尺度、候选预算、合法尺度域、最大遍历数和下降阈值。
+\Require $W,X,z^{(0)},\mathcal C,\{\mathcal G_h\}_{h=1}^{G},\Sigma,K,K_{\max},\mathcal S,T,\eta$
 % 输出：优化后的硬索引和存储尺度。
-\Ensure $\theta=(k,s)$
-% 初始化完整层残差与当前真实目标。
-\State $\theta\gets\theta^{(0)}$; $r\gets\operatorname{vec}(WX-\widehat W(\theta)X)$; $f\gets\lVert r\rVert_2^2$
+\Ensure $z=(k,s)$
+% 初始化完整层残差。
+\State $z\gets z^{(0)}$; $r\gets\operatorname{vec}(WX-\widehat W(z)X)$
 \For{$t=1,\ldots,T$}
-    \State $\mathtt{changed}\gets\textbf{false}$
+    \State $\mathtt{accepted}\gets\textbf{false}$
     \For{$h=1,\ldots,G$}
-        % 用当前完整残差构造组内二次模型及其分块相切上界。
-        \State $z_h\gets(s_hc_{k_i})_{i\in\mathcal G_h}$; $H\gets\mathcal A_h^\top\mathcal A_h$; $g\gets-\mathcal A_h^\top r$
-        \For{$i\in\mathcal G_h$}
-            \State $D_i\gets H_{ii}+\bigl(\sum_{j\ne i}\lVert H_{ij}\rVert_2+\varepsilon\bigr)I_d$
-            \State $u_i\gets z_i-D_i^{-1}g_i$
-            \State $d_{ik}(\sigma)\gets\lVert\sigma c_k-u_i\rVert_{D_i}^2$
-            % 可修改位置合并多尺度短名单；固定位置只保留当前码字。
-            \If{$i\in\mathcal J_h$}
-                \State $\mathcal P_i\gets\{k_i\}\cup\displaystyle\bigcup_{\sigma\in\Sigma}\operatorname{TopK}_{k}^{K}[-d_{ik}(\sigma)]$
-                \State $\mathcal P_i\gets\operatorname{Prune}(\mathcal P_i,K_{\max};k_i)$
-            \Else
-                \State $\mathcal P_i\gets\{k_i\}$
-            \EndIf
-            % 将每个候选写成尺度上的仿射函数并构造下包络。
-            \For{$k\in\mathcal P_i$}
-                \State $a_{ik}\gets c_k^\top D_i c_k$; $b_{ik}\gets c_k^\top(D_i z_i-g_i)$
-                \State $\ell_{ik}(s)\gets a_{ik}s-2b_{ik}$
-            \EndFor
-            \State $(L_i,\mathcal T_i)\gets\operatorname{LowerEnvelope}(\{\ell_{ik}\}_{k\in\mathcal P_i},\mathcal S)$
-        \EndFor
-        % 合并所有切换点并在每个代表区间中精确求解合法尺度。
-        \State $\mathcal T\gets\partial\mathcal S\cup\displaystyle\bigcup_{i\in\mathcal G_h}\mathcal T_i$
-        \State $\{I_r=[\alpha_r,\beta_r]\}_{r=1}^{R}\gets\operatorname{Partition}(\mathcal T)$
-        \State $(Q^\star,k^\star,s^\star)\gets(+\infty,\varnothing,\varnothing)$
-        \For{$r=1,\ldots,R$}
-            \State $\bar s_r\gets(\alpha_r+\beta_r)/2$; $k_i^{(r)}\gets\arg\min_{k\in\mathcal P_i}\ell_{ik}(\bar s_r)$
-            \State $A_r\gets\sum_{i\in\mathcal G_h}a_{i,k_i^{(r)}}$; $B_r\gets\sum_{i\in\mathcal G_h}b_{i,k_i^{(r)}}$
-            \State $s_r^\star\gets\arg\min_{s\in\mathcal S\cap I_r}\{A_rs^2-2B_rs\}$
-            \If{$Q(k^{(r)},s_r^\star\mid z_h)<Q^\star$}
-                \State $Q^\star\gets Q(k^{(r)},s_r^\star\mid z_h)$
-                \State $(k^\star,s^\star)\gets(k^{(r)},s_r^\star)$
-            \EndIf
-        \EndFor
-        % 用实际存储格式重构候选，并以真实耦合目标决定是否接受。
-        \State $\theta_h^+\gets\operatorname{Pack}(k^\star,s^\star)$; $z_h^+\gets\operatorname{Decode}(\theta_h^+)$
-        \State $r^+\gets r-\mathcal A_h(z_h^+-z_h)$
-        \If{$\lVert r^+\rVert_2^2\le f-\eta$}
-            \State $(\theta_h,r,f)\gets(\theta_h^+,r^+,\lVert r^+\rVert_2^2)$
-            \State $\mathtt{changed}\gets\textbf{true}$
+        % 构造组内上界和多尺度候选池。
+        \State $z_h\gets z|_{\mathcal G_h}$
+        \State $(g_h,H_h)\gets\operatorname{GroupStats}(r,\mathcal G_h)$
+        \State $D_h\gets\operatorname{BlockMajorizer}(H_h)$
+        \State $\{\mathcal P_i\}\gets\operatorname{ProbeUnion}(z,\mathcal C,D_h,\Sigma,K,K_{\max})$
+        % 通过下包络区间搜索联合求解硬索引和尺度。
+        \State $(k_h^+,s_h^+)\gets\operatorname{EnvelopeSearch}(z,\{\mathcal P_i\},D_h,\mathcal S)$
+        \State $z_h^+\gets\operatorname{Pack}(k_h^+,s_h^+)$
+        \State $r^+\gets\operatorname{Residual}(W,X,z_{-h},z_h^+)$
+        % 只接受真实层输出误差充分下降的更新。
+        \If{$\lVert r^+\rVert_2^2\le\lVert r\rVert_2^2-\eta$}
+            \State $z_h\gets z_h^+$; $r\gets r^+$; $\mathtt{accepted}\gets\textbf{true}$
         \EndIf
     \EndFor
-    \If{\textbf{not} $\mathtt{changed}$}
+    \If{\textbf{not} $\mathtt{accepted}$}
         \State \textbf{break}
     \EndIf
 \EndFor
 % 返回部署时实际使用的离散状态。
-\State \Return $\theta$
+\State \Return $z$
 \end{algorithmic}
 \end{algorithm}
