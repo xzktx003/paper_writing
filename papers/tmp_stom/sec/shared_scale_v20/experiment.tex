@@ -1,0 +1,58 @@
+% 实验
+\section{Experiments}
+
+% 我们从最终模型质量、同起点优化增益、基础码字维度以及离线和在线成本四个方面评价共享尺度联合选择。
+We evaluate shared-scale joint selection from four perspectives: final model quality, optimization gain from a common starting point, base-codeword dimension, and offline and online cost.
+
+\subsection{Experimental Setup}
+
+% 模型与数据。主评测覆盖 Qwen3-4B、8B、14B 和 32B，以及 Llama-3.1-8B-Instruct 和 70B-Instruct；另在开启思考模式的 Qwen3.8-27B 上报告推理与代码能力。
+\paragraph{Models and data.} The main evaluation covers Qwen3-4B, 8B, 14B, and 32B, together with Llama-3.1-8B-Instruct and 70B-Instruct; we additionally report reasoning and coding results for Qwen3.8-27B with thinking enabled.
+% 困惑度使用 WikiText-2 和 C4；零样本准确率使用 ARC-Challenge、ARC-Easy、HellaSwag、LAMBADA、PIQA、BoolQ、MMLU 和 WinoGrande，指令模型另报告 IFEval。
+Perplexity is measured on WikiText-2 and C4. Zero-shot accuracy is measured on ARC-Challenge, ARC-Easy, HellaSwag, LAMBADA, PIQA, BoolQ, MMLU, and WinoGrande, with IFEval additionally reported for instruction-tuned models.
+
+% 基线与指标。我们比较 BF16、PV-Tuning、QuIP\#、QTIP、AQLM、LLVQ 和无联合优化的低维初始化（NoWag）；PPL 越低越好，其余任务分数越高越好。
+\paragraph{Baselines and metrics.} We compare BF16, PV-Tuning, QuIP\#, QTIP, AQLM, LLVQ, and the low-dimensional initialization without joint optimization (NoWag). Lower perplexity is better, whereas higher task scores are better.
+% 主设置采用六维基础码字，码本大小为 $K=2^{2d}$；逻辑码率计入索引、FP16 码本、FP16 行列范数和向量尾部填充。
+The main setting uses six-dimensional base codewords and a codebook size $K=2^{2d}$. Logical rate includes indices, the FP16 codebook, FP16 row and column norms, and vector-tail padding.
+% 所有对比数值均来自飞书全文所汇总的同一实验快照；缺少可核查的批量大小、校准样本数或重复次数时，我们不补造这些配置，并在局限性中明确说明。
+All reported values come from the single experimental snapshot summarized in the supplied manuscript. When batch size, calibration-set size, or repetition count is unavailable, we do not invent it and state the omission explicitly as a limitation.
+
+\subsection{Main Results}
+
+% 表 1 汇总完整 PPL 结果。本文方法在 Qwen3-4B 上几乎恢复 BF16 的 WikiText-2 PPL（13.68 对 13.66），在 Qwen3-14B 和 32B 上取得所有量化方法中最低的 WikiText-2/C4 PPL。
+Table~\ref{tab:main-ppl} summarizes perplexity. Our method nearly recovers the BF16 WikiText-2 perplexity on Qwen3-4B (13.68 versus 13.66), and obtains the lowest WikiText-2/C4 perplexity among quantized methods on Qwen3-14B and 32B.
+% 在 Qwen3-8B 上，LLVQ 的 PPL 更低，而本文在 ARC-C、ARC-E 和 WinoGrande 上更强；Llama 指令模型上也不存在单一方法在所有指标上占优。
+On Qwen3-8B, LLVQ has lower perplexity, whereas our method is stronger on ARC-C, ARC-E, and WinoGrande; likewise, no single method dominates every metric on the Llama instruction models.
+\input{tab/shared_scale_v20/main_ppl}
+
+% 表 2 选取代表性下游任务，完整结果放在附录 C。该结果支持“低维表示可以保持竞争力”，但不支持所有模型和任务上的统一最优性。
+Table~\ref{tab:downstream-v20} presents representative downstream tasks, with full results in Appendix~\ref{app:all-results}. These results support the competitiveness of low-dimensional representations, but not uniform superiority across every model and task.
+\input{tab/shared_scale_v20/downstream}
+
+% 对 Qwen3.8-27B，本文相较 QTIP 和 LLVQ 取得更低的 WikiText-2/C4 PPL，并在 LiveCodeBench v6 与 GPQA-D 上更高；AIME 2025 三者持平，BF16 仍在全部指标上最佳。
+For Qwen3.8-27B, our method yields lower WikiText-2/C4 perplexity than QTIP and LLVQ and higher LiveCodeBench v6 and GPQA-D scores. All three quantized methods tie on AIME 2025, while BF16 remains best on every reported metric.
+\input{tab/shared_scale_v20/qwen38}
+
+\subsection{Ablation Studies}
+
+% 同起点消融直接检验算法贡献。仅优化共享尺度把 Qwen3-4B/8B 的 WikiText-2 PPL 从 22.69/14.41 降到 21.01/13.85，而进一步联合更新硬索引与尺度将其降到 12.18/9.76。
+\paragraph{Joint decisions from a common initialization.} Optimizing the shared scale alone reduces WikiText-2 perplexity on Qwen3-4B/8B from 22.69/14.41 to 21.01/13.85. Jointly updating hard indices and the scale further reduces it to 12.18/9.76.
+% 在 Qwen3-4B 上所有列出的准确率均随联合优化提高；在 Qwen3-8B 上多数指标提高，但 BoolQ 从 83.36 降到 80.55，说明困惑度改善并不保证每个任务同步改善。
+Every listed accuracy improves on Qwen3-4B after joint optimization. Most metrics improve on Qwen3-8B, but BoolQ decreases from 83.36 to 80.55, showing that perplexity gains do not guarantee gains on every task.
+\input{tab/shared_scale_v20/ablation}
+
+% 维度消融表明，$d=8$ 的质量最好但码率从 $d=6$ 的 2.04 bpw 增到 2.59 bpw；在约 2 bpw 的约束下，$d=6$ 给出更有吸引力的折中。
+\paragraph{Base-codeword dimension.} The dimensionality ablation shows that $d=8$ gives the best quality but increases the rate from 2.04 bpw at $d=6$ to 2.59 bpw. Under an approximately 2-bpw budget, $d=6$ provides a more attractive trade-off.
+\input{tab/shared_scale_v20/dimension}
+
+\subsection{Efficiency and Limitations}
+
+% 在 A100-SXM4-80GB 上，包含加载、校准、联合搜索与保存的完整离线时间从 Qwen3-4B 的 1.3 小时增长到 Qwen3-32B 的 3.5 小时；共享服务器负载使其不能视为受控吞吐率。
+On an A100-SXM4-80GB, end-to-end offline time including loading, calibration, joint search, and checkpoint saving grows from 1.3 hours for Qwen3-4B to 3.5 hours for Qwen3-32B. Because the server was shared, these measurements are not controlled throughput results.
+% 在 RTX 4090 Ada、2K 上下文的 Llama-3.1-8B-Instruct 测试中，prefill 为 2230.2 对 2217.6 token/s，decode 为 36.7 对 21.9 token/s，即观测到约 1.68 倍解码吞吐率。
+For Llama-3.1-8B-Instruct on an RTX 4090 Ada with a 2K context, prefill throughput is 2230.2 versus 2217.6 token/s, while decode throughput is 36.7 versus 21.9 token/s, corresponding to an observed $1.68\times$ decode throughput.
+\input{tab/shared_scale_v20/efficiency}
+
+% 当前材料未给出所有评测的 batch size、生成长度、预热轮数、重复次数、误差条和统一来源标签；因此速度结果只适用于该单一设置，跨论文表格也应视为汇总比较而非完全受控复现。
+The available record does not provide batch size, generation length, warm-up count, repetitions, error bars, or a unified provenance label for every evaluation. The speed result therefore applies only to the reported setting, and cross-paper tables should be read as a consolidated comparison rather than a fully controlled reproduction.

@@ -1,0 +1,15 @@
+\begin{abstract}
+% 向量量化通过一个索引联合编码多个权重提高低比特表示能力，而高维结构化方法通常通过扩大有效编码维度进一步改善量化质量。本文提出一个互补观点：基础码字维度与码字选择的联合范围是两个独立的设计维度。
+Vector quantization improves low-bit representations by encoding several weights with one index, while high-dimensional structured methods further improve quantization quality by increasing the effective coding dimension. We advance a complementary view: base-codeword dimension and the joint range of codeword selection are independent design axes.
+% 在共享尺度 VQ 中，尺度与多个码字选择相互耦合，使逐点更新可能停滞，而直接联合搜索具有指数复杂度。
+In shared-scale VQ, the scale is coupled with multiple codeword choices, so coordinate-wise updates may stagnate while direct joint search is exponential.
+% 我们提出共享尺度协同码字优化，通过多尺度候选生成、残差感知的可分离二次上界和直线下包络搜索，把指数级组合搜索转化为有限代表区间上的硬索引与尺度联合求解。
+We propose coordinated codeword optimization under a shared scale. Multi-scale candidate generation, a residual-aware separable quadratic upper bound, and lower-envelope search convert the exponential combinatorial problem into joint hard-index and scale optimization over finitely many representative intervals.
+% 联合优化将 Qwen3-4B/8B 的 WikiText-2 PPL 从 22.69/14.41 降至 12.18/9.76；在 Qwen3.8-27B 上相较 QTIP 与 LLVQ 获得更低的 WikiText-2/C4 PPL，并在 LiveCodeBench v6 与 GPQA-D 上取得更高分数。
+Joint optimization reduces WikiText-2 perplexity on Qwen3-4B/8B from 22.69/14.41 to 12.18/9.76. On Qwen3.8-27B, it yields lower WikiText-2/C4 perplexity than QTIP and LLVQ and higher LiveCodeBench v6 and GPQA-D scores.
+% 这些结果表明，扩大联合决策范围能够在保持低维、可查表表示的同时显著改善低比特 VQ 的质量。
+These results show that expanding the joint decision range can substantially improve low-bit VQ while retaining a low-dimensional, lookup-friendly representation.
+\end{abstract}
+
+% 关键词：向量量化；共享尺度；码字联合选择；二次上界；下包络搜索。
+\noindent\textbf{Keywords:} vector quantization; shared scale; joint codeword selection; quadratic upper bound; lower-envelope search

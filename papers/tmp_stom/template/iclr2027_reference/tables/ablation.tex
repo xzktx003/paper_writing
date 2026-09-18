@@ -1,0 +1,24 @@
+\begin{table}[H]
+  \centering
+  \caption{Cumulative ablation of \PAA\ and \OMR\ on Qwen3.5-122B at 10\% and 15\% effective FFN pruning; components are added from left to right. Mean accuracy is the unweighted average over the six accuracy tasks and excludes WikiText-2 perplexity. Bold marks the best compressed configuration at each budget.}
+  \label{tab:ablation}
+  \small
+  \setlength{\tabcolsep}{4.2pt}
+  \begin{tabular}{@{}lrrrrrrr@{}}
+    \toprule
+    & & \multicolumn{3}{c}{10\% pruning} & \multicolumn{3}{c}{15\% pruning} \\
+    \cmidrule(lr){3-5}\cmidrule(l){6-8}
+    Task & Dense & ACE & +\PAA & +\OMR & ACE & +\PAA & +\OMR \\
+    \midrule
+    PIQA $\uparrow$ & 94.50 & 94.04 & \textbf{94.50} & \textbf{94.50} & 93.93 & 94.10 & \textbf{94.28} \\
+    ARC-Easy $\uparrow$ & 95.12 & 95.13 & \textbf{95.14} & \textbf{95.14} & 95.08 & \textbf{95.11} & \textbf{95.11} \\
+    ARC-Challenge $\uparrow$ & 96.16 & 96.10 & 96.11 & \textbf{96.16} & 95.48 & 96.04 & \textbf{96.08} \\
+    GPQA-Diamond $\uparrow$ & 53.54 & 51.14 & 53.34 & \textbf{53.48} & 48.99 & 53.01 & \textbf{53.27} \\
+    MATH-500 $\uparrow$ & 87.20 & 86.50 & 87.00 & \textbf{87.40} & 85.50 & 86.40 & \textbf{87.00} \\
+    HumanEval $\uparrow$ & 95.73 & 94.36 & 95.38 & \textbf{95.49} & 93.59 & 94.13 & \textbf{95.36} \\
+    \midrule
+    WikiText-2 PPL $\downarrow$ & 5.27 & 5.41 & 5.29 & \textbf{5.28} & 5.59 & 5.34 & \textbf{5.31} \\
+    Mean accuracy $\uparrow$ & 87.04 & 86.21 & 86.91 & \textbf{87.03} & 85.43 & 86.47 & \textbf{86.85} \\
+    \bottomrule
+  \end{tabular}
+\end{table}

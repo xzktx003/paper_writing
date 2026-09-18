@@ -1,0 +1,16 @@
+\begin{table}[t]
+  \centering
+  \caption{End-to-end efficiency at fixed hardware, batch size, and sequence length using the deployed full/light kernels.}
+  \label{tab:efficiency}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Method & TTFT $\downarrow$ & TPOT $\downarrow$ & Tok/s $\uparrow$ & Peak GB $\downarrow$ \\
+    \midrule
+    Dense & \tbdcell & \tbdcell & \tbdcell & \tbdcell \\
+    ACE & \tbdcell & \tbdcell & \tbdcell & \tbdcell \\
+    ProFiMoE & \tbdcell & \tbdcell & \tbdcell & \tbdcell \\
+    \bottomrule
+  \end{tabular}
+\end{table}

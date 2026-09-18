@@ -1,0 +1,281 @@
+% 方法
+\section{Method}
+
+% 方法在当前硬量化状态上交替执行代理目标构造与联合求解。
+The method alternates, on the current hard quantized state, between constructing a surrogate objective and solving the joint problem.
+% 前者用完整层残差确定修改方向，并以可分离曲率控制跨位置交互；后者对同一个正尺度协调所有候选选择。
+The former uses the full layer residual to determine the modification direction and controls cross-position interactions with a separable curvature; the latter coordinates all candidate choices under the same positive scale.
+% 图 3 展示整体迭代与区间搜索细节。
+Figure~\ref{fig:method} shows the overall iteration and the details of interval search.
+% 每轮只联合处理一个共享尺度组，其余组按固定调度顺序更新；本文不声称同时精确求解多尺度的全局组合问题。
+Each round jointly processes only one shared-scale group, and the remaining groups are updated in a fixed schedule; this paper does not claim to solve the global multi-scale combinatorial problem exactly at once.
+
+\begin{figure*}[t]
+\centering
+\fbox{\parbox[c][4.2cm][c]{0.94\textwidth}{\centering Figure 3 placeholder: residual-aware surrogate construction, lower-envelope interval search, and true-objective verification.}}
+\caption{
+% 图 3. 上层为硬量化状态、完整残差、相切上界、区间搜索及真实验证的迭代；下层分别解释单位置候选比较、切换点合并和区间内尺度优化。本图为生成式构图稿，下包络必须在重绘时使用精确仿射函数计算，不能直接把示意线段当作数学曲线。附录 D 给出可复现的两位置直线与断点。
+The upper panel shows the iteration over a hard quantized state, the full residual, a tangent upper bound, interval search, and true-objective verification; the lower panels explain per-position candidate comparison, breakpoint merging, and in-interval scale optimization.
+This figure is a generative layout draft: the lower envelope must be redrawn from exact affine functions and the schematic segments must not be treated as mathematical curves.
+Appendix~\ref{app:figures} gives a reproducible two-position example of lines and breakpoints.
+}
+\label{fig:method}
+\end{figure*}
+
+% 联合搜索的代理目标与结构性质
+\subsection{Surrogate Objective and Structural Properties for Joint Search}
+
+% 令 $H=\mathcal A^\top\mathcal A$、$g=-\mathcal A^\top r_0$，则当前组的真实目标精确展开为
+Let $H=\mathcal A^\top\mathcal A$ and $g=-\mathcal A^\top r_0$. The true objective of the current group then expands exactly as
+\begin{equation}
+F(z_0+\delta)=F(z_0)+2g^\top\delta+\delta^\top H\delta.
+\label{eq:quad_expand}
+\end{equation}
+% 这里的一阶项使用完整层残差，因此既包含本组当前误差，也包含与组外固定误差的关系。
+The first-order term here uses the full layer residual, and therefore contains both the current in-group error and its relation to the fixed out-of-group error.
+% 若只以原始组权重与候选之间的距离评分，就会丢失这种上下文。
+Scoring candidates only by distances between the original group weights and the candidates would lose this context.
+% 困难集中于 $H$ 的非对角块：多个位置同时变化时，它们可能产生协同或相互干扰。
+The difficulty concentrates on the off-diagonal blocks of $H$: when multiple positions change together, they may cooperate or interfere.
+% 我们保留式（4）的一阶项，并构造分块对角矩阵 $D\succeq H$ 控制二次交互。
+We retain the first-order term of Eq.~\eqref{eq:quad_expand} and construct a block-diagonal matrix $D\succeq H$ to control the quadratic interactions.
+% 对按位置分块的 $H$，一种无需猜测上界常数的构造是
+For $H$ blocked by position, a construction that does not require guessing an upper-bound constant is
+\begin{equation}
+D_i=H_{ii}+\left(\sum_{j\ne i}\|H_{ij}\|_2+\varepsilon\right)I_d,
+\qquad D=\operatorname{blkdiag}(D_1,\ldots,D_M),\quad \varepsilon>0.
+\label{eq:D}
+\end{equation}
+% 利用 $2u^\top H_{ij}v\le\|H_{ij}\|_2(\|u\|_2^2+\|v\|_2^2)$，可得 $D-H\succeq\varepsilon I$。
+Using $2u^\top H_{ij}v\le\|H_{ij}\|_2(\|u\|_2^2+\|v\|_2^2)$, we obtain $D-H\succeq\varepsilon I$.
+% 因此下式是可分离上界：
+Therefore the following is a separable upper bound:
+\begin{equation}
+Q(z\mid z_0)=F(z_0)+2g^\top(z-z_0)+(z-z_0)^\top D(z-z_0).
+\label{eq:Q}
+\end{equation}
+
+% 命题 1（有效上界与相切）。
+\begin{proposition}[Valid upper bound and tangency]
+% 对任意组内状态 $z$，有 $F(z)\le Q(z\mid z_0)$；在当前状态处，$Q(z_0\mid z_0)=F(z_0)$，且二者关于连续权重的梯度相同。
+For any in-group state $z$, $F(z)\le Q(z\mid z_0)$; at the current state, $Q(z_0\mid z_0)=F(z_0)$, and the two objectives have the same gradient with respect to the continuous weights.
+\end{proposition}
+% 式（5）的证明见附录 B。
+The proof of Eq.~\eqref{eq:D} is given in Appendix~\ref{app:theory}.
+% 相切保证当前点处贴合，并不保证所有远处候选都被紧确评价。
+Tangency guarantees a tight fit at the current point and does not guarantee that all distant candidates are evaluated tightly.
+% 分块对角占优构造可能偏保守；任何替代构造只有在验证 $D\succeq H$ 后才能继承相同保证。
+The block-diagonally dominant construction may be conservative; any alternative construction inherits the same guarantees only after $D\succeq H$ is verified.
+% 式（5）是本文为可实现性给出的明确选择，不预设其在模型实验中优于其他有效上界。
+Equation~\eqref{eq:D} is an explicit choice made here for implementability, and it is not presupposed to outperform other valid upper bounds in model experiments.
+
+% 代入 $z_i=sc_{ik}$，记 $h_i=D_i z_{0i}-g_i$，式（6）可写为
+Substituting $z_i=sc_{ik}$ and writing $h_i=D_i z_{0i}-g_i$, Eq.~\eqref{eq:Q} can be written as
+\begin{equation}
+Q(k,s\mid z_0)=C+\sum_{i=1}^{M}\left(a_{ik_i}s^2-2b_{ik_i}s\right),
+\label{eq:Qks}
+\end{equation}
+\begin{equation}
+a_{ik}=c_{ik}^\top D_i c_{ik}\ge0,\qquad b_{ik}=c_{ik}^\top h_i.
+\label{eq:ab}
+\end{equation}
+% 常数 $C$ 与候选及尺度无关。
+The constant $C$ is independent of the candidates and the scale.
+% 也可将其分配为每位置公共常数 $d_i$，而不改变候选排序。
+It may also be allocated as a per-position common constant $d_i$ without changing candidate rankings.
+% 于是对 $s>0$，
+Thus, for $s>0$,
+\begin{equation}
+\arg\min_{k\in\mathcal P_i}\left(a_{ik}s^2-2b_{ik}s+d_i\right)
+=\arg\min_{k\in\mathcal P_i}\ell_{ik}(s),\qquad
+\ell_{ik}(s)=a_{ik}s-2b_{ik}.
+\label{eq:lines}
+\end{equation}
+% 这一变换只消去候选比较中的公共项，不改变完整二次目标的尺度优化。
+This transformation only cancels a common term in candidate comparison and does not change scale optimization of the full quadratic objective.
+% 位置间二次交互已由上界控制，而全部位置仍共享同一尺度变量；因此上界可分离不意味着共同优化尺度后的码字选择独立。
+Cross-position quadratic interactions are already controlled by the upper bound, while all positions still share the same scale variable; therefore, separability of the upper bound does not imply that codeword selection remains independent after the scale is jointly optimized.
+
+% 下包络区间搜索
+\subsection{Lower-Envelope Interval Search}
+
+% 对每个位置构造 $L_i(s)=\min_{k\in\mathcal P_i}\ell_{ik}(s)$。
+For each position we construct $L_i(s)=\min_{k\in\mathcal P_i}\ell_{ik}(s)$.
+% 将候选直线按斜率排序，删除相同斜率但截距更大的直线，并通过维护相邻有效直线的交点构建下包络。
+We sort the candidate lines by slope, delete lines with the same slope but a larger intercept, and construct the lower envelope by maintaining intersection points of adjacent active lines.
+% 全域相同的直线用确定性规则保留代表。
+Globally identical lines keep a representative under a deterministic rule.
+% 由于直线成为最小者的尺度集合是一个区间，每条直线至多贡献一个有效线段；那些在合法尺度域中从未最优的候选可以从当前上界最优解搜索中排除。
+Because the set of scales on which a line is minimal is an interval, each line contributes at most one active segment; candidates that are never optimal on the legal scale domain can be excluded from the current upper-bound search.
+% 这里的排除不意味着其对真实目标永远无用，下一轮残差与上界改变后仍可重新生成候选。
+This exclusion does not mean that they are forever useless for the true objective: after the residual and upper bound change in the next round, candidates can be regenerated.
+
+% 把各位置的有效切换点与尺度域边界合并排序，得到区间 $I_1,\ldots,I_R$。
+Merging and sorting the active switching points of all positions together with the scale-domain boundaries yields intervals $I_1,\ldots,I_R$.
+% 每个开区间内部，各位置最优候选不变，形成一个联合组合 $k^{(r)}$。
+Inside each open interval, the optimal candidate at every position is constant, forming a joint combination $k^{(r)}$.
+% 边界上可能存在并列最优候选，但相邻代表均实现该点的上界最小值，不必为上界最优性枚举所有并列组合。
+Tied optimal candidates may exist on a boundary, but adjacent representatives both realize the upper-bound minimum at that point, so enumerating all tied combinations is unnecessary for upper-bound optimality.
+% 其真实误差可能不同，因此这项简化不提供边界并列候选的真实目标最优性。
+Their true errors may differ, so this simplification does not provide true-objective optimality among boundary ties.
+% 若第 $i$ 个位置有 $K_i$ 个候选，则
+If position $i$ has $K_i$ candidates, then
+\begin{equation}
+R\le1+\sum_{i=1}^{M}(K_i-1).
+\label{eq:R}
+\end{equation}
+% 例如 20 个可变位置各有 8 个候选，其余位置为单候选时，至多产生 141 个代表区间。
+For example, when 20 variable positions each have 8 candidates and the remaining positions are singletons, at most 141 representative intervals arise.
+% 该数值是组合结构的区间数上界，不是完整前向次数，更不是相对训练的加速倍数。
+This number is an upper bound on the number of intervals of the combinatorial structure; it is not a count of full forward passes, still less a speedup factor relative to training.
+
+% 给定区间 $I_r=[\alpha_r,\beta_r]$ 的代表组合，定义 $A_r=\sum_i a_{i,k_i^{(r)}}$、$B_r=\sum_i b_{i,k_i^{(r)}}$，则 $Q_r(s)=C+A_rs^2-2B_rs$。
+Given the representative combination of interval $I_r=[\alpha_r,\beta_r]$, define $A_r=\sum_i a_{i,k_i^{(r)}}$ and $B_r=\sum_i b_{i,k_i^{(r)}}$, so that $Q_r(s)=C+A_rs^2-2B_rs$.
+% 当 $A_r>0$ 且尺度连续时，最优解为
+When $A_r>0$ and the scale is continuous, the optimum is
+\begin{equation}
+s_r^*=\operatorname{clip}(B_r/A_r,\alpha_r,\beta_r).
+\label{eq:sr}
+\end{equation}
+% 离散浮点尺度下，在 $I_r\cap\mathcal S$ 中比较最接近连续极小点的合法相邻值；若无合法值则跳过。
+Under discrete floating-point scales, we compare the legally adjacent values in $I_r\cap\mathcal S$ that are closest to the continuous minimizer; if no legal value exists, the interval is skipped.
+% 区间边界附近必须使用向内的合法前驱或后继，不能将落在区间外的舍入结果直接与区间代表绑定。
+Near interval boundaries one must use inward legal predecessors or successors, and a rounded value that falls outside the interval must not be bound directly to that interval representative.
+% 若 $A_r=0$，按 $B_r$ 的符号选择合法端点；二者均为零时任一合法尺度均最优。
+If $A_r=0$, a legal endpoint is chosen according to the sign of $B_r$; if both are zero, any legal scale is optimal.
+% 最终比较所有非空区间的最优目标，得到候选池内的上界最优状态。
+Finally, comparing the optimal objectives of all nonempty intervals yields the upper-bound-optimal state inside the candidate pool.
+
+% 定理 1（候选池内上界最优性）。
+\begin{theorem}[Upper-bound optimality inside the candidate pool]
+% 固定当前上界、候选池与紧的正尺度域，采用精确下包络及合法尺度求解时，上述算法得到式（7）在 $\prod_i\mathcal P_i\times\mathcal S$ 上的全局最小值。
+Fixing the current upper bound, the candidate pools, and a compact positive scale domain, and using an exact lower envelope together with legal-scale solving, the algorithm above attains the global minimum of Eq.~\eqref{eq:Qks} over $\prod_i\mathcal P_i\times\mathcal S$.
+\end{theorem}
+% 结论同时适用于连续尺度和有限可表示尺度集合。
+The conclusion applies both to a continuous scale and to a finite set of representable scales.
+% 证明基于 $\min_{k,s}Q=\min_s[C+s\sum_i L_i(s)]$，以及区间内代表组合不变；详见附录 B。
+The proof is based on $\min_{k,s}Q=\min_s[C+s\sum_i L_i(s)]$ and on the invariance of the representative combination inside each interval; see Appendix~\ref{app:theory}.
+% 该结论不等于式（2）的全局最优性。
+This conclusion is not global optimality of Eq.~\eqref{eq:true_obj}.
+
+\begin{proposition}[Rejection of a true descent]
+% 设 $z$ 与当前状态同属候选池和合法尺度域。若 $Q(z\mid z_0)-F(z_0)>\eta$，则真实验收不会接受 $z$，即使 $F(z)<F(z_0)-\eta$。
+Let $z$ lie in the same candidate pool and legal scale domain as the current state. If $Q(z\mid z_0)-F(z_0)>\eta$, true-objective acceptance does not accept $z$, even if $F(z)<F(z_0)-\eta$.
+\end{proposition}
+% 由式（13），该条件等价于 $(z-z_0)^\top(D-H)(z-z_0)>F(z_0)-F(z)+\eta$。
+By Eq.~\eqref{eq:gap}, the condition is equivalent to $(z-z_0)^\top(D-H)(z-z_0)>F(z_0)-F(z)+\eta$.
+% 因此，当代理松弛超过真实下降与阈值之和时，上界会拒绝一个真实有益的移动；这给出保守 $D$ 过早停止的充分条件，而不是对所有被拒移动的刻画。
+Thus, when surrogate slack exceeds the true decrease plus the threshold, the upper bound rejects a truly beneficial move; this is a sufficient condition for a conservative $D$ to stop too early, not a characterisation of every rejected move.
+
+\begin{proposition}[Slack that preserves the interval combination]
+% 固定候选池与正尺度域。若对每个位置 $i$ 及任意两个候选 $k,k'$，直线差 $\ell_{ik}-\ell_{ik'}$ 在用 $D$ 和用 $H$ 的可分离部分计算时符号相同，则下包络的切换顺序不变，代表组合 $\{k^{(r)}\}$ 也不变。
+Fix the candidate pools and the positive scale domain. If, for every position $i$ and any two candidates $k,k'$, the line difference $\ell_{ik}-\ell_{ik'}$ has the same sign when computed from $D$ and from the separable part of $H$, then the switching order of the lower envelope is unchanged and so is the set of representative combinations $\{k^{(r)}\}$.
+\end{proposition}
+% 特别地，若各候选在加载项上的二次型相同，或该增量被公共项吸收而不进入 $\ell_{ik}$，则正尺度下的候选排序不变。
+In particular, if all candidates share the same quadratic form under the loaded term, or if that increment is absorbed into a common term that does not enter $\ell_{ik}$, the ranking on $s>0$ is unchanged.
+% 跨位置耦合进入 $D_i$ 的对角加载后一般会改变斜率差；此时区间最优组合仍是 $Q$ 的最优，但不保证与可分离真实目标的最优组合相同。
+After cross-position coupling is loaded onto the diagonal of $D_i$, slope differences generally change; the interval-optimal combination remains optimal for $Q$, but need not coincide with the optimum of a separable true objective.
+% 证明见附录 B。
+The proofs are given in Appendix~\ref{app:theory}.
+
+% 候选池必须覆盖尺度移动后可能变优的码字，而不能只按当前尺度排序。
+The candidate pool must cover codewords that can become preferable after the scale moves, and must not be ranked only under the current scale.
+% 对可变位置计算代理中心 $u_i=z_{0i}-D_i^{-1}g_i$，并取有限探针集合 $\Sigma=\{s_0\}\cup\{s^{(p)}\}_{p=1}^{P}$，其中探针落在合法尺度域内，默认包含当前尺度、域端点及若干几何中点。
+For a variable position we compute the surrogate centre $u_i=z_{0i}-D_i^{-1}g_i$ and take a finite probe set $\Sigma=\{s_0\}\cup\{s^{(p)}\}_{p=1}^{P}$ inside the legal scale domain, which by default contains the current scale, the domain endpoints, and a few geometric midpoints.
+% 在每个探针 $s\in\Sigma$ 下按 $\|sc-u_i\|_{D_i}^2$ 保留前 $K$ 个码字，再对并集加入当前码字，截断到预算 $K_{\max}$ 时优先保留在多个探针下重复出现的码字。
+At each probe $s\in\Sigma$ we keep the top $K$ codewords ranked by $\|sc-u_i\|_{D_i}^2$, add the current codeword to the union, and, when truncating to a budget $K_{\max}$, prefer codewords that appear under several probes.
+% 不允许修改索引的位置仅保留当前码字。
+Positions whose indices are not allowed to change retain only the current codeword.
+% 多尺度并集是方法本体：它使候选生成与“固定尺度排序会失真”的动机一致；单尺度短名单只作为消融对照。
+The multi-scale union is part of the method: it aligns candidate generation with the claim that a ranking under a fixed scale can be distorted; a single-scale shortlist is kept only as an ablation control.
+% 该规则仍不保证包含所有尺度下有利的码字，覆盖率由 $K$、$P$ 和 $K_{\max}$ 控制。
+The rule still does not guarantee inclusion of every codeword that would be beneficial at some scale; coverage is controlled by $K$, $P$, and $K_{\max}$.
+% 为避免隐含改变表示，所有候选均来自原有码本。
+To avoid implicitly changing the representation, all candidates come from the original codebook.
+
+% 最后将选择的索引与尺度写为实际存储格式，按式（2）验证真实误差，只有满足预定下降阈值才接受。
+Finally, the selected indices and scale are written in the actual storage format, the true error is verified by Eq.~\eqref{eq:true_obj}, and the update is accepted only if a prescribed decrease threshold is met.
+% 由于当前状态在候选集合中，精确上界解满足 $Q(z_+\mid z_0)\le Q(z_0\mid z_0)$，从而
+Because the current state belongs to the candidate set, an exact upper-bound solution satisfies $Q(z_+\mid z_0)\le Q(z_0\mid z_0)$, and therefore
+\begin{equation}
+F(z_+)\le Q(z_+\mid z_0)\le F(z_0).
+\label{eq:nonincrease}
+\end{equation}
+% 在浮点实现中，真实验证用于处理数值误差、尺度存储和任何近似步骤。
+In a floating-point implementation, true-objective verification handles numerical error, scale storage, and any approximate steps.
+% 其成本可通过已有的二次统计量计算，不必默认执行整个模型前向。
+Its cost can be computed from already available quadratic statistics and need not default to a full model forward pass.
+% 组按固定顺序遍历，每次接受后更新残差，达到遍历上限或没有超过阈值的改善时停止。
+Groups are traversed in a fixed order, the residual is updated after each accepted move, and the procedure stops when a traversal limit is reached or no improvement exceeding the threshold remains.
+% 若只接受严格下降且硬状态空间有限，则算法有限终止；该终止不保证原始目标的坐标局部最优，因为保守上界可能拒绝真实有益的移动。
+If only strictly decreasing moves are accepted and the hard-state space is finite, the algorithm terminates in finite time; this termination does not guarantee coordinate-wise local optimality of the original objective, because a conservative upper bound may reject a truly beneficial move.
+
+% 令 $P=\sum_iK_i$、$B$ 为有效切换点总数。
+Let $P=\sum_iK_i$ and let $B$ be the total number of active switching points.
+% 系数就绪后，下包络构造为 $O(\sum_iK_i\log K_i)$，切换点排序为 $O(B\log B)$。
+After the coefficients are ready, lower-envelope construction costs $O(\sum_iK_i\log K_i)$ and sorting the switching points costs $O(B\log B)$.
+% 扫描区间时用切换事件增量维护 $A_r,B_r$，尺度求解为 $O(B+M)$，最后恢复最优区间的索引组合即可；若每个区间重新复制全部索引，则会引入额外 $O(MR)$ 成本。
+While scanning intervals, $A_r$ and $B_r$ are maintained incrementally from switching events, scale solving costs $O(B+M)$, and it remains only to recover the index combination of the best interval; copying all indices at every interval would introduce an extra $O(MR)$ cost.
+% 总优化时间仍包括残差、曲率、候选生成、系数计算和真实验证，因此理论不直接证明比梯度训练更快。
+The total optimization time still includes residual computation, curvature, candidate generation, coefficient evaluation, and true-objective verification, so the theory does not by itself prove that the method is faster than gradient training.
+% 针对一般密集组，式（5）需要处理位置对；其成本必须单独测量或利用权重布局和输入 Gram 的结构复用。
+For a generally dense group, Eq.~\eqref{eq:D} must process position pairs; that cost must be measured separately or reused through structure in the weight layout and the input Gram matrix.
+
+% 算法 1：共享尺度下的联合码字优化。
+\begin{algorithm}[t]
+\caption{Joint codeword optimization under a shared scale}
+\label{alg:joint}
+\begin{algorithmic}[1]
+\Require
+% 输入：W、校准输入 X、初始硬量化状态；固定码本和尺度组；探针尺度集合 Sigma、每探针保留数 K、并集预算 Kmax、合法正尺度集合 S、最大遍历数 T、下降阈值 eta。
+$W$, calibration inputs $X$, an initial hard quantized state; a fixed codebook and scale groups; a probe-scale set $\Sigma$, a per-probe count $K$, a union budget $K_{\max}$, a legal positive scale set $\mathcal S$, a maximum number of traversals $T$, and a decrease threshold $\eta$.
+\Ensure
+% 输出：索引与尺度更新后的硬量化状态。
+A hard quantized state with updated indices and scales.
+\State
+% 计算完整层残差 $R = WX - \widehat W X$。
+Compute the full layer residual $R = WX - \widehat W X$.
+\For{$t = 1,\ldots,T$}
+    \State
+    % accepted = false。
+    $\textit{accepted} \gets \textbf{false}$
+    \For{each shared-scale group $\mathcal{G}$ in a fixed order}
+        \State
+        % 包含 $\mathcal G$ 的全部位置；不允许修改的索引保留单候选。
+        Include all positions of $\mathcal G$; indices that are not allowed to change keep a singleton candidate.
+        \State
+        % 从当前完整残差计算 $g$，并取得组内 $H$。
+        Compute $g$ from the current full residual and obtain the in-group $H$.
+        \State
+        % 构造有效分块上界 $D$，用多尺度探针并集生成含当前码字的候选池。
+        Construct a valid block upper bound $D$ and generate candidate pools from the multi-scale probe union, including the current codewords.
+        \State
+        % 计算每个候选的 $a$、$b$，构造直线下包络。
+        Compute $a$ and $b$ for each candidate and construct the lower envelopes of lines.
+        \State
+        % 合并断点，扫描代表区间，增量更新 $A$、$B$。
+        Merge breakpoints, scan representative intervals, and update $A$ and $B$ incrementally.
+        \State
+        % 在各区间求最优合法尺度，保存上界最优区间与尺度。
+        Solve for the optimal legal scale in each interval and store the upper-bound-optimal interval and scale.
+        \State
+        % 恢复对应硬索引，按真实存储格式重构候选状态。
+        Recover the corresponding hard indices and reconstruct the candidate state in the true storage format.
+        \If{the true objective decreases by more than $\eta$}
+            \State
+            % 接受索引和尺度，增量更新完整残差。
+            Accept the indices and scale, and incrementally update the full residual.
+            \State $\textit{accepted} \gets \textbf{true}$
+        \EndIf
+    \EndFor
+    \If{$\textit{accepted}=\textbf{false}$}
+        \State
+        % 若 accepted = false：终止。
+        \textbf{break}
+    \EndIf
+\EndFor
+\State
+% 返回最终硬量化状态。
+\Return the final hard quantized state
+\end{algorithmic}
+\end{algorithm}

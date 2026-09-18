@@ -1,0 +1,16 @@
+\begin{table*}[t]\centering\small
+\caption{Perplexity comparison. Lower is better. Best quantized results are bold.}
+\label{tab:main-ppl}
+\begin{tabular}{llrrrrrr}\toprule
+Method & Metric & Q3-4B & Q3-8B & Q3-14B & Q3-32B & L3.1-8B-I & L3.1-70B-I\\\midrule
+BF16 & Wiki2 & 13.66 & 9.72 & 8.65 & 7.61 & 7.22 & 3.78\\
+QTIP & Wiki2 & 15.78 & 11.61 & 9.84 & 8.53 & 8.80 & 5.08\\
+AQLM & Wiki2 & 15.12 & 10.71 & 9.25 & 8.15 & 9.50 & 5.33\\
+LLVQ & Wiki2 & 14.27 & \textbf{8.78} & 8.98 & 7.87 & \textbf{8.27} & \textbf{4.82}\\
+Ours & Wiki2 & \textbf{13.68} & 9.76 & \textbf{8.51} & \textbf{7.75} & 9.38 & 4.87\\\midrule
+BF16 & C4 & 17.88 & 14.29 & 12.85 & 11.51 & 10.63 & 8.00\\
+QTIP & C4 & 20.62 & 16.20 & 14.33 & 12.49 & 13.39 & 10.48\\
+AQLM & C4 & 23.38 & 17.84 & 15.53 & 13.20 & 15.00 & 11.04\\
+LLVQ & C4 & 17.99 & \textbf{14.36} & 13.66 & 12.15 & \textbf{13.44} & \textbf{10.51}\\
+Ours & C4 & \textbf{17.97} & 14.64 & \textbf{13.09} & \textbf{11.99} & 13.74 & 10.63\\\bottomrule
+\end{tabular}\end{table*}

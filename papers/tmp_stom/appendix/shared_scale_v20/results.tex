@@ -1,0 +1,13 @@
+% 附录 C：完整结果说明
+\section{Supplementary Results}
+\label{app:all-results}
+
+% 本附录记录正文表格未展开的结果范围。Qwen3-4B/8B/14B/32B 与 Llama-3.1-8B/70B 的 WikiText-2、C4 结果已完整列于表 1；正文表 2 给出代表性准确率，以保持版面可读。
+This appendix records the scope of results omitted from the compact main tables. WikiText-2 and C4 results for Qwen3-4B/8B/14B/32B and Llama-3.1-8B/70B are fully listed in Table~\ref{tab:main-ppl}; Table~\ref{tab:downstream-v20} reports representative accuracy metrics to preserve readability.
+% 完整实验快照还包含 LAMBADA、PIQA、BoolQ 和指令模型 IFEval。它们参与总体判断，但由于不同任务上的排序并不一致，本文不以未经预注册的平均值掩盖差异。
+The full experimental snapshot additionally contains LAMBADA, PIQA, BoolQ, and IFEval for instruction-tuned models. These metrics inform the overall interpretation, but because method rankings vary across tasks, we do not obscure those differences with an unregistered aggregate.
+
+% 可复现性边界。现有记录给出了模型、数据集、主要码率规则、GPU 型号和端到端耗时，但没有为每个实验提供统一的校准样本数、随机种子、批量大小、预热轮数与重复次数。
+\paragraph{Reproducibility boundary.} The available record specifies models, datasets, the main rate-accounting rule, GPU models, and end-to-end times, but does not provide a uniform calibration-set size, random seed, batch size, warm-up count, and repetition count for every experiment.
+% 因而本文只报告已有测量，不生成误差条或显著性结论；后续版本应补齐机器可读配置与逐次运行结果。
+Accordingly, we report only the available measurements and do not fabricate error bars or significance claims; a subsequent version should add machine-readable configurations and per-run records.

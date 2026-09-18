@@ -1,0 +1,10 @@
+\begin{table}[t]\centering\small
+\caption{Qwen3.8-27B with thinking enabled.}
+\label{tab:qwen38}
+\begin{tabular}{lrrrrr}\toprule
+Method & Wiki2$\downarrow$ & C4$\downarrow$ & AIME25$\uparrow$ & LCBv6$\uparrow$ & GPQA-D$\uparrow$\\\midrule
+BF16 & 7.05 & 11.45 & 100.00 & 85.71 & 89.90\\
+QTIP & 8.29 & 13.76 & 93.33 & 73.65 & 81.11\\
+LLVQ & 8.22 & 13.85 & 93.33 & 72.28 & 80.48\\
+Ours & \textbf{7.84} & \textbf{13.33} & \textbf{93.33} & \textbf{74.92} & \textbf{82.83}\\\bottomrule
+\end{tabular}\end{table}

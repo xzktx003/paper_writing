@@ -1,0 +1,92 @@
+% 引言
+\section{Introduction}
+
+% 低比特权重量化能够降低大语言模型的存储与权重读取开销，其有效性取决于有限表示预算下对权重及模型响应的保留程度。
+Low-bit weight quantization reduces the storage and weight-loading cost of large language models, and its effectiveness depends on how well weights and model responses are preserved under a limited representation budget.
+% 向量量化（VQ）用一个索引联合表示多个参数，相比逐标量编码具有更灵活的量化几何。
+Vector quantization (VQ) jointly represents multiple parameters with a single index and therefore offers a more flexible quantization geometry than scalar encoding.
+% 随着研究从低维显式码本扩展至高维结构化编码，量化维度成为提升表示质量的重要设计因素：QTIP 通过 trellis-coded quantization 实现超过 100 维的有效联合编码，LLVQ 则利用 24 维 Leech 格构造量化表示与相应的搜索、索引和解码机制。
+As research has expanded from low-dimensional explicit codebooks to high-dimensional structured encodings, quantization dimension has become an important design factor for representation quality: QTIP uses trellis-coded quantization to realize effective joint coding beyond 100 dimensions, while LLVQ uses a 24-dimensional Leech lattice to construct the quantized representation together with the corresponding search, indexing, and decoding mechanisms~\cite{qtip,llvq}.
+% 高维路线并非没有代价。无结构码本的近邻搜索与缓存占用随维度指数增长，实用无结构维度通常不超过 8；网格与格点用状态或对称性换取更高有效维度，却把相邻子向量绑到路径或格约束上，解码需要专用核，局部改写一个子块并重拟合共享尺度也不再是一次查表。
+The high-dimensional route is not free. Unstructured codebooks incur exponential nearest-neighbour and cache cost, so practical unstructured dimensions are typically at most 8; trellises and lattices buy a higher effective dimension through state or symmetry, but they couple neighbouring subvectors by a path or lattice constraint, need a specialised decoding kernel, and make a local rewrite plus shared-scale refit no longer a table lookup~\cite{qtip,quipsharp,aqlm,llvq}.
+% 因此，一个自然的问题不是“低维表示是否在率失真上优于高维结构码”，而是：在保留可查表、可局部改写的低维码字时，更充分的联合选择能否使模型质量达到甚至超过这些高维方法。
+The natural question is therefore not whether a low-dimensional representation dominates structured high-dimensional codes in a rate--distortion sense, but whether, while retaining lookup-table and locally rewritable low-dimensional codewords, more thorough joint selection can make model quality match or even exceed these high-dimensional methods.
+
+% 回答这一问题，需要区分向量内部的联合表示与多个向量之间的联合选择。
+Answering this question requires distinguishing joint representation inside a vector from joint selection across multiple vectors.
+% 以共享尺度 VQ 为例，多个位置分别选择低维码字，但共同使用一个幅值尺度。
+In shared-scale VQ, for example, multiple positions each select a low-dimensional codeword while sharing a single amplitude scale.
+% 当尺度也参与优化时，整组码字决定适合的尺度，尺度又改变各位置候选的相对优劣。
+When the scale also participates in optimization, the entire group of codewords determines a suitable scale, and that scale in turn changes the relative ranking of candidates at each position.
+% 因此，在旧尺度下挑选码字可能排除重新调整尺度后更有利的候选；即便每次单位置更新后都重新优化尺度，也可能停留在只有多位置同时变化才能改善的状态。
+Consequently, selecting codewords under an old scale may exclude candidates that would become preferable after the scale is refit; even if the scale is re-optimized after every single-position update, the procedure may still remain at a state that can be improved only when multiple positions change together.
+% 附录 A 只给出可核算的存在性实例；图 1 应改为真实层上的机制统计：在单位置更新加尺度重调停止后，联合更新仍能下降的尺度组比例、共同改动的索引数，以及层重构误差的变化。
+Appendix~\ref{app:example} only gives a checkable existence instance; Figure~\ref{fig:motivation} should instead report layer-level mechanism statistics: the fraction of scale groups that still admit a true descent after one-at-a-time updates with scale refitting have stopped, the number of indices changed together, and the change in layer reconstruction error.
+% 在这些层统计产生前，图 1 只作为该测量的构图，不得把附录 A 的玩具数值画成模型证据。
+Until those layer statistics exist, Figure~\ref{fig:motivation} is only a layout for that measurement and must not present the toy numbers of Appendix~\ref{app:example} as model evidence.
+% 我们的切入点是在基础码字维度不变的情况下扩大联合决策范围，而不是将低维码字组合等同于任意高维码本。
+Our starting point is to enlarge the joint decision range while keeping the base-codeword dimension unchanged, rather than equating a combination of low-dimensional codewords with an arbitrary high-dimensional codebook.
+
+\begin{figure*}[t]
+\centering
+\fbox{\parbox[c][4.0cm][c]{0.94\textwidth}{\centering Figure 1 placeholder: layer-error trajectories and accepted multi-index updates.}}
+\caption{
+% 图 1. 真实层机制图的构图，而非附录 A 的玩具曲线。左：单位置加尺度重调停止后，各尺度组上联合更新的真实误差变化；右：被接受的联合更新所改动的索引数。当前为占位图，投稿前必须替换为同一初始化、同一校准集上的层统计；附录 A 只证明该停滞可以发生。
+Layout of a layer-level mechanism figure, not the toy curves of Appendix~\ref{app:example}.
+Left: true-error change of a joint update on each scale group after one-at-a-time search with scale refitting has stopped.
+Right: number of indices changed by accepted joint updates.
+The present image is a placeholder and must be replaced, before submission, by layer statistics on the same initialization and calibration set; Appendix~\ref{app:example} only proves that such stagnation can occur.
+}
+\label{fig:motivation}
+\end{figure*}
+
+% 为实现可控的联合更新，我们提出共享尺度下的码字协同优化方法。
+To obtain controllable joint updates, we propose a method for coordinated codeword optimization under a shared scale.
+% 真实层输出误差包含跨位置二次交互，直接枚举联合候选又具有指数级成本。
+The true layer-output error contains quadratic interactions across positions, while directly enumerating joint candidates has exponential cost.
+% 候选池由若干探针尺度下的局部短名单取并集，使搜索覆盖的码字不绑定在当前尺度的排序上。
+The candidate pool is the union of local shortlists at several probe scales, so that the searched codewords are not bound to the ranking under the current scale.
+% 我们随后利用完整校准残差建立相切可分离上界，使每个位置的候选代价成为共享尺度的二次函数。
+We then use the full calibration residual to construct a tangent separable upper bound, so that the candidate cost at each position becomes a quadratic function of the shared scale.
+% 随后利用正尺度域内公共常数项可消去的性质，将候选比较转化为直线下包络，并合并各位置的切换点。
+We then exploit the fact that a common constant term can be cancelled on the positive-scale domain, convert candidate comparison into a lower envelope of lines, and merge the switching points of all positions.
+% 在每个代表区间中，联合码字组合保持不变，只需求解一个受合法尺度约束的一维二次问题。
+Within each representative interval, the joint codeword combination remains constant, and it remains only to solve a one-dimensional quadratic problem subject to legal-scale constraints.
+% 该过程直接更新硬索引与实际尺度，不要求对索引引入概率参数或反向传播；其最优性限定于当前候选池中的代理目标。
+The procedure directl并在相同实际位宽协议下对基础维度 $d$ 做消融，分别比较同一初始化上的后优化增益，以及与 QTIP、LLVQ 等完整量化方案的最终质量。
+We take 6-dimensional base codewords as the main experimental setting, ablate the base dimension $d$ under the same actual-bit-width protocol, and
+% 我们以 6 维基础码字为主要实验设置，分别比较同一初始化上的后优化增益，以及与 QTIP、LLVQ 等完整量化方案的最终质量。
+We take 6-dimensional base codewords as the main experimental setting, and we separately compare post-optimization gains on the same initialization against the final quality of complete quantization schemes such as QTIP and LLVQ.
+% 评价同时覆盖困惑度、下游任务、实际存储预算和优化成本，并通过固定基础维度、改变联合范围的实验检验协同选择的作用。
+The evaluation covers perplexity, downstream tasks, the actual storage budget, and optimization cost, and it tests the role of coordinated selection by keeping the base dimension fixed while varying the joint range.
+% 图 2 给出目标结果图的构图：本文希望在相同实际位宽下获得更低的困惑度，而是否实现这一目标必须由真实测试决定。
+Figure~\ref{fig:target} gives the layout of the intended result figure: this paper aims for lower perplexity at the same effective bit-width, but whether that goal is achieved must be decided by real measurements.
+% 完整结果同时报告困惑度、下游准确率、码率与优化时间，避免把单一指标的改善解释为全面占优。
+The complete results report perplexity, downstream accuracy, rate, and optimization time together, avoiding an interpretation of a single improved metric as universal dominance.
+
+\begin{figure*}[t]
+\centering
+\fbox{\parbox[c][4.0cm][c]{0.88\textwidth}{\centering Figure 2 placeholder: perplexity versus actual bits per weight.}}
+\caption{
+% 图 2. 理想目标与结果图布局，非实验结果。横轴为包括码本、尺度及其他元数据的实际 bits per weight，纵轴为困惑度。6 维初始化与联合优化后结果应同时出现，以区分表示本身与优化方法的收益。QTIP、LLVQ 与本文的曲线位置均为构图假设；投稿前必须用相同模型、相同评价协议下的数据替换，不得将此图作为比较证据。
+Idealized target and result-figure layout, not experimental results.
+The horizontal axis is the actual bits per weight including the codebook, scales, and other metadata, and the vertical axis is perplexity.
+Both the 6-dimensional initialization and the jointly optimized result should appear, so that the gain of the representation itself can be separated from the gain of the optimizer.
+The curve positions of QTIP, LLVQ, and our method are compositional hypotheses; they must be replaced, before submission, by data collected on the same models under the same evaluation protocol, and this figure must not be used as comparative evidence.
+}
+\label{fig:target}
+\end{figure*}
+
+% 本文将基础码字维度与联合优化范围分开设计，贡献归纳为三点：
+This paper separates the design of the base-codeword dimension from the joint-optimization range, and the contributions can be summarized in three points:
+\begin{itemize}
+\item
+% 提出固定低维表示下的共享尺度联合优化方法，用多尺度探针并集生成候选，并通过完整残差感知的评价协调多个硬码字与尺度。
+We propose a shared-scale joint optimization method under a fixed low-dimensional representation, generating candidates from a union of multi-scale probes and coordinating multiple hard codewords and the scale through evaluation that is aware of the full residual.
+\item
+% 建立相切可分离上界及下包络区间求解，证明候选池内上界最优性、代表区间数界、真实下降被拒绝的充分条件，以及代理松弛不改变区间最优组合的条件。
+We construct a tangent separable upper bound and a lower-envelope interval solver, and we prove upper-bound optimality inside the candidate pool, a bound on the number of representative intervals, a sufficient condition under which a true descent is rejected, and conditions under which surrogate slack does not change the interval-optimal combination.
+\item
+% 用同起点优化增益、基础维度消融和多模型比较，验证联合选择的收益并明确其在不同模型与任务上的边界。
+We validate the benefit of joint selection through same-start optimization gains, a base-dimension ablation, and multi-model comparisons, while explicitly reporting its boundaries across models and tasks.
+\end{itemize}

@@ -1,0 +1,12 @@
+\begin{table*}[t]\centering\small
+\caption{Optimization ablation from a common initialization. S: scale optimization; J: joint index--scale optimization.}
+\label{tab:ablation-v20}
+\begin{tabular}{lccrrrrrr}\toprule
+Model & S & J & Wiki2$\downarrow$ & ARC-C & ARC-E & HellaSwag & MMLU & WinoGrande\\\midrule
+Qwen3-4B & $\times$ & $\times$ & 22.69 & 42.24 & 65.87 & 54.45 & 53.49 & 61.96\\
+ & $\checkmark$ & $\times$ & 21.01 & 42.38 & 66.73 & 55.73 & 54.49 & 61.59\\
+ & $\checkmark$ & $\checkmark$ & 12.18 & 42.92 & 70.12 & 63.16 & 55.01 & 62.90\\\midrule
+Qwen3-8B & $\times$ & $\times$ & 14.41 & 49.57 & 76.98 & 61.96 & 62.38 & 66.54\\
+ & $\checkmark$ & $\times$ & 13.85 & 51.79 & 78.20 & 63.41 & 62.78 & 67.88\\
+ & $\checkmark$ & $\checkmark$ & 9.76 & 54.52 & 79.92 & 69.80 & 63.23 & 68.67\\\bottomrule
+\end{tabular}\end{table*}

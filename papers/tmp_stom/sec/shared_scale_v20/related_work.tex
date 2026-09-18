@@ -1,0 +1,56 @@
+% 相关工作
+\section{Related Work}
+
+% 量化表示。
+\paragraph{Quantized representations.}
+% 低比特量化包括标量量化、显式向量码本、加性或残差码本，以及格点与网格等结构化编码。
+Low-bit quantization includes scalar quantization, explicit vector codebooks, additive or residual codebooks, and structured encodings such as lattices and trellises.
+% GPTVQ 将向量表示与层重构结合，并指出提高码字维度可改善网格塑形，但无结构码本的存储与近邻搜索随维度指数增长。
+GPTVQ combines vector representations with layer reconstruction and shows that raising the codeword dimension improves grid shaping, while the storage and nearest-neighbour cost of an unstructured codebook grow exponentially with dimension~\cite{gptvq}.
+% VPTQ 用二阶目标构造显式向量码本，并引入残差与异常值编码；AQLM 采用加性码本与块级优化；CRVQ 对少量关键通道放松码本约束。
+VPTQ builds explicit vector codebooks from a second-order objective and adds residual and outlier coding; AQLM uses additive codebooks with block-level refinement; CRVQ relaxes the codebook constraint on a small set of critical channels~\cite{vptq,aqlm,crvq}.
+% QuIP\# 使用 Hadamard 非相干化与可压缩的 $E_8$ 格码本；QTIP 用网格编码把有效维度提升到远高于缓存可容纳的无结构码本；LLVQ 则采用 24 维 Leech 格及其结构化搜索与解码。
+QuIP\# uses Hadamard incoherence with a compressible $E_8$ lattice codebook; QTIP uses trellis-coded quantization to raise the effective dimension far beyond what an unstructured codebook can keep in cache; LLVQ uses a 24-dimensional Leech lattice with structured search and decoding~\cite{quipsharp,qtip,llvq}.
+% RSAVQ 把量化误差投影到 Fisher 度量下的低敏感方向，并按通道曲率分配比特；KBVQ-MoE 针对专家冗余与聚合偏置，在共享主分量之外对专家残差做向量量化。
+RSAVQ projects quantization error onto low-sensitivity directions of a Fisher metric and allocates bits by channel curvature; KBVQ-MoE targets expert redundancy and aggregation bias, applying vector quantization to expert residuals after sharing dominant components~\cite{rsavq,kbvqmoe}.
+% QTIP 已指出无结构高维码本在量化时的近邻代价为 $O(2^{kd}d)$，推理时码本还需放入硬件缓存，因而实用无结构维度通常不超过 8；AQLM 的 8 维码本约 1\,MiB，难以进入 L1，QuIP\# 的可压缩 8 维格码本也仅勉强放入。
+QTIP already notes that unstructured high-dimensional codebooks cost $O(2^{kd}d)$ for nearest-neighbour assignment and must reside in hardware cache at inference, so practical unstructured dimensions are typically at most 8; AQLM's 8-dimensional codebook is about 1\,MiB and does not fit in L1, and QuIP\#'s compressible 8-dimensional lattice codebook only barely does~\cite{qtip,aqlm,quipsharp}.
+% 网格与格点通过状态或对称性换取更高有效维度，代价是码字不再是可独立改写的查找表项：相邻子向量由路径或格约束耦合，解码依赖专用核，局部重选一个子块并重拟合共享尺度不再是一次查表。
+Trellises and lattices buy a higher effective dimension through state or symmetry, at the cost that codewords are no longer independently rewritable lookup entries: neighbouring subvectors are coupled by a path or lattice constraint, decoding needs a specialised kernel, and locally re-selecting one block and refitting a shared scale is no longer a table lookup.
+% 本文因此把显式低维码本加共享尺度视为一种仍可移植、可局部改写的表示，研究其联合选择能否达到高维结构量化的模型质量，而不是主张低维网格在率失真意义上支配高维结构码。
+This paper therefore treats an explicit low-dimensional codebook plus a shared scale as a still portable, locally rewritable representation, and studies whether joint selection on it can match the model quality of high-dimensional structured quantization, rather than claiming that a low-dimensional grid dominates structured codes in a rate--distortion sense.
+
+% 交互搜索。
+\paragraph{Interaction-aware search.}
+% 表示确定后，码字之间的交互仍需搜索。
+After the representation is fixed, interactions among codewords still have to be searched.
+% GPTVQ 按列用 Hessian 补偿未量化权重；AQLM 把输出误差展开为单点项与成对交互，并用束搜索近似；VPTQ 用通道独立的二阶修正做更细的向量量化。
+GPTVQ compensates unquantized weights column-wise with the Hessian; AQLM expands the output error into unary and pairwise terms and approximates the assignment with beam search; VPTQ uses channel-independent second-order refinement for finer vector quantization~\cite{gptvq,aqlm,vptq}.
+% RSAVQ 约束误差方向，CRVQ 把交互预算集中到关键通道，KBVQ-MoE 则处理专家聚合后的偏置。
+RSAVQ constrains the error direction, CRVQ concentrates the interaction budget on critical channels, and KBVQ-MoE handles bias after expert aggregation~\cite{rsavq,crvq,kbvqmoe}.
+% 因此本文不能声称首次对离散码字交互建模。
+This paper therefore cannot claim to be the first to model discrete codeword interactions.
+% 与束搜索或顺序补偿不同，我们利用共享正尺度把整组硬组合变成尺度轴上的代表区间，在可分离上界内精确求解当前候选池，而不是在完整笛卡尔积上做启发式剪枝。
+Unlike beam search or sequential compensation, we use the shared positive scale to turn a whole-group hard combination into representative intervals on the scale axis, and we solve the current candidate pool exactly under a separable upper bound rather than pruning the full Cartesian product heuristically.
+
+% 离散--连续优化。
+\paragraph{Discrete--continuous optimization.}
+% 低比特质量还取决于离散索引与连续参数如何交替更新。
+Low-bit quality also depends on how discrete indices and continuous parameters are updated in alternation.
+% PV-Tuning 给出表示无关的 value/partition 坐标下降，并在子空间中用真实梯度提出离散变化；GPTVQ 在固定分配后用梯度更新码本；GSQ 用 Gumbel-Softmax 联合学习标量分配与分组尺度。
+PV-Tuning gives representation-agnostic coordinate descent over values and partitions, and proposes discrete changes from true gradients in a subspace; GPTVQ updates the codebook by gradient descent after assignments are frozen; GSQ jointly learns scalar assignments and group scales with Gumbel-Softmax~\cite{pvtuning,gptvq,gsq}.
+% LLVQ 已给出固定方向后的闭式尺度，以及多组尺度的联立求解。
+LLVQ already gives a closed-form scale after the direction is fixed, and a joint solve over multiple scale groups~\cite{llvq}.
+% 本文不把“同时改索引和尺度”或“不用直通估计”当作独立创新；区别在于硬索引与已有尺度在共享尺度参数化下的组合求解，且不引入索引的概率松弛或反向传播。
+This paper does not treat ``updating indices and scales together'' or ``avoiding straight-through estimation'' as independent contributions; the distinction is combinatorial solving of hard indices and existing scales under a shared-scale parameterization, without a probabilistic relaxation of the indices or backpropagation through them.
+
+% 参数化组合优化。
+\paragraph{Parametric combinatorial optimization.}
+% 对固定离散配置消去线性尺度，以及构造相切上界再最小化，分别属于变量消去与 majorization--minimization 的经典工具。
+Eliminating a linear scale for a fixed discrete configuration, and constructing a tangent upper bound before minimization, are classical tools of variable elimination and majorization--minimization.
+% 直线下包络把一维参数上的逐点最小化为有限段，其复杂度随直线数近线性，不必枚举组合积。
+The lower envelope of lines reduces pointwise minimization over a one-dimensional parameter to finitely many segments, at near-linear cost in the number of lines, without enumerating the product of combinations.
+% 本文的潜在贡献是把完整残差上界、正尺度仿射候选比较、合法尺度格式和硬状态验收连成一条可执行的码字组合求解链，而不是重新命名这些数学步骤。
+The potential contribution here is to connect a full-residual upper bound, affine candidate comparison on the positive scale, legal-scale formats, and hard-state acceptance into an executable codeword-combination solver, rather than to rename these mathematical steps.
+% 比较应落在优化变量、目标范围、候选约束与实际计算成本，而非仅以是否使用梯度划分优劣。
+Comparisons should therefore be made in terms of the optimized variables, the scope of the objective, candidate constraints, and actual computational cost, rather than by partitioning methods solely according to whether they use gradients.

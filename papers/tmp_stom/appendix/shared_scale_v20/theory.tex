@@ -1,0 +1,204 @@
+% 附录 A. 一个可核算的协同更新实例
+\section{A Checkable Coordinated-Update Instance}
+\label{app:example}
+
+% 令两个位置的目标均为 1，当前码字组合为 $(1,6/5)$；位置 1 的候选为 $\{1,3\}$，位置 2 的候选为 $\{6/5,3\}$，共享正尺度域为 $[1/10,2]$。
+Let both positions have target $1$, and let the current codeword combination be $(1,6/5)$; the candidates of position 1 are $\{1,3\}$, those of position 2 are $\{6/5,3\}$, and the shared positive scale domain is $[1/10,2]$.
+% 每个组合的目标为 $E(s)=(1-sa)^2+(1-sb)^2$。
+The objective of each combination is $E(s)=(1-sa)^2+(1-sb)^2$.
+% 其最优尺度 $s^*=(a+b)/(a^2+b^2)$ 均在域内，最优误差为 $(a-b)^2/(a^2+b^2)$。
+The optimal scale $s^*=(a+b)/(a^2+b^2)$ lies in the domain for every combination, and the optimal error is $(a-b)^2/(a^2+b^2)$.
+
+\input{tab/shared_scale_v20/appendix_example}
+
+% 两个单位置更新即使各自重新优化尺度也更差，而联合修改可以消除误差。
+Both one-at-a-time updates remain worse even after each re-optimizes the scale, whereas a joint modification can eliminate the error.
+% 因此，“共享尺度重优化后仍存在逐点停滞”不只是固定尺度评价偏差。
+Therefore, ``coordinate-wise stagnation can persist after shared-scale re-optimization'' is not merely a ranking bias of fixed-scale evaluation.
+% 将目标与候选的标量嵌入 6 维向量的第一维，其余维度置零，可以获得相同的 6 维构造；这仅证明存在性，不代表真实权重分布。
+Embedding the scalar targets and candidates into the first coordinate of 6-dimensional vectors and setting the remaining coordinates to zero yields the same 6-dimensional construction; this proves existence only and does not represent a real weight distribution.
+% 对于更广候选池，单位置方法可能找到其他路径，不能由这个小例子推出全部实例中的优势。
+For a broader candidate pool, a one-at-a-time method may find another path, so this small example cannot be used to infer an advantage in all instances.
+
+% 附录 B. 证明与理论边界
+\section{Proofs and Theoretical Boundaries}
+\label{app:theory}
+
+% 分块上界
+\subsection{Block Upper Bound}
+
+% 对任意分块向量 $\delta$，有
+For an arbitrary blocked vector $\delta$,
+\begin{equation}
+\begin{aligned}
+\delta^\top H\delta
+&=\sum_i\delta_i^\top H_{ii}\delta_i+
+2\sum_{i<j}\delta_i^\top H_{ij}\delta_j \\
+&\le\sum_i\delta_i^\top H_{ii}\delta_i+
+\sum_{i<j}\|H_{ij}\|_2(\|\delta_i\|_2^2+\|\delta_j\|_2^2)
+\le\delta^\top D\delta.
+\end{aligned}
+\end{equation}
+% 最后一步采用式（5）。
+The last step uses Eq.~\eqref{eq:D}.
+% 式（6）与式（4）之差精确等于
+The difference between Eq.~\eqref{eq:Q} and Eq.~\eqref{eq:quad_expand} equals exactly
+\begin{equation}
+Q(z\mid z_0)-F(z)=(z-z_0)^\top(D-H)(z-z_0).
+\label{eq:gap}
+\end{equation}
+% 该差值非负，并在 $z=z_0$ 时取零，其一阶导数也为零，故上界有效且相切。
+This difference is nonnegative, vanishes at $z=z_0$, and has vanishing first derivative there, so the upper bound is valid and tangent.
+% 相切是关于连续组权重的性质，不要求离散索引可导。
+Tangency is a property with respect to the continuous group weights and does not require differentiability of the discrete indices.
+
+% 下包络与代表区间
+\subsection{Lower Envelope and Representative Intervals}
+
+% 固定尺度时，有限候选之间的极小化按位置分离。
+When the scale is held fixed, minimization over a finite candidate set separates by position.
+% 由于 $s>0$，式（7）可写成 $C+s\sum_i\ell_{i,k_i}(s)$，从而得到 $\min_k Q(k,s)=C+s\sum_iL_i(s)$。
+Because $s>0$, Eq.~\eqref{eq:Qks} can be written as $C+s\sum_i\ell_{i,k_i}(s)$, which yields $\min_k Q(k,s)=C+s\sum_iL_i(s)$.
+% 每个候选为一条仿射直线，其成为最小者的集合由若干线性不等式的交集定义，在一维上为一个区间或空集。
+Each candidate is an affine line, and the set on which it is minimal is defined by the intersection of finitely many linear inequalities, hence an interval or empty on the one-dimensional scale axis.
+% 删除相同直线并规定并列处理后，第 $i$ 个下包络至多有 $K_i$ 个有效段，故内部切换点至多 $K_i-1$。
+After identical lines are deleted and ties are resolved by a stated rule, the $i$-th lower envelope has at most $K_i$ active segments and therefore at most $K_i-1$ interior switching points.
+% 全部切换点的并集划分尺度轴，得到式（10）；多个位置同时切换只会减少区间数。
+The union of all switching points partitions the scale axis and yields Eq.~\eqref{eq:R}; simultaneous switches at several positions can only reduce the number of intervals.
+
+% 对每个非空开区间，最优候选组合恒定，边界处相邻组合均能实现包络值。
+On each nonempty open interval the optimal candidate combination is constant, and adjacent combinations both realize the envelope value at a boundary.
+% 该组合的二次函数在区间闭包上的合法极小值可由式（11）或离散邻点比较获得。
+The legal minimizer of that combination's quadratic on the interval closure is obtained from Eq.~\eqref{eq:sr} or by comparing discrete neighbors.
+% 每个合法尺度至少落在某个被处理的区间闭包中，所有区间解的最小值因此等于整个候选池上界的最优值。
+Every legal scale lies in the closure of some processed interval, so the minimum among interval solutions equals the upper-bound optimum over the entire candidate pool.
+% 对恰好位于边界的离散尺度需显式纳入，不能依赖浮点采样命中。
+A discrete scale that lies exactly on a boundary must be included explicitly and must not be left to chance floating-point sampling.
+% 若尺度域只含单点，直接比较该点候选即可。
+If the scale domain contains only a single point, it suffices to compare candidates at that point.
+
+% 真实误差非增与代理偏差
+\subsection{True-Error Non-Increase and Surrogate Gap}
+
+% 当前状态可行，所以上界最优状态 $z_Q$ 不劣于当前状态，式（12）成立。
+The current state is feasible, so the upper-bound-optimal state $z_Q$ is no worse than the current state and Eq.~\eqref{eq:nonincrease} holds.
+% 设同一候选池和尺度域下的真实最优状态为 $z_F$，则
+Let $z_F$ be a true-optimal state over the same candidate pool and scale domain. Then
+\begin{equation}
+F(z_Q)\le Q(z_Q)\le Q(z_F)
+=F(z_F)+(z_F-z_0)^\top(D-H)(z_F-z_0).
+\label{eq:QF}
+\end{equation}
+% 因此
+Therefore
+\begin{equation}
+0\le F(z_Q)-F(z_F)
+\le(z_F-z_0)^\top(D-H)(z_F-z_0)
+\le\|D-H\|_2\|z_F-z_0\|_2^2.
+\label{eq:gap_bound}
+\end{equation}
+% 这是相对同池真实最优解的加性偏差界，通常无法直接计算右侧第一项，因为 $z_F$ 未知。
+This is an additive gap bound relative to the true optimum in the same pool; the first term on the right-hand side is usually not directly computable because $z_F$ is unknown.
+% 可用可行集合的最大移动半径替代，但界可能较松；不能将其改写为常数近似比或整个模型质量保证。
+It may be replaced by the maximum displacement radius of the feasible set, but the bound can be loose; it must not be rewritten as a constant approximation ratio or as a guarantee on whole-model quality.
+% 若 $D=H$ 且原目标可分离，则代理与真实目标相同，此时求解最优性才能直接转移到该组真实目标。
+If $D=H$ and the original objective is separable, the surrogate coincides with the true objective, and only then does solver optimality transfer directly to the true in-group objective.
+
+\subsection{Rejected True Descents and Preserved Combinations}
+
+% 真实验收只接受 $F(z)\le F(z_0)-\eta$ 的候选。
+True-objective acceptance takes a candidate only if $F(z)\le F(z_0)-\eta$.
+% 若同时 $Q(z\mid z_0)>F(z_0)+\eta$，则该候选不会被上界求解器提交，因而也不会被验收。
+If at the same time $Q(z\mid z_0)>F(z_0)+\eta$, the candidate is never submitted by the upper-bound solver and therefore never accepted.
+% 由式（13），$Q(z\mid z_0)-F(z)=(z-z_0)^\top(D-H)(z-z_0)$，故当松弛超过真实下降与阈值之和时，一个真实下降会被拒绝。
+By Eq.~\eqref{eq:gap}, $Q(z\mid z_0)-F(z)=(z-z_0)^\top(D-H)(z-z_0)$, so a true descent is rejected when the slack exceeds the true decrease plus the threshold.
+% 这是充分条件：不满足该不等式的移动仍可能因候选缺失或区间并列而被错过。
+This is a sufficient condition: a move that does not satisfy the inequality may still be missed because of a missing candidate or a boundary tie.
+
+% 对固定位置 $i$，两条候选直线的差为 $\ell_{ik}(s)-\ell_{ik'}(s)=(a_{ik}-a_{ik'})s-2(b_{ik}-b_{ik'})$。
+For a fixed position $i$, the difference of two candidate lines is $\ell_{ik}(s)-\ell_{ik'}(s)=(a_{ik}-a_{ik'})s-2(b_{ik}-b_{ik'})$.
+% 切换点由该差的零点决定。若用 $D$ 与用 $H$ 的可分离部分算出的差在 $\mathcal S$ 上同号，则该位置的下包络顺序不变。
+Switching points are zeros of this difference. If the difference computed from $D$ and from the separable part of $H$ has the same sign on $\mathcal S$, the lower-envelope order at that position is unchanged.
+% 各位置顺序都不变时，合并后的代表组合也不变；尺度最优点仍可能因 $A_r,B_r$ 改变而移动，但被搜索的硬组合集合相同。
+If every position keeps its order, the merged representative combinations are unchanged; the scale minimizer may still move because $A_r$ and $B_r$ change, but the set of hard combinations being searched is the same.
+% 若 $D_i=H_{ii}+\lambda_i I$ 且 $\lambda_i$ 不依赖候选，则 $a_{ik}$ 的增量 $\lambda_i\|c_{ik}\|_2^2$ 一般仍会改变斜率差；只有当各候选范数相同，或增量被公共项吸收而不进入 $\ell_{ik}$ 时，排序才自动保持。
+If $D_i=H_{ii}+\lambda_i I$ and $\lambda_i$ does not depend on the candidate, the increment $\lambda_i\|c_{ik}\|_2^2$ in $a_{ik}$ still generally changes slope differences; the ranking is preserved automatically only when candidate norms coincide, or when the increment is absorbed into a common term that does not enter $\ell_{ik}$.
+
+% 附录 C. 实现与公平比较细节
+\section{Implementation and Fair-Comparison Details}
+\label{app:impl}
+
+% 实际 bpw 按 $(B_{\rm indices}+B_{\rm scales}+B_{\rm codebooks}+B_{\rm auxiliary})/N_{\rm weights}$ 计算，包括尾部、对齐及不能忽略的附加参数。
+Actual bits per weight are computed as $(B_{\rm indices}+B_{\rm scales}+B_{\rm codebooks}+B_{\rm auxiliary})/N_{\rm weights}$, including tails, alignment, and auxiliary parameters that cannot be ignored.
+% 固定码本不等于码本不占空间。
+A fixed codebook is not a codebook that occupies no space.
+% 若压缩检查点使用额外无损编码，应同时报告理论位数与实际文件大小。
+If a compressed checkpoint uses additional lossless coding, both the theoretical bit count and the actual file size should be reported.
+% 6 维尾部处理只对当前矩阵合法位置写回；校准算子和误差计算不得把填充权重当作有效参数。
+Six-dimensional tail handling writes back only to legal positions of the current matrix; the calibration operator and the error computation must not treat padded weights as valid parameters.
+
+% 组更新应包含尺度覆盖的所有位置。
+A group update must include all positions covered by the scale.
+% 单候选位置不会产生候选切换点，但仍贡献二次系数和真实误差。
+Singleton positions produce no candidate switching points, but they still contribute quadratic coefficients and true error.
+% 固定 $m$ 的机制对照必须固定尺度组大小和已有尺度数量，否则质量改变可能来自尺度粒度变化。
+A mechanism control that fixes $m$ must also fix the scale-group size and the number of existing scales; otherwise a quality change may come from a change in scale granularity.
+% 原始矩阵或旋转域的选择需一致；若采用旋转，应明确 $W,X$ 所处坐标系及解码中对应的变换。
+The choice of the original matrix or a rotated domain must be consistent; if a rotation is used, the coordinate system of $W$ and $X$ and the corresponding transform in decoding must be stated.
+
+% 离散尺度需记录 dtype、正数范围及 subnormal 的处理。
+Discrete scales must record the dtype, the positive range, and the handling of subnormals.
+% 计算断点和验证时可使用较高精度，而存储尺度必须按真实格式评价。
+Breakpoints and verification may be computed at higher precision, but stored scales must be evaluated in the true format.
+% 近似下包络、候选裁剪与有限精度可能影响理论求解完整性，真实验收只能保护不增性质，不能恢复被近似步骤破坏的上界最优性。
+An approximate envelope, candidate pruning, and finite precision may affect completeness of the theoretical solver; true-objective acceptance can protect only the non-increase property and cannot restore upper-bound optimality destroyed by approximate steps.
+% 停止阈值使用绝对与相对误差共同定义，并报告其数值。
+The stopping threshold is defined jointly by absolute and relative error, and its numerical value is reported.
+
+% 候选数较大时先批量计算系数，再按位置构造包络。
+When the candidate count is large, coefficients are computed in batch before envelopes are constructed per position.
+% 不要为每个区间保存完整索引向量；记录初始代表、切换事件与最佳区间编号，最后重放事件恢复一次。
+Do not store a full index vector for every interval; record the initial representative, the switching events, and the best interval index, and replay the events once at the end.
+% 若进一步对全部代表进行真实目标重排，那是额外算法变体，应单独报告时间；本文基本算法仅验证最终上界候选。
+If all representatives are further reranked by the true objective, that is an additional algorithmic variant and its time should be reported separately; the basic algorithm of this paper verifies only the final upper-bound candidate.
+
+% 正式运行应固定实验配置清单、随机种子、库版本与权重标识，按单 GPU 顺序执行。
+Official runs should freeze the configuration list, random seeds, library versions, and weight identifiers, and execute sequentially on a single GPU.
+% 不得用训练或校准样本上的改善代替测试集质量；对不同论文公开数字，只在明确来源并注明评价差异的独立表中展示。
+Improvements on training or calibration samples must not replace test-set quality; published numbers from other papers are shown only in a separate table that states the source and evaluation differences.
+
+% 附录 D. 插图重绘规范
+\section{Figure-Redrawing Specification}
+\label{app:figures}
+
+% 三张 PNG 均由内置生图模型生成，是视觉构图稿而非可直接用于发表的精确图。
+The three PNG figures were generated by a built-in image model; they are visual layout drafts rather than exact figures ready for publication.
+% 图 1 必须画真实层机制统计，而不能把附录 A 的玩具数值画成模型曲线；附录 A 只用于证明停滞可以发生。
+Figure~\ref{fig:motivation} must plot layer-level mechanism statistics and must not present the toy numbers of Appendix~\ref{app:example} as model curves; Appendix~\ref{app:example} is used only to prove that stagnation can occur.
+% 图 2 必须保留“理想趋势/非实验结果”标识直至替换真实数据，不能由曲线形状反推出虚构测量值。
+Figure~\ref{fig:target} must retain the ``illustrative target / not experimental results'' label until it is replaced by real data, and fictitious measurements must not be reverse-engineered from the curve shapes.
+% 图 3 中生成模型绘制的下包络线段与候选直线未必严格共线，正式重绘应使用下列确定性例子。
+In Figure~\ref{fig:method}, the envelope segments and candidate lines drawn by the generative model need not be strictly collinear; official redrawing should use the following deterministic example.
+
+% 位置 1 取三条候选直线 $\ell_A(s)=3s$、$\ell_B(s)=2s+1$、$\ell_E(s)=s+3$；其下包络分别在 $(0,1)$、$(1,2)$、$(2,\infty)$ 选择 A、B、E。
+Position 1 uses the three candidate lines $\ell_A(s)=3s$, $\ell_B(s)=2s+1$, and $\ell_E(s)=s+3$; its lower envelope selects A, B, and E on $(0,1)$, $(1,2)$, and $(2,\infty)$, respectively.
+% 位置 2 取 $\ell_C(s)=2s$、$\ell_D(s)=s+3/2$，在 $s=3/2$ 切换。
+Position 2 uses $\ell_C(s)=2s$ and $\ell_D(s)=s+3/2$, and switches at $s=3/2$.
+% 限制尺度域为 $[1/4,3]$，合并后四个区间依次为 $[1/4,1]$、$[1,3/2]$、$[3/2,2]$、$[2,3]$，代表组合为 $(A,C)$、$(B,C)$、$(B,D)$、$(E,D)$。
+Restricting the scale domain to $[1/4,3]$ and merging breakpoints yields the four intervals $[1/4,1]$, $[1,3/2]$, $[3/2,2]$, and $[2,3]$, with representative combinations $(A,C)$, $(B,C)$, $(B,D)$, and $(E,D)$.
+% 边界处允许相邻代表并列。
+Adjacent representatives are allowed to tie at a boundary.
+
+% 这些直线的斜率均非负，符合 $a_{ik}\ge0$；截距按 $-2b_{ik}$ 解释。
+All of these lines have nonnegative slopes, consistent with $a_{ik}\ge0$; intercepts are interpreted as $-2b_{ik}$.
+% 该示例专门说明包络与断点，不预设哪个区间产生最终全局尺度最优点。
+This example is intended only to illustrate envelopes and breakpoints, and it does not presuppose which interval produces the eventual globally optimal scale.
+% 若需要为右侧二次极小值画出特定内点，应另选满足所需极小值的系数，并重新计算全部区间解，不能把示意极小点当成上述直线例子的数值结论。
+If a specific interior point is needed for the quadratic minimizer on the right, coefficients that realize the desired minimizer should be chosen separately and all interval solutions recomputed; a schematic minimizer must not be treated as a numerical conclusion of the line example above.
+
+% 图 3 上层展示完整算法，下层展示区间搜索内部结构；保留“候选池内上界精确、真实目标验证”的边界说明。
+The upper panel of Figure~\ref{fig:method} shows the full algorithm and the lower panels show the internal structure of interval search; the boundary statement ``exact for the candidate-pool surrogate; verify the true reconstruction loss'' should be retained.
+% 符号、颜色和各位置的候选命名在三幅子图中保持一致。
+Symbols, colors, and candidate names at each position should remain consistent across the three sub-panels.
+% 绘图模型的原始提示词随稿附带，方便继续迭代。
+The original prompts of the drawing model are attached with the draft to facilitate further iteration.

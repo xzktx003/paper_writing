@@ -1,0 +1,11 @@
+% 结论
+\section{Conclusion}
+
+% 本文把基础码字维度与联合优化范围分开设计，并研究低维码字在共享尺度下的联合选择。
+This paper separates base-codeword dimension from joint optimization range and studies joint selection of low-dimensional codewords under a shared scale.
+% 多尺度探针并集扩大候选覆盖，完整残差上的相切可分离上界控制跨位置交互，正尺度下的直线下包络把候选池内的码字—尺度组合问题化为有限区间搜索。
+A union of multi-scale probes expands candidate coverage, a tangent separable upper bound on the full residual controls cross-position interactions, and the lower envelope of lines on the positive-scale domain converts candidate-pool codeword--scale optimization into a finite interval search.
+% 理论结果界定了候选池内代理最优性、代表区间数量、真实下降可能被保守上界拒绝的条件，以及代理松弛保持代表组合的条件。
+The analysis establishes candidate-pool surrogate optimality, bounds the number of representative intervals, identifies when a conservative upper bound may reject a true descent, and characterizes when surrogate slack preserves representative combinations.
+% 实验显示，联合选择相较仅调尺度显著改善 Qwen3-4B/8B 的困惑度，并在若干模型和任务上与高维结构化量化竞争；结果也揭示 BoolQ、MMLU 与 Llama 指令模型上的非一致增益，因此不作跨模型统一占优的主张。
+Experiments show that joint selection substantially improves Qwen3-4B/8B perplexity over scale-only optimization and is competitive with high-dimensional structured quantization on several models and tasks. The nonuniform gains on BoolQ, MMLU, and Llama instruction models also argue against a claim of universal dominance.

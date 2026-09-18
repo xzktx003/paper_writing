@@ -1,0 +1,57 @@
+% 预备知识与问题形式化
+\section{Preliminaries and Problem Formulation}
+
+% 给定权重矩阵 $W\in\mathbb R^{p\times n}$ 与校准输入 $X\in\mathbb R^{n\times N}$，我们采用固定码本的向量量化表示。
+Given a weight matrix $W\in\mathbb R^{p\times n}$ and calibration inputs $X\in\mathbb R^{n\times N}$, we adopt a vector-quantized representation with a fixed codebook.
+% 将待量化权重划分为维度为 $d$ 的位置，第 $i$ 个位置属于尺度组 $\mathcal G_g$，其重构为
+We partition the weights to be quantized into positions of dimension $d$; the $i$-th position belongs to scale group $\mathcal G_g$ and is reconstructed as
+\begin{equation}
+\widehat w_i=s_g c_{k_i},\qquad c_{k_i}\in\mathcal C_i\subset\mathbb R^d.
+\label{eq:recon}
+\end{equation}
+% 不同位置可以共享同一基础码本，$\mathcal C_i$ 表示当前位置可访问的码本。
+Different positions may share the same base codebook, and $\mathcal C_i$ denotes the codebook accessible at the current position.
+% 主设置取 $d=6$，并在相同实际位宽协议下对 $d$ 做消融；选择 6 是实验主配置，不是“6 维普遍更优”的主张。
+The main setting uses $d=6$, and $d$ is ablated under the same actual-bit-width protocol; choosing 6 is the primary experimental configuration, not a claim that six dimensions are universally better.
+% 联合优化范围 $m$ 表示本轮可修改索引的位置数，与基础维度 $d$ 独立定义。
+The joint-optimization range $m$ is the number of positions whose indices may be modified in the current round, and it is defined independently of the base dimension $d$.
+% 固定码本、索引位宽、尺度组划分与尺度数量，只更新硬索引和已有尺度。
+We keep the codebook, index bit-width, scale-group partition, and number of scales fixed, and update only hard indices and existing scales.
+% 若一个尺度组有 $M$ 个位置，本轮只允许其中 $m\le M$ 个索引变化，另外 $M-m$ 个位置仍需以单元素候选池纳入目标，因为尺度变化也会改变其重构。
+If a scale group has $M$ positions and only $m\le M$ indices are allowed to change in the current round, the remaining $M-m$ positions must still enter the objective with singleton candidate pools, because a scale change also alters their reconstructions.
+
+% 我们最小化校准集上的层输出误差
+We minimize the layer-output error on the calibration set,
+\begin{equation}
+F(\widehat W)=\|WX-\widehat W X\|_F^2.
+\label{eq:true_obj}
+\end{equation}
+% 每轮选取一个完整尺度组，固定组外状态。
+Each round selects one complete scale group and holds the out-of-group state fixed.
+% 将该组所有权重向量串联成 $z$，当前值为 $z_0$。
+We concatenate all weight vectors in the group into $z$, with current value $z_0$.
+% 定义线性算子 $\mathcal A$，使 $\mathcal A\delta$ 等于将组内修改 $\delta$ 散射回权重矩阵后产生的向量化输出变化。
+We define a linear operator $\mathcal A$ such that $\mathcal A\delta$ equals the vectorized output change obtained by scattering the in-group modification $\delta$ back into the weight matrix.
+% 令 $r_0=\operatorname{vec}(WX-\widehat W_0X)$。
+Let $r_0=\operatorname{vec}(WX-\widehat W_0X)$.
+% 则组内更新目标为 $\|r_0-\mathcal A(z-z_0)\|_2^2$。
+The in-group update objective is then $\|r_0-\mathcal A(z-z_0)\|_2^2$.
+% 每个位置有有限候选池 $\mathcal P_i$，包含当前码字；尺度取自 $\mathcal S=[s_{\min},s_{\max}]$，其中 $0<s_{\min}\le s_{\max}<\infty$，且当前尺度在域内。
+Each position has a finite candidate pool $\mathcal P_i$ that contains the current codeword; the scale is taken from $\mathcal S=[s_{\min},s_{\max}]$, where $0<s_{\min}\le s_{\max}<\infty$ and the current scale lies in the domain.
+% 实际浮点存储时，将该域与合法可表示尺度集合取交集。
+Under actual floating-point storage, this domain is intersected with the set of legally representable scales.
+
+% 共享尺度的耦合可以在更简单的欧氏目标中看出。
+The coupling induced by a shared scale can already be seen in a simpler Euclidean objective.
+% 对 $E(k,s)=\sum_i\|w_i-sc_{k_i}\|_2^2$，当分母非零且解位于合法域内时，最优尺度为
+For $E(k,s)=\sum_i\|w_i-sc_{k_i}\|_2^2$, when the denominator is nonzero and the solution lies in the legal domain, the optimal scale is
+\begin{equation}
+s^*(k)=\frac{\sum_i w_i^\top c_{k_i}}{\sum_i\|c_{k_i}\|_2^2}.
+\label{eq:simple_scale}
+\end{equation}
+% 固定尺度时，该简化目标的位置选择可分离；重新优化尺度后，尺度由整组码字决定，从而使候选选择产生依赖。
+When the scale is held fixed, position selection under this simplified objective is separable; after the scale is re-optimized, the scale is determined by the entire group of codewords, so candidate selection becomes dependent.
+% 式（3）仅用于解释这一机制，不是式（2）一般情况下的尺度公式。
+Equation~\eqref{eq:simple_scale} is used only to explain this mechanism and is not the scale formula for Eq.~\eqref{eq:true_obj} in general.
+% 真实输出误差还包含由输入与位置布局引起的直接二次交互，因此我们先构造保留当前残差信息的代理目标，再利用共享尺度结构进行求解。
+The true output error also contains direct quadratic interactions induced by the inputs and the layout of positions; we therefore first construct a surrogate that retains the current residual information, and then exploit the shared-scale structure to solve it.
