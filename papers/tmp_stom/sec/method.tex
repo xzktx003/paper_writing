@@ -5,22 +5,10 @@
 The method alternates, on the current hard quantized state, between constructing a surrogate objective and solving the joint problem.
 % 前者用完整层残差确定修改方向，并以可分离曲率控制跨位置交互；后者对同一个正尺度协调所有候选选择。
 The former uses the full layer residual to determine the modification direction and controls cross-position interactions with a separable curvature; the latter coordinates all candidate choices under the same positive scale.
-% 图 3 展示整体迭代与区间搜索细节。
-Figure~\ref{fig:method} shows the overall iteration and the details of interval search.
+% 算法 1 总结整体迭代，附录给出可核算的区间搜索实例。
+Algorithm~\ref{alg:joint} summarizes the overall iteration, and the appendix gives a checkable interval-search instance.
 % 每轮只联合处理一个共享尺度组，其余组按固定调度顺序更新；本文不声称同时精确求解多尺度的全局组合问题。
 Each round jointly processes only one shared-scale group, and the remaining groups are updated in a fixed schedule; this paper does not claim to solve the global multi-scale combinatorial problem exactly at once.
-
-\begin{figure*}[t]
-\centering
-\fbox{\parbox[c][4.2cm][c]{0.94\textwidth}{\centering Figure 3 placeholder: residual-aware surrogate construction, lower-envelope interval search, and true-objective verification.}}
-\caption{
-% 图 3. 上层为硬量化状态、完整残差、相切上界、区间搜索及真实验证的迭代；下层分别解释单位置候选比较、切换点合并和区间内尺度优化。本图为生成式构图稿，下包络必须在重绘时使用精确仿射函数计算，不能直接把示意线段当作数学曲线。附录 D 给出可复现的两位置直线与断点。
-The upper panel shows the iteration over a hard quantized state, the full residual, a tangent upper bound, interval search, and true-objective verification; the lower panels explain per-position candidate comparison, breakpoint merging, and in-interval scale optimization.
-This figure is a generative layout draft: the lower envelope must be redrawn from exact affine functions and the schematic segments must not be treated as mathematical curves.
-Appendix~\ref{app:figures} gives a reproducible two-position example of lines and breakpoints.
-}
-\label{fig:method}
-\end{figure*}
 
 % 联合搜索的代理目标与结构性质
 \subsection{Surrogate Objective and Structural Properties for Joint Search}
@@ -54,6 +42,9 @@ Therefore the following is a separable upper bound:
 Q(z\mid z_0)=F(z_0)+2g^\top(z-z_0)+(z-z_0)^\top D(z-z_0).
 \label{eq:Q}
 \end{equation}
+
+% 这是 majorization--minimization 中的相切代理构造；本文的特定贡献在于其分块形式与后续共享尺度离散求解的结合。
+This is a tangent-surrogate construction in the majorization--minimization family~\cite{mmtutorial}; the method-specific contribution is its block form and its coupling to the subsequent shared-scale discrete solver.
 
 % 命题 1（有效上界与相切）。
 \begin{proposition}[Valid upper bound and tangency]

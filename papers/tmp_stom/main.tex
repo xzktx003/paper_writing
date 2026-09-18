@@ -1,0 +1,42 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\input{math_commands.tex}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{graphicx,booktabs,array,float,xcolor,microtype,hyperref,url}
+\usepackage{algorithm,algpseudocode}
+\graphicspath{{figures/}{img/}}
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\newcommand{\method}{\textsc{CoS-VQ}}
+\title{Low-Dimensional Codewords, Joint Decisions:\\Shared-Scale Optimization for Vector Quantization}
+\author{Anonymous Authors}
+% \iclrfinalcopy
+\begin{document}
+\maketitle
+\input{sec/abstract}
+\input{sec/introduction}
+\input{sec/related_work}
+\input{sec/preliminaries}
+\input{sec/method}
+\input{sec/experiment}
+\input{sec/conclusion}
+
+% 可复现性声明：正文给出完整目标、候选生成、区间求解、验收条件和码率口径；附录补充证明、边界条件与结果范围。
+\section*{Reproducibility Statement}
+The paper specifies the reconstruction objective, candidate construction, interval solver, legal-scale treatment, acceptance rule, and rate accounting. Appendix~\ref{app:theory} provides proofs and implementation boundaries, while Appendix~\ref{app:all-results} records the scope and provenance limitations of the reported results. Code, configuration files, and compact result records are included in the accompanying anonymized supplementary material; model weights and dataset caches are excluded.
+
+% 伦理声明：本文只压缩公开研究模型，不收集个人信息；量化可能造成不同任务能力的不均匀退化，部署前必须逐任务验证。
+\section*{Ethics Statement}
+This work studies compression of publicly available research models and does not collect personal data. Quantization may degrade capabilities non-uniformly across tasks and populations; the reported aggregate and benchmark results should therefore not substitute for application-specific safety, fairness, and reliability evaluation before deployment.
+
+% AI 使用声明：生成式 AI 用于中英翻译、语言编辑、文献检索辅助和 LaTeX 一致性检查；研究问题、方法、证明、实验选择、数值核验和最终表述由作者负责并人工复核。
+\section*{AI Use Statement}
+Generative AI tools were used to assist Chinese--English translation, language editing, literature discovery, and LaTeX consistency checking. The authors determined the research question, method, proofs, experimental design, and claims; they verified cited sources and numerical results and take full responsibility for the submitted content. No AI-generated text or citation was accepted without author review.
+\clearpage
+\bibliography{sec/references}
+\bibliographystyle{iclr2027_conference}
+\clearpage
+\appendix
+\input{appendix/theory}
+\input{appendix/results}
+\end{document}
