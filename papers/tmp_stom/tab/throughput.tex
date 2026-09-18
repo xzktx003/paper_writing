@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{
+% RTX 4090 Ada、2K 上下文下 Llama-3.1-8B-Instruct 的推理吞吐率。
+Inference throughput for Llama-3.1-8B-Instruct on an RTX 4090 Ada with a 2K-token context.
+}
+\label{tab:throughput}
+\begin{tabular}{lrr}
+\toprule
+Method & Prefill (tok/s)$\uparrow$ & Decode (tok/s)$\uparrow$ \\
+\midrule
+BF16 & 2217.6 & 21.9 \\
+Ours & \textbf{2230.2} & \textbf{36.7} \\
+\bottomrule
+\end{tabular}
+\end{table}

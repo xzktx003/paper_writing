@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{
+% 单张 A100-SXM4-80GB 上的端到端离线量化时间，包括加载、校准、联合搜索与保存。
+End-to-end offline quantization time on one A100-SXM4-80GB, including loading, calibration, joint search, and checkpoint saving.
+}
+\label{tab:search-time}
+\begin{tabular}{lr}
+\toprule
+Model & Time (h)$\downarrow$ \\
+\midrule
+Qwen3-4B & 1.3 \\
+Qwen3-8B & 1.6 \\
+Qwen3-14B & 2.0 \\
+Qwen3-32B & 3.5 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -22,6 +22,21 @@ When the scale also participates in optimization, the entire group of codewords 
 Consequently, selecting codewords under an old scale may exclude candidates that would become preferable after the scale is refit; even if the scale is re-optimized after every single-position update, the procedure may still remain at a state that can be improved only when multiple positions change together.
 % 附录 A 给出一个可核算的存在性实例：两个单位置更新在各自重调尺度后都变差，而同步修改两个位置可以消除误差。
 Appendix~\ref{app:example} gives a checkable existence instance in which both one-at-a-time updates become worse after their respective scale refits, whereas changing two positions together eliminates the error.
+% 图 1 进一步用两阶段轨迹直观展示联合停滞：单位置索引更新与尺度重优化收敛后，误差在切换点附近形成平台；改用联合索引更新后，三个尺度组的真实层输出误差继续下降。
+Figure~\ref{fig:motivation} further visualizes joint stagnation with a two-stage trajectory. After single-index updates with scale re-optimization converge, the error forms a plateau around the switching point; after switching to joint-index updates, the true layer-output error continues to decrease for all three scale groups.
+% 右图给出 116 次被接受更新中改动索引数的分布，其中 97.4\% 的更新同时改变至少两个索引，说明有效更新主要来自协调的多位置变化。
+The right panel reports the number of changed indices across 116 accepted updates. In total, 97.4\% of the accepted updates change at least two indices, indicating that the effective moves are predominantly coordinated multi-position changes.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figure1_motivation.png}
+\caption{
+% 共享尺度下的联合停滞与多索引更新。（a）三个共享尺度组在单位置索引更新与尺度重优化阶段逐步进入平台；切换到联合索引更新后，归一化真实层输出误差继续下降。每条曲线以切换时的误差归一化为 1。（b）被接受更新的索引改动数分布；多索引更新占多数（$h\geq2$：97.4\%，$N=116$）。
+Joint stagnation and multi-index updates under shared scales. (a) Three shared-scale groups approach a plateau under single-index updates with scale re-optimization; after switching to joint-index updates, normalized true layer-output error resumes its descent. Each trajectory is normalized to 1 at the switch. (b) Distribution of the number of changed indices per accepted update; multi-index updates predominate ($h\geq2$: 97.4\%, $N=116$).
+}
+\label{fig:motivation}
+\end{figure*}
+
 % 我们的切入点是在基础码字维度不变的情况下扩大联合决策范围，而不是将低维码字组合等同于任意高维码本。
 Our starting point is to enlarge the joint decision range while keeping the base-codeword dimension unchanged, rather than equating a combination of low-dimensional codewords with an arbitrary high-dimensional codebook.
 

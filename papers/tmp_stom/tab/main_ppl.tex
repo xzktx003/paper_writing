@@ -1,16 +1,32 @@
-\begin{table*}[t]\centering\small
-\caption{Perplexity comparison. Lower is better. Best quantized results are bold.}
+\begin{table*}[t]
+\centering
+\setlength{\tabcolsep}{2.7pt}
+\renewcommand{\arraystretch}{1.08}
+\caption{
+% 六个模型上的主要结果。PPL 越低越好，平均准确率越高越好；粗体表示量化方法中的最佳结果。
+Main results on six models. Lower PPL is better and higher average accuracy is better. Bold denotes the best result among quantized methods.
+}
 \label{tab:main-ppl}
-\begin{tabular}{llrrrrrr}\toprule
-Method & Metric & Q3-4B & Q3-8B & Q3-14B & Q3-32B & L3.1-8B-I & L3.1-70B-I\\\midrule
-BF16 & Wiki2 & 13.66 & 9.72 & 8.65 & 7.61 & 7.22 & 3.78\\
-QTIP & Wiki2 & 15.78 & 11.61 & 9.84 & 8.53 & 8.80 & 5.08\\
-AQLM & Wiki2 & 15.12 & 10.71 & 9.25 & 8.15 & 9.50 & 5.33\\
-LLVQ & Wiki2 & 14.27 & \textbf{8.78} & 8.98 & 7.87 & \textbf{8.27} & \textbf{4.82}\\
-Ours & Wiki2 & \textbf{13.68} & 9.76 & \textbf{8.51} & \textbf{7.75} & 9.38 & 4.87\\\midrule
-BF16 & C4 & 17.88 & 14.29 & 12.85 & 11.51 & 10.63 & 8.00\\
-QTIP & C4 & 20.62 & 16.20 & 14.33 & 12.49 & 13.39 & 10.48\\
-AQLM & C4 & 23.38 & 17.84 & 15.53 & 13.20 & 15.00 & 11.04\\
-LLVQ & C4 & 17.99 & \textbf{14.36} & 13.66 & 12.15 & \textbf{13.44} & \textbf{10.51}\\
-Ours & C4 & \textbf{17.97} & 14.64 & \textbf{13.09} & \textbf{11.99} & 13.74 & 10.63\\\bottomrule
-\end{tabular}\end{table*}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l*{6}{rr}}
+\toprule
+& \multicolumn{2}{c}{Qwen3-4B} & \multicolumn{2}{c}{Qwen3-8B} & \multicolumn{2}{c}{Qwen3-14B} & \multicolumn{2}{c}{Qwen3-32B} & \multicolumn{2}{c}{Llama-3.1-8B-Inst.} & \multicolumn{2}{c}{Llama-3.1-70B-Inst.} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}\cmidrule(lr){12-13}
+Method & PPL$\downarrow$ & Avg.$\uparrow$ & PPL$\downarrow$ & Avg.$\uparrow$ & PPL$\downarrow$ & Avg.$\uparrow$ & PPL$\downarrow$ & Avg.$\uparrow$ & PPL$\downarrow$ & Avg.$\uparrow$ & PPL$\downarrow$ & Avg.$\uparrow$ \\
+\midrule
+BF16      & 13.66 & 66.79 & 9.72 & 70.37 & 8.65 & 73.77 & 7.61 & 74.81 & 7.22 & 73.55 & 3.78 & 78.37 \\
+\midrule
+PV-Tuning & 14.87 & 59.56 & 10.51 & 66.83 & 9.15 & 70.91 & 8.10 & 74.52 & 8.45 & 64.89 & 5.70 & 73.53 \\
+QuIP\#    & 17.98 & 57.04 & 12.64 & 65.32 & 10.43 & 69.65 & 9.73 & 73.41 & 9.75 & 64.72 & 5.56 & 71.45 \\
+QTIP      & 15.78 & 60.30 & 11.61 & 66.80 & 9.84 & \textbf{71.50} & 8.53 & 74.21 & 8.80 & \textbf{69.85} & 5.08 & \textbf{74.01} \\
+NoWag     & 22.69 & 57.19 & 13.85 & 65.73 & 11.04 & 69.63 & 9.19 & 74.46 & 10.50 & 68.00 & 5.93 & 73.09 \\
+AQLM      & 15.12 & 60.09 & 10.71 & 67.10 & 9.25 & 71.02 & 8.15 & \textbf{74.79} & 9.50 & 55.55 & 5.33 & 69.00 \\
+LLVQ      & 12.27 & 60.76 & \textbf{8.78} & 67.37 & 8.98 & 71.27 & 7.87 & 74.70 & \textbf{8.27} & 68.74 & \textbf{4.82} & 73.46 \\
+Ours      & \textbf{12.18} & \textbf{61.42} & 9.76 & \textbf{68.61} & \textbf{8.51} & 71.01 & \textbf{7.75} & 74.62 & 9.38 & 68.33 & 4.87 & 73.26 \\
+\bottomrule
+\end{tabular}%
+}
+\vspace{1mm}
+% 平均准确率沿用飞书实验记录中的聚合值；粗体按照实际数值重新计算。
+\footnotesize Avg. denotes the aggregate accuracy recorded by the evaluation pipeline. Boldface is recomputed from the reported values rather than copied from inconsistent source formatting.
+\end{table*}
